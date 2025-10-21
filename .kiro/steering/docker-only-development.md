@@ -302,3 +302,178 @@ docker-compose down -v
 
 **If you forget this rule, you're doing it wrong!**
 
+
+
+## 🧪 TESTING POLICY - NO MOCKING INTERNAL SERVICES
+
+### ⚠️ STRICT RULE: REAL DATABASE, REAL SERVICES
+
+**WE DO NOT MOCK INTERNAL SERVICES. ALL TESTS USE REAL DOCKER SERVICES.**
+
+### ✅ WHAT WE TEST WITH REAL SERVICES:
+
+✅ **ALWAYS** use the real PostgreSQL database in Docker
+✅ **ALWAYS** use the real Redis instance in Docker
+✅ **ALWAYS** test with actual database transactions
+✅ **ALWAYS** test with real Celery tasks (if needed)
+✅ **ALWAYS** test with real Django ORM queries
+✅ **ALWAYS** test with real cache operations
+✅ **ALWAYS** use Django's test database (automatically created/destroyed)
+
+### 🚫 WHAT WE MOCK (EXTERNAL SERVICES ONLY):
+
+❌ **ONLY MOCK** external SMS services (Twilio, etc.)
+❌ **ONLY MOCK** external payment gateways (Stripe, PayPal, etc.)
+❌ **ONLY MOCK** external email services (SendGrid, Mailgun, etc.)
+❌ **ONLY MOCK** external APIs (third-party integrations)
+❌ **ONLY MOCK** external file storage (S3, CloudFlare, etc.)
+
+### 📋 TESTING EXAMPLES
+
+#### ✅ CORRECT - Real Database Testing:
+```python
+# tests/test_inventory.py
+import pytest
+from django.test import TestCase
+from apps.inventory.models import Product
+
+class TestProduct(TestCase):
+    """Uses real PostgreSQL database in Docker"""
+    
+    def test_create_product(self):
+        # This hits the REAL database in Docker
+        product = Product.objects.create(
+            name="Gold Ring",
+            sku="GR-001",
+            price=299.99
+        )
+        
+        # Real database query
+        assert Product.objects.count() == 1
+        assert product.name == "Gold Ring"
+```
+
+#### ✅ CORRECT - Real Redis Testing:
+```python
+# tests/test_cache.py
+from django.core.cache import cache
+from django.test import TestCase
+
+class TestCache(TestCase):
+    """Uses real Redis in Docker"""
+    
+    def test_cache_operations(self):
+        # This hits the REAL Redis in Docker
+        cache.set('test_key', 'test_value', 60)
+        assert cache.get('test_key') == 'test_value'
+```
+
+#### ✅ CORRECT - Mocking External SMS:
+```python
+# tests/test_notifications.py
+from unittest.mock import patch, Mock
+from django.test import TestCase
+from apps.notifications.services import send_sms
+
+class TestSMS(TestCase):
+    """Mock external SMS service, use real database"""
+    
+    @patch('apps.notifications.services.twilio_client')
+    def test_send_sms(self, mock_twilio):
+        # Mock the EXTERNAL Twilio service
+        mock_twilio.messages.create.return_value = Mock(sid='SM123')
+        
+        # But still use REAL database for logging
+        result = send_sms('+1234567890', 'Test message')
+        
+        assert result.sid == 'SM123'
+        # Verify SMS log was saved to REAL database
+        assert SMSLog.objects.count() == 1
+```
+
+#### ❌ WRONG - Don't Mock Database:
+```python
+# ❌ DO NOT DO THIS
+@patch('apps.inventory.models.Product.objects.create')
+def test_create_product(mock_create):
+    # This is WRONG - we don't mock our own database
+    mock_create.return_value = Mock(id=1, name="Gold Ring")
+```
+
+#### ❌ WRONG - Don't Mock Redis:
+```python
+# ❌ DO NOT DO THIS
+@patch('django.core.cache.cache.set')
+def test_cache(mock_cache):
+    # This is WRONG - we don't mock our own Redis
+    mock_cache.return_value = True
+```
+
+### 🎯 WHY NO MOCKING INTERNAL SERVICES?
+
+1. **Real Integration Testing**: Tests verify actual database behavior
+2. **Catch Real Issues**: Find problems with queries, indexes, constraints
+3. **Production Parity**: Tests run in environment identical to production
+4. **Transaction Testing**: Verify rollbacks, commits, isolation levels work
+5. **Performance Testing**: Identify slow queries and N+1 problems
+6. **Data Integrity**: Ensure constraints, triggers, and validations work
+
+### 🔧 TEST DATABASE SETUP
+
+Django automatically creates a test database for each test run:
+
+```bash
+# Run tests - Django creates test_jewelry_shop database automatically
+docker-compose exec web pytest
+
+# The test database is:
+# - Created before tests run
+# - Isolated from development database
+# - Destroyed after tests complete
+# - Uses real PostgreSQL in Docker
+```
+
+### 📊 TEST CONFIGURATION
+
+```python
+# pytest.ini or conftest.py
+# Tests use real Docker services via Django settings
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'jewelry_shop',  # Django creates test_jewelry_shop automatically
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'db',  # Real PostgreSQL container
+        'PORT': '5432',
+    }
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://redis:6379/1',  # Real Redis container
+    }
+}
+```
+
+### ⚡ TESTING BEST PRACTICES
+
+1. ✅ Use `TestCase` for tests that need database transactions
+2. ✅ Use `TransactionTestCase` for tests that need to test transactions
+3. ✅ Use `pytest` fixtures for common test data setup
+4. ✅ Clean up test data in `tearDown()` or use Django's automatic cleanup
+5. ✅ Mock only external APIs and services
+6. ✅ Never mock Django ORM, database, or Redis operations
+7. ✅ Run all tests inside Docker: `docker-compose exec web pytest`
+
+### 🚨 REMEMBER FOR TESTING
+
+**ALL TESTS RUN IN DOCKER WITH REAL SERVICES.**
+
+**ONLY MOCK EXTERNAL THIRD-PARTY SERVICES.**
+
+**NEVER MOCK OUR OWN DATABASE, REDIS, OR INTERNAL SERVICES.**
+
+**If you're mocking Django ORM or Redis, you're doing it wrong!**
