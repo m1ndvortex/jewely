@@ -82,7 +82,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Integrate django-guardian for object-level permissions
     - _Requirements: 18_
   
-  - [ ] 3.5 Write authentication and authorization tests
+  - [x] 3.5 Write authentication and authorization tests
     - Test login flow with valid/invalid credentials
     - Test JWT token generation and validation
     - Test MFA flow
