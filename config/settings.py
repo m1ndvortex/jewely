@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "guardian",
     # Local apps
     "apps.core",
+    "apps.inventory",
 ]
 
 # Site ID for django-allauth
