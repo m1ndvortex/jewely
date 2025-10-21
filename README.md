@@ -93,15 +93,18 @@ docker-compose logs -f celery_worker
 
 ### Code Quality
 
-Pre-commit hooks are configured for code quality:
+Pre-commit hooks are automatically configured and will run on every `git commit`:
+
+**Automatic Checks (on git commit):**
+- Black code formatting
+- isort import sorting
+- Flake8 linting
+
+The hooks will **prevent commits** if code quality checks fail.
+
+**Manual Code Quality Commands:**
 
 ```bash
-# Install pre-commit hooks (run once inside container)
-docker-compose exec web pre-commit install
-
-# Run pre-commit manually
-docker-compose exec web pre-commit run --all-files
-
 # Run black formatter
 docker-compose exec web black .
 
@@ -113,7 +116,17 @@ docker-compose exec web flake8 .
 
 # Run mypy
 docker-compose exec web mypy .
+
+# Run all checks manually
+make lint
 ```
+
+**How Pre-commit Hooks Work:**
+- Hooks are installed in `.git/hooks/pre-commit`
+- They run automatically before each commit
+- They execute checks inside Docker containers
+- If checks fail, the commit is blocked
+- Fix the issues and try committing again
 
 ### Testing
 

@@ -11,29 +11,25 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
 
-  - repo: https://github.com/psf/black
-    rev: 24.2.0
+  - repo: local
     hooks:
       - id: black
-        language_version: python3.11
-        args: ['--line-length=100']
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
+        name: black (via docker)
+        entry: docker compose exec -T web black
+        language: system
+        types: [python]
+        args: ['--check', '--line-length=100']
+        
       - id: isort
-        args: ['--profile', 'black', '--line-length', '100']
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
-    hooks:
+        name: isort (via docker)
+        entry: docker compose exec -T web isort
+        language: system
+        types: [python]
+        args: ['--check-only', '--profile', 'black', '--line-length', '100']
+        
       - id: flake8
+        name: flake8 (via docker)
+        entry: docker compose exec -T web flake8
+        language: system
+        types: [python]
         args: ['--max-line-length=100', '--extend-ignore=E203,W503']
-        additional_dependencies: [flake8-docstrings]
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [django-stubs]
-        args: ['--ignore-missing-imports', '--no-strict-optional']
