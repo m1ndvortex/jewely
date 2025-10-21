@@ -295,6 +295,13 @@ class User(AbstractUser):
         """Check if user can process sales."""
         return self.has_tenant_access()
 
+    def requires_mfa(self):
+        """
+        Check if user is required to have MFA enabled.
+        Platform admins must have MFA enabled per security requirements.
+        """
+        return self.role == self.PLATFORM_ADMIN
+
     def save(self, *args, **kwargs):
         """
         Override save to ensure data consistency.

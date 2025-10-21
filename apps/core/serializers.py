@@ -14,7 +14,10 @@ User = get_user_model()
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Custom JWT token serializer that includes additional user information.
+    Implements MFA verification in the login flow.
     """
+
+    mfa_token = serializers.CharField(required=False, write_only=True)
 
     @classmethod
     def get_token(cls, user):
@@ -32,7 +35,35 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
+        # First, validate username and password
         data = super().validate(attrs)
+
+        # Check if user has MFA enabled
+        if self.user.is_mfa_enabled:
+            mfa_token = attrs.get("mfa_token")
+
+            # If no MFA token provided, return a response indicating MFA is required
+            if not mfa_token:
+                # Don't return actual tokens, return MFA required status
+                return {
+                    "mfa_required": True,
+                    "user_id": str(self.user.id),
+                    "message": "MFA verification required. Please provide your authentication code.",
+                }
+
+            # Verify the MFA token
+            from django_otp.plugins.otp_totp.models import TOTPDevice
+
+            try:
+                device = TOTPDevice.objects.get(user=self.user, confirmed=True)
+                if not device.verify_token(mfa_token):
+                    raise serializers.ValidationError(
+                        {"mfa_token": "Invalid MFA token. Please try again."}
+                    )
+            except TOTPDevice.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"mfa_token": "MFA device not found. Please contact support."}
+                )
 
         # Add user information to response
         data["user"] = {
@@ -46,6 +77,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "theme": self.user.theme,
             "is_mfa_enabled": self.user.is_mfa_enabled,
         }
+        data["mfa_required"] = False
 
         return data
 

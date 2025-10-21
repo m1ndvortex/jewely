@@ -69,7 +69,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Configure token expiration (access: 15 min, refresh: 7 days)
     - _Requirements: 18_
   
-  - [ ] 3.3 Implement Multi-Factor Authentication
+  - [x] 3.3 Implement Multi-Factor Authentication
     - Integrate django-otp for TOTP-based MFA
     - Create MFA enable/disable views
     - Add MFA verification to login flow

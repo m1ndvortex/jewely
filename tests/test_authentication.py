@@ -257,6 +257,76 @@ class TestMultiFactorAuthentication:
         assert response.data["is_mfa_enabled"] is False
         assert response.data["has_device"] is False
 
+    def test_login_with_mfa_enabled_requires_token(self, api_client, user):
+        """Test that login with MFA enabled requires MFA token."""
+        # Setup: Enable and confirm MFA for user
+        TOTPDevice.objects.create(user=user, name="default", confirmed=True)
+        user.is_mfa_enabled = True
+        user.save()
+
+        # Try to login without MFA token
+        url = reverse("core:token_obtain_pair")
+        data = {
+            "username": "testuser",
+            "password": "TestPassword123!@#",
+        }
+        response = api_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["mfa_required"] is True
+        assert "access" not in response.data  # Should not receive tokens
+        assert "refresh" not in response.data
+        assert "user_id" in response.data
+
+    def test_login_with_mfa_and_valid_token(self, api_client, user):
+        """Test successful login with MFA enabled and valid token."""
+        # Setup: Enable and confirm MFA
+        device = TOTPDevice.objects.create(user=user, name="default", confirmed=True)
+        user.is_mfa_enabled = True
+        user.save()
+
+        # Generate valid token
+        import base64
+
+        key_bytes = bytes.fromhex(device.key)
+        key_base32 = base64.b32encode(key_bytes).decode("utf-8")
+        totp = pyotp.TOTP(key_base32)
+        token = totp.now()
+
+        # Login with MFA token
+        url = reverse("core:token_obtain_pair")
+        data = {
+            "username": "testuser",
+            "password": "TestPassword123!@#",
+            "mfa_token": token,
+        }
+        response = api_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+        assert "refresh" in response.data
+        assert response.data["mfa_required"] is False
+        assert response.data["user"]["username"] == "testuser"
+
+    def test_login_with_mfa_and_invalid_token(self, api_client, user):
+        """Test login fails with invalid MFA token."""
+        # Setup: Enable and confirm MFA
+        TOTPDevice.objects.create(user=user, name="default", confirmed=True)
+        user.is_mfa_enabled = True
+        user.save()
+
+        # Try to login with invalid token
+        url = reverse("core:token_obtain_pair")
+        data = {
+            "username": "testuser",
+            "password": "TestPassword123!@#",
+            "mfa_token": "000000",  # Invalid token
+        }
+        response = api_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "mfa_token" in response.data
+
     def test_mfa_enable_creates_totp_device(self, api_client, user):
         """Test enabling MFA creates a TOTP device."""
         refresh = RefreshToken.for_user(user)
@@ -500,3 +570,61 @@ class TestPasswordComplexity:
         )
         assert user is not None
         assert user.check_password("StrongPassword123!@#")
+
+
+@pytest.mark.django_db
+class TestAdminMFAEnforcement:
+    """Test MFA enforcement for platform administrators (Requirement 25.7)."""
+
+    def test_platform_admin_requires_mfa(self, platform_admin):
+        """Test that platform admins are identified as requiring MFA."""
+        assert platform_admin.requires_mfa() is True
+
+    def test_tenant_user_does_not_require_mfa(self, user):
+        """Test that tenant users are not required to have MFA."""
+        assert user.requires_mfa() is False
+
+    def test_platform_admin_login_without_mfa_setup(self, api_client, platform_admin):
+        """Test that platform admin can login but should be prompted to enable MFA."""
+        # Admin without MFA should still be able to login
+        # but should be warned/restricted from sensitive operations
+        url = reverse("core:token_obtain_pair")
+        data = {
+            "username": "admin",
+            "password": "AdminPassword123!@#",
+        }
+        response = api_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+        # User info should indicate MFA is not enabled
+        assert response.data["user"]["is_mfa_enabled"] is False
+
+    def test_platform_admin_with_mfa_login_flow(self, api_client, platform_admin):
+        """Test complete login flow for platform admin with MFA."""
+        # Setup: Enable MFA for admin
+        device = TOTPDevice.objects.create(user=platform_admin, name="default", confirmed=True)
+        platform_admin.is_mfa_enabled = True
+        platform_admin.save()
+
+        # Generate valid token
+        import base64
+
+        key_bytes = bytes.fromhex(device.key)
+        key_base32 = base64.b32encode(key_bytes).decode("utf-8")
+        totp = pyotp.TOTP(key_base32)
+        token = totp.now()
+
+        # Login with MFA token
+        url = reverse("core:token_obtain_pair")
+        data = {
+            "username": "admin",
+            "password": "AdminPassword123!@#",
+            "mfa_token": token,
+        }
+        response = api_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+        assert response.data["user"]["is_mfa_enabled"] is True
+        assert response.data["user"]["role"] == User.PLATFORM_ADMIN
