@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django_otp",
     "django_otp.plugins.otp_totp",
     "django_otp.plugins.otp_static",
+    "guardian",
     # Local apps
     "apps.core",
 ]
@@ -104,6 +105,8 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     # `allauth` specific authentication methods, such as login by e-mail
     "allauth.account.auth_backends.AuthenticationBackend",
+    # django-guardian for object-level permissions
+    "guardian.backends.ObjectPermissionBackend",
 ]
 
 # Allauth settings
@@ -339,3 +342,8 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+# Django Guardian Configuration
+# Object-level permissions
+ANONYMOUS_USER_NAME = None  # Disable anonymous user
+GUARDIAN_RAISE_403 = True  # Raise PermissionDenied exception for DRF compatibility

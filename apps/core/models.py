@@ -322,3 +322,103 @@ class User(AbstractUser):
                 raise ValueError("Branch must belong to the same tenant as the user")
 
         super().save(*args, **kwargs)
+
+
+class PermissionAuditLog(models.Model):
+    """
+    Audit log for permission and role changes.
+
+    Tracks all changes to user permissions, roles, and group assignments
+    for security and compliance purposes per Requirement 18.9.
+    """
+
+    # Action types
+    ROLE_CHANGED = "ROLE_CHANGED"
+    PERMISSION_GRANTED = "PERMISSION_GRANTED"
+    PERMISSION_REVOKED = "PERMISSION_REVOKED"
+    GROUP_ADDED = "GROUP_ADDED"
+    GROUP_REMOVED = "GROUP_REMOVED"
+    BRANCH_ASSIGNED = "BRANCH_ASSIGNED"
+    BRANCH_UNASSIGNED = "BRANCH_UNASSIGNED"
+
+    ACTION_CHOICES = [
+        (ROLE_CHANGED, "Role Changed"),
+        (PERMISSION_GRANTED, "Permission Granted"),
+        (PERMISSION_REVOKED, "Permission Revoked"),
+        (GROUP_ADDED, "Group Added"),
+        (GROUP_REMOVED, "Group Removed"),
+        (BRANCH_ASSIGNED, "Branch Assigned"),
+        (BRANCH_UNASSIGNED, "Branch Unassigned"),
+    ]
+
+    # Who performed the action
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="permission_actions_performed",
+        help_text="User who performed the action",
+    )
+
+    # Who was affected
+    target_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="permission_changes",
+        help_text="User whose permissions were changed",
+    )
+
+    # What happened
+    action = models.CharField(
+        max_length=50,
+        choices=ACTION_CHOICES,
+        help_text="Type of permission change",
+    )
+
+    # Details
+    old_value = models.TextField(
+        blank=True,
+        help_text="Previous value (JSON format)",
+    )
+
+    new_value = models.TextField(
+        blank=True,
+        help_text="New value (JSON format)",
+    )
+
+    description = models.TextField(
+        help_text="Human-readable description of the change",
+    )
+
+    # Metadata
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text="IP address of the actor",
+    )
+
+    user_agent = models.TextField(
+        blank=True,
+        help_text="User agent string of the actor",
+    )
+
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When the change occurred",
+    )
+
+    class Meta:
+        db_table = "permission_audit_logs"
+        ordering = ["-timestamp"]
+        verbose_name = "Permission Audit Log"
+        verbose_name_plural = "Permission Audit Logs"
+        indexes = [
+            models.Index(fields=["target_user", "-timestamp"], name="audit_user_time_idx"),
+            models.Index(fields=["actor", "-timestamp"], name="audit_actor_time_idx"),
+            models.Index(fields=["action", "-timestamp"], name="audit_action_time_idx"),
+        ]
+
+    def __str__(self):
+        actor_name = self.actor.username if self.actor else "System"
+        return f"{self.action} - {self.target_user.username} by {actor_name} at {self.timestamp}"
