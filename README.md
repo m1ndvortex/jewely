@@ -271,3 +271,4 @@ docker-compose restart web
 ## License
 
 Proprietary - All rights reserved
+# Test pre-commit hooks
