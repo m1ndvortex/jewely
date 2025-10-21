@@ -32,7 +32,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
   - _Requirements: 27, 28_
 
 - [ ] 2. Multi-Tenancy Foundation with RLS
-  - [ ] 2.1 Create Tenant model with UUID primary key, company_name, slug, status, created_at
+  - [x] 2.1 Create Tenant model with UUID primary key, company_name, slug, status, created_at
     - Add status choices: ACTIVE, SUSPENDED, PENDING_DELETION
     - Add database indexes on status and slug
     - _Requirements: 1, 4_
