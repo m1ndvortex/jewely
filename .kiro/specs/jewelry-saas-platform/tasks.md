@@ -43,7 +43,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Create RLS policies using current_setting('app.current_tenant')
     - _Requirements: 1_
   
-  - [ ] 2.3 Create tenant context middleware
+  - [x] 2.3 Create tenant context middleware
     - Extract tenant from JWT token or session
     - Set PostgreSQL session variable with tenant_id
     - Handle tenant not found and suspended tenant cases

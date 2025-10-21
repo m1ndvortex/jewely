@@ -41,6 +41,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Tenant context middleware - must be after AuthenticationMiddleware
+    "apps.core.middleware.TenantContextMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
