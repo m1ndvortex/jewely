@@ -23,6 +23,21 @@ from apps.core.models import Tenant
 class TestTenantModel(TestCase):
     """Test suite for Tenant model."""
 
+    def setUp(self):
+        """Set up test fixtures - enable RLS bypass for tests."""
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+    def tearDown(self):
+        """Clean up after tests."""
+        from apps.core.tenant_context import clear_tenant_context
+
+        try:
+            clear_tenant_context()
+        except Exception:
+            pass
+
     def test_create_tenant_with_all_fields(self):
         """Test creating a tenant with all required fields."""
         tenant = Tenant.objects.create(
@@ -175,6 +190,21 @@ class TestTenantModel(TestCase):
 @pytest.mark.django_db
 class TestTenantDatabaseIndexes(TestCase):
     """Test database indexes for Tenant model."""
+
+    def setUp(self):
+        """Set up test fixtures - enable RLS bypass for tests."""
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+    def tearDown(self):
+        """Clean up after tests."""
+        from apps.core.tenant_context import clear_tenant_context
+
+        try:
+            clear_tenant_context()
+        except Exception:
+            pass
 
     def test_status_index_exists(self):
         """Test that status field has an index."""

@@ -37,7 +37,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add database indexes on status and slug
     - _Requirements: 1, 4_
   
-  - [ ] 2.2 Implement PostgreSQL Row-Level Security policies
+  - [x] 2.2 Implement PostgreSQL Row-Level Security policies
     - Create migration to enable RLS on tenant-scoped tables
     - Create set_tenant_context() PostgreSQL function
     - Create RLS policies using current_setting('app.current_tenant')

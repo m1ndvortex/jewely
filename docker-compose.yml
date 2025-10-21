@@ -6,10 +6,13 @@ services:
     container_name: jewelry_shop_db
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-jewelry_shop}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Use postgres superuser for database initialization
+      POSTGRES_USER: ${DB_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD:-postgres}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-app_password_change_in_production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     ports:
       - "5432:5432"
     healthcheck:
