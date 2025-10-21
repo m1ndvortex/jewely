@@ -14,7 +14,8 @@ This test suite validates the middleware functionality including:
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
-from django.contrib.auth.models import AnonymousUser, User
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.http import JsonResponse
 from django.test import RequestFactory, TestCase
 
@@ -23,6 +24,8 @@ import pytest
 from apps.core.middleware import TenantContextMiddleware
 from apps.core.models import Tenant
 from apps.core.tenant_context import clear_tenant_context, enable_rls_bypass, get_current_tenant
+
+User = get_user_model()
 
 
 @pytest.mark.django_db
@@ -52,8 +55,13 @@ class TestTenantContextMiddleware(TestCase):
             status=Tenant.PENDING_DELETION,
         )
 
-        # Create test user
-        self.user = User.objects.create_user(username="testuser", password="testpass123")
+        # Create test user (tenant owner for active tenant)
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="testpass123",
+            tenant=self.active_tenant,
+            role=User.TENANT_OWNER,
+        )
 
         # Clear RLS bypass after setup
         clear_tenant_context()
@@ -88,9 +96,12 @@ class TestTenantContextMiddleware(TestCase):
 
     def test_platform_admin_gets_rls_bypass(self):
         """Test that platform admins get RLS bypass on admin paths."""
-        # Create superuser
+        # Create superuser (platform admin)
         admin_user = User.objects.create_superuser(
-            username="admin", password="admin123", email="admin@test.com"
+            username="admin",
+            password="admin123",
+            email="admin@test.com",
+            role=User.PLATFORM_ADMIN,
         )
 
         request = self.factory.get("/admin/")
@@ -339,7 +350,12 @@ class TestTenantContextMiddlewareJWT(TestCase):
             company_name="Active Shop", slug="active-shop", status=Tenant.ACTIVE
         )
 
-        self.user = User.objects.create_user(username="testuser", password="testpass123")
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="testpass123",
+            tenant=self.active_tenant,
+            role=User.TENANT_OWNER,
+        )
 
         clear_tenant_context()
 
@@ -462,20 +478,39 @@ class TestTenantContextMiddlewareEdgeCases(TestCase):
 
     def test_is_platform_admin_method(self):
         """Test _is_platform_admin method."""
+        # Enable RLS bypass for test setup
+        enable_rls_bypass()
+
+        # Create a tenant for regular users
+        tenant = Tenant.objects.create(
+            company_name="Test Shop", slug="test-shop", status=Tenant.ACTIVE
+        )
+
         # Anonymous user
         assert self.middleware._is_platform_admin(AnonymousUser()) is False
 
         # Regular user
-        user = User.objects.create_user(username="regular", password="pass123")
+        user = User.objects.create_user(
+            username="regular",
+            password="pass123",
+            tenant=tenant,
+            role=User.TENANT_EMPLOYEE,
+        )
         assert self.middleware._is_platform_admin(user) is False
 
         # Superuser
         superuser = User.objects.create_superuser(
-            username="super", password="pass123", email="super@test.com"
+            username="super",
+            password="pass123",
+            email="super@test.com",
+            role=User.PLATFORM_ADMIN,
         )
         assert self.middleware._is_platform_admin(superuser) is True
 
-        # User with PLATFORM_ADMIN role (if extended User model)
-        user_with_role = User.objects.create_user(username="admin", password="pass123")
-        user_with_role.role = "PLATFORM_ADMIN"
+        # User with PLATFORM_ADMIN role
+        user_with_role = User.objects.create_user(
+            username="admin", password="pass123", role=User.PLATFORM_ADMIN
+        )
         assert self.middleware._is_platform_admin(user_with_role) is True
+
+        clear_tenant_context()

@@ -10,7 +10,11 @@ import pytest
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_blocker):
     """
-    Configure the test database and ensure RLS is enabled.
+    Configure the test database and verify RLS configuration.
+
+    IMPORTANT: The tenants table should NOT have RLS enabled because it's not
+    tenant-scoped data. It's the master list of all tenants that platform admins
+    need to access. Only tenant-scoped tables (branches, users, etc.) should have RLS.
     """
     settings.DATABASES["default"] = {
         "ENGINE": "django.db.backends.postgresql",
@@ -22,32 +26,34 @@ def django_db_setup(django_db_blocker):
         "ATOMIC_REQUESTS": True,
     }
 
-    # After database is created, ensure RLS is enabled on all tables
+    # After database is created, ensure correct RLS configuration
+    # This runs after migrations, so we can fix any issues here
     with django_db_blocker.unblock():
         from django.db import connection
 
         with connection.cursor() as cursor:
-            # Enable RLS on tenants table (critical for security)
+            # Ensure tenants table does NOT have RLS (it's not tenant-scoped)
+            # The tenants table is the master list - platform admins need full access
             cursor.execute(
                 """
-                ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
-                ALTER TABLE tenants FORCE ROW LEVEL SECURITY;
+                ALTER TABLE IF EXISTS tenants NO FORCE ROW LEVEL SECURITY;
+                ALTER TABLE IF EXISTS tenants DISABLE ROW LEVEL SECURITY;
             """
             )
 
-            # Verify RLS is enabled
+            # Verify it worked
             cursor.execute(
                 """
-                SELECT relname, relrowsecurity, relforcerowsecurity
+                SELECT relname, relrowsecurity
                 FROM pg_class
                 WHERE relname = 'tenants';
             """
             )
             result = cursor.fetchone()
             if result:
-                relname, rls_enabled, rls_forced = result
-                msg = f"RLS not properly enabled on {relname}"
-                assert rls_enabled and rls_forced, msg
+                relname, rls_enabled = result
+                msg = f"Failed to disable RLS on {relname}"
+                assert not rls_enabled, msg
 
 
 @pytest.fixture

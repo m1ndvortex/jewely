@@ -56,7 +56,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 1, 28_
 
 - [ ] 3. Authentication and Authorization System
-  - [ ] 3.1 Extend Django User model
+  - [x] 3.1 Extend Django User model
     - Add tenant foreign key, role field, branch foreign key
     - Add language preference (en/fa), theme preference (light/dark)
     - Add phone, is_mfa_enabled fields

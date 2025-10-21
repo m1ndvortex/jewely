@@ -4,6 +4,7 @@ Core models for the jewelry shop SaaS platform.
 
 import uuid
 
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.text import slugify
 
@@ -101,3 +102,216 @@ class Tenant(models.Model):
         """Mark tenant for deletion."""
         self.status = self.PENDING_DELETION
         self.save(update_fields=["status", "updated_at"])
+
+
+class Branch(models.Model):
+    """
+    Branch model for multi-branch jewelry shops.
+
+    Each tenant can have multiple branches/locations.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the branch",
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="branches",
+        help_text="Tenant that owns this branch",
+    )
+
+    name = models.CharField(max_length=255, help_text="Branch name")
+
+    address = models.TextField(blank=True, help_text="Branch address")
+
+    phone = models.CharField(max_length=20, blank=True, help_text="Branch phone number")
+
+    is_active = models.BooleanField(default=True, help_text="Whether the branch is active")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "branches"
+        ordering = ["name"]
+        verbose_name = "Branch"
+        verbose_name_plural = "Branches"
+        unique_together = [["tenant", "name"]]
+        indexes = [
+            models.Index(fields=["tenant", "is_active"], name="branch_tenant_active_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.tenant.company_name})"
+
+
+class User(AbstractUser):
+    """
+    Extended user model with tenant association and additional fields.
+
+    Supports multi-tenancy with role-based access control.
+    """
+
+    # Role choices
+    PLATFORM_ADMIN = "PLATFORM_ADMIN"
+    TENANT_OWNER = "TENANT_OWNER"
+    TENANT_MANAGER = "TENANT_MANAGER"
+    TENANT_EMPLOYEE = "TENANT_EMPLOYEE"
+
+    ROLE_CHOICES = [
+        (PLATFORM_ADMIN, "Platform Administrator"),
+        (TENANT_OWNER, "Shop Owner"),
+        (TENANT_MANAGER, "Shop Manager"),
+        (TENANT_EMPLOYEE, "Shop Employee"),
+    ]
+
+    # Language choices
+    LANGUAGE_ENGLISH = "en"
+    LANGUAGE_PERSIAN = "fa"
+
+    LANGUAGE_CHOICES = [
+        (LANGUAGE_ENGLISH, "English"),
+        (LANGUAGE_PERSIAN, "Persian"),
+    ]
+
+    # Theme choices
+    THEME_LIGHT = "light"
+    THEME_DARK = "dark"
+
+    THEME_CHOICES = [
+        (THEME_LIGHT, "Light"),
+        (THEME_DARK, "Dark"),
+    ]
+
+    # Tenant association
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="users",
+        help_text="Tenant that this user belongs to (null for platform admins)",
+    )
+
+    # Role
+    role = models.CharField(
+        max_length=50,
+        choices=ROLE_CHOICES,
+        default=TENANT_EMPLOYEE,
+        help_text="User's role in the system",
+    )
+
+    # Branch assignment
+    branch = models.ForeignKey(
+        Branch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users",
+        help_text="Branch that this user is assigned to",
+    )
+
+    # Preferences
+    language = models.CharField(
+        max_length=10,
+        choices=LANGUAGE_CHOICES,
+        default=LANGUAGE_ENGLISH,
+        help_text="User's preferred language",
+    )
+
+    theme = models.CharField(
+        max_length=10,
+        choices=THEME_CHOICES,
+        default=THEME_LIGHT,
+        help_text="User's preferred theme",
+    )
+
+    # Contact information
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="User's phone number",
+    )
+
+    # Security
+    is_mfa_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether multi-factor authentication is enabled for this user",
+    )
+
+    class Meta:
+        db_table = "users"
+        ordering = ["username"]
+        verbose_name = "User"
+        verbose_name_plural = "Users"
+        indexes = [
+            models.Index(fields=["tenant", "role"], name="user_tenant_role_idx"),
+            models.Index(fields=["tenant", "branch"], name="user_tenant_branch_idx"),
+        ]
+
+    def __str__(self):
+        if self.tenant:
+            return f"{self.username} ({self.get_role_display()} - {self.tenant.company_name})"
+        return f"{self.username} ({self.get_role_display()})"
+
+    def is_platform_admin(self):
+        """Check if user is a platform administrator."""
+        return self.role == self.PLATFORM_ADMIN
+
+    def is_tenant_owner(self):
+        """Check if user is a tenant owner."""
+        return self.role == self.TENANT_OWNER
+
+    def is_tenant_manager(self):
+        """Check if user is a tenant manager."""
+        return self.role == self.TENANT_MANAGER
+
+    def is_tenant_employee(self):
+        """Check if user is a tenant employee."""
+        return self.role == self.TENANT_EMPLOYEE
+
+    def has_tenant_access(self):
+        """Check if user has access to tenant features."""
+        return self.tenant is not None and self.role in [
+            self.TENANT_OWNER,
+            self.TENANT_MANAGER,
+            self.TENANT_EMPLOYEE,
+        ]
+
+    def can_manage_users(self):
+        """Check if user can manage other users."""
+        return self.role in [self.PLATFORM_ADMIN, self.TENANT_OWNER, self.TENANT_MANAGER]
+
+    def can_manage_inventory(self):
+        """Check if user can manage inventory."""
+        return self.role in [self.TENANT_OWNER, self.TENANT_MANAGER]
+
+    def can_process_sales(self):
+        """Check if user can process sales."""
+        return self.has_tenant_access()
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to ensure data consistency.
+        """
+        # Platform admins should not have a tenant
+        if self.role == self.PLATFORM_ADMIN:
+            self.tenant = None
+            self.branch = None
+
+        # Tenant users must have a tenant
+        if self.role in [self.TENANT_OWNER, self.TENANT_MANAGER, self.TENANT_EMPLOYEE]:
+            if not self.tenant:
+                raise ValueError(f"Users with role {self.role} must have a tenant assigned")
+
+        # Branch must belong to the same tenant
+        if self.branch and self.tenant:
+            if self.branch.tenant_id != self.tenant_id:
+                raise ValueError("Branch must belong to the same tenant as the user")
+
+        super().save(*args, **kwargs)
