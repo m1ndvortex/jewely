@@ -8,19 +8,46 @@ import pytest
 
 
 @pytest.fixture(scope="session")
-def django_db_setup():
+def django_db_setup(django_db_blocker):
     """
-    Configure the test database.
+    Configure the test database and ensure RLS is enabled.
     """
     settings.DATABASES["default"] = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "test_jewelry_shop",
         "USER": "postgres",
         "PASSWORD": "postgres",
-        "HOST": "localhost",
+        "HOST": "db",  # Docker service name
         "PORT": "5432",
         "ATOMIC_REQUESTS": True,
     }
+
+    # After database is created, ensure RLS is enabled on all tables
+    with django_db_blocker.unblock():
+        from django.db import connection
+
+        with connection.cursor() as cursor:
+            # Enable RLS on tenants table (critical for security)
+            cursor.execute(
+                """
+                ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+                ALTER TABLE tenants FORCE ROW LEVEL SECURITY;
+            """
+            )
+
+            # Verify RLS is enabled
+            cursor.execute(
+                """
+                SELECT relname, relrowsecurity, relforcerowsecurity
+                FROM pg_class
+                WHERE relname = 'tenants';
+            """
+            )
+            result = cursor.fetchone()
+            if result:
+                relname, rls_enabled, rls_forced = result
+                msg = f"RLS not properly enabled on {relname}"
+                assert rls_enabled and rls_forced, msg
 
 
 @pytest.fixture

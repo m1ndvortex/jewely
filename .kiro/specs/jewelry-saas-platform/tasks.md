@@ -49,7 +49,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Handle tenant not found and suspended tenant cases
     - _Requirements: 1_
   
-  - [ ] 2.4 Write RLS isolation tests
+  - [x] 2.4 Write RLS isolation tests
     - Test that tenants cannot access other tenant's data
     - Test RLS policy enforcement on all tenant-scoped models
     - Test tenant context switching
