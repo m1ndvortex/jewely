@@ -62,7 +62,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add phone, is_mfa_enabled fields
     - _Requirements: 18_
   
-  - [ ] 3.2 Implement authentication with django-allauth
+  - [x] 3.2 Implement authentication with django-allauth
     - Configure django-allauth for email/username login
     - Set up Argon2 password hashing with django-argon2
     - Implement JWT token generation with djangorestframework-simplejwt
