@@ -229,6 +229,424 @@ class TestCustomer:
         with pytest.raises(ValueError, match="Invalid points amount for redemption"):
             customer.redeem_loyalty_points(100)
 
+    def test_transfer_points_between_customers(self, tenant):
+        """Test transferring loyalty points between customers."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create sender customer
+            sender = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-SENDER",
+                first_name="Alice",
+                last_name="Sender",
+                phone="+1234567890",
+                loyalty_points=200,
+            )
+
+            # Create recipient customer
+            recipient = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-RECIPIENT",
+                first_name="Bob",
+                last_name="Recipient",
+                phone="+1234567891",
+                loyalty_points=50,
+            )
+
+            sender_id = sender.id
+            recipient_id = recipient.id
+
+            # Transfer points
+            sender.transfer_points_to(recipient, 75, "Family transfer")
+
+            # Re-query customers
+            sender = Customer.objects.get(id=sender_id)
+            recipient = Customer.objects.get(id=recipient_id)
+
+            # Check balances updated
+            assert sender.loyalty_points == 125  # 200 - 75
+            assert recipient.loyalty_points == 125  # 50 + 75
+            assert (
+                recipient.total_points_earned == 75
+            )  # Only the transferred amount is added to total_points_earned
+
+            # Check transactions were created
+            sender_transaction = LoyaltyTransaction.objects.filter(
+                customer=sender, transaction_type=LoyaltyTransaction.ADJUSTED, points=-75
+            ).first()
+            assert sender_transaction is not None
+            assert sender_transaction.description == "Family transfer"
+
+            recipient_transaction = LoyaltyTransaction.objects.filter(
+                customer=recipient, transaction_type=LoyaltyTransaction.BONUS, points=75
+            ).first()
+            assert recipient_transaction is not None
+            assert recipient_transaction.description == "Family transfer"
+
+    def test_transfer_points_insufficient_balance(self, tenant):
+        """Test error when transferring more points than available."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            sender = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-SENDER2",
+                first_name="Alice",
+                last_name="Sender",
+                phone="+1234567890",
+                loyalty_points=50,
+            )
+
+            recipient = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-RECIPIENT2",
+                first_name="Bob",
+                last_name="Recipient",
+                phone="+1234567891",
+                loyalty_points=0,
+            )
+
+            # Try to transfer more than available
+            with pytest.raises(ValueError, match="Invalid points amount for transfer"):
+                sender.transfer_points_to(recipient, 100)
+
+    def test_transfer_points_different_tenant_error(self, tenant):
+        """Test error when transferring points between different tenants."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create another tenant
+            other_tenant = Tenant.objects.create(
+                company_name="Other Jewelry Shop", slug="other-shop", status="ACTIVE"
+            )
+
+            sender = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-SENDER3",
+                first_name="Alice",
+                last_name="Sender",
+                phone="+1234567890",
+                loyalty_points=100,
+            )
+
+            recipient = Customer.objects.create(
+                tenant=other_tenant,
+                customer_number="CUST-RECIPIENT3",
+                first_name="Bob",
+                last_name="Recipient",
+                phone="+1234567891",
+                loyalty_points=0,
+            )
+
+            # Try to transfer between different tenants
+            with pytest.raises(ValueError, match="Can only transfer points within same tenant"):
+                sender.transfer_points_to(recipient, 50)
+
+    def test_expire_old_points(self, tenant):
+        """Test expiring old loyalty points."""
+        from dateutil.relativedelta import relativedelta
+
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-EXPIRE",
+                first_name="Test",
+                last_name="Customer",
+                phone="+1234567890",
+                loyalty_points=150,
+            )
+
+            # Create old transaction (13 months ago)
+            old_date = timezone.now() - relativedelta(months=13)
+            old_transaction = LoyaltyTransaction.objects.create(
+                customer=customer,
+                transaction_type=LoyaltyTransaction.EARNED,
+                points=100,
+                description="Old points",
+            )
+            # Manually set the created_at to simulate old transaction
+            LoyaltyTransaction.objects.filter(id=old_transaction.id).update(created_at=old_date)
+
+            # Create recent transaction (6 months ago)
+            recent_date = timezone.now() - relativedelta(months=6)
+            recent_transaction = LoyaltyTransaction.objects.create(
+                customer=customer,
+                transaction_type=LoyaltyTransaction.EARNED,
+                points=50,
+                description="Recent points",
+            )
+            LoyaltyTransaction.objects.filter(id=recent_transaction.id).update(
+                created_at=recent_date
+            )
+
+            customer_id = customer.id
+
+            # Expire points older than 12 months
+            expired_points = customer.expire_old_points(expiration_months=12)
+
+            # Re-query customer
+            customer = Customer.objects.get(id=customer_id)
+
+            # Check that 100 old points were expired
+            assert expired_points == 100
+            assert customer.loyalty_points == 50  # 150 - 100 expired
+
+            # Check expiration transaction was created
+            expiration_transaction = LoyaltyTransaction.objects.filter(
+                customer=customer, transaction_type=LoyaltyTransaction.EXPIRED
+            ).first()
+            assert expiration_transaction is not None
+            assert expiration_transaction.points == -100
+
+            # Check old transaction is marked as expired
+            old_transaction.refresh_from_db()
+            assert old_transaction.expires_at is not None
+
+    def test_referral_reward_system(self, tenant):
+        """Test the referral reward system."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create referrer customer
+            referrer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-REFERRER",
+                first_name="Alice",
+                last_name="Referrer",
+                phone="+1234567890",
+                loyalty_points=0,
+            )
+
+            # Create referee customer with referrer
+            referee = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-REFEREE",
+                first_name="Bob",
+                last_name="Referee",
+                phone="+1234567891",
+                referred_by=referrer,
+                loyalty_points=0,
+            )
+
+            referrer_id = referrer.id
+            referee_id = referee.id
+
+            # Manually trigger reward (normally happens in save)
+            referee.reward_referrer(referrer_points=150, referee_points=75)
+
+            # Re-query customers
+            referrer = Customer.objects.get(id=referrer_id)
+            referee = Customer.objects.get(id=referee_id)
+
+            # Check points were awarded
+            assert referrer.loyalty_points == 150
+            assert referee.loyalty_points == 75
+            assert referee.referral_reward_given is True
+
+            # Check transactions were created
+            referrer_transactions = LoyaltyTransaction.objects.filter(customer=referrer)
+            referee_transactions = LoyaltyTransaction.objects.filter(customer=referee)
+
+            assert referrer_transactions.count() == 1
+            assert referee_transactions.count() == 1
+
+            referrer_transaction = referrer_transactions.first()
+            assert "Referral bonus for referring Bob Referee" in referrer_transaction.description
+
+    def test_referral_reward_already_given(self, tenant):
+        """Test that referral reward is not given twice."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            referrer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-REF2",
+                first_name="Alice",
+                last_name="Referrer",
+                phone="+1234567890",
+                loyalty_points=0,
+            )
+
+            referee = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-REF3",
+                first_name="Bob",
+                last_name="Referee",
+                phone="+1234567891",
+                referred_by=referrer,
+                loyalty_points=0,
+                referral_reward_given=True,  # Already rewarded
+            )
+
+            initial_referrer_points = referrer.loyalty_points
+            initial_referee_points = referee.loyalty_points
+
+            # Try to reward again
+            referee.reward_referrer()
+
+            # Points should not change
+            referrer.refresh_from_db()
+            referee.refresh_from_db()
+
+            assert referrer.loyalty_points == initial_referrer_points
+            assert referee.loyalty_points == initial_referee_points
+
+    def test_get_tier_discount(self, tenant):
+        """Test tier-specific discount calculation."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create loyalty tier with 15% discount
+            tier = LoyaltyTier.objects.create(
+                tenant=tenant,
+                name="Gold",
+                min_spending=Decimal("1000.00"),
+                discount_percentage=Decimal("15.00"),
+                order=1,
+            )
+
+            # Create customer with tier
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-DISCOUNT",
+                first_name="Gold",
+                last_name="Customer",
+                phone="+1234567890",
+                loyalty_tier=tier,
+            )
+
+            # Test discount calculation
+            discount = customer.get_tier_discount(Decimal("200.00"))
+            assert discount == Decimal("30.00")  # 15% of 200
+
+            # Test with customer without tier
+            customer_no_tier = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-NO-TIER",
+                first_name="Regular",
+                last_name="Customer",
+                phone="+1234567891",
+            )
+
+            discount_no_tier = customer_no_tier.get_tier_discount(Decimal("200.00"))
+            assert discount_no_tier == Decimal("0.00")
+
+    def test_loyalty_points_with_tier_multiplier(self, tenant):
+        """Test loyalty points accrual with tier multiplier."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create tier with 2x points multiplier
+            tier = LoyaltyTier.objects.create(
+                tenant=tenant,
+                name="Platinum",
+                min_spending=Decimal("5000.00"),
+                points_multiplier=Decimal("2.0"),
+                order=3,
+            )
+
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-MULTIPLIER",
+                first_name="Platinum",
+                last_name="Customer",
+                phone="+1234567890",
+                loyalty_tier=tier,
+            )
+
+            customer_id = customer.id
+
+            # Add 100 base points
+            customer.add_loyalty_points(100, "Purchase reward")
+
+            # Re-query customer
+            customer = Customer.objects.get(id=customer_id)
+
+            # Should have 200 points due to 2x multiplier
+            assert customer.loyalty_points == 200
+            assert customer.total_points_earned == 200
+
+            # Check transaction shows the multiplied amount
+            transaction = LoyaltyTransaction.objects.filter(customer=customer).first()
+            assert transaction.points == 200
+
+    def test_customer_tier_expiration(self, tenant):
+        """Test loyalty tier expiration functionality."""
+        from dateutil.relativedelta import relativedelta
+
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create tier with 6 month validity
+            tier = LoyaltyTier.objects.create(
+                tenant=tenant,
+                name="Silver",
+                min_spending=Decimal("500.00"),
+                validity_months=6,
+                order=1,
+            )
+
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-EXPIRE-TIER",
+                first_name="Expiring",
+                last_name="Customer",
+                phone="+1234567890",
+                total_purchases=Decimal("600.00"),
+            )
+
+            customer_id = customer.id
+
+            # Update tier (should set expiration)
+            customer.update_loyalty_tier()
+
+            # Re-query customer
+            customer = Customer.objects.get(id=customer_id)
+
+            assert customer.loyalty_tier == tier
+            assert customer.tier_achieved_at is not None
+            assert customer.tier_expires_at is not None
+
+            # Check expiration is approximately 6 months from now
+            expected_expiry = timezone.now() + relativedelta(months=6)
+            time_diff = abs((customer.tier_expires_at - expected_expiry).total_seconds())
+            assert time_diff < 60  # Within 1 minute
+
+    def test_customer_no_tier_upgrade_needed(self, tenant):
+        """Test that tier doesn't change when customer already has correct tier."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create tiers
+            bronze = LoyaltyTier.objects.create(
+                tenant=tenant, name="Bronze", min_spending=Decimal("0.00"), order=0
+            )
+            LoyaltyTier.objects.create(
+                tenant=tenant, name="Silver", min_spending=Decimal("500.00"), order=1
+            )
+
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-NO-UPGRADE",
+                first_name="Bronze",
+                last_name="Customer",
+                phone="+1234567890",
+                total_purchases=Decimal("300.00"),
+                loyalty_tier=bronze,
+            )
+
+            original_tier_achieved_at = customer.tier_achieved_at
+
+            # Update tier (should not change)
+            customer.update_loyalty_tier()
+
+            customer.refresh_from_db()
+            assert customer.loyalty_tier == bronze
+            assert customer.tier_achieved_at == original_tier_achieved_at
+
 
 @pytest.mark.django_db
 class TestGiftCard:
@@ -363,6 +781,110 @@ class TestGiftCard:
                     assert issuance_transaction.previous_balance == Decimal("0.00")
                     assert issuance_transaction.new_balance == Decimal("50.00")
 
+    def test_gift_card_use_balance_error_cases(self, tenant):
+        """Test error cases when using gift card balance."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-GC-ERROR",
+                first_name="Test",
+                last_name="Customer",
+                phone="+1234567890",
+            )
+
+            # Test using expired gift card
+            expired_card = GiftCard.objects.create(
+                tenant=tenant,
+                initial_value=Decimal("100.00"),
+                purchased_by=customer,
+                expires_at=timezone.now() - timezone.timedelta(days=1),
+            )
+
+            with pytest.raises(ValueError, match="Gift card cannot be used"):
+                expired_card.use_balance(Decimal("50.00"))
+
+            # Test using cancelled gift card
+            cancelled_card = GiftCard.objects.create(
+                tenant=tenant,
+                initial_value=Decimal("100.00"),
+                purchased_by=customer,
+                status=GiftCard.CANCELLED,
+            )
+
+            with pytest.raises(ValueError, match="Gift card cannot be used"):
+                cancelled_card.use_balance(Decimal("50.00"))
+
+            # Test using more than available balance
+            active_card = GiftCard.objects.create(
+                tenant=tenant,
+                initial_value=Decimal("50.00"),
+                purchased_by=customer,
+            )
+
+            with pytest.raises(ValueError, match="Amount exceeds gift card balance"):
+                active_card.use_balance(Decimal("75.00"))
+
+    def test_gift_card_auto_number_generation(self, tenant):
+        """Test automatic gift card number generation."""
+        gift_card1 = GiftCard.objects.create(tenant=tenant, initial_value=Decimal("25.00"))
+
+        gift_card2 = GiftCard.objects.create(tenant=tenant, initial_value=Decimal("50.00"))
+
+        # Both should have auto-generated card numbers
+        assert gift_card1.card_number
+        assert gift_card2.card_number
+        assert len(gift_card1.card_number) == 16
+        assert len(gift_card2.card_number) == 16
+        assert gift_card1.card_number != gift_card2.card_number
+
+    def test_gift_card_with_recipient(self, tenant):
+        """Test gift card with different purchaser and recipient."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            purchaser = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-PURCHASER",
+                first_name="John",
+                last_name="Purchaser",
+                phone="+1234567890",
+            )
+
+            recipient = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-RECIPIENT-GC",
+                first_name="Jane",
+                last_name="Recipient",
+                phone="+1234567891",
+            )
+
+            gift_card = GiftCard.objects.create(
+                tenant=tenant,
+                initial_value=Decimal("75.00"),
+                purchased_by=purchaser,
+                recipient=recipient,
+                message="Happy Birthday!",
+            )
+
+            assert gift_card.purchased_by == purchaser
+            assert gift_card.recipient == recipient
+            assert gift_card.message == "Happy Birthday!"
+
+            # Use the gift card
+            gift_card.use_balance(Decimal("25.00"), "Birthday purchase")
+
+            # Check transaction was created for recipient
+            transaction = GiftCardTransaction.objects.filter(
+                gift_card=gift_card,
+                transaction_type=GiftCardTransaction.REDEEMED,
+                customer=recipient,
+            ).first()
+
+            assert transaction is not None
+            assert transaction.amount == Decimal("25.00")
+
 
 @pytest.mark.django_db
 class TestStoreCredit:
@@ -451,6 +973,227 @@ class TestStoreCredit:
             customer=customer, transaction_type=GiftCardTransaction.STORE_CREDIT_USED
         )
         assert transactions.count() == 0
+
+    def test_store_credit_invalid_amounts(self, tenant):
+        """Test error handling for invalid store credit amounts."""
+        customer = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-INVALID",
+            first_name="Test",
+            last_name="Customer",
+            phone="+1234567890",
+            store_credit=Decimal("50.00"),
+        )
+
+        # Test adding negative amount
+        with pytest.raises(ValueError, match="Store credit amount must be positive"):
+            customer.add_store_credit(Decimal("-10.00"))
+
+        # Test adding zero amount
+        with pytest.raises(ValueError, match="Store credit amount must be positive"):
+            customer.add_store_credit(Decimal("0.00"))
+
+        # Test using negative amount
+        with pytest.raises(ValueError, match="Store credit amount must be positive"):
+            customer.use_store_credit(Decimal("-5.00"))
+
+        # Test using zero amount
+        with pytest.raises(ValueError, match="Store credit amount must be positive"):
+            customer.use_store_credit(Decimal("0.00"))
+
+    def test_store_credit_with_sale_reference(self, tenant, user):
+        """Test store credit operations with sale reference."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-SALE-REF",
+                first_name="Sale",
+                last_name="Customer",
+                phone="+1234567890",
+            )
+
+            # Add store credit with user and sale reference (mock sale ID)
+            customer.add_store_credit(
+                Decimal("100.00"),
+                description="Refund for returned jewelry",
+                created_by=user,
+            )
+
+            # Check transaction includes user reference
+            transaction = GiftCardTransaction.objects.filter(
+                customer=customer,
+                transaction_type=GiftCardTransaction.STORE_CREDIT_ADDED,
+            ).first()
+
+            assert transaction.created_by == user
+            assert transaction.description == "Refund for returned jewelry"
+
+
+@pytest.mark.django_db
+class TestCustomerCRUDOperations:
+    """Test comprehensive Customer CRUD operations."""
+
+    def test_customer_create_with_all_fields(self, tenant):
+        """Test creating customer with all optional fields."""
+        from datetime import date
+
+        customer = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-FULL",
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1985, 5, 15),
+            gender=Customer.MALE,
+            email="john.doe@example.com",
+            phone="+1234567890",
+            alternate_phone="+1234567891",
+            address_line_1="123 Main St",
+            address_line_2="Apt 4B",
+            city="New York",
+            state="NY",
+            postal_code="10001",
+            country="USA",
+            preferred_communication=Customer.SMS,
+            marketing_opt_in=False,
+            sms_opt_in=True,
+            notes="VIP customer",
+            tags=["VIP", "Wedding", "Corporate"],
+        )
+
+        assert customer.date_of_birth == date(1985, 5, 15)
+        assert customer.gender == Customer.MALE
+        assert customer.email == "john.doe@example.com"
+        assert customer.alternate_phone == "+1234567891"
+        assert customer.get_full_address() == "123 Main St, Apt 4B, New York, NY, 10001, USA"
+        assert customer.preferred_communication == Customer.SMS
+        assert customer.marketing_opt_in is False
+        assert customer.sms_opt_in is True
+        assert customer.notes == "VIP customer"
+        assert customer.tags == ["VIP", "Wedding", "Corporate"]
+
+    def test_customer_update_operations(self, tenant):
+        """Test updating customer information."""
+        customer = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-UPDATE",
+            first_name="Jane",
+            last_name="Smith",
+            phone="+1234567890",
+            email="jane.smith@example.com",
+        )
+
+        # Update customer information
+        customer.first_name = "Janet"
+        customer.email = "janet.smith@example.com"
+        customer.tags = ["Updated", "Premium"]
+        customer.save()
+
+        # Verify updates
+        customer.refresh_from_db()
+        assert customer.first_name == "Janet"
+        assert customer.email == "janet.smith@example.com"
+        assert customer.tags == ["Updated", "Premium"]
+
+    def test_customer_soft_delete(self, tenant):
+        """Test customer deactivation (soft delete)."""
+        customer = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-DELETE",
+            first_name="Delete",
+            last_name="Me",
+            phone="+1234567890",
+        )
+
+        # Deactivate customer
+        customer.is_active = False
+        customer.save()
+
+        customer.refresh_from_db()
+        assert customer.is_active is False
+
+    def test_customer_referral_code_uniqueness(self, tenant):
+        """Test that referral codes are unique."""
+        customer1 = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-REF1",
+            first_name="First",
+            last_name="Customer",
+            phone="+1234567890",
+        )
+
+        customer2 = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-REF2",
+            first_name="Second",
+            last_name="Customer",
+            phone="+1234567891",
+        )
+
+        assert customer1.referral_code != customer2.referral_code
+        assert len(customer1.referral_code) == 8
+        assert len(customer2.referral_code) == 8
+
+
+@pytest.mark.django_db
+class TestLoyaltyTierCRUD:
+    """Test comprehensive LoyaltyTier CRUD operations."""
+
+    def test_loyalty_tier_create_with_all_fields(self, tenant):
+        """Test creating loyalty tier with all fields."""
+        tier = LoyaltyTier.objects.create(
+            tenant=tenant,
+            name="Diamond",
+            min_spending=Decimal("10000.00"),
+            discount_percentage=Decimal("20.00"),
+            points_multiplier=Decimal("3.0"),
+            validity_months=24,
+            benefits_description="Exclusive access to private events and priority service",
+            order=4,
+        )
+
+        assert tier.name == "Diamond"
+        assert tier.min_spending == Decimal("10000.00")
+        assert tier.discount_percentage == Decimal("20.00")
+        assert tier.points_multiplier == Decimal("3.0")
+        assert tier.validity_months == 24
+        assert "Exclusive access" in tier.benefits_description
+        assert tier.order == 4
+        assert tier.is_active is True
+
+    def test_loyalty_tier_update(self, tenant):
+        """Test updating loyalty tier."""
+        tier = LoyaltyTier.objects.create(
+            tenant=tenant,
+            name="Gold",
+            min_spending=Decimal("1000.00"),
+            discount_percentage=Decimal("10.00"),
+        )
+
+        # Update tier
+        tier.discount_percentage = Decimal("12.00")
+        tier.benefits_description = "Updated benefits"
+        tier.save()
+
+        tier.refresh_from_db()
+        assert tier.discount_percentage == Decimal("12.00")
+        assert tier.benefits_description == "Updated benefits"
+
+    def test_loyalty_tier_deactivation(self, tenant):
+        """Test deactivating loyalty tier."""
+        tier = LoyaltyTier.objects.create(
+            tenant=tenant,
+            name="Temporary",
+            min_spending=Decimal("500.00"),
+        )
+
+        # Deactivate tier
+        tier.is_active = False
+        tier.save()
+
+        tier.refresh_from_db()
+        assert tier.is_active is False
 
 
 @pytest.mark.django_db

@@ -206,7 +206,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Track gift card and credit transactions
     - _Requirements: 12, 36_
   
-  - [ ] 6.5 Write CRM tests
+  - [x] 6.5 Write CRM tests
     - Test customer CRUD operations
     - Test loyalty points accrual and redemption
     - Test tier upgrades
