@@ -12,11 +12,9 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             sql="""
-            -- First remove any NO FORCE setting from previous migration
-            ALTER TABLE tenants NO FORCE ROW LEVEL SECURITY;
-            
-            -- Enable RLS on tenants table
+            -- Enable RLS on tenants table with FORCE to ensure it stays enabled
             ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE tenants FORCE ROW LEVEL SECURITY;
             
             -- Policy for SELECT: Allow bypass OR see own tenant
             CREATE POLICY tenant_select_policy ON tenants
