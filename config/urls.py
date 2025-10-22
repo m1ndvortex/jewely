@@ -11,6 +11,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),  # django-allauth URLs
     path("", include("apps.core.urls")),
+    path("", include("apps.inventory.urls")),
 ]
 
 # Serve media files in development

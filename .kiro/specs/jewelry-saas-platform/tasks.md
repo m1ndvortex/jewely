@@ -101,7 +101,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Create database indexes for common queries
     - _Requirements: 9_
   
-  - [ ] 4.2 Implement inventory CRUD operations
+  - [x] 4.2 Implement inventory CRUD operations
     - Create inventory list view with search and filters
     - Create inventory detail view
     - Create inventory create/edit forms with validation
