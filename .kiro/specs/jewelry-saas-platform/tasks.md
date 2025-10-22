@@ -108,7 +108,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement stock adjustment functionality
     - _Requirements: 9_
   
-  - [ ] 4.3 Implement barcode/QR code generation
+  - [x] 4.3 Implement barcode/QR code generation
     - Generate barcodes for inventory items using python-barcode
     - Generate QR codes using qrcode library
     - Create printable barcode labels

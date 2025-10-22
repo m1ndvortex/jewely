@@ -58,4 +58,31 @@ urlpatterns = [
         views.ProductCategoryDeleteView.as_view(),
         name="category_delete",
     ),
+    # Barcode scanning and lookup
+    path(
+        "api/inventory/lookup-by-barcode/",
+        views.lookup_by_barcode,
+        name="lookup_by_barcode",
+    ),
+    # Barcode and QR Code generation endpoints
+    path(
+        "api/inventory/items/<uuid:item_id>/barcode/",
+        views.generate_barcode,
+        name="generate_barcode",
+    ),
+    path(
+        "api/inventory/items/<uuid:item_id>/qrcode/",
+        views.generate_qr_code,
+        name="generate_qr_code",
+    ),
+    path(
+        "api/inventory/items/<uuid:item_id>/label/",
+        views.generate_product_label,
+        name="generate_product_label",
+    ),
+    path(
+        "api/inventory/items/<uuid:item_id>/qr-label/",
+        views.generate_qr_label,
+        name="generate_qr_label",
+    ),
 ]
