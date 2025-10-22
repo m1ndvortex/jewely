@@ -145,7 +145,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Create payment method selection interface
     - _Requirements: 11_
   
-  - [ ] 5.3 Implement POS backend logic
+  - [x] 5.3 Implement POS backend logic
     - Create sale creation endpoint with transaction handling
     - Implement inventory deduction with select_for_update locking
     - Validate inventory availability before sale
@@ -153,7 +153,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Generate unique sale numbers
     - _Requirements: 11_
   
-  - [ ] 5.4 Implement receipt generation and printing
+  - [x] 5.4 Implement receipt generation and printing
     - Create receipt template with shop branding
     - Generate PDF receipts
     - Implement browser print API integration

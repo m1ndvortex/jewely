@@ -21,9 +21,25 @@ urlpatterns = [
     path("api/pos/sales/create/", views.pos_create_sale, name="pos_create_sale"),
     path("api/pos/sales/<uuid:sale_id>/hold/", views.pos_hold_sale, name="pos_hold_sale"),
     path("api/pos/sales/held/", views.pos_held_sales, name="pos_held_sales"),
+    path(
+        "api/pos/validate-inventory/", views.pos_validate_inventory, name="pos_validate_inventory"
+    ),
+    path("api/pos/calculate-totals/", views.pos_calculate_totals, name="pos_calculate_totals"),
     # Sale Management API
     path("api/sales/", views.SaleListView.as_view(), name="sale_list"),
     path("api/sales/<uuid:id>/", views.SaleDetailView.as_view(), name="sale_detail"),
     # Customer Management API
     path("api/customers/", views.CustomerListView.as_view(), name="customer_list"),
+    # Receipt Generation
+    path("receipts/html/<uuid:sale_id>/", views.receipt_html, name="receipt_html_standard"),
+    path(
+        "receipts/html/<uuid:sale_id>/<str:format_type>/", views.receipt_html, name="receipt_html"
+    ),
+    path("receipts/pdf/<uuid:sale_id>/", views.receipt_pdf, name="receipt_pdf_standard"),
+    path("receipts/pdf/<uuid:sale_id>/<str:format_type>/", views.receipt_pdf, name="receipt_pdf"),
+    path(
+        "api/receipts/<uuid:sale_id>/generate/",
+        views.generate_receipt_after_sale,
+        name="generate_receipt",
+    ),
 ]

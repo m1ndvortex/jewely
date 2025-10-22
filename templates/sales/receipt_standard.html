@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt - {{ sale.sale_number }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+            .page-break { page-break-after: always; }
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            margin: 20px;
+            color: #000;
+        }
+        
+        .receipt {
+            max-width: 600px;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            padding: 20px;
+            background: white;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .shop-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .shop-info {
+            font-size: 11px;
+            color: #666;
+            margin: 2px 0;
+        }
+        
+        .receipt-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 15px 0 10px 0;
+            text-align: center;
+        }
+        
+        .sale-info {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+        
+        .sale-info div {
+            margin: 3px 0;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .items-table th,
+        .items-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .items-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        
+        .items-table .qty,
+        .items-table .price,
+        .items-table .total {
+            text-align: right;
+        }
+        
+        .totals {
+            margin-top: 15px;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+        
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .grand-total {
+            font-weight: bold;
+            font-size: 14px;
+            border-top: 2px solid #000;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+        
+        .payment-info {
+            margin: 15px 0;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+            font-size: 11px;
+        }
+        
+        .footer div {
+            margin: 5px 0;
+        }
+        
+        .qr-code {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .print-buttons {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .print-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .print-btn:hover {
+            background: #0056b3;
+        }
+        
+        .split-payments {
+            margin-left: 20px;
+            font-size: 11px;
+        }
+        
+        .split-payments div {
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <!-- Header with shop branding -->
+        <div class="header">
+            <div class="shop-name">{{ tenant.company_name|default:"Jewelry Shop" }}</div>
+            <div class="shop-info">123 Jewelry Street</div>
+            <div class="shop-info">Gold City, GC 12345</div>
+            <div class="shop-info">Phone: (555) 123-4567</div>
+            <div class="shop-info">Email: info@jewelryshop.com</div>
+        </div>
+        
+        <!-- Receipt title -->
+        <div class="receipt-title">SALES RECEIPT</div>
+        
+        <!-- Sale information -->
+        <div class="sale-info">
+            <div><strong>Receipt #:</strong> {{ sale.sale_number }}</div>
+            <div><strong>Date:</strong> {{ sale.created_at|date:"Y-m-d H:i:s" }}</div>
+            <div><strong>Cashier:</strong> {{ sale.employee.get_full_name }}</div>
+            <div><strong>Terminal:</strong> {{ sale.terminal.terminal_id }}</div>
+            {% if sale.customer %}
+            <div><strong>Customer:</strong> {{ sale.customer.get_full_name }}</div>
+            <div><strong>Phone:</strong> {{ sale.customer.phone }}</div>
+            {% endif %}
+        </div>
+        
+        <!-- Items table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>SKU</th>
+                    <th class="qty">Qty</th>
+                    <th class="price">Unit Price</th>
+                    <th class="price">Discount</th>
+                    <th class="total">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.inventory_item.name }}</td>
+                    <td>{{ item.inventory_item.sku }}</td>
+                    <td class="qty">{{ item.quantity }}</td>
+                    <td class="price">${{ item.unit_price|floatformat:2 }}</td>
+                    <td class="price">
+                        {% if item.discount > 0 %}
+                            ${{ item.discount|floatformat:2 }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="total">${{ item.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Totals section -->
+        <div class="totals">
+            <div class="totals-row">
+                <span>Subtotal:</span>
+                <span>${{ sale.subtotal|floatformat:2 }}</span>
+            </div>
+            <div class="totals-row">
+                <span>Discount:</span>
+                <span>${{ sale.discount|floatformat:2 }}</span>
+            </div>
+            <div class="totals-row">
+                <span>Tax:</span>
+                <span>${{ sale.tax|floatformat:2 }}</span>
+            </div>
+            <div class="totals-row grand-total">
+                <span><strong>TOTAL:</strong></span>
+                <span><strong>${{ sale.total|floatformat:2 }}</strong></span>
+            </div>
+        </div>
+        
+        <!-- Payment information -->
+        <div class="payment-info">
+            <div><strong>Payment Method:</strong> {{ payment_method_display }}</div>
+            {% if sale.payment_method == 'SPLIT' and sale.payment_details.split_payments %}
+            <div><strong>Payment Breakdown:</strong></div>
+            <div class="split-payments">
+                {% for payment in sale.payment_details.split_payments %}
+                <div>{{ payment.method }}: ${{ payment.amount }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div><strong>Thank you for your business!</strong></div>
+            <div>Please keep this receipt for your records.</div>
+            <div>Returns accepted within 30 days with receipt.</div>
+            
+            <!-- QR Code placeholder -->
+            <div class="qr-code">
+                <div style="width: 80px; height: 80px; border: 1px solid #ccc; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 10px;">
+                    QR Code<br>
+                    (Digital Receipt)
+                </div>
+                <div>Scan for digital receipt</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Print buttons (hidden when printing) -->
+    <div class="print-buttons no-print">
+        <button class="print-btn" onclick="window.print()">
+            <i class="fas fa-print"></i> Print Receipt
+        </button>
+        <button class="print-btn" onclick="printThermal()">
+            <i class="fas fa-receipt"></i> Print Thermal
+        </button>
+        <button class="print-btn" onclick="window.close()">
+            <i class="fas fa-times"></i> Close
+        </button>
+    </div>
+    
+    <script>
+        function printThermal() {
+            // Open thermal receipt in new window
+            const thermalUrl = window.location.href.replace('standard', 'thermal');
+            window.open(thermalUrl, '_blank', 'width=400,height=600');
+        }
+        
+        // Auto-focus for printing
+        window.addEventListener('load', function() {
+            // Auto-print if requested
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('auto_print') === 'true') {
+                setTimeout(() => window.print(), 500);
+            }
+        });
+    </script>
+</body>
+</html>

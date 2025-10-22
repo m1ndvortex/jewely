@@ -307,7 +307,7 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 gap-2 mb-2">
                     <button 
                         @click="holdSale()"
                         :disabled="cart.length === 0"
@@ -323,6 +323,24 @@
                     >
                         <i class="fas fa-check mr-2"></i>
                         <span x-text="processing ? 'Processing...' : 'Complete Sale'"></span>
+                    </button>
+                </div>
+                
+                <!-- Receipt Actions -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button 
+                        @click="showReceiptSearch = true"
+                        class="py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                    >
+                        <i class="fas fa-receipt mr-1"></i>
+                        Reprint Receipt
+                    </button>
+                    <button 
+                        @click="loadHeldSales()"
+                        class="py-2 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm"
+                    >
+                        <i class="fas fa-list mr-1"></i>
+                        Held Sales
                     </button>
                 </div>
             </div>
@@ -397,6 +415,138 @@
     </div>
 </div>
 
+
+<!-- Receipt Search Modal -->
+<div 
+    x-show="showReceiptSearch" 
+    x-cloak
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    @click.self="showReceiptSearch = false"
+>
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-96 overflow-hidden">
+        <h3 class="text-xl font-bold mb-4">Search Receipts</h3>
+        
+        <!-- Search Input -->
+        <div class="mb-4">
+            <input 
+                type="text" 
+                x-model="receiptSearchQuery"
+                @input.debounce.300ms="searchReceipts()"
+                placeholder="Search by sale number or customer name..."
+                class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                autofocus
+            >
+        </div>
+        
+        <!-- Search Results -->
+        <div class="max-h-64 overflow-y-auto mb-4">
+            <div x-show="receiptSearchResults.length === 0 && receiptSearchQuery" class="text-center py-8 text-gray-500">
+                No receipts found
+            </div>
+            
+            <div class="space-y-2">
+                <template x-for="sale in receiptSearchResults" :key="sale.id">
+                    <div class="border border-gray-200 rounded p-3 hover:bg-gray-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-semibold" x-text="sale.sale_number"></div>
+                                <div class="text-sm text-gray-600" x-text="sale.customer_name || 'Walk-in'"></div>
+                                <div class="text-xs text-gray-500" x-text="new Date(sale.created_at).toLocaleString()"></div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-blue-600" x-text="'$' + parseFloat(sale.total).toFixed(2)"></div>
+                                <div class="flex space-x-1 mt-2">
+                                    <button 
+                                        @click="printReceipt(sale, 'standard')"
+                                        class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                                        title="Print Standard Receipt"
+                                    >
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                    <button 
+                                        @click="printReceipt(sale, 'thermal')"
+                                        class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                        title="Print Thermal Receipt"
+                                    >
+                                        <i class="fas fa-receipt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        
+        <!-- Close Button -->
+        <div class="flex justify-end">
+            <button 
+                @click="showReceiptSearch = false"
+                class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+            >
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Held Sales Modal -->
+<div 
+    x-show="showHeldSales" 
+    x-cloak
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    @click.self="showHeldSales = false"
+>
+    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-96 overflow-hidden">
+        <h3 class="text-xl font-bold mb-4">Held Sales</h3>
+        
+        <!-- Held Sales List -->
+        <div class="max-h-64 overflow-y-auto mb-4">
+            <div x-show="heldSales.length === 0" class="text-center py-8 text-gray-500">
+                No held sales found
+            </div>
+            
+            <div class="space-y-2">
+                <template x-for="sale in heldSales" :key="sale.id">
+                    <div class="border border-gray-200 rounded p-3 hover:bg-gray-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-semibold" x-text="sale.sale_number"></div>
+                                <div class="text-sm text-gray-600" x-text="sale.customer_name || 'Walk-in'"></div>
+                                <div class="text-xs text-gray-500" x-text="new Date(sale.created_at).toLocaleString()"></div>
+                                <div class="text-xs text-yellow-600">
+                                    <i class="fas fa-pause mr-1"></i>
+                                    On Hold
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold text-blue-600" x-text="'$' + parseFloat(sale.total).toFixed(2)"></div>
+                                <button 
+                                    @click="resumeHeldSale(sale)"
+                                    class="mt-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+                                >
+                                    Resume
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        
+        <!-- Close Button -->
+        <div class="flex justify-end">
+            <button 
+                @click="showHeldSales = false"
+                class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+            >
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -423,6 +573,11 @@ function posApp() {
             phone: '',
             email: ''
         },
+        showReceiptSearch: false,
+        receiptSearchQuery: '',
+        receiptSearchResults: [],
+        showHeldSales: false,
+        heldSales: [],
 
         // Computed
         get subtotal() {
@@ -627,7 +782,9 @@ function posApp() {
 
                 if (response.ok) {
                     const sale = await response.json();
-                    alert(`Sale completed successfully!\nSale Number: ${sale.sale_number}\nTotal: $${sale.total}`);
+                    
+                    // Generate and show receipt
+                    await this.generateReceipt(sale.id, sale.sale_number, sale.total);
                     
                     // Reset cart
                     this.clearCart();
@@ -656,6 +813,97 @@ function posApp() {
 
         getCsrfToken() {
             return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        },
+
+        async generateReceipt(saleId, saleNumber, total) {
+            try {
+                // Generate receipt
+                const receiptResponse = await fetch(`/api/receipts/${saleId}/generate/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + this.getToken(),
+                        'X-CSRFToken': this.getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        format_type: 'standard',
+                        auto_print: false,
+                        save_receipt: true
+                    })
+                });
+
+                if (receiptResponse.ok) {
+                    const receiptData = await receiptResponse.json();
+                    
+                    // Show success message with receipt options
+                    const message = `Sale completed successfully!\nSale Number: ${saleNumber}\nTotal: $${total}\n\nReceipt generated successfully!`;
+                    
+                    if (confirm(message + '\n\nWould you like to print the receipt?')) {
+                        // Open receipt in new window for printing
+                        window.open(receiptData.receipt_url, '_blank', 'width=800,height=600');
+                    }
+                } else {
+                    // Fallback to simple success message
+                    alert(`Sale completed successfully!\nSale Number: ${saleNumber}\nTotal: $${total}\n\nNote: Receipt generation failed.`);
+                }
+            } catch (error) {
+                console.error('Receipt generation error:', error);
+                // Fallback to simple success message
+                alert(`Sale completed successfully!\nSale Number: ${saleNumber}\nTotal: $${total}\n\nNote: Receipt generation failed.`);
+            }
+        },
+
+        async searchReceipts() {
+            if (!this.receiptSearchQuery.trim()) {
+                this.receiptSearchResults = [];
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/sales/?search=${encodeURIComponent(this.receiptSearchQuery)}&limit=10`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + this.getToken()
+                    }
+                });
+                const data = await response.json();
+                this.receiptSearchResults = data.results || [];
+            } catch (error) {
+                console.error('Error searching receipts:', error);
+                alert('Error searching receipts');
+            }
+        },
+
+        async printReceipt(sale, format = 'standard') {
+            try {
+                const receiptUrl = `/receipts/html/${sale.id}/${format}/?auto_print=true`;
+                window.open(receiptUrl, '_blank', 'width=800,height=600');
+            } catch (error) {
+                console.error('Error printing receipt:', error);
+                alert('Error printing receipt');
+            }
+        },
+
+        async loadHeldSales() {
+            try {
+                const response = await fetch('/api/pos/sales/held/', {
+                    headers: {
+                        'Authorization': 'Bearer ' + this.getToken()
+                    }
+                });
+                const data = await response.json();
+                this.heldSales = data.held_sales || [];
+                this.showHeldSales = true;
+            } catch (error) {
+                console.error('Error loading held sales:', error);
+                alert('Error loading held sales');
+            }
+        },
+
+        async resumeHeldSale(sale) {
+            // This would load the held sale back into the cart
+            // For now, just show the sale details
+            alert(`Resume sale: ${sale.sale_number}\nTotal: $${sale.total}\n\nNote: Resume functionality will be implemented in a future update.`);
+            this.showHeldSales = false;
         }
     }
 }

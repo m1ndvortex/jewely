@@ -39,3 +39,7 @@ qrcode==7.4.2
 python-barcode==0.15.1
 Pillow==10.2.0
 django-guardian==2.4.0
+
+# PDF Generation & Reporting
+reportlab==4.0.9
+weasyprint==61.2

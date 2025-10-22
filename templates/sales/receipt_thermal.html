@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermal Receipt - {{ sale.sale_number }}</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+            @page { 
+                size: 80mm auto; 
+                margin: 0; 
+            }
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 5mm;
+            color: #000;
+            width: 70mm; /* 80mm paper - 10mm margins */
+            background: white;
+        }
+        
+        .receipt {
+            width: 100%;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 1px solid #000;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .shop-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .shop-info {
+            font-size: 9px;
+            margin: 1px 0;
+        }
+        
+        .receipt-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 8px 0 6px 0;
+            text-align: center;
+        }
+        
+        .sale-info {
+            margin-bottom: 8px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 6px;
+            font-size: 9px;
+        }
+        
+        .sale-info div {
+            margin: 2px 0;
+        }
+        
+        .items-section {
+            margin: 8px 0;
+        }
+        
+        .item {
+            margin-bottom: 6px;
+            border-bottom: 1px dotted #ccc;
+            padding-bottom: 4px;
+        }
+        
+        .item-name {
+            font-weight: bold;
+            font-size: 9px;
+            margin-bottom: 2px;
+        }
+        
+        .item-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8px;
+        }
+        
+        .item-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8px;
+            margin: 1px 0;
+        }
+        
+        .totals {
+            margin-top: 8px;
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+            font-size: 9px;
+        }
+        
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        
+        .grand-total {
+            font-weight: bold;
+            font-size: 11px;
+            border-top: 1px solid #000;
+            padding-top: 4px;
+            margin-top: 4px;
+        }
+        
+        .payment-info {
+            margin: 8px 0;
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+            font-size: 9px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 8px;
+            font-size: 8px;
+        }
+        
+        .footer div {
+            margin: 3px 0;
+        }
+        
+        .print-buttons {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .print-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin: 0 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .print-btn:hover {
+            background: #0056b3;
+        }
+        
+        .split-payments {
+            margin-left: 10px;
+            font-size: 8px;
+        }
+        
+        .split-payments div {
+            margin: 1px 0;
+        }
+        
+        /* Ensure text doesn't wrap awkwardly */
+        .nowrap {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <!-- Header with shop branding -->
+        <div class="header">
+            <div class="shop-name">{{ tenant.company_name|default:"Jewelry Shop" }}</div>
+            <div class="shop-info">123 Jewelry Street</div>
+            <div class="shop-info">Gold City, GC 12345</div>
+            <div class="shop-info">Phone: (555) 123-4567</div>
+        </div>
+        
+        <!-- Receipt title -->
+        <div class="receipt-title">SALES RECEIPT</div>
+        
+        <!-- Sale information -->
+        <div class="sale-info">
+            <div><strong>Receipt #:</strong> {{ sale.sale_number }}</div>
+            <div><strong>Date:</strong> {{ sale.created_at|date:"Y-m-d H:i" }}</div>
+            <div><strong>Cashier:</strong> {{ sale.employee.get_full_name|truncatechars:20 }}</div>
+            <div><strong>Terminal:</strong> {{ sale.terminal.terminal_id }}</div>
+            {% if sale.customer %}
+            <div><strong>Customer:</strong> {{ sale.customer.get_full_name|truncatechars:20 }}</div>
+            <div><strong>Phone:</strong> {{ sale.customer.phone }}</div>
+            {% endif %}
+        </div>
+        
+        <!-- Items section -->
+        <div class="items-section">
+            {% for item in items %}
+            <div class="item">
+                <div class="item-name nowrap">{{ item.inventory_item.name|truncatechars:25 }}</div>
+                <div class="item-line">
+                    <span>{{ item.inventory_item.sku|truncatechars:12 }}</span>
+                    <span>{{ item.quantity }}x ${{ item.unit_price|floatformat:2 }}</span>
+                </div>
+                {% if item.discount > 0 %}
+                <div class="item-line">
+                    <span>Discount:</span>
+                    <span>-${{ item.discount|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                <div class="item-line">
+                    <span><strong>Subtotal:</strong></span>
+                    <span><strong>${{ item.subtotal|floatformat:2 }}</strong></span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Totals section -->
+        <div class="totals">
+            <div class="totals-row">
+                <span>Subtotal:</span>
+                <span>${{ sale.subtotal|floatformat:2 }}</span>
+            </div>
+            <div class="totals-row">
+                <span>Discount:</span>
+                <span>${{ sale.discount|floatformat:2 }}</span>
+            </div>
+            <div class="totals-row">
+                <span>Tax:</span>
+                <span>${{ sale.tax|floatformat:2 }}</span>
+            </div>
+            <div class="totals-row grand-total">
+                <span><strong>TOTAL:</strong></span>
+                <span><strong>${{ sale.total|floatformat:2 }}</strong></span>
+            </div>
+        </div>
+        
+        <!-- Payment information -->
+        <div class="payment-info">
+            <div><strong>Payment:</strong> {{ payment_method_display }}</div>
+            {% if sale.payment_method == 'SPLIT' and sale.payment_details.split_payments %}
+            <div><strong>Breakdown:</strong></div>
+            <div class="split-payments">
+                {% for payment in sale.payment_details.split_payments %}
+                <div>{{ payment.method }}: ${{ payment.amount }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div><strong>Thank you!</strong></div>
+            <div>Keep receipt for returns</div>
+            <div>Returns: 30 days</div>
+            <div>{{ current_time|date:"Y-m-d H:i" }}</div>
+        </div>
+    </div>
+    
+    <!-- Print buttons (hidden when printing) -->
+    <div class="print-buttons no-print">
+        <button class="print-btn" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+        </button>
+        <button class="print-btn" onclick="window.close()">
+            <i class="fas fa-times"></i> Close
+        </button>
+    </div>
+    
+    <script>
+        // Auto-focus for printing
+        window.addEventListener('load', function() {
+            // Auto-print if requested
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('auto_print') === 'true') {
+                setTimeout(() => window.print(), 500);
+            }
+        });
+        
+        // Optimize for thermal printing
+        window.addEventListener('beforeprint', function() {
+            document.body.style.width = '80mm';
+            document.body.style.margin = '0';
+            document.body.style.padding = '2mm';
+        });
+    </script>
+</body>
+</html>

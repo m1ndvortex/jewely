@@ -377,6 +377,25 @@ class Sale(models.Model):
         help_text="Additional payment details (split payment breakdown, card last 4 digits, etc.)",
     )
 
+    # Enhanced discount tracking
+    discount_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("FIXED", "Fixed Amount"),
+            ("PERCENTAGE", "Percentage"),
+        ],
+        default="FIXED",
+        help_text="Type of discount applied",
+    )
+
+    discount_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Original discount value (percentage or fixed amount)",
+    )
+
     # Status
     status = models.CharField(
         max_length=20,

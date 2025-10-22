@@ -11,6 +11,7 @@ Implements Requirement 11: Point of Sale (POS) System
 """
 
 from django.db.models import Q
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
@@ -23,6 +24,7 @@ from apps.core.tenant_context import set_tenant_context
 from apps.inventory.models import InventoryItem
 
 from .models import Customer, Sale, Terminal
+from .receipt_service import ReceiptService
 from .serializers import (
     CustomerListSerializer,
     CustomerQuickAddSerializer,
@@ -237,7 +239,7 @@ def pos_terminals(request):
 @permission_classes([permissions.IsAuthenticated, HasTenantAccess])
 def pos_create_sale(request):
     """
-    Create a new sale through POS.
+    Create a new sale through POS with enhanced backend logic.
 
     Request body:
     {
@@ -248,21 +250,28 @@ def pos_create_sale(request):
                 "inventory_item_id": "uuid",
                 "quantity": 1,
                 "unit_price": "100.00" (optional, uses current price if not provided),
-                "discount": "0.00" (optional)
+                "discount": "0.00" (optional, item-level discount)
             }
         ],
         "payment_method": "CASH|CARD|STORE_CREDIT|SPLIT|OTHER",
         "payment_details": {} (optional),
         "tax_rate": "10.00" (optional, percentage),
-        "discount": "0.00" (optional),
+        "discount_type": "FIXED|PERCENTAGE" (optional, default: FIXED),
+        "discount_value": "0.00" (optional, sale-level discount),
         "notes": "" (optional),
         "status": "COMPLETED|ON_HOLD" (optional, default: COMPLETED)
     }
 
-    Implements Requirement 11: Complete sale processing
-    - Multiple payment methods
+    Implements Requirement 11: Complete POS backend logic
+    - Transaction handling with atomic operations
+    - Inventory deduction with select_for_update locking
+    - Inventory availability validation before sale
+    - Tax and discount calculation (both fixed and percentage)
+    - Unique sale number generation with collision handling
+    - Multiple payment methods support
     - Automatic inventory deduction
-    - Tax and discount calculation
+    - Customer purchase tracking
+    - Terminal usage tracking
     """
     set_tenant_context(request.user.tenant.id)
 
@@ -276,6 +285,12 @@ def pos_create_sale(request):
                 status=status.HTTP_201_CREATED,
             )
         except Exception as e:
+            # Log the error for debugging
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"POS sale creation failed: {str(e)}", exc_info=True)
+
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -333,6 +348,207 @@ def pos_held_sales(request):
 
     serializer = SaleListSerializer(held_sales, many=True)
     return Response({"held_sales": serializer.data}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def pos_validate_inventory(request):
+    """
+    Validate inventory availability for POS sale before processing.
+
+    This endpoint allows the frontend to check inventory availability
+    without creating a sale, providing better user experience.
+
+    Request body:
+    {
+        "items": [
+            {
+                "inventory_item_id": "uuid",
+                "quantity": 1
+            }
+        ]
+    }
+
+    Response:
+    {
+        "valid": true/false,
+        "items": [
+            {
+                "inventory_item_id": "uuid",
+                "available": true/false,
+                "available_quantity": 10,
+                "requested_quantity": 2,
+                "error": "error message if any"
+            }
+        ]
+    }
+
+    Implements Requirement 11: Inventory availability validation
+    """
+    tenant = request.user.tenant
+    items_data = request.data.get("items", [])
+
+    if not items_data:
+        return Response({"detail": "Items list is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    validation_results = []
+    all_valid = True
+
+    for item_data in items_data:
+        inventory_item_id = item_data.get("inventory_item_id")
+        requested_quantity = item_data.get("quantity", 1)
+
+        result = {
+            "inventory_item_id": inventory_item_id,
+            "requested_quantity": requested_quantity,
+            "available": False,
+            "available_quantity": 0,
+            "error": None,
+        }
+
+        try:
+            inventory_item = InventoryItem.objects.get(
+                id=inventory_item_id, tenant=tenant, is_active=True
+            )
+
+            result["available_quantity"] = inventory_item.quantity
+
+            # Check availability
+            if inventory_item.quantity >= requested_quantity:
+                result["available"] = True
+            else:
+                result["available"] = False
+                result["error"] = f"Insufficient inventory. Available: {inventory_item.quantity}"
+                all_valid = False
+
+            # Check serialized items
+            if inventory_item.serial_number and requested_quantity > 1:
+                result["available"] = False
+                result["error"] = "Cannot sell more than 1 unit of serialized item"
+                all_valid = False
+
+        except InventoryItem.DoesNotExist:
+            result["error"] = "Inventory item not found or inactive"
+            all_valid = False
+
+        validation_results.append(result)
+
+    return Response({"valid": all_valid, "items": validation_results}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def pos_calculate_totals(request):
+    """
+    Calculate sale totals without creating a sale.
+
+    This endpoint allows the frontend to show live total calculations
+    as the user builds their cart.
+
+    Request body:
+    {
+        "items": [
+            {
+                "inventory_item_id": "uuid",
+                "quantity": 1,
+                "unit_price": "100.00" (optional),
+                "discount": "0.00" (optional)
+            }
+        ],
+        "tax_rate": "10.00" (optional, percentage),
+        "discount_type": "FIXED|PERCENTAGE" (optional),
+        "discount_value": "0.00" (optional)
+    }
+
+    Response:
+    {
+        "subtotal": "100.00",
+        "discount_amount": "10.00",
+        "tax_amount": "9.00",
+        "total": "99.00",
+        "items": [
+            {
+                "inventory_item_id": "uuid",
+                "quantity": 1,
+                "unit_price": "100.00",
+                "subtotal": "100.00"
+            }
+        ]
+    }
+
+    Implements Requirement 11: Tax and discount calculation
+    """
+    from decimal import Decimal
+
+    tenant = request.user.tenant
+    items_data = request.data.get("items", [])
+    tax_rate = Decimal(str(request.data.get("tax_rate", "0.00")))
+    discount_type = request.data.get("discount_type", "FIXED")
+    discount_value = Decimal(str(request.data.get("discount_value", "0.00")))
+
+    if not items_data:
+        return Response({"detail": "Items list is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    subtotal = Decimal("0.00")
+    calculated_items = []
+
+    try:
+        for item_data in items_data:
+            inventory_item_id = item_data.get("inventory_item_id")
+            quantity = int(item_data.get("quantity", 1))
+
+            # Get inventory item
+            inventory_item = InventoryItem.objects.get(
+                id=inventory_item_id, tenant=tenant, is_active=True
+            )
+
+            # Use provided unit price or current selling price
+            unit_price = Decimal(str(item_data.get("unit_price", inventory_item.selling_price)))
+            item_discount = Decimal(str(item_data.get("discount", "0.00")))
+
+            item_subtotal = (unit_price * quantity) - item_discount
+            subtotal += item_subtotal
+
+            calculated_items.append(
+                {
+                    "inventory_item_id": inventory_item_id,
+                    "quantity": quantity,
+                    "unit_price": str(unit_price),
+                    "discount": str(item_discount),
+                    "subtotal": str(item_subtotal),
+                }
+            )
+
+        # Calculate discount amount
+        if discount_type == "PERCENTAGE":
+            discount_amount = (subtotal * discount_value) / Decimal("100.00")
+        else:  # FIXED
+            discount_amount = discount_value
+
+        # Calculate tax and total
+        discounted_subtotal = subtotal - discount_amount
+        tax_amount = (discounted_subtotal * tax_rate) / Decimal("100.00")
+        total = discounted_subtotal + tax_amount
+
+        return Response(
+            {
+                "subtotal": str(subtotal),
+                "discount_amount": str(discount_amount),
+                "tax_amount": str(tax_amount),
+                "total": str(total),
+                "items": calculated_items,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    except InventoryItem.DoesNotExist:
+        return Response(
+            {"detail": "One or more inventory items not found."}, status=status.HTTP_400_BAD_REQUEST
+        )
+    except (ValueError, TypeError) as e:
+        return Response(
+            {"detail": f"Invalid numeric value: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 # Sale Management Views
@@ -462,3 +678,170 @@ class CustomerListView(TenantContextMixin, generics.ListAPIView):
             queryset = queryset.filter(loyalty_tier=tier)
 
         return queryset
+
+
+# Receipt Generation Views
+
+
+@require_http_methods(["GET"])
+def receipt_html(request, sale_id, format_type="standard"):
+    """
+    Generate HTML receipt for browser viewing and printing.
+
+    Implements Requirement 11.9: Receipt generation and printing
+    Implements Requirement 35: Browser print API integration
+
+    Args:
+        sale_id: UUID of the sale
+        format_type: 'standard' or 'thermal'
+    """
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+
+        return redirect("/accounts/login/")
+
+    # Get sale with tenant check
+    try:
+        sale = (
+            Sale.objects.select_related("customer", "branch", "terminal", "employee", "tenant")
+            .prefetch_related("items__inventory_item")
+            .get(id=sale_id, tenant=request.user.tenant)
+        )
+    except Sale.DoesNotExist:
+        raise Http404("Receipt not found")
+
+    # Generate HTML receipt
+    html_content = ReceiptService.generate_receipt(
+        sale=sale, format_type=format_type, output_format="html"
+    ).decode("utf-8")
+
+    return HttpResponse(html_content, content_type="text/html")
+
+
+@require_http_methods(["GET"])
+def receipt_pdf(request, sale_id, format_type="standard"):
+    """
+    Generate PDF receipt for download.
+
+    Implements Requirement 11.9: Receipt generation and printing
+    Implements Requirement 35: PDF receipt generation
+
+    Args:
+        sale_id: UUID of the sale
+        format_type: 'standard' or 'thermal'
+    """
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+
+        return redirect("/accounts/login/")
+
+    # Get sale with tenant check
+    try:
+        sale = (
+            Sale.objects.select_related("customer", "branch", "terminal", "employee", "tenant")
+            .prefetch_related("items__inventory_item")
+            .get(id=sale_id, tenant=request.user.tenant)
+        )
+    except Sale.DoesNotExist:
+        raise Http404("Receipt not found")
+
+    # Generate PDF receipt
+    pdf_bytes = ReceiptService.generate_receipt(
+        sale=sale, format_type=format_type, output_format="pdf"
+    )
+
+    # Create response
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    filename = f"receipt_{sale.sale_number}_{format_type}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    return response
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def generate_receipt_after_sale(request, sale_id):
+    """
+    Generate receipt immediately after sale completion.
+
+    This endpoint is called by the POS interface after a successful sale
+    to generate and optionally print the receipt.
+
+    Request body:
+    {
+        "format_type": "standard|thermal",
+        "auto_print": true|false,
+        "save_receipt": true|false
+    }
+
+    Response:
+    {
+        "receipt_url": "/receipts/html/uuid/standard/",
+        "pdf_url": "/receipts/pdf/uuid/standard/",
+        "receipt_saved": true|false,
+        "file_path": "/path/to/saved/receipt.pdf"
+    }
+
+    Implements Requirement 11.9: Receipt generation and printing
+    """
+    set_tenant_context(request.user.tenant.id)
+
+    try:
+        sale = Sale.objects.select_related(
+            "customer", "branch", "terminal", "employee", "tenant"
+        ).get(id=sale_id, tenant=request.user.tenant)
+    except Sale.DoesNotExist:
+        return Response({"detail": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    format_type = request.data.get("format_type", "standard")
+    auto_print = request.data.get("auto_print", False)
+    save_receipt = request.data.get("save_receipt", True)
+
+    # Validate format type
+    if format_type not in ["standard", "thermal"]:
+        return Response(
+            {"detail": "Invalid format_type. Must be 'standard' or 'thermal'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        # Generate receipt URLs
+        receipt_url = f"/receipts/html/{sale_id}/{format_type}/"
+        pdf_url = f"/receipts/pdf/{sale_id}/{format_type}/"
+
+        # Add auto_print parameter if requested
+        if auto_print:
+            receipt_url += "?auto_print=true"
+
+        response_data = {
+            "receipt_url": receipt_url,
+            "pdf_url": pdf_url,
+            "receipt_saved": False,
+            "file_path": None,
+        }
+
+        # Save receipt to file if requested
+        if save_receipt:
+            try:
+                file_path = ReceiptService.save_receipt(sale, format_type)
+                response_data["receipt_saved"] = True
+                response_data["file_path"] = file_path
+            except Exception as e:
+                # Log error but don't fail the request
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to save receipt: {str(e)}")
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f"Receipt generation failed: {str(e)}", exc_info=True)
+
+        return Response(
+            {"detail": f"Receipt generation failed: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
