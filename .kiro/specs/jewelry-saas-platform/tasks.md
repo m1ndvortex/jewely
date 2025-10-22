@@ -228,7 +228,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Create journal entries for expenses
     - _Requirements: 10_
   
-  - [ ] 7.3 Create financial reports
+  - [x] 7.3 Create financial reports
     - Implement balance sheet report
     - Implement income statement (P&L) report
     - Implement cash flow statement

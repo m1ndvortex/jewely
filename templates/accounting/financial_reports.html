@@ -20,13 +20,26 @@
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
                     Update Reports
                 </button>
+                {% if reports %}
+                <div class="flex gap-2 ml-4">
+                    <a href="{% url 'accounting:export_reports_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+                       class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm">
+                        Export PDF
+                    </a>
+                    <a href="{% url 'accounting:export_reports_excel' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+                       class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm">
+                        Export Excel
+                    </a>
+                </div>
+                {% endif %}
             </form>
         </div>
     </div>
 </div>
 
 {% if reports %}
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- First row: Balance Sheet and Income Statement -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
     <!-- Balance Sheet -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -35,13 +48,96 @@
         </div>
         <div class="p-6">
             {% if reports.balance_sheet %}
-                <div class="space-y-4">
+                <div class="space-y-6">
+                    <!-- Assets -->
                     <div>
-                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">Assets</h4>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">
-                            Balance sheet data will be displayed here when available.
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">ASSETS</h4>
+                        
+                        {% if reports.balance_sheet.assets.current_assets %}
+                        <div class="mb-4">
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Current Assets</h5>
+                            <div class="space-y-1">
+                                {% for asset in reports.balance_sheet.assets.current_assets %}
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700 dark:text-gray-300">{{ asset.code }} - {{ asset.name }}</span>
+                                    <span class="font-mono text-gray-900 dark:text-white">${{ asset.balance|floatformat:2 }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if reports.balance_sheet.assets.fixed_assets %}
+                        <div class="mb-4">
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Fixed Assets</h5>
+                            <div class="space-y-1">
+                                {% for asset in reports.balance_sheet.assets.fixed_assets %}
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700 dark:text-gray-300">{{ asset.code }} - {{ asset.name }}</span>
+                                    <span class="font-mono text-gray-900 dark:text-white">${{ asset.balance|floatformat:2 }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="border-t pt-2">
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-gray-900 dark:text-white">Total Assets</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.balance_sheet.assets.total_assets|floatformat:2 }}</span>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Liabilities -->
+                    {% if reports.balance_sheet.liabilities.current_liabilities or reports.balance_sheet.liabilities.long_term_liabilities %}
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">LIABILITIES</h4>
+                        
+                        {% if reports.balance_sheet.liabilities.current_liabilities %}
+                        <div class="mb-4">
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Current Liabilities</h5>
+                            <div class="space-y-1">
+                                {% for liability in reports.balance_sheet.liabilities.current_liabilities %}
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700 dark:text-gray-300">{{ liability.code }} - {{ liability.name }}</span>
+                                    <span class="font-mono text-gray-900 dark:text-white">${{ liability.balance|floatformat:2 }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="border-t pt-2">
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-gray-900 dark:text-white">Total Liabilities</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.balance_sheet.liabilities.total_liabilities|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Equity -->
+                    {% if reports.balance_sheet.equity.equity_accounts %}
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">EQUITY</h4>
+                        <div class="space-y-1 mb-4">
+                            {% for equity in reports.balance_sheet.equity.equity_accounts %}
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-700 dark:text-gray-300">{{ equity.code }} - {{ equity.name }}</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ equity.balance|floatformat:2 }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="border-t pt-2">
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-gray-900 dark:text-white">Total Equity</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.balance_sheet.equity.total_equity|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             {% else %}
                 <p class="text-gray-500 dark:text-gray-400">No balance sheet data available for this period.</p>
@@ -57,11 +153,77 @@
         </div>
         <div class="p-6">
             {% if reports.income_statement %}
-                <div class="space-y-4">
+                <div class="space-y-6">
+                    <!-- Revenue -->
                     <div>
-                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">Revenue</h4>
-                        <div class="text-sm text-gray-600 dark:text-gray-400">
-                            Income statement data will be displayed here when available.
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">REVENUE</h4>
+                        
+                        {% if reports.income_statement.revenue.operating_revenue %}
+                        <div class="space-y-1 mb-4">
+                            {% for revenue in reports.income_statement.revenue.operating_revenue %}
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-700 dark:text-gray-300">{{ revenue.code }} - {{ revenue.name }}</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ revenue.balance|floatformat:2 }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="border-t pt-2 mb-4">
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-gray-900 dark:text-white">Total Revenue</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.income_statement.revenue.total_revenue|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expenses -->
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">EXPENSES</h4>
+                        
+                        {% if reports.income_statement.expenses.cost_of_goods_sold %}
+                        <div class="mb-4">
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Cost of Goods Sold</h5>
+                            <div class="space-y-1">
+                                {% for expense in reports.income_statement.expenses.cost_of_goods_sold %}
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700 dark:text-gray-300">{{ expense.code }} - {{ expense.name }}</span>
+                                    <span class="font-mono text-gray-900 dark:text-white">${{ expense.balance|floatformat:2 }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if reports.income_statement.expenses.operating_expenses %}
+                        <div class="mb-4">
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Operating Expenses</h5>
+                            <div class="space-y-1">
+                                {% for expense in reports.income_statement.expenses.operating_expenses %}
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700 dark:text-gray-300">{{ expense.code }} - {{ expense.name }}</span>
+                                    <span class="font-mono text-gray-900 dark:text-white">${{ expense.balance|floatformat:2 }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="border-t pt-2 mb-4">
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-gray-900 dark:text-white">Total Expenses</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.income_statement.expenses.total_expenses|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Net Income -->
+                    <div class="border-t-2 border-gray-300 dark:border-gray-600 pt-4">
+                        <div class="flex justify-between font-bold text-lg">
+                            <span class="text-gray-900 dark:text-white">Net Income</span>
+                            <span class="font-mono {% if reports.income_statement.net_income >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                ${{ reports.income_statement.net_income|floatformat:2 }}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -70,9 +232,64 @@
             {% endif %}
         </div>
     </div>
+</div>
+
+<!-- Second row: Cash Flow and Trial Balance -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Cash Flow Statement -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Cash Flow Statement</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ start_date|date:'F j, Y' }} - {{ end_date|date:'F j, Y' }}</p>
+        </div>
+        <div class="p-6">
+            {% if reports.cash_flow %}
+                <div class="space-y-4">
+                    <!-- Operating Activities -->
+                    <div>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Operating Activities</h4>
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-700 dark:text-gray-300">Net Income</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.cash_flow.operating_activities.net_income|floatformat:2 }}</span>
+                            </div>
+                            <div class="border-t pt-2">
+                                <div class="flex justify-between font-medium">
+                                    <span class="text-gray-900 dark:text-white">Net Cash from Operations</span>
+                                    <span class="font-mono text-gray-900 dark:text-white">${{ reports.cash_flow.operating_activities.net_cash_from_operations|floatformat:2 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="border-t-2 border-gray-300 dark:border-gray-600 pt-4">
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-700 dark:text-gray-300">Cash at Beginning of Period</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.cash_flow.cash_beginning|floatformat:2 }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-700 dark:text-gray-300">Net Change in Cash</span>
+                                <span class="font-mono {% if reports.cash_flow.net_change_in_cash >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                    ${{ reports.cash_flow.net_change_in_cash|floatformat:2 }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between font-semibold border-t pt-2">
+                                <span class="text-gray-900 dark:text-white">Cash at End of Period</span>
+                                <span class="font-mono text-gray-900 dark:text-white">${{ reports.cash_flow.cash_ending|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-gray-500 dark:text-gray-400">No cash flow data available for this period.</p>
+            {% endif %}
+        </div>
+    </div>
 
     <!-- Trial Balance -->
-    <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Trial Balance</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400">As of {{ end_date|date:'F j, Y' }}</p>
@@ -83,19 +300,50 @@
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Account</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Debit</th>
-                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Credit</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Code</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Account Name</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Debit</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Credit</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for account in reports.trial_balance.accounts %}
                             <tr>
-                                <td colspan="3" class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                    Trial balance data will be displayed here when available.
+                                <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white">{{ account.code }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ account.name }}</td>
+                                <td class="px-4 py-3 text-sm text-right font-mono text-gray-900 dark:text-white">
+                                    {% if account.debit_balance > 0 %}${{ account.debit_balance|floatformat:2 }}{% endif %}
                                 </td>
+                                <td class="px-4 py-3 text-sm text-right font-mono text-gray-900 dark:text-white">
+                                    {% if account.credit_balance > 0 %}${{ account.credit_balance|floatformat:2 }}{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="bg-gray-50 dark:bg-gray-700 font-semibold">
+                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white" colspan="2">TOTALS</td>
+                                <td class="px-4 py-3 text-sm text-right font-mono text-gray-900 dark:text-white">${{ reports.trial_balance.total_debits|floatformat:2 }}</td>
+                                <td class="px-4 py-3 text-sm text-right font-mono text-gray-900 dark:text-white">${{ reports.trial_balance.total_credits|floatformat:2 }}</td>
                             </tr>
                         </tbody>
                     </table>
+                    
+                    {% if not reports.trial_balance.is_balanced %}
+                    <div class="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Trial Balance Out of Balance</h3>
+                                <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                                    <p>The trial balance does not balance. Please review your journal entries for errors.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             {% else %}
                 <p class="text-gray-500 dark:text-gray-400">No trial balance data available for this period.</p>

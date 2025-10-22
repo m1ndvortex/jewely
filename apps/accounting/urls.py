@@ -22,4 +22,9 @@ urlpatterns = [
         name="account_balance_api",
     ),
     path("api/setup/", views.setup_accounting_api, name="setup_accounting_api"),
+    # Export Endpoints
+    path("reports/export/pdf/", views.export_financial_reports_pdf, name="export_reports_pdf"),
+    path(
+        "reports/export/excel/", views.export_financial_reports_excel, name="export_reports_excel"
+    ),
 ]

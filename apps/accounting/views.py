@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from apps.core.decorators import tenant_access_required
@@ -153,3 +153,80 @@ def setup_accounting_api(request):
         return JsonResponse(
             {"success": False, "message": f"Failed to set up accounting: {str(e)}"}, status=500
         )
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["GET"])
+def export_financial_reports_pdf(request):
+    """
+    Export financial reports to PDF.
+    """
+    try:
+        # Get date range from request or default to current month
+        end_date = date.today()
+        start_date = date(end_date.year, end_date.month, 1)
+
+        if request.GET.get("start_date"):
+            start_date = datetime.strptime(request.GET["start_date"], "%Y-%m-%d").date()
+        if request.GET.get("end_date"):
+            end_date = datetime.strptime(request.GET["end_date"], "%Y-%m-%d").date()
+
+        # Generate PDF
+        pdf_data = AccountingService.export_financial_reports_to_pdf(
+            request.user.tenant, start_date, end_date
+        )
+
+        # Create response
+        from django.http import HttpResponse
+
+        response = HttpResponse(pdf_data, content_type="application/pdf")
+        filename = f"{request.user.tenant.slug}_financial_reports_{start_date}_{end_date}.pdf"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to export PDF: {str(e)}")
+        messages.error(request, f"Failed to export PDF: {str(e)}")
+        return redirect("accounting:financial_reports")
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["GET"])
+def export_financial_reports_excel(request):
+    """
+    Export financial reports to Excel.
+    """
+    try:
+        # Get date range from request or default to current month
+        end_date = date.today()
+        start_date = date(end_date.year, end_date.month, 1)
+
+        if request.GET.get("start_date"):
+            start_date = datetime.strptime(request.GET["start_date"], "%Y-%m-%d").date()
+        if request.GET.get("end_date"):
+            end_date = datetime.strptime(request.GET["end_date"], "%Y-%m-%d").date()
+
+        # Generate Excel
+        excel_data = AccountingService.export_financial_reports_to_excel(
+            request.user.tenant, start_date, end_date
+        )
+
+        # Create response
+        from django.http import HttpResponse
+
+        response = HttpResponse(
+            excel_data,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        filename = f"{request.user.tenant.slug}_financial_reports_{start_date}_{end_date}.xlsx"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to export Excel: {str(e)}")
+        messages.error(request, f"Failed to export Excel: {str(e)}")
+        return redirect("accounting:financial_reports")
