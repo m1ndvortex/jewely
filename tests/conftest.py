@@ -88,13 +88,17 @@ def tenant():
     Note: No explicit cleanup needed - Django's test database transaction
     rollback handles cleanup automatically.
     """
+    import uuid
+
     from apps.core.models import Tenant
     from apps.core.tenant_context import bypass_rls
 
+    # Generate unique slug for each test to avoid conflicts
+    unique_id = str(uuid.uuid4())[:8]
+    slug = f"test-shop-{unique_id}"
+
     with bypass_rls():
-        tenant = Tenant.objects.create(
-            company_name="Test Jewelry Shop", slug="test-shop", status="ACTIVE"
-        )
+        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug=slug, status="ACTIVE")
     return tenant
 
 
@@ -106,12 +110,19 @@ def tenant_user(tenant, django_user_model):
     Note: No explicit cleanup needed - Django's test database transaction
     rollback handles cleanup automatically.
     """
+    import uuid
+
     from apps.core.tenant_context import bypass_rls
+
+    # Generate unique username for each test to avoid conflicts
+    unique_id = str(uuid.uuid4())[:8]
+    username = f"testuser-{unique_id}"
+    email = f"test-{unique_id}@example.com"
 
     with bypass_rls():
         user = django_user_model.objects.create_user(
-            username="testuser",
-            email="test@example.com",
+            username=username,
+            email=email,
             password="testpass123",
             tenant=tenant,
             role="TENANT_OWNER",

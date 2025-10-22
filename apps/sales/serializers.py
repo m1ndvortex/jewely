@@ -433,10 +433,25 @@ class SaleCreateSerializer(serializers.Serializer):
             # Update terminal last used timestamp
             terminal.mark_as_used()
 
+            # Handle store credit payment
+            if validated_data.get("payment_method") == "STORE_CREDIT":
+                if not customer:
+                    raise serializers.ValidationError(
+                        "Customer is required for store credit payment."
+                    )
+
+                if customer.store_credit < total:
+                    raise serializers.ValidationError(
+                        f"Insufficient store credit. Available: {customer.store_credit}, Required: {total}"
+                    )
+
+                # Deduct store credit
+                customer.store_credit -= total
+
             # Update customer total purchases if customer exists
             if customer:
                 customer.total_purchases += total
-                customer.save(update_fields=["total_purchases", "updated_at"])
+                customer.save(update_fields=["total_purchases", "store_credit", "updated_at"])
 
             # Create accounting entries (placeholder for future accounting integration)
             # TODO: Implement accounting entries when accounting system is ready

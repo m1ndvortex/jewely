@@ -168,7 +168,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Display offline mode indicator
     - _Requirements: 35_
   
-  - [ ] 5.6 Write POS system tests
+  - [x] 5.6 Write POS system tests
     - Test sale creation flow
     - Test inventory deduction
     - Test payment processing
