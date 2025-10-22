@@ -177,7 +177,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 11, 28_
 
 - [ ] 6. Customer Relationship Management (CRM)
-  - [ ] 6.1 Create customer data models
+  - [x] 6.1 Create customer data models
     - Create Customer model with tenant FK, customer_number, contact info, loyalty_tier, points, store_credit
     - Create LoyaltyTier model with tenant FK, name, min_spending, benefits
     - Create LoyaltyTransaction model for points tracking
