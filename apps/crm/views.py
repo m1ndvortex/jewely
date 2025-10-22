@@ -8,6 +8,8 @@ Implements Requirement 12: Customer Relationship Management (CRM)
 - Customer communication history logging
 """
 
+from decimal import Decimal
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
@@ -19,7 +21,7 @@ from rest_framework import filters, generics, permissions
 from apps.core.permissions import HasTenantAccess
 from apps.core.tenant_context import set_tenant_context
 
-from .models import Customer, CustomerCommunication, GiftCard, LoyaltyTier
+from .models import Customer, CustomerCommunication, GiftCard, LoyaltyTier, LoyaltyTransaction
 from .serializers import CustomerDetailSerializer, CustomerListSerializer, CustomerSerializer
 
 
@@ -511,3 +513,378 @@ class CustomerUpdateAPIView(TenantContextMixin, generics.UpdateAPIView):
             return Customer.objects.none()
 
         return Customer.objects.filter(tenant=self.request.user.tenant)
+
+
+# Loyalty Program Views
+
+
+@login_required
+@require_http_methods(["GET"])
+def loyalty_tier_list(request):
+    """
+    Loyalty tier configuration interface.
+
+    Implements Requirement 36: Enhanced Loyalty Program
+    - Display all loyalty tiers with their benefits
+    - Allow creation and editing of tiers
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    tiers = LoyaltyTier.objects.filter(tenant=request.user.tenant).order_by("order", "min_spending")
+
+    context = {
+        "tiers": tiers,
+    }
+
+    return render(request, "crm/loyalty_tier_list.html", context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def loyalty_tier_create(request):
+    """
+    Create a new loyalty tier.
+
+    Implements Requirement 36: Enhanced Loyalty Program
+    - Define tier-specific benefits including discount percentages
+    - Set spending thresholds for automatic upgrades
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    if request.method == "POST":
+        try:
+            from decimal import Decimal
+
+            LoyaltyTier.objects.create(
+                tenant=request.user.tenant,
+                name=request.POST.get("name", "").strip(),
+                min_spending=Decimal(request.POST.get("min_spending", "0")),
+                discount_percentage=Decimal(request.POST.get("discount_percentage", "0")),
+                points_multiplier=Decimal(request.POST.get("points_multiplier", "1.0")),
+                validity_months=int(request.POST.get("validity_months", "12")),
+                benefits_description=request.POST.get("benefits_description", "").strip(),
+                order=int(request.POST.get("order", "0")),
+                is_active=request.POST.get("is_active") == "on",
+            )
+
+            return redirect("crm:loyalty_tier_list")
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    context = {}
+    return render(request, "crm/loyalty_tier_form.html", context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def loyalty_tier_edit(request, tier_id):
+    """
+    Edit an existing loyalty tier.
+
+    Implements Requirement 36: Enhanced Loyalty Program
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    tier = get_object_or_404(LoyaltyTier, id=tier_id, tenant=request.user.tenant)
+
+    if request.method == "POST":
+        try:
+            from decimal import Decimal
+
+            tier.name = request.POST.get("name", "").strip()
+            tier.min_spending = Decimal(request.POST.get("min_spending", "0"))
+            tier.discount_percentage = Decimal(request.POST.get("discount_percentage", "0"))
+            tier.points_multiplier = Decimal(request.POST.get("points_multiplier", "1.0"))
+            tier.validity_months = int(request.POST.get("validity_months", "12"))
+            tier.benefits_description = request.POST.get("benefits_description", "").strip()
+            tier.order = int(request.POST.get("order", "0"))
+            tier.is_active = request.POST.get("is_active") == "on"
+            tier.save()
+
+            return redirect("crm:loyalty_tier_list")
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    context = {
+        "tier": tier,
+        "is_edit": True,
+    }
+    return render(request, "crm/loyalty_tier_form.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def loyalty_points_redeem(request, customer_id):
+    """
+    Redeem loyalty points for a customer.
+
+    Implements Requirement 36: Enhanced Loyalty Program
+    - Allow point redemption for discounts, products, or services
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    try:
+        points = int(request.POST.get("points", 0))
+        description = request.POST.get("description", "").strip()
+
+        if points <= 0:
+            return JsonResponse({"error": "Points must be greater than 0"}, status=400)
+
+        if points > customer.loyalty_points:
+            return JsonResponse({"error": "Insufficient loyalty points"}, status=400)
+
+        # Redeem points
+        customer.redeem_loyalty_points(points, description or f"Points redeemed: {points}")
+
+        return JsonResponse(
+            {
+                "success": True,
+                "remaining_points": customer.loyalty_points,
+                "message": f"Successfully redeemed {points} points",
+            }
+        )
+
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def loyalty_points_adjust(request, customer_id):
+    """
+    Manually adjust loyalty points for a customer.
+
+    Implements Requirement 36: Enhanced Loyalty Program
+    - Allow manual point adjustments by staff
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    try:
+        points = int(request.POST.get("points", 0))
+        description = request.POST.get("description", "").strip()
+
+        if points == 0:
+            return JsonResponse({"error": "Points adjustment cannot be 0"}, status=400)
+
+        # Create adjustment transaction
+        if points > 0:
+            customer.add_loyalty_points(points, description or f"Manual adjustment: +{points}")
+        else:
+            # For negative adjustments, use redeem but with adjusted transaction type
+            abs_points = abs(points)
+            if abs_points > customer.loyalty_points:
+                return JsonResponse({"error": "Insufficient loyalty points"}, status=400)
+
+            customer.loyalty_points -= abs_points
+            customer.save(update_fields=["loyalty_points"])
+
+            LoyaltyTransaction.objects.create(
+                customer=customer,
+                transaction_type=LoyaltyTransaction.ADJUSTED,
+                points=-abs_points,
+                description=description or f"Manual adjustment: {points}",
+                created_by=request.user,
+            )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "current_points": customer.loyalty_points,
+                "message": f"Successfully adjusted points by {points}",
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def loyalty_tier_upgrade_check(request, customer_id):
+    """
+    Check and upgrade customer's loyalty tier based on spending.
+
+    Implements Requirement 36: Enhanced Loyalty Program
+    - Automatically upgrade customers based on spending thresholds
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    try:
+        old_tier = customer.loyalty_tier
+        customer.update_loyalty_tier()
+        customer.refresh_from_db()
+        new_tier = customer.loyalty_tier
+
+        if old_tier != new_tier:
+            return JsonResponse(
+                {
+                    "success": True,
+                    "upgraded": True,
+                    "old_tier": old_tier.name if old_tier else "None",
+                    "new_tier": new_tier.name if new_tier else "None",
+                    "message": f"Customer upgraded to {new_tier.name if new_tier else 'None'}",
+                }
+            )
+        else:
+            return JsonResponse(
+                {
+                    "success": True,
+                    "upgraded": False,
+                    "current_tier": new_tier.name if new_tier else "None",
+                    "message": "Customer tier unchanged",
+                }
+            )
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def loyalty_points_transfer(request, customer_id):
+    """
+    Transfer loyalty points to another customer (family member).
+
+    Implements Requirement 36.9: Allow point transfers between family members
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    try:
+        recipient_id = request.POST.get("recipient_id")
+        points = int(request.POST.get("points", 0))
+        description = request.POST.get("description", "").strip()
+
+        if not recipient_id:
+            return JsonResponse({"error": "Recipient customer ID is required"}, status=400)
+
+        recipient = get_object_or_404(Customer, id=recipient_id, tenant=request.user.tenant)
+
+        if recipient == customer:
+            return JsonResponse({"error": "Cannot transfer points to yourself"}, status=400)
+
+        # Transfer points
+        customer.transfer_points_to(recipient, points, description)
+
+        return JsonResponse(
+            {
+                "success": True,
+                "sender_remaining_points": customer.loyalty_points,
+                "recipient_new_points": recipient.loyalty_points,
+                "message": f"Successfully transferred {points} points to {recipient.get_full_name()}",
+            }
+        )
+
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def loyalty_points_expire(request, customer_id):
+    """
+    Expire old loyalty points for a customer.
+
+    Implements Requirement 36.8: Set point expiration policies to encourage usage
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    try:
+        expiration_months = int(request.POST.get("expiration_months", 12))
+        expired_points = customer.expire_old_points(expiration_months)
+
+        return JsonResponse(
+            {
+                "success": True,
+                "expired_points": expired_points,
+                "remaining_points": customer.loyalty_points,
+                "message": f"Expired {expired_points} points older than {expiration_months} months",
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def referral_stats(request):
+    """
+    View referral program performance and ROI.
+
+    Implements Requirement 36.12: Monitor referral program performance and ROI
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    # Get referral statistics
+    total_referrals = Customer.objects.filter(
+        tenant=request.user.tenant, referred_by__isnull=False
+    ).count()
+
+    total_referrers = (
+        Customer.objects.filter(tenant=request.user.tenant, referrals__isnull=False)
+        .distinct()
+        .count()
+    )
+
+    # Get top referrers
+    from django.db.models import Count
+
+    top_referrers = (
+        Customer.objects.filter(tenant=request.user.tenant)
+        .annotate(referral_count=Count("referrals"))
+        .filter(referral_count__gt=0)
+        .order_by("-referral_count")[:10]
+    )
+
+    # Calculate referral value (total purchases by referred customers)
+    referred_customers = Customer.objects.filter(
+        tenant=request.user.tenant, referred_by__isnull=False
+    )
+    total_referral_value = sum(c.total_purchases for c in referred_customers)
+
+    # Calculate ROI (simplified - rewards given vs value generated)
+    # Assuming 100 points per referral = $10 cost
+    total_rewards_cost = Decimal(
+        str(total_referrals * 150 * 0.10)
+    )  # 150 points total (100+50) * $0.10 per point
+    roi_percentage = (
+        ((total_referral_value - total_rewards_cost) / total_rewards_cost * Decimal("100"))
+        if total_rewards_cost > 0
+        else Decimal("0")
+    )
+
+    context = {
+        "total_referrals": total_referrals,
+        "total_referrers": total_referrers,
+        "top_referrers": top_referrers,
+        "total_referral_value": total_referral_value,
+        "total_rewards_cost": total_rewards_cost,
+        "roi_percentage": roi_percentage,
+    }
+
+    return render(request, "crm/referral_stats.html", context)

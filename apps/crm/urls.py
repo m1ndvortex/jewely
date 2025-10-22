@@ -21,6 +21,36 @@ urlpatterns = [
         views.customer_communication_add,
         name="customer_communication_add",
     ),
+    # Loyalty program views
+    path("loyalty/tiers/", views.loyalty_tier_list, name="loyalty_tier_list"),
+    path("loyalty/tiers/create/", views.loyalty_tier_create, name="loyalty_tier_create"),
+    path("loyalty/tiers/<uuid:tier_id>/edit/", views.loyalty_tier_edit, name="loyalty_tier_edit"),
+    path(
+        "customers/<uuid:customer_id>/loyalty/redeem/",
+        views.loyalty_points_redeem,
+        name="loyalty_points_redeem",
+    ),
+    path(
+        "customers/<uuid:customer_id>/loyalty/adjust/",
+        views.loyalty_points_adjust,
+        name="loyalty_points_adjust",
+    ),
+    path(
+        "customers/<uuid:customer_id>/loyalty/upgrade-check/",
+        views.loyalty_tier_upgrade_check,
+        name="loyalty_tier_upgrade_check",
+    ),
+    path(
+        "customers/<uuid:customer_id>/loyalty/transfer/",
+        views.loyalty_points_transfer,
+        name="loyalty_points_transfer",
+    ),
+    path(
+        "customers/<uuid:customer_id>/loyalty/expire/",
+        views.loyalty_points_expire,
+        name="loyalty_points_expire",
+    ),
+    path("referrals/stats/", views.referral_stats, name="referral_stats"),
     # API endpoints
     path("api/customers/", views.CustomerListAPIView.as_view(), name="api_customer_list"),
     path(

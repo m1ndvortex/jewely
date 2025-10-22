@@ -380,10 +380,52 @@ class Customer(models.Model):
                 if not Customer.objects.filter(referral_code=code).exists():
                     self.referral_code = code
                     break
+
+        # Check if this is a new customer with a referrer who hasn't been rewarded yet
+        is_new = self.pk is None
+        if is_new and self.referred_by and not self.referral_reward_given:
+            # Will reward referrer after save
+            self._reward_referrer_after_save = True
+        else:
+            self._reward_referrer_after_save = False
+
         super().save(*args, **kwargs)
 
+        # Reward referrer after successful save
+        if hasattr(self, "_reward_referrer_after_save") and self._reward_referrer_after_save:
+            self.reward_referrer()
+
+    def reward_referrer(self, referrer_points=100, referee_points=50):
+        """
+        Reward both referrer and referee with points.
+
+        Implements Requirement 36.11: Reward both referrer and referee with points, discounts, or credits
+        """
+        if not self.referred_by or self.referral_reward_given:
+            return
+
+        # Reward the referrer
+        self.referred_by.add_loyalty_points(
+            referrer_points, description=f"Referral bonus for referring {self.get_full_name()}"
+        )
+
+        # Reward the referee (this customer)
+        self.add_loyalty_points(
+            referee_points,
+            description=f"Welcome bonus for using referral code {self.referred_by.referral_code}",
+        )
+
+        # Mark as rewarded
+        self.referral_reward_given = True
+        self.save(update_fields=["referral_reward_given"])
+
     def update_loyalty_tier(self):
-        """Update customer's loyalty tier based on total purchases."""
+        """
+        Update customer's loyalty tier based on total purchases.
+
+        Implements Requirement 36: Enhanced Loyalty Program
+        - Automatically upgrade customers based on spending thresholds
+        """
         if not self.tenant.loyalty_tiers.exists():
             return
 
@@ -407,6 +449,25 @@ class Customer(models.Model):
                 )
 
             self.save(update_fields=["loyalty_tier", "tier_achieved_at", "tier_expires_at"])
+
+    def get_tier_discount(self, amount):
+        """
+        Calculate tier-specific discount for a given amount.
+
+        Implements Requirement 36: Enhanced Loyalty Program
+        - Calculate tier-specific discounts
+
+        Args:
+            amount: The purchase amount to calculate discount for
+
+        Returns:
+            Decimal: The discount amount
+        """
+        if not self.loyalty_tier or not self.loyalty_tier.discount_percentage:
+            return Decimal("0.00")
+
+        discount = amount * (self.loyalty_tier.discount_percentage / Decimal("100"))
+        return discount.quantize(Decimal("0.01"))
 
     def add_loyalty_points(self, points, description=""):
         """Add loyalty points to customer account."""
@@ -445,6 +506,83 @@ class Customer(models.Model):
             points=-points,  # Negative for redemption
             description=description or f"Points redeemed: {points}",
         )
+
+    def transfer_points_to(self, recipient, points, description=""):
+        """
+        Transfer loyalty points to another customer (family member).
+
+        Implements Requirement 36.9: Allow point transfers between family members
+        """
+        if points <= 0 or points > self.loyalty_points:
+            raise ValueError("Invalid points amount for transfer")
+
+        if recipient.tenant != self.tenant:
+            raise ValueError("Can only transfer points within same tenant")
+
+        # Deduct from sender
+        self.loyalty_points -= points
+        self.save(update_fields=["loyalty_points"])
+
+        # Add to recipient (without multiplier)
+        recipient.loyalty_points += points
+        recipient.total_points_earned += points
+        recipient.save(update_fields=["loyalty_points", "total_points_earned"])
+
+        # Create transaction records
+        LoyaltyTransaction.objects.create(
+            customer=self,
+            transaction_type=LoyaltyTransaction.ADJUSTED,
+            points=-points,
+            description=description
+            or f"Transferred {points} points to {recipient.get_full_name()}",
+        )
+
+        LoyaltyTransaction.objects.create(
+            customer=recipient,
+            transaction_type=LoyaltyTransaction.BONUS,
+            points=points,
+            description=description or f"Received {points} points from {self.get_full_name()}",
+        )
+
+    def expire_old_points(self, expiration_months=12):
+        """
+        Expire loyalty points older than specified months.
+
+        Implements Requirement 36.8: Set point expiration policies to encourage usage
+        """
+        from dateutil.relativedelta import relativedelta
+
+        expiration_date = timezone.now() - relativedelta(months=expiration_months)
+
+        # Find unexpired earned points older than expiration date
+        old_transactions = LoyaltyTransaction.objects.filter(
+            customer=self,
+            transaction_type__in=[LoyaltyTransaction.EARNED, LoyaltyTransaction.BONUS],
+            created_at__lt=expiration_date,
+            expires_at__isnull=True,  # Not already expired
+        )
+
+        total_expired = 0
+        for transaction in old_transactions:
+            if transaction.points > 0:
+                total_expired += transaction.points
+                transaction.expires_at = timezone.now()
+                transaction.save(update_fields=["expires_at"])
+
+        if total_expired > 0:
+            # Deduct expired points from customer balance
+            self.loyalty_points = max(0, self.loyalty_points - total_expired)
+            self.save(update_fields=["loyalty_points"])
+
+            # Create expiration transaction
+            LoyaltyTransaction.objects.create(
+                customer=self,
+                transaction_type=LoyaltyTransaction.EXPIRED,
+                points=-total_expired,
+                description=f"Points expired after {expiration_months} months",
+            )
+
+        return total_expired
 
 
 class LoyaltyTransaction(models.Model):

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit{% else %}Create{% endif %} Loyalty Tier - CRM{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+    <div class="mb-6">
+        <a href="{% url 'crm:loyalty_tier_list' %}" 
+           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Loyalty Tiers
+        </a>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            {% if is_edit %}Edit Loyalty Tier{% else %}Create New Loyalty Tier{% endif %}
+        </h1>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Tier Name -->
+                <div class="md:col-span-2">
+                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Tier Name <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" 
+                           id="name" 
+                           name="name" 
+                           value="{% if tier %}{{ tier.name }}{% endif %}"
+                           required
+                           placeholder="e.g., Bronze, Silver, Gold, Platinum"
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                </div>
+
+                <!-- Order -->
+                <div>
+                    <label for="order" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Order <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" 
+                           id="order" 
+                           name="order" 
+                           value="{% if tier %}{{ tier.order }}{% else %}0{% endif %}"
+                           required
+                           min="0"
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lower numbers = lower tiers</p>
+                </div>
+
+                <!-- Min Spending -->
+                <div>
+                    <label for="min_spending" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Minimum Spending ($) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" 
+                           id="min_spending" 
+                           name="min_spending" 
+                           value="{% if tier %}{{ tier.min_spending }}{% else %}0{% endif %}"
+                           required
+                           min="0"
+                           step="0.01"
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Total purchase amount required</p>
+                </div>
+
+                <!-- Discount Percentage -->
+                <div>
+                    <label for="discount_percentage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Discount Percentage (%) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" 
+                           id="discount_percentage" 
+                           name="discount_percentage" 
+                           value="{% if tier %}{{ tier.discount_percentage }}{% else %}0{% endif %}"
+                           required
+                           min="0"
+                           max="100"
+                           step="0.01"
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Discount on purchases (0-100)</p>
+                </div>
+
+                <!-- Points Multiplier -->
+                <div>
+                    <label for="points_multiplier" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Points Multiplier <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" 
+                           id="points_multiplier" 
+                           name="points_multiplier" 
+                           value="{% if tier %}{{ tier.points_multiplier }}{% else %}1.0{% endif %}"
+                           required
+                           min="1"
+                           step="0.01"
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">e.g., 1.5 = 50% bonus points</p>
+                </div>
+
+                <!-- Validity Months -->
+                <div>
+                    <label for="validity_months" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Validity (Months) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" 
+                           id="validity_months" 
+                           name="validity_months" 
+                           value="{% if tier %}{{ tier.validity_months }}{% else %}12{% endif %}"
+                           required
+                           min="1"
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Tier expires after this period</p>
+                </div>
+
+                <!-- Benefits Description -->
+                <div class="md:col-span-2">
+                    <label for="benefits_description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Benefits Description
+                    </label>
+                    <textarea id="benefits_description" 
+                              name="benefits_description" 
+                              rows="4"
+                              placeholder="Describe the benefits of this tier (e.g., exclusive access, priority service, special events)"
+                              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">{% if tier %}{{ tier.benefits_description }}{% endif %}</textarea>
+                </div>
+
+                <!-- Is Active -->
+                <div class="md:col-span-2">
+                    <label class="flex items-center">
+                        <input type="checkbox" 
+                               id="is_active" 
+                               name="is_active"
+                               {% if not tier or tier.is_active %}checked{% endif %}
+                               class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700">
+                        <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Active (customers can be assigned to this tier)
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <a href="{% url 'crm:loyalty_tier_list' %}" 
+                   class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-200">
+                    <i class="fas fa-save mr-2"></i>{% if is_edit %}Update{% else %}Create{% endif %} Tier
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Help Section -->
+    <div class="mt-6 bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-4 rounded">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-lightbulb text-yellow-400"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Tips for Setting Up Tiers</h3>
+                <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Create 3-4 tiers for optimal customer engagement (e.g., Bronze, Silver, Gold, Platinum)</li>
+                        <li>Set spending thresholds that are achievable but aspirational</li>
+                        <li>Increase benefits progressively to incentivize tier upgrades</li>
+                        <li>Consider 12-month validity to encourage annual spending</li>
+                        <li>Use points multipliers to reward higher-tier customers more generously</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

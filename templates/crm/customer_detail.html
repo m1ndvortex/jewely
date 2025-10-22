@@ -89,20 +89,29 @@
                     <div class="space-y-3">
                         <div>
                             <label class="text-sm font-medium text-gray-500">Tier</label>
-                            <div class="mt-1">
-                                {% if customer.loyalty_tier %}
-                                <span class="px-3 py-1 inline-flex text-sm font-semibold rounded-full bg-purple-100 text-purple-800">
-                                    {{ customer.loyalty_tier.name }}
-                                </span>
-                                {% else %}
-                                <span class="text-sm text-gray-500">No Tier</span>
-                                {% endif %}
+                            <div class="mt-1 flex items-center justify-between">
+                                <div>
+                                    {% if customer.loyalty_tier %}
+                                    <span class="px-3 py-1 inline-flex text-sm font-semibold rounded-full bg-purple-100 text-purple-800">
+                                        {{ customer.loyalty_tier.name }}
+                                    </span>
+                                    {% if customer.loyalty_tier.discount_percentage > 0 %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ customer.loyalty_tier.discount_percentage }}% discount</p>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-sm text-gray-500">No Tier</span>
+                                    {% endif %}
+                                </div>
+                                <button onclick="checkTierUpgrade()"
+                                        class="text-xs text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-sync-alt mr-1"></i>Check Upgrade
+                                </button>
                             </div>
                         </div>
 
                         <div>
                             <label class="text-sm font-medium text-gray-500">Points Balance</label>
-                            <p class="mt-1 text-2xl font-bold text-gray-900">{{ customer.loyalty_points|default:"0" }}</p>
+                            <p id="points-balance" class="mt-1 text-2xl font-bold text-gray-900">{{ customer.loyalty_points|default:"0" }}</p>
                         </div>
 
                         <div>
@@ -121,6 +130,18 @@
                             <p class="mt-1 text-sm text-gray-900">{{ customer.tier_expires_at|date:"F d, Y" }}</p>
                         </div>
                         {% endif %}
+
+                        <!-- Loyalty Actions -->
+                        <div class="pt-3 border-t border-gray-200 space-y-2">
+                            <button onclick="openRedeemModal()"
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                                <i class="fas fa-gift mr-2"></i>Redeem Points
+                            </button>
+                            <button onclick="openAdjustModal()"
+                                    class="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                                <i class="fas fa-edit mr-2"></i>Adjust Points
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -380,4 +401,234 @@
         </form>
     </div>
 </div>
+
+<!-- Redeem Points Modal -->
+<div id="redeem-points-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Redeem Loyalty Points</h3>
+            <button onclick="closeRedeemModal()"
+                    class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="redeem-form" onsubmit="redeemPoints(event)">
+            {% csrf_token %}
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Available Points</label>
+                    <p class="text-2xl font-bold text-gray-900">{{ customer.loyalty_points }}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Points to Redeem *</label>
+                    <input type="number" 
+                           id="redeem-points" 
+                           name="points" 
+                           required 
+                           min="1" 
+                           max="{{ customer.loyalty_points }}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" 
+                              rows="3"
+                              placeholder="e.g., Redeemed for $10 discount"
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button"
+                        onclick="closeRedeemModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">
+                    Redeem Points
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Adjust Points Modal -->
+<div id="adjust-points-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Adjust Loyalty Points</h3>
+            <button onclick="closeAdjustModal()"
+                    class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form id="adjust-form" onsubmit="adjustPoints(event)">
+            {% csrf_token %}
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Points</label>
+                    <p class="text-2xl font-bold text-gray-900">{{ customer.loyalty_points }}</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Points Adjustment *</label>
+                    <input type="number" 
+                           id="adjust-points" 
+                           name="points" 
+                           required
+                           placeholder="Use negative for deduction"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">Enter positive number to add, negative to subtract</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason *</label>
+                    <textarea name="description" 
+                              required
+                              rows="3"
+                              placeholder="Explain the reason for this adjustment"
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button"
+                        onclick="closeAdjustModal()"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium">
+                    Adjust Points
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRedeemModal() {
+    document.getElementById('redeem-points-modal').classList.remove('hidden');
+}
+
+function closeRedeemModal() {
+    document.getElementById('redeem-points-modal').classList.add('hidden');
+    document.getElementById('redeem-form').reset();
+}
+
+function openAdjustModal() {
+    document.getElementById('adjust-points-modal').classList.remove('hidden');
+}
+
+function closeAdjustModal() {
+    document.getElementById('adjust-points-modal').classList.add('hidden');
+    document.getElementById('adjust-form').reset();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+async function redeemPoints(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('{% url "crm:loyalty_points_redeem" customer.id %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(data.message);
+            document.getElementById('points-balance').textContent = data.remaining_points;
+            closeRedeemModal();
+            location.reload(); // Reload to show updated transactions
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('An error occurred: ' + error.message);
+    }
+}
+
+async function adjustPoints(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('{% url "crm:loyalty_points_adjust" customer.id %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(data.message);
+            document.getElementById('points-balance').textContent = data.current_points;
+            closeAdjustModal();
+            location.reload(); // Reload to show updated transactions
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('An error occurred: ' + error.message);
+    }
+}
+
+async function checkTierUpgrade() {
+    try {
+        const response = await fetch('{% url "crm:loyalty_tier_upgrade_check" customer.id %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            if (data.upgraded) {
+                alert(`Customer upgraded from ${data.old_tier} to ${data.new_tier}!`);
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('An error occurred: ' + error.message);
+    }
+}
+</script>
 {% endblock %}
