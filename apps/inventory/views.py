@@ -666,3 +666,139 @@ def lookup_by_barcode(request):
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+# Inventory Reports
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def inventory_valuation_report(request):
+    """
+    Generate inventory valuation report.
+
+    Shows total inventory value at cost and selling price,
+    broken down by category and branch.
+
+    Query parameters:
+    - branch: Optional branch ID filter
+    - category: Optional category ID filter
+
+    Implements Requirement 9: Advanced Inventory Management
+    - Inventory valuation using configurable methods
+    - Inventory reports including stock valuation
+
+    Implements Requirement 15: Advanced Reporting and Analytics
+    - Pre-built reports for inventory metrics
+    """
+    from .reports import InventoryReportGenerator
+
+    # Get filters
+    branch_id = request.query_params.get("branch", None)
+    category_id = request.query_params.get("category", None)
+
+    # Generate report
+    generator = InventoryReportGenerator(request.user.tenant)
+    report_data = generator.get_inventory_valuation_report(
+        branch_id=branch_id, category_id=category_id
+    )
+
+    return Response(report_data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def low_stock_alert_report(request):
+    """
+    Generate low stock alert report.
+
+    Shows items that are at or below their minimum quantity threshold.
+
+    Query parameters:
+    - branch: Optional branch ID filter
+    - category: Optional category ID filter
+
+    Implements Requirement 9: Advanced Inventory Management
+    - Generate low stock alerts when inventory falls below defined thresholds
+    """
+    from .reports import InventoryReportGenerator
+
+    # Get filters
+    branch_id = request.query_params.get("branch", None)
+    category_id = request.query_params.get("category", None)
+
+    # Generate report
+    generator = InventoryReportGenerator(request.user.tenant)
+    report_data = generator.get_low_stock_alert_report(branch_id=branch_id, category_id=category_id)
+
+    return Response(report_data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def dead_stock_analysis_report(request):
+    """
+    Generate dead stock analysis report.
+
+    Identifies items that haven't moved (sold) in a specified period.
+
+    Query parameters:
+    - days: Number of days to consider as "dead stock" (default: 90)
+    - branch: Optional branch ID filter
+    - category: Optional category ID filter
+
+    Implements Requirement 9: Advanced Inventory Management
+    - Inventory reports including dead stock analysis
+
+    Implements Requirement 15: Advanced Reporting and Analytics
+    - Pre-built reports for inventory metrics
+    """
+    from .reports import InventoryReportGenerator
+
+    # Get filters
+    days_threshold = int(request.query_params.get("days", "90"))
+    branch_id = request.query_params.get("branch", None)
+    category_id = request.query_params.get("category", None)
+
+    # Generate report
+    generator = InventoryReportGenerator(request.user.tenant)
+    report_data = generator.get_dead_stock_analysis_report(
+        days_threshold=days_threshold, branch_id=branch_id, category_id=category_id
+    )
+
+    return Response(report_data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def inventory_turnover_report(request):
+    """
+    Generate inventory turnover report.
+
+    Shows inventory movement and turnover metrics.
+
+    Query parameters:
+    - period: Period to analyze in days (default: 30)
+    - branch: Optional branch ID filter
+    - category: Optional category ID filter
+
+    Implements Requirement 9: Advanced Inventory Management
+    - Inventory reports including inventory turnover
+
+    Implements Requirement 15: Advanced Reporting and Analytics
+    - Pre-built reports for inventory metrics
+    """
+    from .reports import InventoryReportGenerator
+
+    # Get filters
+    period_days = int(request.query_params.get("period", "30"))
+    branch_id = request.query_params.get("branch", None)
+    category_id = request.query_params.get("category", None)
+
+    # Generate report
+    generator = InventoryReportGenerator(request.user.tenant)
+    report_data = generator.get_inventory_turnover_report(
+        period_days=period_days, branch_id=branch_id, category_id=category_id
+    )
+
+    return Response(report_data, status=status.HTTP_200_OK)

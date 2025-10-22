@@ -85,4 +85,25 @@ urlpatterns = [
         views.generate_qr_label,
         name="generate_qr_label",
     ),
+    # Inventory Reports
+    path(
+        "api/inventory/reports/valuation/",
+        views.inventory_valuation_report,
+        name="report_valuation",
+    ),
+    path(
+        "api/inventory/reports/low-stock/",
+        views.low_stock_alert_report,
+        name="report_low_stock",
+    ),
+    path(
+        "api/inventory/reports/dead-stock/",
+        views.dead_stock_analysis_report,
+        name="report_dead_stock",
+    ),
+    path(
+        "api/inventory/reports/turnover/",
+        views.inventory_turnover_report,
+        name="report_turnover",
+    ),
 ]

@@ -114,7 +114,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Create printable barcode labels
     - _Requirements: 9, 35_
   
-  - [ ] 4.4 Create inventory reports
+  - [x] 4.4 Create inventory reports
     - Implement inventory valuation report
     - Implement low stock alert report
     - Implement dead stock analysis report
