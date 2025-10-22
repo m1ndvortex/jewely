@@ -584,6 +584,61 @@ class Customer(models.Model):
 
         return total_expired
 
+    def add_store_credit(self, amount, description="", created_by=None, sale=None):
+        """
+        Add store credit to customer account.
+
+        Implements Requirement 12: Customer Relationship Management (CRM)
+        - Manage customer store credit balances with transaction history
+        """
+        if amount <= 0:
+            raise ValueError("Store credit amount must be positive")
+
+        previous_balance = self.store_credit
+        self.store_credit += amount
+        self.save(update_fields=["store_credit"])
+
+        # Create transaction record
+        GiftCardTransaction.objects.create(
+            customer=self,
+            sale=sale,
+            transaction_type=GiftCardTransaction.STORE_CREDIT_ADDED,
+            amount=amount,
+            description=description or f"Store credit added: ${amount}",
+            previous_balance=previous_balance,
+            new_balance=self.store_credit,
+            created_by=created_by,
+        )
+
+    def use_store_credit(self, amount, description="", created_by=None, sale=None):
+        """
+        Use store credit from customer account.
+
+        Implements Requirement 12: Customer Relationship Management (CRM)
+        - Manage customer store credit balances with transaction history
+        """
+        if amount <= 0:
+            raise ValueError("Store credit amount must be positive")
+
+        if amount > self.store_credit:
+            raise ValueError("Insufficient store credit balance")
+
+        previous_balance = self.store_credit
+        self.store_credit -= amount
+        self.save(update_fields=["store_credit"])
+
+        # Create transaction record
+        GiftCardTransaction.objects.create(
+            customer=self,
+            sale=sale,
+            transaction_type=GiftCardTransaction.STORE_CREDIT_USED,
+            amount=amount,
+            description=description or f"Store credit used: ${amount}",
+            previous_balance=previous_balance,
+            new_balance=self.store_credit,
+            created_by=created_by,
+        )
+
 
 class LoyaltyTransaction(models.Model):
     """
@@ -803,6 +858,8 @@ class GiftCard(models.Model):
 
     def save(self, *args, **kwargs):
         """Override save to generate card number if not provided."""
+        is_new = self.pk is None
+
         if not self.card_number:
             # Generate unique card number
             import random
@@ -820,6 +877,21 @@ class GiftCard(models.Model):
 
         super().save(*args, **kwargs)
 
+        # Create issuance transaction for new gift cards (only if there's a customer)
+        if is_new and self.initial_value > 0:
+            customer = self.purchased_by or self.recipient
+            if customer:
+                GiftCardTransaction.objects.create(
+                    gift_card=self,
+                    customer=customer,
+                    transaction_type=GiftCardTransaction.ISSUED,
+                    amount=self.initial_value,
+                    description=f"Gift card issued: ${self.initial_value}",
+                    previous_balance=Decimal("0.00"),
+                    new_balance=self.initial_value,
+                    created_by=self.issued_by,
+                )
+
     def can_be_used(self):
         """Check if the gift card can be used."""
         return (
@@ -828,7 +900,7 @@ class GiftCard(models.Model):
             and (not self.expires_at or self.expires_at > timezone.now())
         )
 
-    def use_balance(self, amount):
+    def use_balance(self, amount, description="", created_by=None, sale=None):
         """Use a portion of the gift card balance."""
         if not self.can_be_used():
             raise ValueError("Gift card cannot be used")
@@ -836,6 +908,7 @@ class GiftCard(models.Model):
         if amount > self.current_balance:
             raise ValueError("Amount exceeds gift card balance")
 
+        previous_balance = self.current_balance
         self.current_balance -= amount
 
         # Mark as redeemed if balance is zero
@@ -843,6 +916,148 @@ class GiftCard(models.Model):
             self.status = self.REDEEMED
 
         self.save(update_fields=["current_balance", "status", "updated_at"])
+
+        # Create transaction record (only if there's a customer)
+        customer = self.recipient or self.purchased_by
+        if customer:
+            GiftCardTransaction.objects.create(
+                gift_card=self,
+                customer=customer,
+                sale=sale,
+                transaction_type=GiftCardTransaction.REDEEMED,
+                amount=amount,
+                description=description or f"Gift card redeemed: ${amount}",
+                previous_balance=previous_balance,
+                new_balance=self.current_balance,
+                created_by=created_by,
+            )
+
+
+class GiftCardTransaction(models.Model):
+    """
+    Gift card transaction model for tracking all gift card and store credit operations.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Track gift card and credit transactions
+    - Maintain audit trail for gift card usage
+    """
+
+    # Transaction types
+    ISSUED = "ISSUED"
+    REDEEMED = "REDEEMED"
+    REFUNDED = "REFUNDED"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
+    STORE_CREDIT_ADDED = "STORE_CREDIT_ADDED"
+    STORE_CREDIT_USED = "STORE_CREDIT_USED"
+    STORE_CREDIT_REFUNDED = "STORE_CREDIT_REFUNDED"
+
+    TRANSACTION_TYPE_CHOICES = [
+        (ISSUED, "Gift Card Issued"),
+        (REDEEMED, "Gift Card Redeemed"),
+        (REFUNDED, "Gift Card Refunded"),
+        (EXPIRED, "Gift Card Expired"),
+        (CANCELLED, "Gift Card Cancelled"),
+        (STORE_CREDIT_ADDED, "Store Credit Added"),
+        (STORE_CREDIT_USED, "Store Credit Used"),
+        (STORE_CREDIT_REFUNDED, "Store Credit Refunded"),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the transaction",
+    )
+
+    # Related objects
+    gift_card = models.ForeignKey(
+        GiftCard,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="transactions",
+        help_text="Gift card this transaction relates to (if applicable)",
+    )
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="gift_card_transactions",
+        help_text="Customer this transaction relates to",
+    )
+
+    sale = models.ForeignKey(
+        "sales.Sale",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="gift_card_transactions",
+        help_text="Sale that generated this transaction (if applicable)",
+    )
+
+    # Transaction details
+    transaction_type = models.CharField(
+        max_length=30, choices=TRANSACTION_TYPE_CHOICES, help_text="Type of transaction"
+    )
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Transaction amount",
+    )
+
+    description = models.CharField(max_length=255, help_text="Description of the transaction")
+
+    # Balance tracking
+    previous_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Balance before this transaction",
+    )
+
+    new_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Balance after this transaction",
+    )
+
+    # Metadata
+    metadata = models.JSONField(
+        default=dict, blank=True, help_text="Additional transaction metadata"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True, help_text="When the transaction was created"
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="User who created this transaction",
+    )
+
+    class Meta:
+        db_table = "crm_gift_card_transactions"
+        ordering = ["-created_at"]
+        verbose_name = "Gift Card Transaction"
+        verbose_name_plural = "Gift Card Transactions"
+        indexes = [
+            models.Index(fields=["gift_card", "-created_at"], name="gift_trans_card_date_idx"),
+            models.Index(fields=["customer", "-created_at"], name="gift_trans_cust_date_idx"),
+            models.Index(fields=["transaction_type"], name="gift_trans_type_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.customer.get_full_name()} - {self.transaction_type}: ${self.amount}"
 
 
 class CustomerCommunication(models.Model):

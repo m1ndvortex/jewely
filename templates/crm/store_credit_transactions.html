@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Store Credit Transactions - {{ customer.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="flex items-center mb-6">
+        <a href="{% url 'crm:customer_detail' customer.id %}" 
+           class="text-gray-600 hover:text-gray-800 mr-4">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Store Credit Transactions</h1>
+            <p class="text-gray-600">{{ customer.get_full_name }} ({{ customer.customer_number }})</p>
+        </div>
+    </div>
+
+    <!-- Current Balance -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900">Current Store Credit Balance</h2>
+                <p class="text-3xl font-bold text-green-600 mt-2">${{ customer.store_credit|floatformat:2 }}</p>
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="addStoreCredit()" 
+                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fas fa-plus mr-2"></i>Add Credit
+                </button>
+                {% if customer.store_credit > 0 %}
+                    <button onclick="useStoreCredit()" 
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-minus mr-2"></i>Use Credit
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Transaction History</h2>
+        
+        {% if transactions %}
+            <div class="space-y-4">
+                {% for transaction in transactions %}
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                    {% if transaction.transaction_type == 'STORE_CREDIT_ADDED' %}bg-green-100 text-green-800
+                                    {% elif transaction.transaction_type == 'STORE_CREDIT_USED' %}bg-blue-100 text-blue-800
+                                    {% elif transaction.transaction_type == 'STORE_CREDIT_REFUNDED' %}bg-purple-100 text-purple-800
+                                    {% endif %}">
+                                    {% if transaction.transaction_type == 'STORE_CREDIT_ADDED' %}Credit Added
+                                    {% elif transaction.transaction_type == 'STORE_CREDIT_USED' %}Credit Used
+                                    {% elif transaction.transaction_type == 'STORE_CREDIT_REFUNDED' %}Credit Refunded
+                                    {% endif %}
+                                </span>
+                                <span class="text-sm text-gray-500">
+                                    {{ transaction.created_at|date:"M d, Y g:i A" }}
+                                </span>
+                            </div>
+                            
+                            <p class="mt-2 text-sm text-gray-900">{{ transaction.description }}</p>
+                            
+                            {% if transaction.created_by %}
+                                <p class="mt-1 text-xs text-gray-500">
+                                    By: {{ transaction.created_by.get_full_name }}
+                                </p>
+                            {% endif %}
+                            
+                            {% if transaction.sale %}
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Sale: {{ transaction.sale.sale_number }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="text-right">
+                            <p class="text-sm font-semibold 
+                               {% if transaction.transaction_type == 'STORE_CREDIT_ADDED' or transaction.transaction_type == 'STORE_CREDIT_REFUNDED' %}text-green-600
+                               {% elif transaction.transaction_type == 'STORE_CREDIT_USED' %}text-red-600
+                               {% endif %}">
+                                {% if transaction.transaction_type == 'STORE_CREDIT_USED' %}-{% else %}+{% endif %}${{ transaction.amount|floatformat:2 }}
+                            </p>
+                            
+                            {% if transaction.new_balance is not None %}
+                                <p class="text-xs text-gray-500">
+                                    Balance: ${{ transaction.new_balance|floatformat:2 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-history text-3xl mb-3 text-gray-300"></i>
+                <p>No store credit transactions yet</p>
+                <p class="text-sm">Add store credit to get started</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Store Credit Modal -->
+<div id="addCreditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Add Store Credit</h3>
+                <form id="addCreditForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Customer</label>
+                        <input type="text" value="{{ customer.get_full_name }}" readonly 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                    </div>
+                    <div class="mb-4">
+                        <label for="addAmount" class="block text-sm font-medium text-gray-700 mb-2">Amount to Add</label>
+                        <input type="number" id="addAmount" name="amount" step="0.01" min="0.01" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="addDescription" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="addDescription" name="description" rows="2" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Reason for adding store credit..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeAddCreditModal()" 
+                                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
+                            Add Credit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Use Store Credit Modal -->
+<div id="useCreditModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Use Store Credit</h3>
+                <form id="useCreditForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Balance</label>
+                        <input type="text" value="${{ customer.store_credit|floatformat:2 }}" readonly 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                    </div>
+                    <div class="mb-4">
+                        <label for="useAmount" class="block text-sm font-medium text-gray-700 mb-2">Amount to Use</label>
+                        <input type="number" id="useAmount" name="amount" step="0.01" min="0.01" max="{{ customer.store_credit }}" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="useDescription" class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="useDescription" name="description" rows="2" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Reason for using store credit..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeUseCreditModal()" 
+                                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                            Use Credit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addStoreCredit() {
+    document.getElementById('addCreditModal').classList.remove('hidden');
+}
+
+function closeAddCreditModal() {
+    document.getElementById('addCreditModal').classList.add('hidden');
+    document.getElementById('addCreditForm').reset();
+}
+
+function useStoreCredit() {
+    document.getElementById('useCreditModal').classList.remove('hidden');
+}
+
+function closeUseCreditModal() {
+    document.getElementById('useCreditModal').classList.add('hidden');
+    document.getElementById('useCreditForm').reset();
+}
+
+document.getElementById('addCreditForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`{% url 'crm:store_credit_add' customer.id %}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while adding store credit');
+    });
+});
+
+document.getElementById('useCreditForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`{% url 'crm:store_credit_use' customer.id %}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while using store credit');
+    });
+});
+
+// Close modals when clicking outside
+document.getElementById('addCreditModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAddCreditModal();
+    }
+});
+
+document.getElementById('useCreditModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeUseCreditModal();
+    }
+});
+</script>
+{% endblock %}

@@ -51,6 +51,36 @@ urlpatterns = [
         name="loyalty_points_expire",
     ),
     path("referrals/stats/", views.referral_stats, name="referral_stats"),
+    # Gift card management views
+    path("gift-cards/", views.gift_card_list, name="gift_card_list"),
+    path("gift-cards/create/", views.gift_card_create, name="gift_card_create"),
+    path("gift-cards/<uuid:gift_card_id>/", views.gift_card_detail, name="gift_card_detail"),
+    path(
+        "gift-cards/<uuid:gift_card_id>/redeem/",
+        views.gift_card_redeem,
+        name="gift_card_redeem",
+    ),
+    path(
+        "gift-cards/<uuid:gift_card_id>/cancel/",
+        views.gift_card_cancel,
+        name="gift_card_cancel",
+    ),
+    # Store credit management views
+    path(
+        "customers/<uuid:customer_id>/store-credit/add/",
+        views.store_credit_add,
+        name="store_credit_add",
+    ),
+    path(
+        "customers/<uuid:customer_id>/store-credit/use/",
+        views.store_credit_use,
+        name="store_credit_use",
+    ),
+    path(
+        "customers/<uuid:customer_id>/store-credit/transactions/",
+        views.store_credit_transactions,
+        name="store_credit_transactions",
+    ),
     # API endpoints
     path("api/customers/", views.CustomerListAPIView.as_view(), name="api_customer_list"),
     path(
@@ -67,5 +97,17 @@ urlpatterns = [
         "api/customers/<uuid:pk>/update/",
         views.CustomerUpdateAPIView.as_view(),
         name="api_customer_update",
+    ),
+    # Gift card API endpoints
+    path("api/gift-cards/", views.GiftCardListAPIView.as_view(), name="api_gift_card_list"),
+    path(
+        "api/gift-cards/<uuid:pk>/",
+        views.GiftCardDetailAPIView.as_view(),
+        name="api_gift_card_detail",
+    ),
+    path(
+        "api/gift-cards/create/",
+        views.GiftCardCreateAPIView.as_view(),
+        name="api_gift_card_create",
     ),
 ]

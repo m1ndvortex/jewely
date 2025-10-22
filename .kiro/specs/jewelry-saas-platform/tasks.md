@@ -199,7 +199,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Calculate tier-specific discounts
     - _Requirements: 36_
   
-  - [ ] 6.4 Implement gift cards and store credit
+  - [x] 6.4 Implement gift cards and store credit
     - Create GiftCard model with unique codes and balances
     - Implement gift card issuance and redemption
     - Create store credit management interface

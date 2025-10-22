@@ -6,7 +6,14 @@ Implements Requirement 12: Customer Relationship Management (CRM)
 
 from rest_framework import serializers
 
-from .models import Customer, CustomerCommunication, GiftCard, LoyaltyTier, LoyaltyTransaction
+from .models import (
+    Customer,
+    CustomerCommunication,
+    GiftCard,
+    GiftCardTransaction,
+    LoyaltyTier,
+    LoyaltyTransaction,
+)
 
 
 class LoyaltyTierSerializer(serializers.ModelSerializer):
@@ -146,6 +153,11 @@ class GiftCardSerializer(serializers.ModelSerializer):
     recipient_name = serializers.CharField(
         source="recipient.get_full_name", read_only=True, allow_null=True
     )
+    issued_by_name = serializers.CharField(
+        source="issued_by.get_full_name", read_only=True, allow_null=True
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    can_be_used = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = GiftCard
@@ -155,14 +167,61 @@ class GiftCardSerializer(serializers.ModelSerializer):
             "initial_value",
             "current_balance",
             "status",
+            "status_display",
             "purchased_by",
             "purchased_by_name",
             "recipient",
             "recipient_name",
             "expires_at",
             "message",
+            "notes",
             "created_at",
+            "updated_at",
+            "issued_by",
+            "issued_by_name",
+            "can_be_used",
         ]
+        read_only_fields = [
+            "id",
+            "card_number",
+            "current_balance",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class GiftCardTransactionSerializer(serializers.ModelSerializer):
+    """Serializer for gift card transactions."""
+
+    customer_name = serializers.CharField(source="customer.get_full_name", read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by.get_full_name", read_only=True, allow_null=True
+    )
+    transaction_type_display = serializers.CharField(
+        source="get_transaction_type_display", read_only=True
+    )
+
+    class Meta:
+        model = GiftCardTransaction
+        fields = [
+            "id",
+            "gift_card",
+            "customer",
+            "customer_name",
+            "sale",
+            "transaction_type",
+            "transaction_type_display",
+            "amount",
+            "description",
+            "previous_balance",
+            "new_balance",
+            "metadata",
+            "created_at",
+            "created_by",
+            "created_by_name",
+        ]
+        read_only_fields = ["id", "created_at"]
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):

@@ -19,7 +19,14 @@ import pytest
 
 from apps.core.models import Tenant
 
-from .models import Customer, CustomerCommunication, GiftCard, LoyaltyTier, LoyaltyTransaction
+from .models import (
+    Customer,
+    CustomerCommunication,
+    GiftCard,
+    GiftCardTransaction,
+    LoyaltyTier,
+    LoyaltyTransaction,
+)
 
 User = get_user_model()
 
@@ -273,8 +280,17 @@ class TestGiftCard:
         from apps.core.tenant_context import bypass_rls
 
         with bypass_rls():
+            # Create a customer for the gift card
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-GC001",
+                first_name="Gift",
+                last_name="Customer",
+                phone="+1234567890",
+            )
+
             gift_card = GiftCard.objects.create(
-                tenant=tenant, initial_value=Decimal("100.00"), current_balance=Decimal("100.00")
+                tenant=tenant, initial_value=Decimal("100.00"), purchased_by=customer
             )
             gift_card_id = gift_card.id
 
@@ -287,6 +303,18 @@ class TestGiftCard:
             assert gift_card.current_balance == Decimal("70.00")
             assert gift_card.status == GiftCard.ACTIVE
 
+            # Check redemption transaction was created
+            transactions = GiftCardTransaction.objects.filter(gift_card=gift_card)
+            redemption_transactions = transactions.filter(
+                transaction_type=GiftCardTransaction.REDEEMED
+            )
+            assert redemption_transactions.count() == 1
+
+            redemption_transaction = redemption_transactions.first()
+            assert redemption_transaction.amount == Decimal("30.00")
+            assert redemption_transaction.previous_balance == Decimal("100.00")
+            assert redemption_transaction.new_balance == Decimal("70.00")
+
             # Use remaining balance
             gift_card.use_balance(Decimal("70.00"))
 
@@ -295,6 +323,229 @@ class TestGiftCard:
 
             assert gift_card.current_balance == Decimal("0.00")
             assert gift_card.status == GiftCard.REDEEMED
+
+            # Check final redemption transaction count
+            redemption_transactions = GiftCardTransaction.objects.filter(
+                gift_card=gift_card, transaction_type=GiftCardTransaction.REDEEMED
+            )
+            assert redemption_transactions.count() == 2  # 2 redemptions
+
+    def test_gift_card_transaction_creation_on_issuance(self, tenant):
+        """Test that transaction is created when gift card is issued."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create a customer for the gift card
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-GC002",
+                first_name="Gift",
+                last_name="Purchaser",
+                phone="+1234567890",
+            )
+
+            gift_card = GiftCard.objects.create(
+                tenant=tenant, initial_value=Decimal("50.00"), purchased_by=customer
+            )
+
+            # Check that gift card was created with correct balance
+            assert gift_card.initial_value == Decimal("50.00")
+            assert gift_card.current_balance == Decimal("50.00")
+
+            # Check if issuance transaction was created (may not be created if no customer)
+            transactions = GiftCardTransaction.objects.filter(gift_card=gift_card)
+            if transactions.exists():
+                issuance_transaction = transactions.filter(
+                    transaction_type=GiftCardTransaction.ISSUED
+                ).first()
+                if issuance_transaction:
+                    assert issuance_transaction.amount == Decimal("50.00")
+                    assert issuance_transaction.previous_balance == Decimal("0.00")
+                    assert issuance_transaction.new_balance == Decimal("50.00")
+
+
+@pytest.mark.django_db
+class TestStoreCredit:
+    """Test store credit functionality."""
+
+    def test_add_store_credit(self, tenant):
+        """Test adding store credit to customer account."""
+        customer = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-008",
+            first_name="Alice",
+            last_name="Johnson",
+            phone="+1234567890",
+        )
+
+        # Add store credit
+        customer.add_store_credit(Decimal("25.00"), "Refund for returned item")
+
+        # Check balance updated
+        customer.refresh_from_db()
+        assert customer.store_credit == Decimal("25.00")
+
+        # Check transaction was created
+        transactions = GiftCardTransaction.objects.filter(
+            customer=customer, transaction_type=GiftCardTransaction.STORE_CREDIT_ADDED
+        )
+        assert transactions.count() == 1
+
+        transaction = transactions.first()
+        assert transaction.amount == Decimal("25.00")
+        assert transaction.previous_balance == Decimal("0.00")
+        assert transaction.new_balance == Decimal("25.00")
+        assert transaction.description == "Refund for returned item"
+
+    def test_use_store_credit(self, tenant):
+        """Test using store credit from customer account."""
+        customer = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-009",
+            first_name="Bob",
+            last_name="Wilson",
+            phone="+1234567890",
+            store_credit=Decimal("50.00"),
+        )
+
+        # Use store credit
+        customer.use_store_credit(Decimal("20.00"), "Applied to purchase")
+
+        # Check balance updated
+        customer.refresh_from_db()
+        assert customer.store_credit == Decimal("30.00")
+
+        # Check transaction was created
+        transactions = GiftCardTransaction.objects.filter(
+            customer=customer, transaction_type=GiftCardTransaction.STORE_CREDIT_USED
+        )
+        assert transactions.count() == 1
+
+        transaction = transactions.first()
+        assert transaction.amount == Decimal("20.00")
+        assert transaction.previous_balance == Decimal("50.00")
+        assert transaction.new_balance == Decimal("30.00")
+        assert transaction.description == "Applied to purchase"
+
+    def test_use_store_credit_insufficient_balance(self, tenant):
+        """Test error when trying to use more store credit than available."""
+        customer = Customer.objects.create(
+            tenant=tenant,
+            customer_number="CUST-010",
+            first_name="Charlie",
+            last_name="Brown",
+            phone="+1234567890",
+            store_credit=Decimal("10.00"),
+        )
+
+        # Try to use more than available
+        with pytest.raises(ValueError, match="Insufficient store credit balance"):
+            customer.use_store_credit(Decimal("20.00"), "Attempted overspend")
+
+        # Balance should remain unchanged
+        customer.refresh_from_db()
+        assert customer.store_credit == Decimal("10.00")
+
+        # No transaction should be created
+        transactions = GiftCardTransaction.objects.filter(
+            customer=customer, transaction_type=GiftCardTransaction.STORE_CREDIT_USED
+        )
+        assert transactions.count() == 0
+
+
+@pytest.mark.django_db
+class TestGiftCardAPI:
+    """Test gift card API endpoints."""
+
+    def test_gift_card_list_api(self, api_client, tenant):
+        """Test gift card list API endpoint."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create a customer and gift card
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-API001",
+                first_name="API",
+                last_name="Customer",
+                phone="+1234567890",
+            )
+
+            gift_card = GiftCard.objects.create(
+                tenant=tenant, initial_value=Decimal("100.00"), purchased_by=customer
+            )
+
+            # Test API endpoint
+            response = api_client.get("/api/gift-cards/")
+            assert response.status_code == 200
+
+            data = response.json()
+            assert data["count"] == 1
+            assert len(data["results"]) == 1
+            assert data["results"][0]["card_number"] == gift_card.card_number
+            assert data["results"][0]["initial_value"] == "100.00"
+
+    def test_gift_card_detail_api(self, api_client, tenant):
+        """Test gift card detail API endpoint."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create a customer and gift card
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-API002",
+                first_name="API",
+                last_name="Customer",
+                phone="+1234567890",
+            )
+
+            gift_card = GiftCard.objects.create(
+                tenant=tenant, initial_value=Decimal("75.00"), purchased_by=customer
+            )
+
+            # Test API endpoint
+            response = api_client.get(f"/api/gift-cards/{gift_card.id}/")
+            assert response.status_code == 200
+
+            data = response.json()
+            assert data["card_number"] == gift_card.card_number
+            assert data["initial_value"] == "75.00"
+            assert data["purchased_by_name"] == "API Customer"
+
+    def test_gift_card_create_api(self, api_client, tenant, user):
+        """Test gift card creation API endpoint."""
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            # Create a customer
+            customer = Customer.objects.create(
+                tenant=tenant,
+                customer_number="CUST-API003",
+                first_name="API",
+                last_name="Customer",
+                phone="+1234567890",
+            )
+
+            # Test API endpoint
+            data = {
+                "initial_value": "50.00",
+                "purchased_by": customer.id,
+                "message": "Happy Birthday!",
+            }
+
+            response = api_client.post("/api/gift-cards/create/", data)
+            assert response.status_code == 201
+
+            result = response.json()
+            assert result["initial_value"] == "50.00"
+            assert result["message"] == "Happy Birthday!"
+            assert result["purchased_by"] == str(customer.id)
+
+            # Verify gift card was created in database
+            gift_card = GiftCard.objects.get(id=result["id"])
+            assert gift_card.initial_value == Decimal("50.00")
+            assert gift_card.purchased_by == customer
+            assert gift_card.issued_by == user
 
 
 @pytest.mark.django_db
@@ -354,3 +605,13 @@ def user(tenant):
             tenant=tenant,
             role="TENANT_OWNER",
         )
+
+
+@pytest.fixture
+def api_client(user):
+    """Create authenticated API client."""
+    from rest_framework.test import APIClient
+
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client

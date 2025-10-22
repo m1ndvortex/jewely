@@ -2,7 +2,14 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import Customer, CustomerCommunication, GiftCard, LoyaltyTier, LoyaltyTransaction
+from .models import (
+    Customer,
+    CustomerCommunication,
+    GiftCard,
+    GiftCardTransaction,
+    LoyaltyTier,
+    LoyaltyTransaction,
+)
 
 
 @admin.register(LoyaltyTier)
@@ -86,6 +93,61 @@ class CustomerCommunicationInline(admin.TabularInline):
 
     def has_change_permission(self, request, obj=None):
         return False  # Make communications read-only in inline
+
+
+class GiftCardTransactionInline(admin.TabularInline):
+    """Inline for gift card transactions."""
+
+    model = GiftCardTransaction
+    extra = 0
+    readonly_fields = ["created_at", "created_by", "previous_balance", "new_balance"]
+    fields = [
+        "transaction_type",
+        "amount",
+        "description",
+        "previous_balance",
+        "new_balance",
+        "created_at",
+    ]
+
+    def has_add_permission(self, request, obj=None):
+        return False  # Prevent adding transactions through inline
+
+    def has_change_permission(self, request, obj=None):
+        return False  # Make transactions read-only in inline
+
+
+class StoreCreditTransactionInline(admin.TabularInline):
+    """Inline for store credit transactions."""
+
+    model = GiftCardTransaction
+    extra = 0
+    readonly_fields = ["created_at", "created_by", "previous_balance", "new_balance"]
+    fields = [
+        "transaction_type",
+        "amount",
+        "description",
+        "previous_balance",
+        "new_balance",
+        "created_at",
+    ]
+
+    def get_queryset(self, request):
+        """Filter to show only store credit transactions."""
+        qs = super().get_queryset(request)
+        return qs.filter(
+            transaction_type__in=[
+                GiftCardTransaction.STORE_CREDIT_ADDED,
+                GiftCardTransaction.STORE_CREDIT_USED,
+                GiftCardTransaction.STORE_CREDIT_REFUNDED,
+            ]
+        )
+
+    def has_add_permission(self, request, obj=None):
+        return False  # Prevent adding transactions through inline
+
+    def has_change_permission(self, request, obj=None):
+        return False  # Make transactions read-only in inline
 
 
 @admin.register(Customer)
@@ -185,7 +247,7 @@ class CustomerAdmin(admin.ModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
-    inlines = [LoyaltyTransactionInline, CustomerCommunicationInline]
+    inlines = [LoyaltyTransactionInline, StoreCreditTransactionInline, CustomerCommunicationInline]
 
     def get_full_name(self, obj):
         """Display customer's full name."""
@@ -281,12 +343,58 @@ class GiftCardAdmin(admin.ModelAdmin):
         ("Audit", {"fields": ("created_at", "updated_at", "issued_by")}),
     )
 
+    inlines = [GiftCardTransactionInline]
+
     def get_readonly_fields(self, request, obj=None):
         """Make card_number readonly after creation."""
         readonly = list(self.readonly_fields)
         if obj:  # Editing existing object
             readonly.append("initial_value")
         return readonly
+
+
+@admin.register(GiftCardTransaction)
+class GiftCardTransactionAdmin(admin.ModelAdmin):
+    """Admin interface for GiftCardTransaction model."""
+
+    list_display = [
+        "gift_card",
+        "customer",
+        "transaction_type",
+        "amount",
+        "description",
+        "previous_balance",
+        "new_balance",
+        "created_at",
+        "created_by",
+    ]
+
+    list_filter = [
+        "transaction_type",
+        "created_at",
+        "customer__tenant",
+    ]
+
+    search_fields = [
+        "gift_card__card_number",
+        "customer__first_name",
+        "customer__last_name",
+        "customer__customer_number",
+        "description",
+    ]
+
+    ordering = ["-created_at"]
+
+    readonly_fields = ["created_at"]
+
+    fieldsets = (
+        (None, {"fields": ("gift_card", "customer", "transaction_type")}),
+        ("Financial", {"fields": ("amount", "previous_balance", "new_balance")}),
+        ("Details", {"fields": ("description",)}),
+        ("Related Objects", {"fields": ("sale",), "classes": ("collapse",)}),
+        ("Metadata", {"fields": ("metadata",), "classes": ("collapse",)}),
+        ("Audit", {"fields": ("created_at", "created_by")}),
+    )
 
 
 @admin.register(CustomerCommunication)

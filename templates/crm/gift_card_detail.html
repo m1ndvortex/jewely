@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Gift Card {{ gift_card.card_number }} - CRM{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+            <a href="{% url 'crm:gift_card_list' %}" 
+               class="text-gray-600 hover:text-gray-800 mr-4">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Gift Card {{ gift_card.card_number }}</h1>
+                <p class="text-gray-600">Gift card details and transaction history</p>
+            </div>
+        </div>
+        
+        <div class="flex space-x-3">
+            {% if gift_card.status == 'ACTIVE' and gift_card.current_balance > 0 %}
+                <button onclick="redeemGiftCard()" 
+                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fas fa-money-bill-wave mr-2"></i>Redeem
+                </button>
+            {% endif %}
+            
+            {% if gift_card.status == 'ACTIVE' %}
+                <button onclick="cancelGiftCard()" 
+                        class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fas fa-ban mr-2"></i>Cancel
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Gift Card Information -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Gift Card Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Card Number</label>
+                        <p class="mt-1 text-lg font-mono text-gray-900">{{ gift_card.card_number }}</p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Status</label>
+                        <p class="mt-1">
+                            <span class="inline-flex px-2 py-1 text-sm font-semibold rounded-full
+                                {% if gift_card.status == 'ACTIVE' %}bg-green-100 text-green-800
+                                {% elif gift_card.status == 'REDEEMED' %}bg-gray-100 text-gray-800
+                                {% elif gift_card.status == 'EXPIRED' %}bg-red-100 text-red-800
+                                {% elif gift_card.status == 'CANCELLED' %}bg-yellow-100 text-yellow-800
+                                {% endif %}">
+                                {{ gift_card.get_status_display }}
+                            </span>
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Initial Value</label>
+                        <p class="mt-1 text-lg font-semibold text-gray-900">${{ gift_card.initial_value|floatformat:2 }}</p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Current Balance</label>
+                        <p class="mt-1 text-lg font-semibold 
+                           {% if gift_card.current_balance > 0 %}text-green-600{% else %}text-gray-500{% endif %}">
+                            ${{ gift_card.current_balance|floatformat:2 }}
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Purchased By</label>
+                        <p class="mt-1 text-gray-900">
+                            {% if gift_card.purchased_by %}
+                                <a href="{% url 'crm:customer_detail' gift_card.purchased_by.id %}" 
+                                   class="text-blue-600 hover:text-blue-800">
+                                    {{ gift_card.purchased_by.get_full_name }}
+                                </a>
+                            {% else %}
+                                <span class="text-gray-500">-</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Recipient</label>
+                        <p class="mt-1 text-gray-900">
+                            {% if gift_card.recipient %}
+                                <a href="{% url 'crm:customer_detail' gift_card.recipient.id %}" 
+                                   class="text-blue-600 hover:text-blue-800">
+                                    {{ gift_card.recipient.get_full_name }}
+                                </a>
+                            {% else %}
+                                <span class="text-gray-500">-</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Created Date</label>
+                        <p class="mt-1 text-gray-900">{{ gift_card.created_at|date:"M d, Y g:i A" }}</p>
+                    </div>
+                    
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Expiration Date</label>
+                        <p class="mt-1 text-gray-900">
+                            {% if gift_card.expires_at %}
+                                {{ gift_card.expires_at|date:"M d, Y" }}
+                                {% if gift_card.expires_at < today %}
+                                    <span class="text-red-600 text-sm">(Expired)</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-gray-500">No expiration</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                {% if gift_card.message %}
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <label class="text-sm font-medium text-gray-500">Gift Message</label>
+                    <p class="mt-1 text-gray-900 italic">"{{ gift_card.message }}"</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Transaction History -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Transaction History</h2>
+                
+                {% if transactions %}
+                    <div class="space-y-4">
+                        {% for transaction in transactions %}
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                            {% if transaction.transaction_type == 'ISSUED' %}bg-blue-100 text-blue-800
+                                            {% elif transaction.transaction_type == 'REDEEMED' %}bg-green-100 text-green-800
+                                            {% elif transaction.transaction_type == 'CANCELLED' %}bg-red-100 text-red-800
+                                            {% elif transaction.transaction_type == 'EXPIRED' %}bg-gray-100 text-gray-800
+                                            {% endif %}">
+                                            {{ transaction.get_transaction_type_display }}
+                                        </span>
+                                        <span class="text-sm text-gray-500">
+                                            {{ transaction.created_at|date:"M d, Y g:i A" }}
+                                        </span>
+                                    </div>
+                                    
+                                    <p class="mt-2 text-sm text-gray-900">{{ transaction.description }}</p>
+                                    
+                                    {% if transaction.created_by %}
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            By: {{ transaction.created_by.get_full_name }}
+                                        </p>
+                                    {% endif %}
+                                    
+                                    {% if transaction.sale %}
+                                        <p class="mt-1 text-xs text-gray-500">
+                                            Sale: {{ transaction.sale.sale_number }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="text-right">
+                                    <p class="text-sm font-semibold 
+                                       {% if transaction.transaction_type == 'ISSUED' %}text-green-600
+                                       {% elif transaction.transaction_type == 'REDEEMED' %}text-red-600
+                                       {% else %}text-gray-600
+                                       {% endif %}">
+                                        {% if transaction.transaction_type == 'REDEEMED' %}-{% endif %}${{ transaction.amount|floatformat:2 }}
+                                    </p>
+                                    
+                                    {% if transaction.new_balance is not None %}
+                                        <p class="text-xs text-gray-500">
+                                            Balance: ${{ transaction.new_balance|floatformat:2 }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-history text-3xl mb-3 text-gray-300"></i>
+                        <p>No transactions yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                
+                <div class="space-y-3">
+                    {% if gift_card.status == 'ACTIVE' and gift_card.current_balance > 0 %}
+                        <button onclick="redeemGiftCard()" 
+                                class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                            <i class="fas fa-money-bill-wave mr-2"></i>Redeem Balance
+                        </button>
+                    {% endif %}
+                    
+                    {% if gift_card.purchased_by %}
+                        <a href="{% url 'crm:customer_detail' gift_card.purchased_by.id %}" 
+                           class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition block text-center">
+                            <i class="fas fa-user mr-2"></i>View Purchaser
+                        </a>
+                    {% endif %}
+                    
+                    {% if gift_card.recipient and gift_card.recipient != gift_card.purchased_by %}
+                        <a href="{% url 'crm:customer_detail' gift_card.recipient.id %}" 
+                           class="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition block text-center">
+                            <i class="fas fa-gift mr-2"></i>View Recipient
+                        </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'crm:gift_card_list' %}" 
+                       class="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition block text-center">
+                        <i class="fas fa-list mr-2"></i>All Gift Cards
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Redeem Gift Card Modal -->
+<div id="redeemModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Redeem Gift Card</h3>
+                <form id="redeemForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Balance</label>
+                        <input type="text" value="${{ gift_card.current_balance|floatformat:2 }}" readonly 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                    </div>
+                    <div class="mb-4">
+                        <label for="redeemAmount" class="block text-sm font-medium text-gray-700 mb-2">Amount to Redeem</label>
+                        <input type="number" id="redeemAmount" name="amount" step="0.01" min="0.01" max="{{ gift_card.current_balance }}" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="redeemDescription" class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                        <textarea id="redeemDescription" name="description" rows="2"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Reason for redemption..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeRedeemModal()" 
+                                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
+                            Redeem
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Gift Card Modal -->
+<div id="cancelModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Cancel Gift Card</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Are you sure you want to cancel this gift card? This action cannot be undone.
+                </p>
+                <form id="cancelForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-6">
+                        <label for="cancelReason" class="block text-sm font-medium text-gray-700 mb-2">Reason for Cancellation</label>
+                        <textarea id="cancelReason" name="reason" rows="3" required
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Please provide a reason for cancelling this gift card..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeCancelModal()" 
+                                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition">
+                            Keep Active
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
+                            Cancel Gift Card
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function redeemGiftCard() {
+    document.getElementById('redeemModal').classList.remove('hidden');
+}
+
+function closeRedeemModal() {
+    document.getElementById('redeemModal').classList.add('hidden');
+    document.getElementById('redeemForm').reset();
+}
+
+function cancelGiftCard() {
+    document.getElementById('cancelModal').classList.remove('hidden');
+}
+
+function closeCancelModal() {
+    document.getElementById('cancelModal').classList.add('hidden');
+    document.getElementById('cancelForm').reset();
+}
+
+document.getElementById('redeemForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`{% url 'crm:gift_card_redeem' gift_card.id %}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while redeeming the gift card');
+    });
+});
+
+document.getElementById('cancelForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`{% url 'crm:gift_card_cancel' gift_card.id %}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while cancelling the gift card');
+    });
+});
+
+// Close modals when clicking outside
+document.getElementById('redeemModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRedeemModal();
+    }
+});
+
+document.getElementById('cancelModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCancelModal();
+    }
+});
+</script>
+{% endblock %}

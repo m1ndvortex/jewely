@@ -21,8 +21,20 @@ from rest_framework import filters, generics, permissions
 from apps.core.permissions import HasTenantAccess
 from apps.core.tenant_context import set_tenant_context
 
-from .models import Customer, CustomerCommunication, GiftCard, LoyaltyTier, LoyaltyTransaction
-from .serializers import CustomerDetailSerializer, CustomerListSerializer, CustomerSerializer
+from .models import (
+    Customer,
+    CustomerCommunication,
+    GiftCard,
+    GiftCardTransaction,
+    LoyaltyTier,
+    LoyaltyTransaction,
+)
+from .serializers import (
+    CustomerDetailSerializer,
+    CustomerListSerializer,
+    CustomerSerializer,
+    GiftCardSerializer,
+)
 
 
 class TenantContextMixin:
@@ -515,6 +527,90 @@ class CustomerUpdateAPIView(TenantContextMixin, generics.UpdateAPIView):
         return Customer.objects.filter(tenant=self.request.user.tenant)
 
 
+# Gift Card API Views
+
+
+class GiftCardListAPIView(TenantContextMixin, generics.ListAPIView):
+    """
+    API endpoint for gift card list with search and filters.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Support gift card issuance and balance tracking
+    """
+
+    serializer_class = GiftCardSerializer
+    permission_classes = [permissions.IsAuthenticated, HasTenantAccess]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        "card_number",
+        "purchased_by__first_name",
+        "purchased_by__last_name",
+        "recipient__first_name",
+        "recipient__last_name",
+    ]
+    ordering_fields = [
+        "card_number",
+        "initial_value",
+        "current_balance",
+        "created_at",
+        "expires_at",
+    ]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """Get gift cards for the authenticated user's tenant."""
+        if not hasattr(self.request.user, "tenant") or not self.request.user.tenant:
+            return GiftCard.objects.none()
+
+        queryset = GiftCard.objects.filter(tenant=self.request.user.tenant).select_related(
+            "purchased_by", "recipient", "issued_by"
+        )
+
+        # Apply filters
+        status = self.request.query_params.get("status")
+        if status:
+            queryset = queryset.filter(status=status)
+
+        return queryset
+
+
+class GiftCardDetailAPIView(TenantContextMixin, generics.RetrieveAPIView):
+    """
+    API endpoint for gift card detail.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Track gift card and credit transactions
+    """
+
+    serializer_class = GiftCardSerializer
+    permission_classes = [permissions.IsAuthenticated, HasTenantAccess]
+
+    def get_queryset(self):
+        """Get gift cards for the authenticated user's tenant."""
+        if not hasattr(self.request.user, "tenant") or not self.request.user.tenant:
+            return GiftCard.objects.none()
+
+        return GiftCard.objects.filter(tenant=self.request.user.tenant).select_related(
+            "purchased_by", "recipient", "issued_by"
+        )
+
+
+class GiftCardCreateAPIView(TenantContextMixin, generics.CreateAPIView):
+    """
+    API endpoint for gift card creation.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Support gift card issuance and balance tracking
+    """
+
+    serializer_class = GiftCardSerializer
+    permission_classes = [permissions.IsAuthenticated, HasTenantAccess]
+
+    def perform_create(self, serializer):
+        """Set tenant and issued_by."""
+        serializer.save(tenant=self.request.user.tenant, issued_by=self.request.user)
+
+
 # Loyalty Program Views
 
 
@@ -888,3 +984,401 @@ def referral_stats(request):
     }
 
     return render(request, "crm/referral_stats.html", context)
+
+
+# Gift Card Management Views
+
+
+@login_required
+@require_http_methods(["GET"])
+def gift_card_list(request):
+    """
+    Gift card list view with search and filters.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Support gift card issuance and balance tracking
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    # Get filter parameters
+    search_query = request.GET.get("q", "")
+    status_filter = request.GET.get("status", "")
+    sort_by = request.GET.get("sort", "-created_at")
+
+    # Base queryset
+    gift_cards = GiftCard.objects.filter(tenant=request.user.tenant).select_related(
+        "purchased_by", "recipient", "issued_by"
+    )
+
+    # Apply search
+    if search_query:
+        gift_cards = gift_cards.filter(
+            Q(card_number__icontains=search_query)
+            | Q(purchased_by__first_name__icontains=search_query)
+            | Q(purchased_by__last_name__icontains=search_query)
+            | Q(recipient__first_name__icontains=search_query)
+            | Q(recipient__last_name__icontains=search_query)
+        )
+
+    # Apply filters
+    if status_filter:
+        gift_cards = gift_cards.filter(status=status_filter)
+
+    # Apply sorting
+    valid_sort_fields = [
+        "card_number",
+        "-card_number",
+        "initial_value",
+        "-initial_value",
+        "current_balance",
+        "-current_balance",
+        "created_at",
+        "-created_at",
+        "expires_at",
+        "-expires_at",
+    ]
+    if sort_by in valid_sort_fields:
+        gift_cards = gift_cards.order_by(sort_by)
+
+    context = {
+        "gift_cards": gift_cards[:100],  # Limit to 100 for initial load
+        "search_query": search_query,
+        "status_filter": status_filter,
+        "sort_by": sort_by,
+        "status_choices": GiftCard.STATUS_CHOICES,
+    }
+
+    return render(request, "crm/gift_card_list.html", context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def gift_card_detail(request, gift_card_id):
+    """
+    Gift card detail view with transaction history.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Track gift card and credit transactions
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    gift_card = get_object_or_404(
+        GiftCard.objects.select_related("purchased_by", "recipient", "issued_by"),
+        id=gift_card_id,
+        tenant=request.user.tenant,
+    )
+
+    # Get transaction history
+    transactions = gift_card.transactions.select_related("created_by", "sale").order_by(
+        "-created_at"
+    )
+
+    context = {
+        "gift_card": gift_card,
+        "transactions": transactions,
+    }
+
+    return render(request, "crm/gift_card_detail.html", context)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def gift_card_create(request):
+    """
+    Gift card creation form.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Support gift card issuance and balance tracking
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    if request.method == "POST":
+        return gift_card_create_submit(request)
+
+    # Get customers for dropdown
+    customers = Customer.objects.filter(tenant=request.user.tenant, is_active=True).order_by(
+        "first_name", "last_name"
+    )
+
+    context = {
+        "customers": customers,
+    }
+
+    return render(request, "crm/gift_card_form.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def gift_card_create_submit(request):
+    """Handle gift card creation form submission."""
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        from datetime import datetime
+        from decimal import Decimal
+
+        # Get form data
+        initial_value = Decimal(request.POST.get("initial_value", "0"))
+        purchased_by_id = request.POST.get("purchased_by") or None
+        recipient_id = request.POST.get("recipient") or None
+        message = request.POST.get("message", "").strip()
+        expires_at = request.POST.get("expires_at") or None
+
+        if initial_value <= 0:
+            return JsonResponse({"error": "Initial value must be greater than 0"}, status=400)
+
+        # Validate customers belong to tenant
+        purchased_by = None
+        if purchased_by_id:
+            purchased_by = get_object_or_404(
+                Customer, id=purchased_by_id, tenant=request.user.tenant
+            )
+
+        recipient = None
+        if recipient_id:
+            recipient = get_object_or_404(Customer, id=recipient_id, tenant=request.user.tenant)
+
+        # Parse expiration date
+        expires_at_parsed = None
+        if expires_at:
+            expires_at_parsed = datetime.strptime(expires_at, "%Y-%m-%d").date()
+
+        # Create gift card
+        gift_card = GiftCard.objects.create(
+            tenant=request.user.tenant,
+            initial_value=initial_value,
+            purchased_by=purchased_by,
+            recipient=recipient,
+            message=message,
+            expires_at=expires_at_parsed,
+            issued_by=request.user,
+        )
+
+        return redirect("crm:gift_card_detail", gift_card_id=gift_card.id)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def gift_card_redeem(request, gift_card_id):
+    """
+    Redeem gift card balance.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Support gift card redemption
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    gift_card = get_object_or_404(GiftCard, id=gift_card_id, tenant=request.user.tenant)
+
+    try:
+        from decimal import Decimal
+
+        amount = Decimal(request.POST.get("amount", "0"))
+        description = request.POST.get("description", "").strip()
+
+        if amount <= 0:
+            return JsonResponse({"error": "Amount must be greater than 0"}, status=400)
+
+        # Use gift card balance
+        gift_card.use_balance(
+            amount=amount,
+            description=description or f"Manual redemption: ${amount}",
+            created_by=request.user,
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "remaining_balance": str(gift_card.current_balance),
+                "status": gift_card.status,
+                "message": f"Successfully redeemed ${amount}",
+            }
+        )
+
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def gift_card_cancel(request, gift_card_id):
+    """
+    Cancel a gift card.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Support gift card management
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    gift_card = get_object_or_404(GiftCard, id=gift_card_id, tenant=request.user.tenant)
+
+    try:
+        reason = request.POST.get("reason", "").strip()
+
+        if gift_card.status != GiftCard.ACTIVE:
+            return JsonResponse({"error": "Only active gift cards can be cancelled"}, status=400)
+
+        # Update status
+        gift_card.status = GiftCard.CANCELLED
+        gift_card.save(update_fields=["status", "updated_at"])
+
+        # Create transaction record
+        GiftCardTransaction.objects.create(
+            gift_card=gift_card,
+            customer=gift_card.recipient or gift_card.purchased_by,
+            transaction_type=GiftCardTransaction.CANCELLED,
+            amount=gift_card.current_balance,
+            description=reason or "Gift card cancelled",
+            previous_balance=gift_card.current_balance,
+            new_balance=gift_card.current_balance,
+            created_by=request.user,
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "status": gift_card.status,
+                "message": "Gift card cancelled successfully",
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# Store Credit Management Views
+
+
+@login_required
+@require_http_methods(["POST"])
+def store_credit_add(request, customer_id):
+    """
+    Add store credit to customer account.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Manage customer store credit balances with transaction history
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    try:
+        from decimal import Decimal
+
+        amount = Decimal(request.POST.get("amount", "0"))
+        description = request.POST.get("description", "").strip()
+
+        if amount <= 0:
+            return JsonResponse({"error": "Amount must be greater than 0"}, status=400)
+
+        # Add store credit
+        customer.add_store_credit(
+            amount=amount,
+            description=description or f"Store credit added: ${amount}",
+            created_by=request.user,
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "new_balance": str(customer.store_credit),
+                "message": f"Successfully added ${amount} store credit",
+            }
+        )
+
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def store_credit_use(request, customer_id):
+    """
+    Use store credit from customer account.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Manage customer store credit balances with transaction history
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    try:
+        from decimal import Decimal
+
+        amount = Decimal(request.POST.get("amount", "0"))
+        description = request.POST.get("description", "").strip()
+
+        if amount <= 0:
+            return JsonResponse({"error": "Amount must be greater than 0"}, status=400)
+
+        # Use store credit
+        customer.use_store_credit(
+            amount=amount,
+            description=description or f"Store credit used: ${amount}",
+            created_by=request.user,
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "new_balance": str(customer.store_credit),
+                "message": f"Successfully used ${amount} store credit",
+            }
+        )
+
+    except ValueError as e:
+        return JsonResponse({"error": str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def store_credit_transactions(request, customer_id):
+    """
+    View store credit transaction history for a customer.
+
+    Implements Requirement 12: Customer Relationship Management (CRM)
+    - Track gift card and credit transactions
+    """
+    if not hasattr(request.user, "tenant") or not request.user.tenant:
+        return redirect("/accounts/login/")
+
+    customer = get_object_or_404(Customer, id=customer_id, tenant=request.user.tenant)
+
+    # Get store credit transactions
+    transactions = (
+        GiftCardTransaction.objects.filter(
+            customer=customer,
+            transaction_type__in=[
+                GiftCardTransaction.STORE_CREDIT_ADDED,
+                GiftCardTransaction.STORE_CREDIT_USED,
+                GiftCardTransaction.STORE_CREDIT_REFUNDED,
+            ],
+        )
+        .select_related("created_by", "sale")
+        .order_by("-created_at")
+    )
+
+    context = {
+        "customer": customer,
+        "transactions": transactions,
+    }
+
+    return render(request, "crm/store_credit_transactions.html", context)

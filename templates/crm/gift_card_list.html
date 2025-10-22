@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Gift Cards - CRM{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Gift Cards</h1>
+            <p class="text-gray-600">Manage gift card issuance and redemption</p>
+        </div>
+        <a href="{% url 'crm:gift_card_create' %}" 
+           class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+            <i class="fas fa-plus mr-2"></i>Issue Gift Card
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <form method="get" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-64">
+                <label for="q" class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <input type="text" 
+                       id="q" 
+                       name="q" 
+                       value="{{ search_query }}"
+                       placeholder="Search by card number, customer name..."
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div class="min-w-48">
+                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select id="status" 
+                        name="status"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Statuses</option>
+                    {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="min-w-48">
+                <label for="sort" class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                <select id="sort" 
+                        name="sort"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest First</option>
+                    <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest First</option>
+                    <option value="-initial_value" {% if sort_by == "-initial_value" %}selected{% endif %}>Highest Value</option>
+                    <option value="initial_value" {% if sort_by == "initial_value" %}selected{% endif %}>Lowest Value</option>
+                    <option value="-current_balance" {% if sort_by == "-current_balance" %}selected{% endif %}>Highest Balance</option>
+                    <option value="current_balance" {% if sort_by == "current_balance" %}selected{% endif %}>Lowest Balance</option>
+                </select>
+            </div>
+            
+            <button type="submit" 
+                    class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition">
+                <i class="fas fa-search mr-2"></i>Filter
+            </button>
+            
+            <a href="{% url 'crm:gift_card_list' %}" 
+               class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition">
+                Clear
+            </a>
+        </form>
+    </div>
+
+    <!-- Gift Cards Table -->
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Card Number
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Purchased By
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Recipient
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Initial Value
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Current Balance
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Created
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for gift_card in gift_cards %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ gift_card.card_number }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">
+                                {% if gift_card.purchased_by %}
+                                    <a href="{% url 'crm:customer_detail' gift_card.purchased_by.id %}" 
+                                       class="text-blue-600 hover:text-blue-800">
+                                        {{ gift_card.purchased_by.get_full_name }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-gray-500">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">
+                                {% if gift_card.recipient %}
+                                    <a href="{% url 'crm:customer_detail' gift_card.recipient.id %}" 
+                                       class="text-blue-600 hover:text-blue-800">
+                                        {{ gift_card.recipient.get_full_name }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-gray-500">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">
+                                ${{ gift_card.initial_value|floatformat:2 }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">
+                                ${{ gift_card.current_balance|floatformat:2 }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                {% if gift_card.status == 'ACTIVE' %}bg-green-100 text-green-800
+                                {% elif gift_card.status == 'REDEEMED' %}bg-gray-100 text-gray-800
+                                {% elif gift_card.status == 'EXPIRED' %}bg-red-100 text-red-800
+                                {% elif gift_card.status == 'CANCELLED' %}bg-yellow-100 text-yellow-800
+                                {% endif %}">
+                                {{ gift_card.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ gift_card.created_at|date:"M d, Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="{% url 'crm:gift_card_detail' gift_card.id %}" 
+                               class="text-blue-600 hover:text-blue-900 mr-3">
+                                View
+                            </a>
+                            {% if gift_card.status == 'ACTIVE' and gift_card.current_balance > 0 %}
+                                <button onclick="redeemGiftCard('{{ gift_card.id }}', '{{ gift_card.card_number }}', '{{ gift_card.current_balance }}')"
+                                        class="text-green-600 hover:text-green-900 mr-3">
+                                    Redeem
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-gift text-4xl mb-4 text-gray-300"></i>
+                            <p class="text-lg">No gift cards found</p>
+                            <p class="text-sm">Create your first gift card to get started</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Redeem Gift Card Modal -->
+<div id="redeemModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Redeem Gift Card</h3>
+                <form id="redeemForm" method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
+                        <input type="text" id="redeemCardNumber" readonly 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Balance</label>
+                        <input type="text" id="redeemCurrentBalance" readonly 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                    </div>
+                    <div class="mb-4">
+                        <label for="redeemAmount" class="block text-sm font-medium text-gray-700 mb-2">Amount to Redeem</label>
+                        <input type="number" id="redeemAmount" name="amount" step="0.01" min="0.01" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="redeemDescription" class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                        <textarea id="redeemDescription" name="description" rows="2"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Reason for redemption..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" onclick="closeRedeemModal()" 
+                                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
+                            Redeem
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentGiftCardId = null;
+
+function redeemGiftCard(giftCardId, cardNumber, currentBalance) {
+    currentGiftCardId = giftCardId;
+    document.getElementById('redeemCardNumber').value = cardNumber;
+    document.getElementById('redeemCurrentBalance').value = '$' + parseFloat(currentBalance).toFixed(2);
+    document.getElementById('redeemAmount').max = currentBalance;
+    document.getElementById('redeemModal').classList.remove('hidden');
+}
+
+function closeRedeemModal() {
+    document.getElementById('redeemModal').classList.add('hidden');
+    document.getElementById('redeemForm').reset();
+    currentGiftCardId = null;
+}
+
+document.getElementById('redeemForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!currentGiftCardId) return;
+    
+    const formData = new FormData(this);
+    
+    fetch(`/crm/gift-cards/${currentGiftCardId}/redeem/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while redeeming the gift card');
+    });
+});
+
+// Close modal when clicking outside
+document.getElementById('redeemModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRedeemModal();
+    }
+});
+</script>
+{% endblock %}
