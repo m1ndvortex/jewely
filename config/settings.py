@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     # Local apps
     "apps.core",
     "apps.inventory",
+    "apps.sales",
 ]
 
 # Site ID for django-allauth

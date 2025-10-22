@@ -131,6 +131,21 @@ class Branch(models.Model):
 
     phone = models.CharField(max_length=20, blank=True, help_text="Branch phone number")
 
+    manager = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managed_branches",
+        help_text="Branch manager (must be a user from the same tenant)",
+    )
+
+    opening_hours = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Branch opening hours (e.g., {'monday': '9:00-18:00', 'tuesday': '9:00-18:00', ...})",
+    )
+
     is_active = models.BooleanField(default=True, help_text="Whether the branch is active")
 
     created_at = models.DateTimeField(auto_now_add=True)

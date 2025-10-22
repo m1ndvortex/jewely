@@ -129,7 +129,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 9, 28_
 
 - [ ] 5. Point of Sale (POS) System
-  - [ ] 5.1 Create sales data models
+  - [x] 5.1 Create sales data models
     - Create Branch model with tenant FK, name, address, manager, opening_hours
     - Create Terminal model with branch FK, terminal_id, is_active
     - Create Sale model with all fields (sale_number, customer, branch, terminal, employee, amounts, payment_method, status)

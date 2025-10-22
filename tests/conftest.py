@@ -84,6 +84,9 @@ def tenant():
     """
     Fixture for creating a test tenant.
     Uses RLS bypass to create tenant (only platform admins can create tenants).
+
+    Note: No explicit cleanup needed - Django's test database transaction
+    rollback handles cleanup automatically.
     """
     from apps.core.models import Tenant
     from apps.core.tenant_context import bypass_rls
@@ -92,16 +95,16 @@ def tenant():
         tenant = Tenant.objects.create(
             company_name="Test Jewelry Shop", slug="test-shop", status="ACTIVE"
         )
-    yield tenant
-    # Cleanup
-    with bypass_rls():
-        tenant.delete()
+    return tenant
 
 
 @pytest.fixture
 def tenant_user(tenant, django_user_model):
     """
     Fixture for creating a test tenant user.
+
+    Note: No explicit cleanup needed - Django's test database transaction
+    rollback handles cleanup automatically.
     """
     from apps.core.tenant_context import bypass_rls
 
@@ -113,15 +116,16 @@ def tenant_user(tenant, django_user_model):
             tenant=tenant,
             role="TENANT_OWNER",
         )
-    yield user
-    with bypass_rls():
-        user.delete()
+    return user
 
 
 @pytest.fixture
 def branch(tenant):
     """
     Fixture for creating a test branch.
+
+    Note: No explicit cleanup needed - Django's test database transaction
+    rollback handles cleanup automatically.
     """
     from apps.core.models import Branch
     from apps.core.tenant_context import tenant_context
@@ -131,9 +135,6 @@ def branch(tenant):
             tenant=tenant,
             name="Main Branch",
             address="123 Main St",
-            city="Test City",
             phone="555-0100",
         )
-    yield branch
-    with tenant_context(tenant.id):
-        branch.delete()
+    return branch
