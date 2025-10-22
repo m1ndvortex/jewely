@@ -21,6 +21,7 @@ import pytest
 from rest_framework import status
 
 from apps.core.models import Branch, Tenant, User
+from apps.core.tenant_context import bypass_rls, tenant_context
 from apps.inventory.models import InventoryItem, ProductCategory
 
 
@@ -31,41 +32,45 @@ class TestInventoryReports:
     @pytest.fixture
     def setup_data(self):
         """Set up test data for reports."""
-        # Create tenant
-        tenant = Tenant.objects.create(
-            company_name="Test Jewelry Shop", slug="test-shop", status="ACTIVE"
-        )
+        # Create tenant with RLS bypass (only platform admins can create tenants)
+        with bypass_rls():
+            tenant = Tenant.objects.create(
+                company_name="Test Jewelry Shop", slug="test-shop", status="ACTIVE"
+            )
 
-        # Create user
-        user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123",
-            tenant=tenant,
-            role="TENANT_OWNER",
-        )
+            # Create user
+            user = User.objects.create_user(
+                username="testuser",
+                email="test@example.com",
+                password="testpass123",
+                tenant=tenant,
+                role="TENANT_OWNER",
+            )
 
-        # Create branches
-        branch1 = Branch.objects.create(
-            tenant=tenant,
-            name="Main Branch",
-            address="123 Main St",
-            phone="555-0001",
-            is_active=True,
-        )
+        # Create branches with tenant context
+        with tenant_context(tenant.id):
+            branch1 = Branch.objects.create(
+                tenant=tenant,
+                name="Main Branch",
+                address="123 Main St",
+                phone="555-0001",
+                is_active=True,
+            )
 
-        branch2 = Branch.objects.create(
-            tenant=tenant,
-            name="Second Branch",
-            address="456 Second St",
-            phone="555-0002",
-            is_active=True,
-        )
+            branch2 = Branch.objects.create(
+                tenant=tenant,
+                name="Second Branch",
+                address="456 Second St",
+                phone="555-0002",
+                is_active=True,
+            )
 
-        # Create categories
-        category1 = ProductCategory.objects.create(tenant=tenant, name="Rings", is_active=True)
+            # Create categories
+            category1 = ProductCategory.objects.create(tenant=tenant, name="Rings", is_active=True)
 
-        category2 = ProductCategory.objects.create(tenant=tenant, name="Necklaces", is_active=True)
+            category2 = ProductCategory.objects.create(
+                tenant=tenant, name="Necklaces", is_active=True
+            )
 
         return {
             "tenant": tenant,
@@ -79,33 +84,35 @@ class TestInventoryReports:
     def test_inventory_valuation_report(self, api_client, setup_data):
         """Test inventory valuation report generation."""
         # Create inventory items with different values
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Gold Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Gold Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
 
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="NECK-001",
-            name="Diamond Necklace",
-            category=setup_data["category2"],
-            branch=setup_data["branch2"],
-            karat=24,
-            weight_grams=Decimal("20.000"),
-            cost_price=Decimal("5000.00"),
-            selling_price=Decimal("7000.00"),
-            quantity=2,
-            min_quantity=1,
-        )
+            with tenant_context(setup_data["tenant"].id):
+                InventoryItem.objects.create(
+                    tenant=setup_data["tenant"],
+                    sku="NECK-001",
+                    name="Diamond Necklace",
+                    category=setup_data["category2"],
+                    branch=setup_data["branch2"],
+                    karat=24,
+                    weight_grams=Decimal("20.000"),
+                    cost_price=Decimal("5000.00"),
+                    selling_price=Decimal("7000.00"),
+                    quantity=2,
+                    min_quantity=1,
+                )
 
         # Authenticate and make request
         api_client.force_authenticate(user=setup_data["user"])
@@ -144,33 +151,35 @@ class TestInventoryReports:
     def test_inventory_valuation_report_with_filters(self, api_client, setup_data):
         """Test inventory valuation report with branch filter."""
         # Create inventory items
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Gold Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Gold Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
 
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="NECK-001",
-            name="Diamond Necklace",
-            category=setup_data["category2"],
-            branch=setup_data["branch2"],
-            karat=24,
-            weight_grams=Decimal("20.000"),
-            cost_price=Decimal("5000.00"),
-            selling_price=Decimal("7000.00"),
-            quantity=2,
-            min_quantity=1,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="NECK-001",
+                name="Diamond Necklace",
+                category=setup_data["category2"],
+                branch=setup_data["branch2"],
+                karat=24,
+                weight_grams=Decimal("20.000"),
+                cost_price=Decimal("5000.00"),
+                selling_price=Decimal("7000.00"),
+                quantity=2,
+                min_quantity=1,
+            )
 
         # Authenticate and make request with branch filter
         api_client.force_authenticate(user=setup_data["user"])
@@ -187,49 +196,52 @@ class TestInventoryReports:
         """Test low stock alert report generation."""
         # Create items with different stock levels
         # Out of stock item
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Gold Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=0,
-            min_quantity=5,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Gold Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=0,
+                min_quantity=5,
+            )
 
         # Low stock item
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="NECK-001",
-            name="Diamond Necklace",
-            category=setup_data["category2"],
-            branch=setup_data["branch2"],
-            karat=24,
-            weight_grams=Decimal("20.000"),
-            cost_price=Decimal("5000.00"),
-            selling_price=Decimal("7000.00"),
-            quantity=2,
-            min_quantity=5,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="NECK-001",
+                name="Diamond Necklace",
+                category=setup_data["category2"],
+                branch=setup_data["branch2"],
+                karat=24,
+                weight_grams=Decimal("20.000"),
+                cost_price=Decimal("5000.00"),
+                selling_price=Decimal("7000.00"),
+                quantity=2,
+                min_quantity=5,
+            )
 
         # Normal stock item (should not appear in report)
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-002",
-            name="Silver Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("8.000"),
-            cost_price=Decimal("500.00"),
-            selling_price=Decimal("750.00"),
-            quantity=10,
-            min_quantity=3,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-002",
+                name="Silver Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("8.000"),
+                cost_price=Decimal("500.00"),
+                selling_price=Decimal("750.00"),
+                quantity=10,
+                min_quantity=3,
+            )
 
         # Authenticate and make request
         api_client.force_authenticate(user=setup_data["user"])
@@ -266,36 +278,40 @@ class TestInventoryReports:
         now = timezone.now()
 
         # Old item (dead stock - 100 days old)
-        old_item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Old Gold Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            old_item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Old Gold Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
+
         # Manually set old date
         InventoryItem.objects.filter(id=old_item.id).update(updated_at=now - timedelta(days=100))
 
         # Recent item (not dead stock - 30 days old)
-        recent_item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="NECK-001",
-            name="New Diamond Necklace",
-            category=setup_data["category2"],
-            branch=setup_data["branch2"],
-            karat=24,
-            weight_grams=Decimal("20.000"),
-            cost_price=Decimal("5000.00"),
-            selling_price=Decimal("7000.00"),
-            quantity=2,
-            min_quantity=1,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            recent_item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="NECK-001",
+                name="New Diamond Necklace",
+                category=setup_data["category2"],
+                branch=setup_data["branch2"],
+                karat=24,
+                weight_grams=Decimal("20.000"),
+                cost_price=Decimal("5000.00"),
+                selling_price=Decimal("7000.00"),
+                quantity=2,
+                min_quantity=1,
+            )
+
         # Manually set recent date
         InventoryItem.objects.filter(id=recent_item.id).update(updated_at=now - timedelta(days=30))
 
@@ -325,51 +341,57 @@ class TestInventoryReports:
         now = timezone.now()
 
         # Fast moving item (updated 5 days ago)
-        fast_item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Popular Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            fast_item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Popular Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
+
         InventoryItem.objects.filter(id=fast_item.id).update(updated_at=now - timedelta(days=5))
 
         # Slow moving item (updated 20 days ago)
-        slow_item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="NECK-001",
-            name="Slow Necklace",
-            category=setup_data["category2"],
-            branch=setup_data["branch2"],
-            karat=24,
-            weight_grams=Decimal("20.000"),
-            cost_price=Decimal("5000.00"),
-            selling_price=Decimal("7000.00"),
-            quantity=2,
-            min_quantity=1,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            slow_item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="NECK-001",
+                name="Slow Necklace",
+                category=setup_data["category2"],
+                branch=setup_data["branch2"],
+                karat=24,
+                weight_grams=Decimal("20.000"),
+                cost_price=Decimal("5000.00"),
+                selling_price=Decimal("7000.00"),
+                quantity=2,
+                min_quantity=1,
+            )
+
         InventoryItem.objects.filter(id=slow_item.id).update(updated_at=now - timedelta(days=20))
 
         # No movement item (updated 50 days ago)
-        no_move_item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-002",
-            name="Stagnant Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("8.000"),
-            cost_price=Decimal("500.00"),
-            selling_price=Decimal("750.00"),
-            quantity=3,
-            min_quantity=1,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            no_move_item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-002",
+                name="Stagnant Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("8.000"),
+                cost_price=Decimal("500.00"),
+                selling_price=Decimal("750.00"),
+                quantity=3,
+                min_quantity=1,
+            )
+
         InventoryItem.objects.filter(id=no_move_item.id).update(updated_at=now - timedelta(days=50))
 
         # Authenticate and make request with 30-day period
@@ -407,52 +429,55 @@ class TestInventoryReports:
 
     def test_reports_respect_tenant_isolation(self, api_client, setup_data):
         """Test that reports only show data for the user's tenant."""
-        # Create another tenant with data
-        other_tenant = Tenant.objects.create(
-            company_name="Other Shop", slug="other-shop", status="ACTIVE"
-        )
+        # Create another tenant with data (requires RLS bypass)
+        with bypass_rls():
+            other_tenant = Tenant.objects.create(
+                company_name="Other Shop", slug="other-shop", status="ACTIVE"
+            )
 
-        other_branch = Branch.objects.create(
-            tenant=other_tenant,
-            name="Other Branch",
-            address="789 Other St",
-            phone="555-9999",
-            is_active=True,
-        )
+        with tenant_context(other_tenant.id):
+            other_branch = Branch.objects.create(
+                tenant=other_tenant,
+                name="Other Branch",
+                address="789 Other St",
+                phone="555-9999",
+                is_active=True,
+            )
 
-        other_category = ProductCategory.objects.create(
-            tenant=other_tenant, name="Other Category", is_active=True
-        )
+            other_category = ProductCategory.objects.create(
+                tenant=other_tenant, name="Other Category", is_active=True
+            )
 
-        # Create item for other tenant
-        InventoryItem.objects.create(
-            tenant=other_tenant,
-            sku="OTHER-001",
-            name="Other Item",
-            category=other_category,
-            branch=other_branch,
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+            # Create item for other tenant
+            InventoryItem.objects.create(
+                tenant=other_tenant,
+                sku="OTHER-001",
+                name="Other Item",
+                category=other_category,
+                branch=other_branch,
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
 
         # Create item for test tenant
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="TEST-001",
-            name="Test Item",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="TEST-001",
+                name="Test Item",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
 
         # Authenticate as test tenant user
         api_client.force_authenticate(user=setup_data["user"])
@@ -467,19 +492,20 @@ class TestInventoryReports:
     def test_low_stock_report_calculates_reorder_cost(self, api_client, setup_data):
         """Test that low stock report calculates reorder costs correctly."""
         # Create low stock item
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Gold Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=2,
-            min_quantity=10,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Gold Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=2,
+                min_quantity=10,
+            )
 
         # Authenticate and make request
         api_client.force_authenticate(user=setup_data["user"])
@@ -501,19 +527,21 @@ class TestInventoryReports:
         now = timezone.now()
 
         # Create item that's 60 days old
-        item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Gold Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Gold Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
+
         InventoryItem.objects.filter(id=item.id).update(updated_at=now - timedelta(days=60))
 
         # Authenticate
@@ -535,19 +563,21 @@ class TestInventoryReports:
         now = timezone.now()
 
         # Create item updated 45 days ago
-        item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="RING-001",
-            name="Gold Ring",
-            category=setup_data["category1"],
-            branch=setup_data["branch1"],
-            karat=18,
-            weight_grams=Decimal("10.000"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1500.00"),
-            quantity=5,
-            min_quantity=2,
-        )
+        with tenant_context(setup_data["tenant"].id):
+            item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="RING-001",
+                name="Gold Ring",
+                category=setup_data["category1"],
+                branch=setup_data["branch1"],
+                karat=18,
+                weight_grams=Decimal("10.000"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1500.00"),
+                quantity=5,
+                min_quantity=2,
+            )
+
         InventoryItem.objects.filter(id=item.id).update(updated_at=now - timedelta(days=45))
 
         # Authenticate

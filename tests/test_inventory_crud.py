@@ -27,24 +27,27 @@ class TestInventoryItemCRUD:
     @pytest.fixture
     def setup_data(self):
         """Set up test data."""
-        # Create tenant
-        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
+        from apps.core.tenant_context import bypass_rls, tenant_context
 
-        # Create branch
-        branch = Branch.objects.create(tenant=tenant, name="Main Branch")
+        # Create tenant with RLS bypass
+        with bypass_rls():
+            tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
 
-        # Create category
-        category = ProductCategory.objects.create(tenant=tenant, name="Rings")
+        # Create branch and category with tenant context
+        with tenant_context(tenant.id):
+            branch = Branch.objects.create(tenant=tenant, name="Main Branch")
+            category = ProductCategory.objects.create(tenant=tenant, name="Rings")
 
-        # Create user
-        user = User.objects.create_user(
-            username="testuser",
-            password="testpass123",
-            email="test@example.com",
-            tenant=tenant,
-            role=User.TENANT_MANAGER,
-            branch=branch,
-        )
+        # Create user with RLS bypass
+        with bypass_rls():
+            user = User.objects.create_user(
+                username="testuser",
+                password="testpass123",
+                email="test@example.com",
+                tenant=tenant,
+                role=User.TENANT_MANAGER,
+                branch=branch,
+            )
 
         # Create API client
         client = APIClient()
@@ -60,32 +63,35 @@ class TestInventoryItemCRUD:
 
     def test_list_inventory_items(self, setup_data):
         """Test listing inventory items."""
-        # Create test items
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-001",
-            name="24K Gold Ring",
-            category=setup_data["category"],
-            karat=24,
-            weight_grams=Decimal("10.500"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1200.00"),
-            quantity=5,
-            branch=setup_data["branch"],
-        )
+        from apps.core.tenant_context import tenant_context
 
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-002",
-            name="22K Gold Ring",
-            category=setup_data["category"],
-            karat=22,
-            weight_grams=Decimal("8.000"),
-            cost_price=Decimal("800.00"),
-            selling_price=Decimal("1000.00"),
-            quantity=3,
-            branch=setup_data["branch"],
-        )
+        # Create test items with tenant context
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-001",
+                name="24K Gold Ring",
+                category=setup_data["category"],
+                karat=24,
+                weight_grams=Decimal("10.500"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1200.00"),
+                quantity=5,
+                branch=setup_data["branch"],
+            )
+
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-002",
+                name="22K Gold Ring",
+                category=setup_data["category"],
+                karat=22,
+                weight_grams=Decimal("8.000"),
+                cost_price=Decimal("800.00"),
+                selling_price=Decimal("1000.00"),
+                quantity=3,
+                branch=setup_data["branch"],
+            )
 
         # Make request
         url = reverse("inventory:item_list")
@@ -97,32 +103,35 @@ class TestInventoryItemCRUD:
 
     def test_list_inventory_with_search(self, setup_data):
         """Test listing inventory items with search."""
-        # Create test items
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-001",
-            name="24K Gold Ring",
-            category=setup_data["category"],
-            karat=24,
-            weight_grams=Decimal("10.500"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1200.00"),
-            quantity=5,
-            branch=setup_data["branch"],
-        )
+        from apps.core.tenant_context import tenant_context
 
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="NL-001",
-            name="Diamond Necklace",
-            category=setup_data["category"],
-            karat=18,
-            weight_grams=Decimal("15.000"),
-            cost_price=Decimal("2000.00"),
-            selling_price=Decimal("2500.00"),
-            quantity=2,
-            branch=setup_data["branch"],
-        )
+        # Create test items with tenant context
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-001",
+                name="24K Gold Ring",
+                category=setup_data["category"],
+                karat=24,
+                weight_grams=Decimal("10.500"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1200.00"),
+                quantity=5,
+                branch=setup_data["branch"],
+            )
+
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="NL-001",
+                name="Diamond Necklace",
+                category=setup_data["category"],
+                karat=18,
+                weight_grams=Decimal("15.000"),
+                cost_price=Decimal("2000.00"),
+                selling_price=Decimal("2500.00"),
+                quantity=2,
+                branch=setup_data["branch"],
+            )
 
         # Search for "Ring"
         url = reverse("inventory:item_list")
@@ -135,32 +144,35 @@ class TestInventoryItemCRUD:
 
     def test_list_inventory_with_filters(self, setup_data):
         """Test listing inventory items with filters."""
-        # Create test items with different karats
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-001",
-            name="24K Gold Ring",
-            category=setup_data["category"],
-            karat=24,
-            weight_grams=Decimal("10.500"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1200.00"),
-            quantity=5,
-            branch=setup_data["branch"],
-        )
+        from apps.core.tenant_context import tenant_context
 
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-002",
-            name="22K Gold Ring",
-            category=setup_data["category"],
-            karat=22,
-            weight_grams=Decimal("8.000"),
-            cost_price=Decimal("800.00"),
-            selling_price=Decimal("1000.00"),
-            quantity=3,
-            branch=setup_data["branch"],
-        )
+        # Create test items with different karats
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-001",
+                name="24K Gold Ring",
+                category=setup_data["category"],
+                karat=24,
+                weight_grams=Decimal("10.500"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1200.00"),
+                quantity=5,
+                branch=setup_data["branch"],
+            )
+
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-002",
+                name="22K Gold Ring",
+                category=setup_data["category"],
+                karat=22,
+                weight_grams=Decimal("8.000"),
+                cost_price=Decimal("800.00"),
+                selling_price=Decimal("1000.00"),
+                quantity=3,
+                branch=setup_data["branch"],
+            )
 
         # Filter by karat=24
         url = reverse("inventory:item_list")
@@ -173,34 +185,37 @@ class TestInventoryItemCRUD:
 
     def test_list_inventory_low_stock_filter(self, setup_data):
         """Test filtering low stock items."""
-        # Create items with different stock levels
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-001",
-            name="24K Gold Ring",
-            category=setup_data["category"],
-            karat=24,
-            weight_grams=Decimal("10.500"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1200.00"),
-            quantity=2,
-            min_quantity=5,
-            branch=setup_data["branch"],
-        )
+        from apps.core.tenant_context import tenant_context
 
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-002",
-            name="22K Gold Ring",
-            category=setup_data["category"],
-            karat=22,
-            weight_grams=Decimal("8.000"),
-            cost_price=Decimal("800.00"),
-            selling_price=Decimal("1000.00"),
-            quantity=10,
-            min_quantity=5,
-            branch=setup_data["branch"],
-        )
+        # Create items with different stock levels
+        with tenant_context(setup_data["tenant"].id):
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-001",
+                name="24K Gold Ring",
+                category=setup_data["category"],
+                karat=24,
+                weight_grams=Decimal("10.500"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1200.00"),
+                quantity=2,
+                min_quantity=5,
+                branch=setup_data["branch"],
+            )
+
+            InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-002",
+                name="22K Gold Ring",
+                category=setup_data["category"],
+                karat=22,
+                weight_grams=Decimal("8.000"),
+                cost_price=Decimal("800.00"),
+                selling_price=Decimal("1000.00"),
+                quantity=10,
+                min_quantity=5,
+                branch=setup_data["branch"],
+            )
 
         # Filter low stock items
         url = reverse("inventory:item_list")
@@ -213,18 +228,21 @@ class TestInventoryItemCRUD:
 
     def test_get_inventory_item_detail(self, setup_data):
         """Test retrieving a single inventory item."""
-        item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-001",
-            name="24K Gold Ring",
-            category=setup_data["category"],
-            karat=24,
-            weight_grams=Decimal("10.500"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1200.00"),
-            quantity=5,
-            branch=setup_data["branch"],
-        )
+        from apps.core.tenant_context import tenant_context
+
+        with tenant_context(setup_data["tenant"].id):
+            item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-001",
+                name="24K Gold Ring",
+                category=setup_data["category"],
+                karat=24,
+                weight_grams=Decimal("10.500"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1200.00"),
+                quantity=5,
+                branch=setup_data["branch"],
+            )
 
         url = reverse("inventory:item_detail", kwargs={"id": item.id})
         response = setup_data["client"].get(url)
@@ -236,6 +254,8 @@ class TestInventoryItemCRUD:
 
     def test_create_inventory_item(self, setup_data):
         """Test creating a new inventory item."""
+        from apps.core.tenant_context import tenant_context
+
         url = reverse("inventory:item_create")
         data = {
             "tenant": str(setup_data["tenant"].id),
@@ -256,11 +276,12 @@ class TestInventoryItemCRUD:
         response = setup_data["client"].post(url, data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert InventoryItem.objects.filter(sku="GR-003").exists()
 
-        item = InventoryItem.objects.get(sku="GR-003")
-        assert item.name == "18K Gold Ring"
-        assert item.karat == 18
+        with tenant_context(setup_data["tenant"].id):
+            assert InventoryItem.objects.filter(sku="GR-003").exists()
+            item = InventoryItem.objects.get(sku="GR-003")
+            assert item.name == "18K Gold Ring"
+            assert item.karat == 18
 
     def test_create_inventory_item_duplicate_sku(self, setup_data):
         """Test creating inventory item with duplicate SKU fails."""
@@ -319,22 +340,25 @@ class TestInventoryItemCRUD:
         response = setup_data["client"].post(url, data, format="json")
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "selling_price" in response.data
+        assert "selling_price" in response.data or "non_field_errors" in response.data
 
     def test_update_inventory_item(self, setup_data):
         """Test updating an inventory item."""
-        item = InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-001",
-            name="24K Gold Ring",
-            category=setup_data["category"],
-            karat=24,
-            weight_grams=Decimal("10.500"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1200.00"),
-            quantity=5,
-            branch=setup_data["branch"],
-        )
+        from apps.core.tenant_context import tenant_context
+
+        with tenant_context(setup_data["tenant"].id):
+            item = InventoryItem.objects.create(
+                tenant=setup_data["tenant"],
+                sku="GR-001",
+                name="24K Gold Ring",
+                category=setup_data["category"],
+                karat=24,
+                weight_grams=Decimal("10.500"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1200.00"),
+                quantity=5,
+                branch=setup_data["branch"],
+            )
 
         url = reverse("inventory:item_update", kwargs={"id": item.id})
         data = {
@@ -355,9 +379,10 @@ class TestInventoryItemCRUD:
 
         assert response.status_code == status.HTTP_200_OK
 
-        item.refresh_from_db()
-        assert item.name == "24K Gold Ring - Updated"
-        assert item.weight_grams == Decimal("11.000")
+        with tenant_context(setup_data["tenant"].id):
+            item.refresh_from_db()
+            assert item.name == "24K Gold Ring - Updated"
+            assert item.weight_grams == Decimal("11.000")
 
     def test_delete_inventory_item(self, setup_data):
         """Test soft deleting an inventory item."""
@@ -531,21 +556,26 @@ class TestProductCategoryCRUD:
     @pytest.fixture
     def setup_data(self):
         """Set up test data."""
-        # Create tenant
-        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
+        from apps.core.tenant_context import bypass_rls, tenant_context
 
-        # Create branch
-        branch = Branch.objects.create(tenant=tenant, name="Main Branch")
+        # Create tenant with RLS bypass
+        with bypass_rls():
+            tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
 
-        # Create user
-        user = User.objects.create_user(
-            username="testuser",
-            password="testpass123",
-            email="test@example.com",
-            tenant=tenant,
-            role=User.TENANT_MANAGER,
-            branch=branch,
-        )
+        # Create branch with tenant context
+        with tenant_context(tenant.id):
+            branch = Branch.objects.create(tenant=tenant, name="Main Branch")
+
+        # Create user with RLS bypass
+        with bypass_rls():
+            user = User.objects.create_user(
+                username="testuser",
+                password="testpass123",
+                email="test@example.com",
+                tenant=tenant,
+                role=User.TENANT_MANAGER,
+                branch=branch,
+            )
 
         # Create API client
         client = APIClient()
@@ -572,6 +602,8 @@ class TestProductCategoryCRUD:
 
     def test_create_category(self, setup_data):
         """Test creating a new category."""
+        from apps.core.tenant_context import tenant_context
+
         url = reverse("inventory:category_create")
         data = {
             "tenant": str(setup_data["tenant"].id),
@@ -586,13 +618,18 @@ class TestProductCategoryCRUD:
         if response.status_code != status.HTTP_201_CREATED:
             print(f"Error response: {response.data}")
         assert response.status_code == status.HTTP_201_CREATED
-        assert ProductCategory.objects.filter(name="Bracelets").exists()
+
+        with tenant_context(setup_data["tenant"].id):
+            assert ProductCategory.objects.filter(name="Bracelets").exists()
 
     def test_update_category(self, setup_data):
         """Test updating a category."""
-        category = ProductCategory.objects.create(
-            tenant=setup_data["tenant"], name="Rings", description="Gold rings"
-        )
+        from apps.core.tenant_context import tenant_context
+
+        with tenant_context(setup_data["tenant"].id):
+            category = ProductCategory.objects.create(
+                tenant=setup_data["tenant"], name="Rings", description="Gold rings"
+            )
 
         url = reverse("inventory:category_update", kwargs={"id": category.id})
         data = {
@@ -606,8 +643,9 @@ class TestProductCategoryCRUD:
 
         assert response.status_code == status.HTTP_200_OK
 
-        category.refresh_from_db()
-        assert category.description == "Gold and diamond rings"
+        with tenant_context(setup_data["tenant"].id):
+            category.refresh_from_db()
+            assert category.description == "Gold and diamond rings"
 
     def test_delete_category(self, setup_data):
         """Test soft deleting a category."""

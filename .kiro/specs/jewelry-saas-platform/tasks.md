@@ -121,7 +121,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement inventory turnover report
     - _Requirements: 9, 15_
   
-  - [ ] 4.5 Write inventory management tests
+  - [x] 4.5 Write inventory management tests
     - Test inventory CRUD operations
     - Test stock adjustment logic
     - Test barcode/QR code generation

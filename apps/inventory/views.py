@@ -15,6 +15,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from apps.core.permissions import HasTenantAccess
+from apps.core.tenant_context import set_tenant_context
 
 from .models import InventoryItem, ProductCategory
 from .serializers import (
@@ -26,7 +27,17 @@ from .serializers import (
 )
 
 
-class InventoryItemListView(generics.ListAPIView):
+class TenantContextMixin:
+    """Mixin to set tenant context for API views."""
+
+    def initial(self, request, *args, **kwargs):
+        """Set tenant context after authentication."""
+        super().initial(request, *args, **kwargs)
+        if hasattr(request, "user") and hasattr(request.user, "tenant") and request.user.tenant:
+            set_tenant_context(request.user.tenant.id)
+
+
+class InventoryItemListView(TenantContextMixin, generics.ListAPIView):
     """
     API endpoint for listing inventory items with search and filters.
 
@@ -120,7 +131,7 @@ class InventoryItemListView(generics.ListAPIView):
         return queryset
 
 
-class InventoryItemDetailView(generics.RetrieveAPIView):
+class InventoryItemDetailView(TenantContextMixin, generics.RetrieveAPIView):
     """
     API endpoint for retrieving a single inventory item.
     """
@@ -137,7 +148,7 @@ class InventoryItemDetailView(generics.RetrieveAPIView):
         )
 
 
-class InventoryItemCreateView(generics.CreateAPIView):
+class InventoryItemCreateView(TenantContextMixin, generics.CreateAPIView):
     """
     API endpoint for creating a new inventory item.
     """
@@ -150,7 +161,7 @@ class InventoryItemCreateView(generics.CreateAPIView):
         serializer.save(tenant=self.request.user.tenant)
 
 
-class InventoryItemUpdateView(generics.UpdateAPIView):
+class InventoryItemUpdateView(TenantContextMixin, generics.UpdateAPIView):
     """
     API endpoint for updating an inventory item.
     """
@@ -165,7 +176,7 @@ class InventoryItemUpdateView(generics.UpdateAPIView):
         return InventoryItem.objects.filter(tenant=user.tenant)
 
 
-class InventoryItemDeleteView(generics.DestroyAPIView):
+class InventoryItemDeleteView(TenantContextMixin, generics.DestroyAPIView):
     """
     API endpoint for deleting (soft delete) an inventory item.
     """
@@ -241,7 +252,7 @@ def stock_adjustment(request, item_id):
 # Product Category Views
 
 
-class ProductCategoryListView(generics.ListAPIView):
+class ProductCategoryListView(TenantContextMixin, generics.ListAPIView):
     """
     API endpoint for listing product categories.
     """
@@ -273,7 +284,7 @@ class ProductCategoryListView(generics.ListAPIView):
         return queryset
 
 
-class ProductCategoryDetailView(generics.RetrieveAPIView):
+class ProductCategoryDetailView(TenantContextMixin, generics.RetrieveAPIView):
     """
     API endpoint for retrieving a single product category.
     """
@@ -288,7 +299,7 @@ class ProductCategoryDetailView(generics.RetrieveAPIView):
         return ProductCategory.objects.filter(tenant=user.tenant).select_related("parent")
 
 
-class ProductCategoryCreateView(generics.CreateAPIView):
+class ProductCategoryCreateView(TenantContextMixin, generics.CreateAPIView):
     """
     API endpoint for creating a new product category.
     """
@@ -301,7 +312,7 @@ class ProductCategoryCreateView(generics.CreateAPIView):
         serializer.save(tenant=self.request.user.tenant)
 
 
-class ProductCategoryUpdateView(generics.UpdateAPIView):
+class ProductCategoryUpdateView(TenantContextMixin, generics.UpdateAPIView):
     """
     API endpoint for updating a product category.
     """
@@ -316,7 +327,7 @@ class ProductCategoryUpdateView(generics.UpdateAPIView):
         return ProductCategory.objects.filter(tenant=user.tenant)
 
 
-class ProductCategoryDeleteView(generics.DestroyAPIView):
+class ProductCategoryDeleteView(TenantContextMixin, generics.DestroyAPIView):
     """
     API endpoint for deleting (soft delete) a product category.
     """

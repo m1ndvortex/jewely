@@ -77,3 +77,63 @@ def authenticated_client(api_client, django_user_model):
     )
     api_client.force_authenticate(user=user)
     return api_client, user
+
+
+@pytest.fixture
+def tenant():
+    """
+    Fixture for creating a test tenant.
+    Uses RLS bypass to create tenant (only platform admins can create tenants).
+    """
+    from apps.core.models import Tenant
+    from apps.core.tenant_context import bypass_rls
+
+    with bypass_rls():
+        tenant = Tenant.objects.create(
+            company_name="Test Jewelry Shop", slug="test-shop", status="ACTIVE"
+        )
+    yield tenant
+    # Cleanup
+    with bypass_rls():
+        tenant.delete()
+
+
+@pytest.fixture
+def tenant_user(tenant, django_user_model):
+    """
+    Fixture for creating a test tenant user.
+    """
+    from apps.core.tenant_context import bypass_rls
+
+    with bypass_rls():
+        user = django_user_model.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            tenant=tenant,
+            role="TENANT_OWNER",
+        )
+    yield user
+    with bypass_rls():
+        user.delete()
+
+
+@pytest.fixture
+def branch(tenant):
+    """
+    Fixture for creating a test branch.
+    """
+    from apps.core.models import Branch
+    from apps.core.tenant_context import tenant_context
+
+    with tenant_context(tenant.id):
+        branch = Branch.objects.create(
+            tenant=tenant,
+            name="Main Branch",
+            address="123 Main St",
+            city="Test City",
+            phone="555-0100",
+        )
+    yield branch
+    with tenant_context(tenant.id):
+        branch.delete()

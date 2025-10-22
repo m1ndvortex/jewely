@@ -23,65 +23,80 @@ from apps.inventory.models import InventoryItem, ProductCategory
 @pytest.fixture
 def tenant(db):
     """Create a test tenant."""
-    return Tenant.objects.create(
-        company_name="Test Jewelry Shop",
-        slug="test-shop",
-        status="ACTIVE",
-    )
+    from apps.core.tenant_context import bypass_rls
+
+    with bypass_rls():
+        return Tenant.objects.create(
+            company_name="Test Jewelry Shop",
+            slug="test-shop",
+            status="ACTIVE",
+        )
 
 
 @pytest.fixture
 def branch(db, tenant):
     """Create a test branch."""
-    return Branch.objects.create(
-        tenant=tenant,
-        name="Main Branch",
-        address="123 Main St",
-        phone="555-0100",
-        is_active=True,
-    )
+    from apps.core.tenant_context import tenant_context
+
+    with tenant_context(tenant.id):
+        return Branch.objects.create(
+            tenant=tenant,
+            name="Main Branch",
+            address="123 Main St",
+            phone="555-0100",
+            is_active=True,
+        )
 
 
 @pytest.fixture
 def user(db, tenant, branch):
     """Create a test user."""
-    return User.objects.create_user(
-        username="testuser",
-        email="test@example.com",
-        password="testpass123",
-        tenant=tenant,
-        branch=branch,
-        role="TENANT_OWNER",
-    )
+    from apps.core.tenant_context import bypass_rls
+
+    with bypass_rls():
+        return User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            tenant=tenant,
+            branch=branch,
+            role="TENANT_OWNER",
+        )
 
 
 @pytest.fixture
 def category(db, tenant):
     """Create a test product category."""
-    return ProductCategory.objects.create(
-        tenant=tenant,
-        name="Rings",
-        is_active=True,
-    )
+    from apps.core.tenant_context import tenant_context
+
+    with tenant_context(tenant.id):
+        return ProductCategory.objects.create(
+            tenant=tenant,
+            name="Rings",
+            is_active=True,
+        )
 
 
 @pytest.fixture
 def inventory_item(db, tenant, branch, category):
     """Create a test inventory item."""
-    return InventoryItem.objects.create(
-        tenant=tenant,
-        sku="RING-001",
-        name="24K Gold Ring",
-        category=category,
-        karat=24,
-        weight_grams=5.5,
-        cost_price=500.00,
-        selling_price=750.00,
-        quantity=10,
-        branch=branch,
-        serial_number="SN123456",
-        barcode="123456789012",
-    )
+    from apps.core.tenant_context import tenant_context
+
+    with tenant_context(tenant.id):
+        return InventoryItem.objects.create(
+            tenant=tenant,
+            sku="RING-001",
+            name="24K Gold Ring",
+            category=category,
+            karat=24,
+            weight_grams=5.5,
+            cost_price=500.00,
+            selling_price=750.00,
+            quantity=10,
+            branch=branch,
+            serial_number="SN123456",
+            barcode="123456789012",
+        )
 
 
 @pytest.mark.django_db

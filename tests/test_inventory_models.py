@@ -24,55 +24,71 @@ class TestProductCategory:
 
     def test_create_category(self):
         """Test creating a product category."""
-        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
+        from apps.core.tenant_context import bypass_rls, tenant_context
 
-        category = ProductCategory.objects.create(
-            tenant=tenant,
-            name="Rings",
-            description="Gold and diamond rings",
-        )
+        with bypass_rls():
+            tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
 
-        assert category.id is not None
-        assert category.name == "Rings"
-        assert category.tenant == tenant
-        assert category.is_active is True
-        assert str(category) == "Rings"
+        with tenant_context(tenant.id):
+            category = ProductCategory.objects.create(
+                tenant=tenant,
+                name="Rings",
+                description="Gold and diamond rings",
+            )
+
+            assert category.id is not None
+            assert category.name == "Rings"
+            assert category.tenant == tenant
+            assert category.is_active is True
+            assert str(category) == "Rings"
 
     def test_hierarchical_categories(self):
         """Test parent-child category relationships."""
-        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
+        from apps.core.tenant_context import bypass_rls, tenant_context
 
-        parent = ProductCategory.objects.create(tenant=tenant, name="Jewelry")
-        child = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=parent)
+        with bypass_rls():
+            tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
 
-        assert child.parent == parent
-        assert child in parent.subcategories.all()
-        assert str(child) == "Jewelry > Rings"
+        with tenant_context(tenant.id):
+            parent = ProductCategory.objects.create(tenant=tenant, name="Jewelry")
+            child = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=parent)
+
+            assert child.parent == parent
+            assert child in parent.subcategories.all()
+            assert str(child) == "Jewelry > Rings"
 
     def test_get_full_path(self):
         """Test getting full category path."""
-        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
+        from apps.core.tenant_context import bypass_rls, tenant_context
 
-        level1 = ProductCategory.objects.create(tenant=tenant, name="Jewelry")
-        level2 = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=level1)
-        level3 = ProductCategory.objects.create(tenant=tenant, name="Gold Rings", parent=level2)
+        with bypass_rls():
+            tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
 
-        assert level3.get_full_path() == "Jewelry > Rings > Gold Rings"
+        with tenant_context(tenant.id):
+            level1 = ProductCategory.objects.create(tenant=tenant, name="Jewelry")
+            level2 = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=level1)
+            level3 = ProductCategory.objects.create(tenant=tenant, name="Gold Rings", parent=level2)
+
+            assert level3.get_full_path() == "Jewelry > Rings > Gold Rings"
 
     def test_unique_constraint(self):
         """Test that category names can be reused with different parents."""
-        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
+        from apps.core.tenant_context import bypass_rls, tenant_context
 
-        parent1 = ProductCategory.objects.create(tenant=tenant, name="Jewelry")
-        parent2 = ProductCategory.objects.create(tenant=tenant, name="Accessories")
+        with bypass_rls():
+            tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
 
-        # Same name "Rings" can exist under different parents
-        rings1 = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=parent1)
-        rings2 = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=parent2)
+        with tenant_context(tenant.id):
+            parent1 = ProductCategory.objects.create(tenant=tenant, name="Jewelry")
+            parent2 = ProductCategory.objects.create(tenant=tenant, name="Accessories")
 
-        assert rings1.parent == parent1
-        assert rings2.parent == parent2
-        assert rings1.name == rings2.name
+            # Same name "Rings" can exist under different parents
+            rings1 = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=parent1)
+            rings2 = ProductCategory.objects.create(tenant=tenant, name="Rings", parent=parent2)
+
+            assert rings1.parent == parent1
+            assert rings2.parent == parent2
+            assert rings1.name == rings2.name
 
 
 @pytest.mark.django_db
@@ -82,9 +98,14 @@ class TestInventoryItem:
     @pytest.fixture
     def setup_data(self):
         """Set up test data."""
-        tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
-        branch = Branch.objects.create(tenant=tenant, name="Main Branch")
-        category = ProductCategory.objects.create(tenant=tenant, name="Rings")
+        from apps.core.tenant_context import bypass_rls, tenant_context
+
+        with bypass_rls():
+            tenant = Tenant.objects.create(company_name="Test Jewelry Shop", slug="test-shop")
+
+        with tenant_context(tenant.id):
+            branch = Branch.objects.create(tenant=tenant, name="Main Branch")
+            category = ProductCategory.objects.create(tenant=tenant, name="Rings")
 
         return {
             "tenant": tenant,
@@ -320,37 +341,46 @@ class TestInventoryItem:
 
     def test_barcode_uniqueness(self, setup_data):
         """Test that barcode must be globally unique."""
-        InventoryItem.objects.create(
-            tenant=setup_data["tenant"],
-            sku="GR-001",
-            name="24K Gold Ring",
-            category=setup_data["category"],
-            karat=24,
-            weight_grams=Decimal("10.500"),
-            cost_price=Decimal("1000.00"),
-            selling_price=Decimal("1200.00"),
-            quantity=5,
-            branch=setup_data["branch"],
-            barcode="123456789",
-        )
+        from django.db import IntegrityError, transaction
 
-        # Create another tenant
-        tenant2 = Tenant.objects.create(company_name="Another Shop", slug="another-shop")
-        branch2 = Branch.objects.create(tenant=tenant2, name="Branch 2")
-        category2 = ProductCategory.objects.create(tenant=tenant2, name="Rings")
+        from apps.core.tenant_context import bypass_rls, tenant_context
 
-        # Should raise error for duplicate barcode even across tenants
-        with pytest.raises(Exception):
+        with tenant_context(setup_data["tenant"].id):
             InventoryItem.objects.create(
-                tenant=tenant2,
-                sku="GR-002",
-                name="Another Ring",
-                category=category2,
-                karat=22,
-                weight_grams=Decimal("8.000"),
-                cost_price=Decimal("800.00"),
-                selling_price=Decimal("1000.00"),
-                quantity=3,
-                branch=branch2,
+                tenant=setup_data["tenant"],
+                sku="GR-001",
+                name="24K Gold Ring",
+                category=setup_data["category"],
+                karat=24,
+                weight_grams=Decimal("10.500"),
+                cost_price=Decimal("1000.00"),
+                selling_price=Decimal("1200.00"),
+                quantity=5,
+                branch=setup_data["branch"],
                 barcode="123456789",
             )
+
+        # Create another tenant
+        with bypass_rls():
+            tenant2 = Tenant.objects.create(company_name="Another Shop", slug="another-shop")
+
+        # Should raise error for duplicate barcode even across tenants
+        with tenant_context(tenant2.id):
+            branch2 = Branch.objects.create(tenant=tenant2, name="Branch 2")
+            category2 = ProductCategory.objects.create(tenant=tenant2, name="Rings")
+
+            with pytest.raises(IntegrityError):
+                with transaction.atomic():
+                    InventoryItem.objects.create(
+                        tenant=tenant2,
+                        sku="GR-002",
+                        name="Another Ring",
+                        category=category2,
+                        karat=22,
+                        weight_grams=Decimal("8.000"),
+                        cost_price=Decimal("800.00"),
+                        selling_price=Decimal("1000.00"),
+                        quantity=3,
+                        branch=branch2,
+                        barcode="123456789",
+                    )
