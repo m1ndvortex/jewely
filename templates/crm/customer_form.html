@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Edit{% else %}Add{% endif %} Customer - Jewelry Shop SaaS{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100 p-6">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="mb-6 flex items-center">
+            <a href="{% if is_edit %}{% url 'crm:customer_detail' customer.id %}{% else %}{% url 'crm:customer_list' %}{% endif %}" 
+               class="text-gray-600 hover:text-gray-900 mr-4">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    {% if is_edit %}Edit Customer{% else %}Add New Customer{% endif %}
+                </h1>
+                <p class="text-gray-600 mt-1">
+                    {% if is_edit %}Update customer information{% else %}Create a new customer profile{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form method="post" class="bg-white rounded-lg shadow-sm p-6">
+            {% csrf_token %}
+            
+            <div class="space-y-6">
+                <!-- Personal Information -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                First Name *
+                            </label>
+                            <input type="text" 
+                                   name="first_name" 
+                                   value="{% if is_edit %}{{ customer.first_name }}{% endif %}"
+                                   required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Last Name *
+                            </label>
+                            <input type="text" 
+                                   name="last_name" 
+                                   value="{% if is_edit %}{{ customer.last_name }}{% endif %}"
+                                   required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Date of Birth
+                            </label>
+                            <input type="date" 
+                                   name="date_of_birth" 
+                                   value="{% if is_edit and customer.date_of_birth %}{{ customer.date_of_birth|date:'Y-m-d' }}{% endif %}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Gender
+                            </label>
+                            <select name="gender"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">Select Gender</option>
+                                <option value="MALE" {% if is_edit and customer.gender == "MALE" %}selected{% endif %}>Male</option>
+                                <option value="FEMALE" {% if is_edit and customer.gender == "FEMALE" %}selected{% endif %}>Female</option>
+                                <option value="OTHER" {% if is_edit and customer.gender == "OTHER" %}selected{% endif %}>Other</option>
+                                <option value="PREFER_NOT_TO_SAY" {% if is_edit and customer.gender == "PREFER_NOT_TO_SAY" %}selected{% endif %}>Prefer not to say</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Phone *
+                            </label>
+                            <input type="tel" 
+                                   name="phone" 
+                                   value="{% if is_edit %}{{ customer.phone }}{% endif %}"
+                                   required
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Alternate Phone
+                            </label>
+                            <input type="tel" 
+                                   name="alternate_phone" 
+                                   value="{% if is_edit %}{{ customer.alternate_phone }}{% endif %}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Email
+                            </label>
+                            <input type="email" 
+                                   name="email" 
+                                   value="{% if is_edit %}{{ customer.email }}{% endif %}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Information -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Address</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Address Line 1
+                            </label>
+                            <input type="text" 
+                                   name="address_line_1" 
+                                   value="{% if is_edit %}{{ customer.address_line_1 }}{% endif %}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Address Line 2
+                            </label>
+                            <input type="text" 
+                                   name="address_line_2" 
+                                   value="{% if is_edit %}{{ customer.address_line_2 }}{% endif %}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    City
+                                </label>
+                                <input type="text" 
+                                       name="city" 
+                                       value="{% if is_edit %}{{ customer.city }}{% endif %}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    State/Province
+                                </label>
+                                <input type="text" 
+                                       name="state" 
+                                       value="{% if is_edit %}{{ customer.state }}{% endif %}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Postal Code
+                                </label>
+                                <input type="text" 
+                                       name="postal_code" 
+                                       value="{% if is_edit %}{{ customer.postal_code }}{% endif %}"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Country
+                            </label>
+                            <input type="text" 
+                                   name="country" 
+                                   value="{% if is_edit %}{{ customer.country }}{% endif %}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preferences -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Preferences</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Preferred Communication
+                            </label>
+                            <select name="preferred_communication"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="EMAIL" {% if is_edit and customer.preferred_communication == "EMAIL" %}selected{% endif %}>Email</option>
+                                <option value="SMS" {% if is_edit and customer.preferred_communication == "SMS" %}selected{% endif %}>SMS</option>
+                                <option value="PHONE" {% if is_edit and customer.preferred_communication == "PHONE" %}selected{% endif %}>Phone</option>
+                                <option value="MAIL" {% if is_edit and customer.preferred_communication == "MAIL" %}selected{% endif %}>Mail</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex items-center space-x-6 pt-6">
+                            <label class="flex items-center">
+                                <input type="checkbox" 
+                                       name="marketing_opt_in" 
+                                       {% if not is_edit or customer.marketing_opt_in %}checked{% endif %}
+                                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Marketing Opt-in</span>
+                            </label>
+                            
+                            <label class="flex items-center">
+                                <input type="checkbox" 
+                                       name="sms_opt_in" 
+                                       {% if is_edit and customer.sms_opt_in %}checked{% endif %}
+                                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">SMS Opt-in</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tags and Notes -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Additional Information</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Tags (comma-separated)
+                            </label>
+                            <input type="text" 
+                                   name="tags" 
+                                   value="{% if is_edit and customer.tags %}{{ customer.tags|join:', ' }}{% endif %}"
+                                   placeholder="VIP, Wedding, Corporate"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <p class="text-xs text-gray-500 mt-1">Separate tags with commas</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Notes
+                            </label>
+                            <textarea name="notes" 
+                                      rows="4"
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">{% if is_edit %}{{ customer.notes }}{% endif %}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="mt-8 flex justify-end gap-3">
+                <a href="{% if is_edit %}{% url 'crm:customer_detail' customer.id %}{% else %}{% url 'crm:customer_list' %}{% endif %}" 
+                   class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
+                    {% if is_edit %}Update Customer{% else %}Create Customer{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
