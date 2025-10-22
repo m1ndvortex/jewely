@@ -758,6 +758,205 @@ def receipt_pdf(request, sale_id, format_type="standard"):
     return response
 
 
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def pos_favorite_products(request):
+    """
+    Get favorite products for quick access in POS.
+
+    Returns the most frequently sold products for the current user/branch.
+
+    Implements Requirement 35.11: Provide quick access to favorite products
+    """
+    tenant = request.user.tenant
+    limit = int(request.query_params.get("limit", "10"))
+
+    # Get most frequently sold products from the last 30 days
+    from datetime import timedelta
+
+    from django.db.models import Count, Sum
+    from django.utils import timezone
+
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+
+    # Query for most sold products
+    favorite_products = (
+        InventoryItem.objects.filter(
+            tenant=tenant,
+            is_active=True,
+            quantity__gt=0,
+            sale_items__sale__created_at__gte=thirty_days_ago,
+            sale_items__sale__status="COMPLETED",
+        )
+        .annotate(sales_count=Count("sale_items"), total_quantity_sold=Sum("sale_items__quantity"))
+        .order_by("-sales_count", "-total_quantity_sold")
+        .select_related("category", "branch")[:limit]
+    )
+
+    # Serialize results
+    results = []
+    for item in favorite_products:
+        results.append(
+            {
+                "id": str(item.id),
+                "sku": item.sku,
+                "name": item.name,
+                "category": item.category.name if item.category else None,
+                "karat": item.karat,
+                "weight_grams": str(item.weight_grams),
+                "selling_price": str(item.selling_price),
+                "quantity": item.quantity,
+                "branch": item.branch.name,
+                "barcode": item.barcode,
+                "serial_number": item.serial_number,
+                "sales_count": item.sales_count,
+                "is_favorite": True,
+            }
+        )
+
+    return Response({"results": results}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def pos_recent_transactions(request):
+    """
+    Get recent transactions for quick access in POS.
+
+    Returns the most recent completed sales for reference.
+
+    Implements Requirement 35.11: Provide quick access to recent transactions
+    """
+    tenant = request.user.tenant
+    limit = int(request.query_params.get("limit", "10"))
+
+    # Get recent completed sales
+    recent_sales = (
+        Sale.objects.filter(tenant=tenant, status="COMPLETED")
+        .select_related("customer", "branch", "terminal", "employee")
+        .prefetch_related("items__inventory_item")
+        .order_by("-created_at")[:limit]
+    )
+
+    serializer = SaleListSerializer(recent_sales, many=True)
+    return Response({"results": serializer.data}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def pos_offline_sync_validation(request):
+    """
+    Validate offline transactions before sync to detect conflicts.
+
+    This endpoint is called during offline sync to check if inventory
+    is still available for offline transactions.
+
+    Request body:
+    {
+        "transactions": [
+            {
+                "id": "offline_transaction_id",
+                "items": [
+                    {
+                        "inventory_item_id": "uuid",
+                        "quantity": 1
+                    }
+                ]
+            }
+        ]
+    }
+
+    Response:
+    {
+        "validation_results": [
+            {
+                "transaction_id": "offline_transaction_id",
+                "valid": true/false,
+                "conflicts": [
+                    {
+                        "inventory_item_id": "uuid",
+                        "requested_quantity": 1,
+                        "available_quantity": 0,
+                        "conflict_type": "insufficient_inventory"
+                    }
+                ]
+            }
+        ]
+    }
+
+    Implements Requirement 35: Conflict resolution for inventory sold offline at multiple terminals
+    """
+    tenant = request.user.tenant
+    transactions_data = request.data.get("transactions", [])
+
+    if not transactions_data:
+        return Response(
+            {"detail": "Transactions list is required."}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    validation_results = []
+
+    for transaction_data in transactions_data:
+        transaction_id = transaction_data.get("id")
+        items_data = transaction_data.get("items", [])
+
+        result = {"transaction_id": transaction_id, "valid": True, "conflicts": []}
+
+        for item_data in items_data:
+            inventory_item_id = item_data.get("inventory_item_id")
+            requested_quantity = item_data.get("quantity", 1)
+
+            try:
+                inventory_item = InventoryItem.objects.select_for_update().get(
+                    id=inventory_item_id, tenant=tenant, is_active=True
+                )
+
+                # Check if sufficient inventory is available
+                if inventory_item.quantity < requested_quantity:
+                    result["valid"] = False
+                    result["conflicts"].append(
+                        {
+                            "inventory_item_id": inventory_item_id,
+                            "requested_quantity": requested_quantity,
+                            "available_quantity": inventory_item.quantity,
+                            "conflict_type": "insufficient_inventory",
+                            "item_name": inventory_item.name,
+                            "item_sku": inventory_item.sku,
+                        }
+                    )
+
+                # Check for serialized items
+                if inventory_item.serial_number and requested_quantity > 1:
+                    result["valid"] = False
+                    result["conflicts"].append(
+                        {
+                            "inventory_item_id": inventory_item_id,
+                            "requested_quantity": requested_quantity,
+                            "available_quantity": 1,
+                            "conflict_type": "serialized_item_multiple_quantity",
+                            "item_name": inventory_item.name,
+                            "item_sku": inventory_item.sku,
+                        }
+                    )
+
+            except InventoryItem.DoesNotExist:
+                result["valid"] = False
+                result["conflicts"].append(
+                    {
+                        "inventory_item_id": inventory_item_id,
+                        "requested_quantity": requested_quantity,
+                        "available_quantity": 0,
+                        "conflict_type": "item_not_found",
+                        "item_name": "Unknown",
+                        "item_sku": "Unknown",
+                    }
+                )
+
+        validation_results.append(result)
+
+    return Response({"validation_results": validation_results}, status=status.HTTP_200_OK)
+
+
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated, HasTenantAccess])
 def generate_receipt_after_sale(request, sale_id):

@@ -12,6 +12,22 @@
                 Point of Sale
             </h1>
             <div class="flex items-center space-x-4">
+                <!-- Connection Status Indicator -->
+                <div class="flex items-center space-x-2">
+                    <div 
+                        :class="isOnline ? 'bg-green-500' : 'bg-red-500'"
+                        class="w-3 h-3 rounded-full"
+                        :title="isOnline ? 'Online' : 'Offline'"
+                    ></div>
+                    <span class="text-xs" x-text="isOnline ? 'Online' : 'Offline'"></span>
+                    <span 
+                        x-show="pendingTransactions > 0" 
+                        class="bg-yellow-500 text-xs px-2 py-1 rounded"
+                        :title="`${pendingTransactions} transaction(s) pending sync`"
+                        x-text="`${pendingTransactions} pending`"
+                    ></span>
+                </div>
+                
                 <div class="text-sm">
                     <i class="fas fa-user mr-1"></i>
                     <span>{{ user.get_full_name }}</span>
@@ -20,6 +36,17 @@
                     <i class="fas fa-store mr-1"></i>
                     <span x-text="selectedTerminal ? selectedTerminal.terminal_id : 'Select Terminal'"></span>
                 </div>
+                
+                <!-- Manual Sync Button (only show when offline transactions exist) -->
+                <button 
+                    x-show="isOnline && pendingTransactions > 0"
+                    @click="manualSync()"
+                    class="bg-yellow-500 hover:bg-yellow-600 px-3 py-1 rounded text-sm"
+                    title="Sync pending transactions"
+                >
+                    <i class="fas fa-sync-alt mr-1"></i>
+                    Sync
+                </button>
             </div>
         </div>
     </header>
@@ -45,6 +72,28 @@
             </div>
 
 
+            <!-- Quick Access Tabs -->
+            <div x-show="!searchQuery" class="border-b border-gray-200">
+                <div class="flex space-x-1 p-2">
+                    <button 
+                        @click="activeTab = 'favorites'"
+                        :class="activeTab === 'favorites' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'"
+                        class="px-3 py-2 rounded text-sm font-medium"
+                    >
+                        <i class="fas fa-star mr-1"></i>
+                        Favorites
+                    </button>
+                    <button 
+                        @click="activeTab = 'recent'"
+                        :class="activeTab === 'recent' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'"
+                        class="px-3 py-2 rounded text-sm font-medium"
+                    >
+                        <i class="fas fa-clock mr-1"></i>
+                        Recent
+                    </button>
+                </div>
+            </div>
+
             <!-- Product Results -->
             <div class="flex-1 overflow-y-auto p-4">
                 <div x-show="loading" class="text-center py-8">
@@ -57,10 +106,90 @@
                     <p class="mt-2 text-gray-600">No products found</p>
                 </div>
 
-                <div x-show="!loading && searchResults.length === 0 && !searchQuery" class="text-center py-8">
-                    <i class="fas fa-barcode text-4xl text-gray-300"></i>
-                    <p class="mt-2 text-gray-600">Search or scan a product to begin</p>
+                <!-- Quick Access Content -->
+                <div x-show="!loading && !searchQuery">
+                    <!-- Favorite Products -->
+                    <div x-show="activeTab === 'favorites'">
+                        <div x-show="favoriteProducts.length === 0" class="text-center py-8">
+                            <i class="fas fa-star text-4xl text-gray-300"></i>
+                            <p class="mt-2 text-gray-600">No favorite products yet</p>
+                            <p class="text-sm text-gray-500">Products will appear here based on sales frequency</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 gap-3">
+                            <template x-for="product in favoriteProducts" :key="product.id">
+                                <div 
+                                    @click="addToCart(product)"
+                                    class="border border-gray-200 rounded-lg p-4 hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition"
+                                >
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex items-center">
+                                                <h3 class="font-semibold text-gray-800" x-text="product.name"></h3>
+                                                <i class="fas fa-star text-yellow-500 ml-2 text-sm"></i>
+                                            </div>
+                                            <p class="text-sm text-gray-600">
+                                                SKU: <span x-text="product.sku"></span>
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                <span x-text="product.karat + 'K'"></span> • 
+                                                <span x-text="product.weight_grams + 'g'"></span>
+                                                <span x-show="product.sales_count" class="ml-2">
+                                                    • <span x-text="product.sales_count"></span> sales
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-lg font-bold text-blue-600">
+                                                $<span x-text="parseFloat(product.selling_price).toFixed(2)"></span>
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                Stock: <span x-text="product.quantity"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Recent Transactions -->
+                    <div x-show="activeTab === 'recent'">
+                        <div x-show="recentTransactions.length === 0" class="text-center py-8">
+                            <i class="fas fa-clock text-4xl text-gray-300"></i>
+                            <p class="mt-2 text-gray-600">No recent transactions</p>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <template x-for="transaction in recentTransactions" :key="transaction.id">
+                                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex items-center">
+                                                <h3 class="font-semibold text-gray-800" x-text="transaction.sale_number"></h3>
+                                                <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                                                    <span x-text="transaction.status"></span>
+                                                </span>
+                                            </div>
+                                            <p class="text-sm text-gray-600" x-text="transaction.customer_name || 'Walk-in Customer'"></p>
+                                            <p class="text-xs text-gray-500" x-text="new Date(transaction.created_at).toLocaleString()"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-lg font-bold text-blue-600">
+                                                $<span x-text="parseFloat(transaction.total).toFixed(2)"></span>
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                <span x-text="transaction.items_count"></span> items
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Search Results (when searching) -->
 
                 <div class="grid grid-cols-1 gap-3">
                     <template x-for="product in searchResults" :key="product.id">
@@ -550,6 +679,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Load offline functionality scripts -->
+<script src="/static/js/pos-indexeddb.js"></script>
+<script src="/static/js/pos-offline.js"></script>
+
 <script>
 function posApp() {
     return {
@@ -578,6 +711,17 @@ function posApp() {
         receiptSearchResults: [],
         showHeldSales: false,
         heldSales: [],
+        
+        // Offline mode state
+        isOnline: navigator.onLine,
+        offlineManager: null,
+        pendingTransactions: 0,
+        showOfflineStatus: false,
+        
+        // Quick access state
+        activeTab: 'favorites',
+        favoriteProducts: [],
+        recentTransactions: [],
 
         // Computed
         get subtotal() {
@@ -591,11 +735,87 @@ function posApp() {
         },
 
         // Methods
-        init() {
+        async init() {
+            // Initialize offline manager
+            try {
+                this.offlineManager = new POSOfflineManager();
+                await this.offlineManager.init();
+                
+                // Set up offline event listeners
+                this.setupOfflineEventListeners();
+                
+                console.log('[POS] Offline manager initialized successfully');
+            } catch (error) {
+                console.error('[POS] Failed to initialize offline manager:', error);
+                // Continue without offline functionality
+            }
+            
+            // Load quick access data
+            await this.loadFavoriteProducts();
+            await this.loadRecentTransactions();
+            
             // Focus on search input
             this.$nextTick(() => {
                 document.querySelector('input[type="text"]')?.focus();
             });
+        },
+        
+        setupOfflineEventListeners() {
+            if (!this.offlineManager) return;
+            
+            // Listen for online/offline status changes
+            this.offlineManager.on('statusChange', (data) => {
+                this.isOnline = data.online;
+                console.log('[POS] Connection status changed:', data.online ? 'online' : 'offline');
+            });
+            
+            // Listen for offline transactions
+            this.offlineManager.on('offlineTransactionCreated', (transaction) => {
+                console.log('[POS] Offline transaction created:', transaction.id);
+                this.updatePendingTransactionCount();
+            });
+            
+            // Listen for sync completion
+            this.offlineManager.on('syncCompleted', (results) => {
+                console.log('[POS] Sync completed:', results);
+                this.updatePendingTransactionCount();
+                
+                if (results.success > 0) {
+                    this.showSyncSuccessNotification(results);
+                }
+            });
+            
+            // Listen for sync conflicts
+            this.offlineManager.on('conflictResolutionNeeded', (data) => {
+                console.log('[POS] Conflict resolution needed:', data);
+                this.handleSyncConflict(data);
+            });
+        },
+        
+        async updatePendingTransactionCount() {
+            if (this.offlineManager) {
+                const stats = await this.offlineManager.getStats();
+                this.pendingTransactions = stats.pendingTransactions;
+            }
+        },
+        
+        showSyncSuccessNotification(results) {
+            // Show a success notification
+            const message = `${results.success} transaction(s) synced successfully`;
+            if (results.conflicts > 0) {
+                message += `, ${results.conflicts} conflict(s) need attention`;
+            }
+            
+            // You could integrate with a toast notification system here
+            console.log('[POS] Sync notification:', message);
+        },
+        
+        handleSyncConflict(data) {
+            // Handle sync conflicts - could show a modal dialog
+            console.log('[POS] Handling sync conflict:', data);
+            
+            // For now, just alert the user
+            alert(`Sync conflict detected for offline transaction. Some items may no longer be available. Please check inventory and retry.`);
         },
 
 
@@ -607,16 +827,39 @@ function posApp() {
 
             this.loading = true;
             try {
-                const response = await fetch(`/api/pos/search/products/?q=${encodeURIComponent(this.searchQuery)}`, {
-                    headers: {
-                        'Authorization': 'Bearer ' + this.getToken()
+                // Try online search first
+                if (this.isOnline) {
+                    const response = await fetch(`/api/pos/search/products/?q=${encodeURIComponent(this.searchQuery)}`, {
+                        headers: {
+                            'Authorization': 'Bearer ' + this.getToken()
+                        }
+                    });
+                    const data = await response.json();
+                    this.searchResults = data.results || [];
+                } else {
+                    // Use offline search if available
+                    if (this.offlineManager && this.offlineManager.db) {
+                        this.searchResults = await this.offlineManager.db.searchCachedInventory(this.searchQuery);
+                    } else {
+                        this.searchResults = [];
                     }
-                });
-                const data = await response.json();
-                this.searchResults = data.results || [];
+                }
             } catch (error) {
                 console.error('Error searching products:', error);
-                alert('Error searching products');
+                
+                // Try offline search as fallback
+                if (this.offlineManager && this.offlineManager.db) {
+                    try {
+                        this.searchResults = await this.offlineManager.db.searchCachedInventory(this.searchQuery);
+                        console.log('[POS] Using cached search results');
+                    } catch (offlineError) {
+                        console.error('Offline search also failed:', offlineError);
+                        this.searchResults = [];
+                        alert('Error searching products (offline mode unavailable)');
+                    }
+                } else {
+                    alert('Error searching products');
+                }
             } finally {
                 this.loading = false;
             }
@@ -685,15 +928,36 @@ function posApp() {
             }
 
             try {
-                const response = await fetch(`/api/pos/search/customers/?q=${encodeURIComponent(this.customerSearch)}`, {
-                    headers: {
-                        'Authorization': 'Bearer ' + this.getToken()
+                // Try online search first
+                if (this.isOnline) {
+                    const response = await fetch(`/api/pos/search/customers/?q=${encodeURIComponent(this.customerSearch)}`, {
+                        headers: {
+                            'Authorization': 'Bearer ' + this.getToken()
+                        }
+                    });
+                    const data = await response.json();
+                    this.customerResults = data.results || [];
+                } else {
+                    // Use offline search if available
+                    if (this.offlineManager && this.offlineManager.db) {
+                        this.customerResults = await this.offlineManager.db.searchCachedCustomers(this.customerSearch);
+                    } else {
+                        this.customerResults = [];
                     }
-                });
-                const data = await response.json();
-                this.customerResults = data.results || [];
+                }
             } catch (error) {
                 console.error('Error searching customers:', error);
+                
+                // Try offline search as fallback
+                if (this.offlineManager && this.offlineManager.db) {
+                    try {
+                        this.customerResults = await this.offlineManager.db.searchCachedCustomers(this.customerSearch);
+                        console.log('[POS] Using cached customer search results');
+                    } catch (offlineError) {
+                        console.error('Offline customer search failed:', offlineError);
+                        this.customerResults = [];
+                    }
+                }
             }
         },
 
@@ -783,19 +1047,42 @@ function posApp() {
                 if (response.ok) {
                     const sale = await response.json();
                     
-                    // Generate and show receipt
-                    await this.generateReceipt(sale.id, sale.sale_number, sale.total);
+                    // Check if this was an offline transaction
+                    const isOfflineTransaction = response.headers.get('X-Offline-Mode') === 'true';
+                    
+                    if (isOfflineTransaction) {
+                        // Show offline transaction message
+                        alert(`Sale saved offline!\nSale Number: ${sale.sale_number}\nTotal: $${sale.total}\n\nTransaction will sync when connection is restored.`);
+                        
+                        // Update pending transaction count
+                        await this.updatePendingTransactionCount();
+                    } else {
+                        // Generate and show receipt for online transaction
+                        await this.generateReceipt(sale.id, sale.sale_number, sale.total);
+                    }
                     
                     // Reset cart
                     this.clearCart();
                     this.paymentMethod = 'CASH';
                 } else {
                     const error = await response.json();
-                    alert('Error completing sale: ' + (error.detail || JSON.stringify(error)));
+                    
+                    // Handle offline mode errors
+                    if (error.error === 'Offline mode') {
+                        alert('Transaction saved for offline processing. Will sync when connection is restored.');
+                    } else {
+                        alert('Error completing sale: ' + (error.detail || JSON.stringify(error)));
+                    }
                 }
             } catch (error) {
                 console.error('Error completing sale:', error);
-                alert('Error completing sale');
+                
+                // Check if we're offline and the service worker handled it
+                if (!this.isOnline) {
+                    alert('Connection lost. Transaction may have been saved offline and will sync when connection is restored.');
+                } else {
+                    alert('Error completing sale');
+                }
             } finally {
                 this.processing = false;
             }
@@ -904,6 +1191,80 @@ function posApp() {
             // For now, just show the sale details
             alert(`Resume sale: ${sale.sale_number}\nTotal: $${sale.total}\n\nNote: Resume functionality will be implemented in a future update.`);
             this.showHeldSales = false;
+        },
+        
+        async manualSync() {
+            if (!this.offlineManager || !this.isOnline) {
+                return;
+            }
+            
+            try {
+                console.log('[POS] Manual sync triggered');
+                await this.offlineManager.forcSync();
+                await this.updatePendingTransactionCount();
+            } catch (error) {
+                console.error('[POS] Manual sync failed:', error);
+                alert('Sync failed: ' + error.message);
+            }
+        },
+        
+        async loadFavoriteProducts() {
+            try {
+                if (this.isOnline) {
+                    const response = await fetch('/api/pos/favorite-products/', {
+                        headers: {
+                            'Authorization': 'Bearer ' + this.getToken()
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.favoriteProducts = data.results || [];
+                    }
+                } else {
+                    // Use cached data when offline
+                    if (this.offlineManager && this.offlineManager.db) {
+                        // Get most frequently accessed items from cache
+                        const cachedItems = await this.offlineManager.db.searchCachedInventory('');
+                        this.favoriteProducts = cachedItems.slice(0, 10);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading favorite products:', error);
+            }
+        },
+        
+        async loadRecentTransactions() {
+            try {
+                if (this.isOnline) {
+                    const response = await fetch('/api/pos/recent-transactions/', {
+                        headers: {
+                            'Authorization': 'Bearer ' + this.getToken()
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.recentTransactions = data.results || [];
+                    }
+                } else {
+                    // Show offline transactions when offline
+                    if (this.offlineManager && this.offlineManager.db) {
+                        const offlineTransactions = await this.offlineManager.db.getTransactionHistory(10);
+                        this.recentTransactions = offlineTransactions.map(tx => ({
+                            id: tx.id,
+                            sale_number: tx.data.sale_number || 'OFFLINE_' + tx.id.slice(-6),
+                            total: tx.data.total || '0.00',
+                            status: 'OFFLINE_PENDING',
+                            customer_name: tx.data.customer_name || null,
+                            created_at: new Date(tx.timestamp).toISOString(),
+                            items_count: tx.data.items ? tx.data.items.length : 0
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading recent transactions:', error);
+            }
         }
     }
 }

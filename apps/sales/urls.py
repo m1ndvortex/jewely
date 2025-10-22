@@ -25,6 +25,17 @@ urlpatterns = [
         "api/pos/validate-inventory/", views.pos_validate_inventory, name="pos_validate_inventory"
     ),
     path("api/pos/calculate-totals/", views.pos_calculate_totals, name="pos_calculate_totals"),
+    path(
+        "api/pos/offline/sync-validation/",
+        views.pos_offline_sync_validation,
+        name="pos_offline_sync_validation",
+    ),
+    path("api/pos/favorite-products/", views.pos_favorite_products, name="pos_favorite_products"),
+    path(
+        "api/pos/recent-transactions/",
+        views.pos_recent_transactions,
+        name="pos_recent_transactions",
+    ),
     # Sale Management API
     path("api/sales/", views.SaleListView.as_view(), name="sale_list"),
     path("api/sales/<uuid:id>/", views.SaleDetailView.as_view(), name="sale_detail"),
