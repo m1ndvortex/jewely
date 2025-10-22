@@ -2,10 +2,13 @@
 Tests for the accounting module.
 """
 
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
+import pytest
 from django_ledger.models import EntityModel
 
 from apps.core.models import Tenant
@@ -207,6 +210,192 @@ class AccountingModelsTest(TestCase):
 
         self.assertEqual(str(line), "Test Sale Template - 1001 (DEBIT)")
         self.assertEqual(line.order, 1)
+
+
+@pytest.mark.django_db
+class AccountingJournalEntryTest:
+    """Test cases for automatic journal entry creation."""
+
+    @pytest.fixture(autouse=True)
+    def setup_test_data(self, tenant, tenant_user, branch):
+        """Set up test data using fixtures."""
+        from apps.core.tenant_context import tenant_context
+        from apps.inventory.models import InventoryItem, ProductCategory
+        from apps.sales.models import Customer, Terminal
+
+        self.tenant = tenant
+        self.user = tenant_user
+        self.branch = branch
+
+        # Set up accounting for tenant
+        with tenant_context(tenant.id):
+            self.jewelry_entity = AccountingService.setup_tenant_accounting(self.tenant, self.user)
+
+            # Create terminal for sales
+            self.terminal = Terminal.objects.create(
+                branch=self.branch, terminal_id="POS-01", is_active=True
+            )
+
+            # Create customer
+            self.customer = Customer.objects.create(
+                tenant=self.tenant,
+                customer_number="CUST-001",
+                first_name="John",
+                last_name="Doe",
+                phone="555-1234",
+            )
+
+            # Create inventory item
+            self.category = ProductCategory.objects.create(tenant=self.tenant, name="Rings")
+
+            self.inventory_item = InventoryItem.objects.create(
+                tenant=self.tenant,
+                sku="RING-001",
+                name="Gold Ring",
+                category=self.category,
+                karat=24,
+                weight_grams=Decimal("10.5"),
+                cost_price=Decimal("500.00"),
+                selling_price=Decimal("800.00"),
+                quantity=10,
+                branch=self.branch,
+            )
+
+    def test_cash_sale_journal_entry_creation(self):
+        """Test automatic journal entry creation for cash sales."""
+        from django_ledger.models import JournalEntryModel, TransactionModel
+
+        from apps.core.tenant_context import tenant_context
+        from apps.sales.models import Sale, SaleItem
+
+        with tenant_context(self.tenant.id):
+            # Create a cash sale
+            sale = Sale.objects.create(
+                tenant=self.tenant,
+                sale_number="SALE-001",
+                customer=self.customer,
+                branch=self.branch,
+                terminal=self.terminal,
+                employee=self.user,
+                subtotal=Decimal("800.00"),
+                tax=Decimal("64.00"),
+                total=Decimal("864.00"),
+                payment_method="CASH",
+                status="COMPLETED",
+            )
+
+            # Create sale item
+            SaleItem.objects.create(
+                sale=sale,
+                inventory_item=self.inventory_item,
+                quantity=1,
+                unit_price=Decimal("800.00"),
+                subtotal=Decimal("800.00"),
+            )
+
+            # Check that journal entry was created
+            journal_entries = JournalEntryModel.objects.filter(
+                entity=self.jewelry_entity.ledger_entity, description__contains=sale.sale_number
+            )
+            assert journal_entries.count() == 1
+
+            journal_entry = journal_entries.first()
+            transactions = TransactionModel.objects.filter(journal_entry=journal_entry)
+
+            # Should have 5 transactions: Cash (Dr), Sales (Cr), Tax (Cr), COGS (Dr), Inventory (Cr)
+            assert transactions.count() == 5
+
+            # Check cash debit
+            cash_transaction = transactions.filter(tx_type="debit", account__code="1001").first()
+            assert cash_transaction is not None
+            assert cash_transaction.amount == Decimal("864.00")
+
+            # Check sales credit
+            sales_transaction = transactions.filter(tx_type="credit", account__code="4001").first()
+            assert sales_transaction is not None
+            assert sales_transaction.amount == Decimal("800.00")
+
+            # Check tax credit
+            tax_transaction = transactions.filter(tx_type="credit", account__code="2003").first()
+            assert tax_transaction is not None
+            assert tax_transaction.amount == Decimal("64.00")
+
+            # Check COGS debit
+            cogs_transaction = transactions.filter(tx_type="debit", account__code="5001").first()
+            assert cogs_transaction is not None
+            assert cogs_transaction.amount == Decimal("500.00")
+
+            # Check inventory credit
+            inventory_transaction = transactions.filter(
+                tx_type="credit", account__code="1200"
+            ).first()
+            assert inventory_transaction is not None
+            assert inventory_transaction.amount == Decimal("500.00")
+
+    def test_card_sale_journal_entry_creation(self):
+        """Test automatic journal entry creation for card sales."""
+        from django_ledger.models import JournalEntryModel, TransactionModel
+
+        from apps.core.tenant_context import tenant_context
+        from apps.sales.models import Sale, SaleItem
+
+        with tenant_context(self.tenant.id):
+            # Create a card sale
+            sale = Sale.objects.create(
+                tenant=self.tenant,
+                sale_number="SALE-002",
+                customer=self.customer,
+                branch=self.branch,
+                terminal=self.terminal,
+                employee=self.user,
+                subtotal=Decimal("800.00"),
+                tax=Decimal("64.00"),
+                total=Decimal("864.00"),
+                payment_method="CARD",
+                status="COMPLETED",
+            )
+
+            # Create sale item
+            SaleItem.objects.create(
+                sale=sale,
+                inventory_item=self.inventory_item,
+                quantity=1,
+                unit_price=Decimal("800.00"),
+                subtotal=Decimal("800.00"),
+            )
+
+            # Check that journal entry was created
+            journal_entries = JournalEntryModel.objects.filter(
+                entity=self.jewelry_entity.ledger_entity, description__contains=sale.sale_number
+            )
+            assert journal_entries.count() == 1
+
+            journal_entry = journal_entries.first()
+            transactions = TransactionModel.objects.filter(journal_entry=journal_entry)
+
+            # Check card processing account debit (should use account 1002)
+            card_transaction = transactions.filter(tx_type="debit", account__code="1002").first()
+            assert card_transaction is not None
+            assert card_transaction.amount == Decimal("864.00")
+
+    def test_expense_category_mapping(self):
+        """Test that expense categories map to correct account codes."""
+        test_cases = [
+            ("RENT", "5100"),
+            ("UTILITIES", "5101"),
+            ("INSURANCE", "5102"),
+            ("MARKETING", "5103"),
+            ("WAGES", "5200"),
+            ("PROFESSIONAL", "5201"),
+            ("BANK_FEES", "5202"),
+            ("OTHER", "5400"),
+        ]
+
+        for category, expected_code in test_cases:
+            actual_code = AccountingService._get_expense_account_code(category)
+            assert (
+                actual_code == expected_code
+            ), f"Category {category} should map to {expected_code}"
 
 
 class AccountingViewsTest(TestCase):

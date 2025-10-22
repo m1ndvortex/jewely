@@ -453,14 +453,8 @@ class SaleCreateSerializer(serializers.Serializer):
                 customer.total_purchases += total
                 customer.save(update_fields=["total_purchases", "store_credit", "updated_at"])
 
-            # Create accounting entries (placeholder for future accounting integration)
-            # TODO: Implement accounting entries when accounting system is ready
-            # This should create journal entries for:
-            # - Debit: Cash/Accounts Receivable (total amount)
-            # - Credit: Sales Revenue (subtotal)
-            # - Credit: Sales Tax Payable (tax amount)
-            # - Debit: Cost of Goods Sold (inventory cost)
-            # - Credit: Inventory (inventory cost)
+            # Accounting entries will be created automatically via Django signals
+            # when the sale status is set to COMPLETED (see apps.accounting.signals)
 
             return sale
 

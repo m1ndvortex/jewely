@@ -221,7 +221,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Configure fiscal year settings
     - _Requirements: 10_
   
-  - [ ] 7.2 Implement automatic journal entries
+  - [x] 7.2 Implement automatic journal entries
     - Create journal entries for sales (Debit: Cash/Card, Credit: Revenue)
     - Create journal entries for inventory purchases (Debit: Inventory, Credit: Accounts Payable)
     - Create journal entries for payments (Debit: Accounts Payable, Credit: Cash)

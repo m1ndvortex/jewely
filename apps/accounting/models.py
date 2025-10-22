@@ -12,6 +12,9 @@ from django_ledger.models import EntityModel
 
 from apps.core.models import Tenant
 
+# Import transaction models for Django to recognize them
+from .transaction_models import Expense, Payment, PurchaseOrder  # noqa: F401
+
 User = get_user_model()
 
 

@@ -66,6 +66,18 @@ class AccountingService:
                 fy_start_month=1,
             )
 
+            # Create default entity unit using django-ledger's API
+            from django_ledger.models import EntityUnitModel, LedgerModel
+
+            EntityUnitModel.add_root(
+                entity=entity, name=f"{tenant.company_name} - Main Unit", slug=f"{tenant.slug}-main"
+            )
+
+            # Create a ledger for the entity unit
+            LedgerModel.objects.create(
+                entity=entity, name=f"{tenant.company_name} - General Ledger"
+            )
+
             # Create jewelry entity wrapper
             jewelry_entity = JewelryEntity.objects.create(
                 tenant=tenant,
@@ -254,6 +266,64 @@ class AccountingService:
                 order=3,
             )
 
+        # Inventory Purchase Template
+        purchase_template, created = JournalEntryTemplate.objects.get_or_create(
+            template_type="INVENTORY_PURCHASE",
+            defaults={
+                "name": "Inventory Purchase",
+                "description": "Journal entry for inventory purchases",
+                "is_active": True,
+            },
+        )
+
+        if created:
+            # Debit Inventory, Credit Accounts Payable
+            JournalEntryTemplateLine.objects.create(
+                template=purchase_template,
+                account_code="1200",  # Inventory
+                debit_credit="DEBIT",
+                amount_field="total_amount",
+                description_template="Inventory purchase - PO #{po_number}",
+                order=1,
+            )
+            JournalEntryTemplateLine.objects.create(
+                template=purchase_template,
+                account_code="2001",  # Accounts Payable
+                debit_credit="CREDIT",
+                amount_field="total_amount",
+                description_template="Amount owed to supplier - PO #{po_number}",
+                order=2,
+            )
+
+        # Expense Payment Template
+        expense_template, created = JournalEntryTemplate.objects.get_or_create(
+            template_type="EXPENSE_PAYMENT",
+            defaults={
+                "name": "Expense Payment",
+                "description": "Journal entry for expense payments",
+                "is_active": True,
+            },
+        )
+
+        if created:
+            # Debit Expense Account, Credit Cash
+            JournalEntryTemplateLine.objects.create(
+                template=expense_template,
+                account_code="5400",  # Other Expenses (default)
+                debit_credit="DEBIT",
+                amount_field="amount",
+                description_template="Expense: {description}",
+                order=1,
+            )
+            JournalEntryTemplateLine.objects.create(
+                template=expense_template,
+                account_code="1001",  # Cash
+                debit_credit="CREDIT",
+                amount_field="amount",
+                description_template="Cash payment for: {description}",
+                order=2,
+            )
+
     @staticmethod
     def _get_account_role(account_type: str) -> str:
         """
@@ -315,58 +385,434 @@ class AccountingService:
     def create_sale_journal_entry(sale, user: User) -> Optional[JournalEntryModel]:
         """
         Create journal entry for a sale transaction.
+
+        Creates double-entry bookkeeping entries for sales:
+        - Debit: Cash/Card account (total amount)
+        - Credit: Sales Revenue account (subtotal)
+        - Credit: Sales Tax Payable account (tax amount)
+        - Debit: Cost of Goods Sold (COGS)
+        - Credit: Inventory (COGS)
         """
         try:
             # Get tenant's accounting entity
             jewelry_entity = JewelryEntity.objects.get(tenant=sale.tenant)
             entity = jewelry_entity.ledger_entity
+            entity_unit = entity.entityunitmodel_set.first()
+
+            if not entity_unit:
+                logger.error(f"No entity unit found for tenant {sale.tenant.company_name}")
+                return None
 
             # Get accounting configuration
             config = AccountingConfiguration.objects.get(tenant=sale.tenant)
 
             if not config.use_automatic_journal_entries:
+                logger.info(
+                    f"Automatic journal entries disabled for tenant {sale.tenant.company_name}"
+                )
                 return None
 
-            # Determine template based on payment method
-            template_type = "CASH_SALE" if sale.payment_method == "cash" else "CARD_SALE"
-            template = JournalEntryTemplate.objects.get(template_type=template_type)
+            with transaction.atomic():
+                # Get the ledger for this entity
+                ledger = entity.ledgermodel_set.first()
+                if not ledger:
+                    logger.error(f"No ledger found for entity {entity}")
+                    return None
 
-            # Create journal entry
-            journal_entry = JournalEntryModel.objects.create(
-                entity=entity,
-                description=f"Sale #{sale.sale_number}",
-                date=sale.created_at.date(),
-                posted=True,
-            )
+                # Create journal entry (unposted initially)
+                journal_entry = JournalEntryModel.objects.create(
+                    ledger=ledger,
+                    description=f"Sale #{sale.sale_number}",
+                    posted=False,
+                )
 
-            # Create transaction lines based on template
-            for line_template in template.lines.all():
-                amount = getattr(sale, line_template.amount_field, Decimal("0"))
+                # 1. Record the sale revenue and payment
+                AccountingService._create_sale_revenue_entries(journal_entry, sale, config)
 
-                if amount > 0:  # Only create lines with positive amounts
-                    account = AccountModel.objects.get(
-                        coa_model__entity=entity, code=line_template.account_code
-                    )
+                # 2. Record cost of goods sold and inventory reduction
+                AccountingService._create_cogs_entries(journal_entry, sale, config)
 
-                    # Use correct transaction type constants
-                    tx_type = "debit" if line_template.debit_credit == "DEBIT" else "credit"
+                # Post the journal entry
+                journal_entry.posted = True
+                journal_entry.save()
 
-                    TransactionModel.objects.create(
-                        journal_entry=journal_entry,
-                        account=account,
-                        amount=amount,
-                        tx_type=tx_type,
-                        description=line_template.description_template.format(
-                            sale_number=sale.sale_number
-                        ),
-                    )
-
-            logger.info(f"Journal entry created for sale {sale.sale_number}")
-            return journal_entry
+                logger.info(f"Journal entry created for sale {sale.sale_number}")
+                return journal_entry
 
         except Exception as e:
             logger.error(f"Failed to create journal entry for sale {sale.sale_number}: {str(e)}")
             return None
+
+    @staticmethod
+    def _create_sale_revenue_entries(
+        journal_entry: JournalEntryModel, sale, config: AccountingConfiguration
+    ):
+        """Create revenue-related journal entries for a sale."""
+        entity = journal_entry.ledger.entity
+
+        # Debit: Cash or Card account (total amount received)
+        if sale.payment_method.upper() == "CASH":
+            cash_account = AccountModel.objects.get(
+                coa_model__entity=entity, code=config.default_cash_account
+            )
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=cash_account,
+                amount=sale.total,
+                tx_type="debit",
+                description=f"Cash received for sale #{sale.sale_number}",
+            )
+        elif sale.payment_method.upper() == "CARD":
+            card_account = AccountModel.objects.get(
+                coa_model__entity=entity, code=config.default_card_account
+            )
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=card_account,
+                amount=sale.total,
+                tx_type="debit",
+                description=f"Card payment for sale #{sale.sale_number}",
+            )
+        elif sale.payment_method.upper() == "STORE_CREDIT":
+            # For store credit, we debit accounts receivable or a store credit liability account
+            # For now, use cash account as placeholder
+            cash_account = AccountModel.objects.get(
+                coa_model__entity=entity, code=config.default_cash_account
+            )
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=cash_account,
+                amount=sale.total,
+                tx_type="debit",
+                description=f"Store credit used for sale #{sale.sale_number}",
+            )
+
+        # Credit: Sales Revenue (subtotal amount)
+        if sale.subtotal > 0:
+            sales_account = AccountModel.objects.get(
+                coa_model__entity=entity, code=config.default_sales_account
+            )
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=sales_account,
+                amount=sale.subtotal,
+                tx_type="credit",
+                description=f"Sales revenue for sale #{sale.sale_number}",
+            )
+
+        # Credit: Sales Tax Payable (tax amount)
+        if sale.tax > 0:
+            tax_account = AccountModel.objects.get(
+                coa_model__entity=entity, code=config.default_tax_account
+            )
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=tax_account,
+                amount=sale.tax,
+                tx_type="credit",
+                description=f"Sales tax collected for sale #{sale.sale_number}",
+            )
+
+    @staticmethod
+    def _create_cogs_entries(
+        journal_entry: JournalEntryModel, sale, config: AccountingConfiguration
+    ):
+        """Create cost of goods sold entries for a sale."""
+        entity = journal_entry.ledger.entity
+
+        # Calculate total COGS for all items in the sale
+        total_cogs = Decimal("0.00")
+
+        for sale_item in sale.items.all():
+            item_cogs = sale_item.inventory_item.cost_price * sale_item.quantity
+            total_cogs += item_cogs
+
+        if total_cogs > 0:
+            # Debit: Cost of Goods Sold
+            cogs_account = AccountModel.objects.get(
+                coa_model__entity=entity, code=config.default_cogs_account
+            )
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=cogs_account,
+                amount=total_cogs,
+                tx_type="debit",
+                description=f"Cost of goods sold for sale #{sale.sale_number}",
+            )
+
+            # Credit: Inventory
+            inventory_account = AccountModel.objects.get(
+                coa_model__entity=entity, code=config.default_inventory_account
+            )
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=inventory_account,
+                amount=total_cogs,
+                tx_type="credit",
+                description=f"Inventory reduction for sale #{sale.sale_number}",
+            )
+
+    @staticmethod
+    def create_purchase_journal_entry(purchase_order, user: User) -> Optional[JournalEntryModel]:
+        """
+        Create journal entry for inventory purchase.
+
+        Creates double-entry bookkeeping entries for purchases:
+        - Debit: Inventory (purchase amount)
+        - Credit: Accounts Payable (purchase amount)
+        """
+        try:
+            # Get tenant's accounting entity
+            jewelry_entity = JewelryEntity.objects.get(tenant=purchase_order.tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get accounting configuration
+            config = AccountingConfiguration.objects.get(tenant=purchase_order.tenant)
+
+            if not config.use_automatic_journal_entries:
+                logger.info(
+                    f"Automatic journal entries disabled for tenant {purchase_order.tenant.company_name}"
+                )
+                return None
+
+            with transaction.atomic():
+                # Get the ledger for this entity
+                ledger = entity.ledgermodel_set.first()
+                if not ledger:
+                    logger.error(f"No ledger found for entity {entity}")
+                    return None
+
+                # Create journal entry
+                journal_entry = JournalEntryModel.objects.create(
+                    ledger=ledger,
+                    description=f"Purchase Order #{purchase_order.po_number}",
+                    posted=False,
+                )
+
+                # Debit: Inventory
+                inventory_account = AccountModel.objects.get(
+                    coa_model__entity=entity, code=config.default_inventory_account
+                )
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=inventory_account,
+                    amount=purchase_order.total_amount,
+                    tx_type="debit",
+                    description=f"Inventory purchase - PO #{purchase_order.po_number}",
+                )
+
+                # Credit: Accounts Payable
+                payable_account = AccountModel.objects.get(
+                    coa_model__entity=entity, code="2001"
+                )  # Accounts Payable
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=payable_account,
+                    amount=purchase_order.total_amount,
+                    tx_type="credit",
+                    description=f"Amount owed to supplier - PO #{purchase_order.po_number}",
+                )
+
+                # Post the journal entry
+                journal_entry.posted = True
+                journal_entry.save()
+
+                logger.info(f"Journal entry created for purchase order {purchase_order.po_number}")
+                return journal_entry
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create journal entry for purchase order {purchase_order.po_number}: {str(e)}"
+            )
+            return None
+
+    @staticmethod
+    def create_payment_journal_entry(payment, user: User) -> Optional[JournalEntryModel]:
+        """
+        Create journal entry for payment to supplier.
+
+        Creates double-entry bookkeeping entries for payments:
+        - Debit: Accounts Payable (payment amount)
+        - Credit: Cash/Bank (payment amount)
+        """
+        try:
+            # Get tenant's accounting entity
+            jewelry_entity = JewelryEntity.objects.get(tenant=payment.tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get accounting configuration
+            config = AccountingConfiguration.objects.get(tenant=payment.tenant)
+
+            if not config.use_automatic_journal_entries:
+                logger.info(
+                    f"Automatic journal entries disabled for tenant {payment.tenant.company_name}"
+                )
+                return None
+
+            with transaction.atomic():
+                # Get the ledger for this entity
+                ledger = entity.ledgermodel_set.first()
+                if not ledger:
+                    logger.error(f"No ledger found for entity {entity}")
+                    return None
+
+                # Create journal entry
+                journal_entry = JournalEntryModel.objects.create(
+                    ledger=ledger,
+                    description=f"Payment #{payment.payment_number}",
+                    posted=False,
+                )
+
+                # Debit: Accounts Payable (reducing the liability)
+                payable_account = AccountModel.objects.get(
+                    coa_model__entity=entity, code="2001"
+                )  # Accounts Payable
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=payable_account,
+                    amount=payment.amount,
+                    tx_type="debit",
+                    description=f"Payment to supplier - {payment.supplier.name}",
+                )
+
+                # Credit: Cash/Bank (reducing the asset)
+                if payment.payment_method.upper() == "CASH":
+                    cash_account = AccountModel.objects.get(
+                        coa_model__entity=entity, code=config.default_cash_account
+                    )
+                    account_description = "Cash payment"
+                else:
+                    # Assume bank/check payment
+                    cash_account = AccountModel.objects.get(
+                        coa_model__entity=entity, code=config.default_cash_account
+                    )
+                    account_description = f"{payment.payment_method} payment"
+
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=cash_account,
+                    amount=payment.amount,
+                    tx_type="credit",
+                    description=f"{account_description} to {payment.supplier.name}",
+                )
+
+                # Post the journal entry
+                journal_entry.posted = True
+                journal_entry.save()
+
+                logger.info(f"Journal entry created for payment {payment.payment_number}")
+                return journal_entry
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create journal entry for payment {payment.payment_number}: {str(e)}"
+            )
+            return None
+
+    @staticmethod
+    def create_expense_journal_entry(expense, user: User) -> Optional[JournalEntryModel]:
+        """
+        Create journal entry for business expense.
+
+        Creates double-entry bookkeeping entries for expenses:
+        - Debit: Expense Account (expense amount)
+        - Credit: Cash/Bank (expense amount)
+        """
+        try:
+            # Get tenant's accounting entity
+            jewelry_entity = JewelryEntity.objects.get(tenant=expense.tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get accounting configuration
+            config = AccountingConfiguration.objects.get(tenant=expense.tenant)
+
+            if not config.use_automatic_journal_entries:
+                logger.info(
+                    f"Automatic journal entries disabled for tenant {expense.tenant.company_name}"
+                )
+                return None
+
+            with transaction.atomic():
+                # Get the ledger for this entity
+                ledger = entity.ledgermodel_set.first()
+                if not ledger:
+                    logger.error(f"No ledger found for entity {entity}")
+                    return None
+
+                # Create journal entry
+                journal_entry = JournalEntryModel.objects.create(
+                    ledger=ledger,
+                    description=f"Expense: {expense.description}",
+                    posted=False,
+                )
+
+                # Debit: Expense Account
+                expense_account_code = AccountingService._get_expense_account_code(expense.category)
+                expense_account = AccountModel.objects.get(
+                    coa_model__entity=entity, code=expense_account_code
+                )
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=expense_account,
+                    amount=expense.amount,
+                    tx_type="debit",
+                    description=f"{expense.category}: {expense.description}",
+                )
+
+                # Credit: Cash/Bank
+                if expense.payment_method.upper() == "CASH":
+                    cash_account = AccountModel.objects.get(
+                        coa_model__entity=entity, code=config.default_cash_account
+                    )
+                    account_description = "Cash expense"
+                else:
+                    # Assume bank/check payment
+                    cash_account = AccountModel.objects.get(
+                        coa_model__entity=entity, code=config.default_cash_account
+                    )
+                    account_description = f"{expense.payment_method} expense"
+
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=cash_account,
+                    amount=expense.amount,
+                    tx_type="credit",
+                    description=f"{account_description}: {expense.description}",
+                )
+
+                # Post the journal entry
+                journal_entry.posted = True
+                journal_entry.save()
+
+                logger.info(f"Journal entry created for expense {expense.description}")
+                return journal_entry
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create journal entry for expense {expense.description}: {str(e)}"
+            )
+            return None
+
+    @staticmethod
+    def _get_expense_account_code(expense_category: str) -> str:
+        """
+        Map expense category to appropriate account code.
+        """
+        category_mapping = {
+            "RENT": "5100",  # Rent Expense
+            "UTILITIES": "5101",  # Utilities
+            "INSURANCE": "5102",  # Insurance
+            "MARKETING": "5103",  # Marketing & Advertising
+            "WAGES": "5200",  # Wages & Salaries
+            "PROFESSIONAL": "5201",  # Professional Fees
+            "BANK_FEES": "5202",  # Bank Fees
+            "OFFICE": "5300",  # Office Expenses (general)
+            "TRAVEL": "5301",  # Travel Expenses
+            "SUPPLIES": "5302",  # Office Supplies
+            "EQUIPMENT": "5303",  # Equipment Expenses
+            "OTHER": "5400",  # Other Expenses
+        }
+        return category_mapping.get(expense_category.upper(), "5400")  # Default to Other Expenses
 
     @staticmethod
     def get_financial_reports(tenant: Tenant, start_date: date, end_date: date) -> Dict:
