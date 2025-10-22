@@ -138,3 +138,49 @@ def branch(tenant):
             phone="555-0100",
         )
     return branch
+
+
+@pytest.fixture
+def inventory_item(tenant, branch):
+    """
+    Fixture for creating a test inventory item.
+
+    Note: No explicit cleanup needed - Django's test database transaction
+    rollback handles cleanup automatically.
+    """
+    from decimal import Decimal
+
+    from apps.core.tenant_context import tenant_context
+    from apps.inventory.models import InventoryItem, ProductCategory
+
+    with tenant_context(tenant.id):
+        category = ProductCategory.objects.create(
+            tenant=tenant,
+            name="Test Category",
+        )
+
+        item = InventoryItem.objects.create(
+            tenant=tenant,
+            sku="TEST-001",
+            name="Test Gold Ring",
+            category=category,
+            branch=branch,
+            karat=24,
+            weight_grams=Decimal("10.5"),
+            cost_price=Decimal("1000.00"),
+            selling_price=Decimal("1200.00"),
+            quantity=10,
+        )
+    return item
+
+
+@pytest.fixture
+def authenticated_api_client(tenant_user):
+    """
+    Fixture for authenticated Django REST framework API client.
+    """
+    from rest_framework.test import APIClient
+
+    client = APIClient()
+    client.force_authenticate(user=tenant_user)
+    return client

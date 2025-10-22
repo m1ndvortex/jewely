@@ -307,14 +307,7 @@ class TenantContextMiddleware(MiddlewareMixin):
         if not request.user or isinstance(request.user, AnonymousUser):
             return None
 
-        # Check if user has tenant attribute (extended User model)
-        if hasattr(request.user, "tenant") and request.user.tenant:
-            tenant = request.user.tenant
-            if hasattr(tenant, "id"):
-                return tenant.id
-            return tenant  # In case it's already a UUID
-
-        # Check if user has tenant_id attribute
+        # Check if user has tenant_id attribute first (doesn't trigger DB query)
         if hasattr(request.user, "tenant_id") and request.user.tenant_id:
             tenant_id = request.user.tenant_id
             if isinstance(tenant_id, UUID):
@@ -323,5 +316,18 @@ class TenantContextMiddleware(MiddlewareMixin):
                 return UUID(str(tenant_id))
             except (ValueError, AttributeError) as e:
                 logger.warning(f"Invalid tenant_id on user: {tenant_id}, error: {e}")
+
+        # Check if user has tenant attribute (extended User model)
+        # Wrap in try-except to handle cases where tenant is not accessible due to RLS
+        try:
+            if hasattr(request.user, "tenant") and request.user.tenant:
+                tenant = request.user.tenant
+                if hasattr(tenant, "id"):
+                    return tenant.id
+                return tenant  # In case it's already a UUID
+        except Tenant.DoesNotExist:
+            # Tenant not accessible (possibly due to RLS), fall through to return None
+            logger.debug(f"Tenant not accessible for user {request.user.username}")
+            pass
 
         return None
