@@ -41,11 +41,13 @@ INSTALLED_APPS = [
     "django_otp.plugins.otp_totp",
     "django_otp.plugins.otp_static",
     "guardian",
+    "django_ledger",
     # Local apps
     "apps.core",
     "apps.inventory",
     "apps.sales",
     "apps.crm",
+    "apps.accounting",
 ]
 
 # Site ID for django-allauth

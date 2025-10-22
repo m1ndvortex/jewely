@@ -1,0 +1,154 @@
+{% extends "accounting/base.html" %}
+
+{% block accounting_content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <!-- Date Range Filter -->
+    <div class="lg:col-span-3">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Report Period</h3>
+            <form method="get" class="flex flex-wrap items-end gap-4">
+                <div>
+                    <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" 
+                           class="border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                <div>
+                    <label for="end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" 
+                           class="border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                    Update Reports
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if reports %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Balance Sheet -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Balance Sheet</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">As of {{ end_date|date:'F j, Y' }}</p>
+        </div>
+        <div class="p-6">
+            {% if reports.balance_sheet %}
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">Assets</h4>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                            Balance sheet data will be displayed here when available.
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-gray-500 dark:text-gray-400">No balance sheet data available for this period.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Income Statement -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Income Statement</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ start_date|date:'F j, Y' }} - {{ end_date|date:'F j, Y' }}</p>
+        </div>
+        <div class="p-6">
+            {% if reports.income_statement %}
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-medium text-gray-900 dark:text-white mb-2">Revenue</h4>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                            Income statement data will be displayed here when available.
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-gray-500 dark:text-gray-400">No income statement data available for this period.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Trial Balance -->
+    <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Trial Balance</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">As of {{ end_date|date:'F j, Y' }}</p>
+        </div>
+        <div class="p-6">
+            {% if reports.trial_balance %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Account</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Debit</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Credit</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td colspan="3" class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                    Trial balance data will be displayed here when available.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-gray-500 dark:text-gray-400">No trial balance data available for this period.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+        </div>
+        <div class="ml-3">
+            <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Accounting Not Set Up</h3>
+            <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                <p>Accounting has not been set up for your shop yet. Please contact support or set up accounting to view financial reports.</p>
+            </div>
+            <div class="mt-4">
+                <button onclick="setupAccounting()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm">
+                    Set Up Accounting
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function setupAccounting() {
+    if (confirm('This will set up accounting for your shop. Continue?')) {
+        fetch('{% url "accounting:setup_accounting_api" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Accounting set up successfully! Please refresh the page.');
+                location.reload();
+            } else {
+                alert('Failed to set up accounting: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error setting up accounting: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %}

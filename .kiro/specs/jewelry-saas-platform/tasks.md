@@ -214,7 +214,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 12, 28_
 
 - [ ] 7. Double-Entry Accounting Module
-  - [ ] 7.1 Integrate django-ledger
+  - [x] 7.1 Integrate django-ledger
     - Install and configure django-ledger
     - Create chart of accounts for jewelry business
     - Set up account types (Assets, Liabilities, Equity, Revenue, Expenses)

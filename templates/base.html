@@ -3,25 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Jewelry Shop SaaS{% endblock %}</title>
-    
-    <!-- Tailwind CSS -->
+    <title>{% block title %}Jewelry Shop{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    
-    <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
-    
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-100">
-    {% block content %}{% endblock %}
-    
-    {% block extra_scripts %}{% endblock %}
+<body class="bg-gray-100 dark:bg-gray-900">
+    {% block content %}
+    {% endblock %}
 </body>
 </html>

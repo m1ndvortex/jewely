@@ -1,0 +1,146 @@
+{% extends "accounting/base.html" %}
+
+{% block accounting_content %}
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Chart of Accounts</h3>
+            {% if entity %}
+                <span class="text-sm text-gray-600 dark:text-gray-400">Entity: {{ entity.name }}</span>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="p-6">
+        {% if accounts %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Account Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Balance Type</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Current Balance</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for account in accounts %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                {{ account.code }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {{ account.name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                                {{ account.get_role_display }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                                {{ account.get_balance_type_display }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                                <span class="account-balance" data-account-code="{{ account.code }}">
+                                    Loading...
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if account.active %}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        Active
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                        Inactive
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No Chart of Accounts</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% if not entity %}
+                        Accounting has not been set up for this tenant.
+                    {% else %}
+                        No accounts have been created yet.
+                    {% endif %}
+                </p>
+                {% if not entity %}
+                <div class="mt-6">
+                    <button onclick="setupAccounting()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                        Set Up Accounting
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Load account balances
+document.addEventListener('DOMContentLoaded', function() {
+    const balanceElements = document.querySelectorAll('.account-balance');
+    
+    balanceElements.forEach(element => {
+        const accountCode = element.dataset.accountCode;
+        
+        fetch(`{% url 'accounting:account_balance_api' account_code='PLACEHOLDER' %}`.replace('PLACEHOLDER', accountCode))
+            .then(response => response.json())
+            .then(data => {
+                const balance = parseFloat(data.balance);
+                element.textContent = new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD'
+                }).format(balance);
+                
+                // Color code based on balance
+                if (balance > 0) {
+                    element.classList.add('text-green-600', 'dark:text-green-400');
+                } else if (balance < 0) {
+                    element.classList.add('text-red-600', 'dark:text-red-400');
+                } else {
+                    element.classList.add('text-gray-600', 'dark:text-gray-400');
+                }
+            })
+            .catch(error => {
+                element.textContent = '$0.00';
+                element.classList.add('text-gray-400');
+            });
+    });
+});
+
+function setupAccounting() {
+    if (confirm('This will set up accounting for your shop. Continue?')) {
+        fetch('{% url "accounting:setup_accounting_api" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Accounting set up successfully! Please refresh the page.');
+                location.reload();
+            } else {
+                alert('Failed to set up accounting: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error setting up accounting: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "accounting/base.html" %}
+
+{% block accounting_content %}
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Accounting Configuration</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Configure accounting settings for your jewelry shop</p>
+    </div>
+    
+    <form method="post" class="p-6 space-y-6">
+        {% csrf_token %}
+        
+        <!-- General Settings -->
+        <div>
+            <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">General Settings</h4>
+            
+            <div class="space-y-4">
+                <div class="flex items-center">
+                    <input type="checkbox" id="use_automatic_journal_entries" name="use_automatic_journal_entries" 
+                           {% if config.use_automatic_journal_entries %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="use_automatic_journal_entries" class="ml-2 block text-sm text-gray-900 dark:text-white">
+                        Automatically create journal entries for sales and purchases
+                    </label>
+                </div>
+                
+                <div>
+                    <label for="inventory_valuation_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Inventory Valuation Method
+                    </label>
+                    <select id="inventory_valuation_method" name="inventory_valuation_method" 
+                            class="border border-gray-300 rounded-md px-3 py-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="FIFO" {% if config.inventory_valuation_method == 'FIFO' %}selected{% endif %}>
+                            First In, First Out (FIFO)
+                        </option>
+                        <option value="LIFO" {% if config.inventory_valuation_method == 'LIFO' %}selected{% endif %}>
+                            Last In, First Out (LIFO)
+                        </option>
+                        <option value="WEIGHTED_AVG" {% if config.inventory_valuation_method == 'WEIGHTED_AVG' %}selected{% endif %}>
+                            Weighted Average
+                        </option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Default Accounts -->
+        <div>
+            <h4 class="text-md font-medium text-gray-900 dark:text-white mb-4">Default Accounts</h4>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                These accounts will be used for automatic journal entries
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="default_cash_account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Cash Account
+                    </label>
+                    <input type="text" id="default_cash_account" name="default_cash_account" 
+                           value="{{ config.default_cash_account }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                
+                <div>
+                    <label for="default_card_account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Credit Card Account
+                    </label>
+                    <input type="text" id="default_card_account" name="default_card_account" 
+                           value="{{ config.default_card_account }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                
+                <div>
+                    <label for="default_inventory_account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Inventory Account
+                    </label>
+                    <input type="text" id="default_inventory_account" name="default_inventory_account" 
+                           value="{{ config.default_inventory_account }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                
+                <div>
+                    <label for="default_cogs_account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Cost of Goods Sold Account
+                    </label>
+                    <input type="text" id="default_cogs_account" name="default_cogs_account" 
+                           value="{{ config.default_cogs_account }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                
+                <div>
+                    <label for="default_sales_account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Sales Revenue Account
+                    </label>
+                    <input type="text" id="default_sales_account" name="default_sales_account" 
+                           value="{{ config.default_sales_account }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+                
+                <div>
+                    <label for="default_tax_account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Sales Tax Payable Account
+                    </label>
+                    <input type="text" id="default_tax_account" name="default_tax_account" 
+                           value="{{ config.default_tax_account }}"
+                           class="border border-gray-300 rounded-md px-3 py-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Save Button -->
+        <div class="flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md">
+                Save Configuration
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

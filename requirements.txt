@@ -44,3 +44,6 @@ django-guardian==2.4.0
 # PDF Generation & Reporting
 reportlab==4.0.9
 weasyprint==61.2
+
+# Accounting
+django-ledger==0.6.1
