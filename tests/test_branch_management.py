@@ -507,7 +507,9 @@ class BranchModelTestCase(TestCase):
     def setUp(self):
         """Set up test data."""
         with bypass_rls():
-            self.tenant = Tenant.objects.create(company_name="Test Shop Branch Model", slug="test-shop-branch-model")
+            self.tenant = Tenant.objects.create(
+                company_name="Test Shop Branch Model", slug="test-shop-branch-model"
+            )
 
             self.manager = User.objects.create_user(
                 username="manager",

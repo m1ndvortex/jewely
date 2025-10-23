@@ -297,7 +297,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Track sales by terminal
     - _Requirements: 14_
   
-  - [-] 9.4 Write multi-branch tests
+  - [x] 9.4 Write multi-branch tests
     - Test branch CRUD operations
     - Test transfer workflows
     - Test inventory updates on transfers
@@ -305,7 +305,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 14, 28_
 
 - [ ] 10. Supplier & Procurement Management
-  - [ ] 10.1 Create supplier models
+  - [x] 10.1 Create supplier models
     - Create Supplier model with tenant FK, name, contact info, rating
     - Create PurchaseOrder model with FSM (draft → approved → sent → partially_received → completed)
     - Create PurchaseOrderItem model

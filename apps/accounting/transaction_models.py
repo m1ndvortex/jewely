@@ -32,7 +32,9 @@ class PurchaseOrder(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="purchase_orders")
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, related_name="accounting_purchase_orders"
+    )
     po_number = models.CharField(max_length=50, help_text="Purchase order number")
     supplier_name = models.CharField(max_length=255, help_text="Supplier name")
     total_amount = models.DecimalField(
