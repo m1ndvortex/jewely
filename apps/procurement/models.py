@@ -572,7 +572,7 @@ class GoodsReceipt(models.Model):
         # Check if all PO items have been received
         po_items = self.purchase_order.items.all()
         receipt_items = self.items.all()
-        
+
         # Create mapping of PO items to receipt items
         po_item_map = {}
         for receipt_item in receipt_items:
@@ -580,13 +580,13 @@ class GoodsReceipt(models.Model):
             if po_item.id not in po_item_map:
                 po_item_map[po_item.id] = 0
             po_item_map[po_item.id] += receipt_item.quantity_accepted
-        
+
         # Check if quantities match
         for po_item in po_items:
             received_qty = po_item_map.get(po_item.id, 0)
             if received_qty != po_item.quantity:
                 return False
-        
+
         return True
 
 

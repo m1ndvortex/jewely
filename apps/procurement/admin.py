@@ -279,9 +279,7 @@ class GoodsReceiptItemAdmin(admin.ModelAdmin):
         ),
         (
             "Inventory",
-            {
-                "fields": ("inventory_item",)
-            },
+            {"fields": ("inventory_item",)},
         ),
         (
             "Timestamps",

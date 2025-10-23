@@ -31,13 +31,7 @@ from .forms import (
     SupplierCommunicationForm,
     SupplierDocumentForm,
 )
-from .models import (
-    GoodsReceipt,
-    PurchaseOrder,
-    Supplier,
-    SupplierCommunication,
-    SupplierDocument,
-)
+from .models import GoodsReceipt, PurchaseOrder, Supplier, SupplierCommunication, SupplierDocument
 
 
 @method_decorator([login_required, tenant_required], name="dispatch")
