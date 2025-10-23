@@ -336,7 +336,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Update inventory automatically on receipt confirmation
     - _Requirements: 16_
   
-  - [ ] 10.5 Write procurement tests
+  - [x] 10.5 Write procurement tests
     - Test supplier CRUD operations
     - Test PO workflow and approvals
     - Test goods receiving
