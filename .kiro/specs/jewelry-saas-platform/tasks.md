@@ -345,7 +345,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 16, 28_
 
 - [ ] 11. Gold Rate & Dynamic Pricing
-  - [ ] 11.1 Create gold rate models
+  - [x] 11.1 Create gold rate models
     - Create GoldRate model with rates per gram/tola/ounce, market, timestamp
     - Create PricingRule model with tenant FK, karat, markup_percentage, customer_tier
     - Add indexes for efficient querying
