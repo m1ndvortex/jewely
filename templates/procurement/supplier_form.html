@@ -1,0 +1,244 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if object %}Edit {{ object.name }}{% else %}Add New Supplier{% endif %} - Suppliers - {{ block.super }}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="mb-4">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_list' %}">Suppliers</a></li>
+                        {% if object %}
+                            <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_detail' object.pk %}">{{ object.name }}</a></li>
+                            <li class="breadcrumb-item active">Edit</li>
+                        {% else %}
+                            <li class="breadcrumb-item active">Add New Supplier</li>
+                        {% endif %}
+                    </ol>
+                </nav>
+                <h1 class="h3 mb-0">
+                    {% if object %}Edit {{ object.name }}{% else %}Add New Supplier{% endif %}
+                </h1>
+            </div>
+
+            <!-- Form -->
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2 mb-3">Basic Information</h5>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id_for_label }}" class="form-label">
+                                        Supplier Name <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.name.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.contact_person.id_for_label }}" class="form-label">
+                                        Contact Person
+                                    </label>
+                                    {{ form.contact_person }}
+                                    {% if form.contact_person.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.contact_person.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2 mb-3">Contact Information</h5>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.email.id_for_label }}" class="form-label">
+                                        Email Address
+                                    </label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.email.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.phone.id_for_label }}" class="form-label">
+                                        Phone Number
+                                    </label>
+                                    {{ form.phone }}
+                                    {% if form.phone.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.phone.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="{{ form.address.id_for_label }}" class="form-label">
+                                        Address
+                                    </label>
+                                    {{ form.address }}
+                                    {% if form.address.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.address.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Business Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2 mb-3">Business Information</h5>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.tax_id.id_for_label }}" class="form-label">
+                                        Tax ID
+                                    </label>
+                                    {{ form.tax_id }}
+                                    {% if form.tax_id.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.tax_id.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.payment_terms.id_for_label }}" class="form-label">
+                                        Payment Terms
+                                    </label>
+                                    {{ form.payment_terms }}
+                                    {% if form.payment_terms.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.payment_terms.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">e.g., Net 30, COD, 2/10 Net 30</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.rating.id_for_label }}" class="form-label">
+                                        Rating (0-5 stars)
+                                    </label>
+                                    {{ form.rating }}
+                                    {% if form.rating.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.rating.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if object %}
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <div class="form-check">
+                                        {{ form.is_active }}
+                                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                            Active Supplier
+                                        </label>
+                                    </div>
+                                    {% if form.is_active.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.is_active.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="border-bottom pb-2 mb-3">Additional Information</h5>
+                                <div class="mb-3">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        Notes
+                                    </label>
+                                    {{ form.notes }}
+                                    {% if form.notes.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.notes.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">Internal notes about this supplier</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% if object %}{% url 'procurement:supplier_detail' object.pk %}{% else %}{% url 'procurement:supplier_list' %}{% endif %}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {% if object %}Update Supplier{% else %}Create Supplier{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add Bootstrap classes to form fields
+document.addEventListener('DOMContentLoaded', function() {
+    // Add form-control class to text inputs, textareas, and selects
+    const formControls = document.querySelectorAll('input[type="text"], input[type="email"], input[type="number"], textarea, select');
+    formControls.forEach(function(control) {
+        if (!control.classList.contains('form-check-input')) {
+            control.classList.add('form-control');
+        }
+    });
+    
+    // Add form-check-input class to checkboxes
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.classList.add('form-check-input');
+    });
+    
+    // Mark required fields with error styling
+    const errorFields = document.querySelectorAll('.invalid-feedback');
+    errorFields.forEach(function(errorDiv) {
+        const field = errorDiv.previousElementSibling;
+        if (field) {
+            field.classList.add('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}

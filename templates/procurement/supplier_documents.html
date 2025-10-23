@@ -1,0 +1,216 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}Documents - {{ supplier.name }} - Suppliers - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_list' %}">Suppliers</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_detail' supplier.pk %}">{{ supplier.name }}</a></li>
+                            <li class="breadcrumb-item active">Documents</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0">Document Library</h1>
+                    <p class="text-muted mb-0">All documents for {{ supplier.name }}</p>
+                </div>
+                <a href="{% url 'procurement:document_create' supplier.pk %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Upload Document
+                </a>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="type" class="form-label">Document Type</label>
+                            <select class="form-select" id="type" name="type">
+                                <option value="">All Types</option>
+                                <option value="CERTIFICATION" {% if doc_type == 'CERTIFICATION' %}selected{% endif %}>Certification</option>
+                                <option value="CONTRACT" {% if doc_type == 'CONTRACT' %}selected{% endif %}>Contract</option>
+                                <option value="INSURANCE" {% if doc_type == 'INSURANCE' %}selected{% endif %}>Insurance Document</option>
+                                <option value="TAX_DOCUMENT" {% if doc_type == 'TAX_DOCUMENT' %}selected{% endif %}>Tax Document</option>
+                                <option value="BUSINESS_LICENSE" {% if doc_type == 'BUSINESS_LICENSE' %}selected{% endif %}>Business License</option>
+                                <option value="QUALITY_CERTIFICATE" {% if doc_type == 'QUALITY_CERTIFICATE' %}selected{% endif %}>Quality Certificate</option>
+                                <option value="COMPLIANCE_DOCUMENT" {% if doc_type == 'COMPLIANCE_DOCUMENT' %}selected{% endif %}>Compliance Document</option>
+                                <option value="INVOICE" {% if doc_type == 'INVOICE' %}selected{% endif %}>Invoice</option>
+                                <option value="RECEIPT" {% if doc_type == 'RECEIPT' %}selected{% endif %}>Receipt</option>
+                                <option value="OTHER" {% if doc_type == 'OTHER' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Documents</option>
+                                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                                <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Expired</option>
+                                <option value="expiring" {% if status_filter == 'expiring' %}selected{% endif %}>Expiring Soon</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">Filter</button>
+                            <a href="{% url 'procurement:supplier_documents' supplier.pk %}" class="btn btn-outline-secondary">Clear</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Documents Grid -->
+            <div class="card">
+                <div class="card-body">
+                    {% if documents %}
+                        <div class="row">
+                            {% for doc in documents %}
+                                <div class="col-lg-4 col-md-6 mb-4">
+                                    <div class="card h-100 border">
+                                        <div class="card-body d-flex flex-column">
+                                            <!-- Document Icon and Type -->
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center me-3" 
+                                                     style="width: 40px; height: 40px;">
+                                                    {% if doc.document_type == 'CERTIFICATION' %}
+                                                        <i class="fas fa-certificate"></i>
+                                                    {% elif doc.document_type == 'CONTRACT' %}
+                                                        <i class="fas fa-file-contract"></i>
+                                                    {% elif doc.document_type == 'INSURANCE' %}
+                                                        <i class="fas fa-shield-alt"></i>
+                                                    {% elif doc.document_type == 'TAX_DOCUMENT' %}
+                                                        <i class="fas fa-file-invoice-dollar"></i>
+                                                    {% elif doc.document_type == 'BUSINESS_LICENSE' %}
+                                                        <i class="fas fa-id-card"></i>
+                                                    {% elif doc.document_type == 'QUALITY_CERTIFICATE' %}
+                                                        <i class="fas fa-award"></i>
+                                                    {% elif doc.document_type == 'COMPLIANCE_DOCUMENT' %}
+                                                        <i class="fas fa-clipboard-check"></i>
+                                                    {% elif doc.document_type == 'INVOICE' %}
+                                                        <i class="fas fa-file-invoice"></i>
+                                                    {% elif doc.document_type == 'RECEIPT' %}
+                                                        <i class="fas fa-receipt"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-file"></i>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <span class="badge bg-secondary">{{ doc.get_document_type_display }}</span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Document Title and Description -->
+                                            <h6 class="card-title">{{ doc.title }}</h6>
+                                            {% if doc.description %}
+                                                <p class="card-text text-muted small">{{ doc.description|truncatewords:15 }}</p>
+                                            {% endif %}
+
+                                            <!-- Document Status -->
+                                            <div class="mb-3">
+                                                {% if doc.is_expired %}
+                                                    <span class="document-status expired">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                                        Expired
+                                                    </span>
+                                                {% elif doc.expires_soon %}
+                                                    <span class="document-status expiring">
+                                                        <i class="fas fa-clock me-1"></i>
+                                                        Expires Soon
+                                                    </span>
+                                                {% else %}
+                                                    <span class="document-status valid">
+                                                        <i class="fas fa-check me-1"></i>
+                                                        Valid
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+
+                                            <!-- Document Dates -->
+                                            <div class="text-muted small mb-3">
+                                                {% if doc.issue_date %}
+                                                    <div><strong>Issued:</strong> {{ doc.issue_date|date:"M d, Y" }}</div>
+                                                {% endif %}
+                                                {% if doc.expiry_date %}
+                                                    <div><strong>Expires:</strong> {{ doc.expiry_date|date:"M d, Y" }}</div>
+                                                {% endif %}
+                                                <div><strong>Uploaded:</strong> {{ doc.created_at|date:"M d, Y" }}</div>
+                                                <div><strong>By:</strong> {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}</div>
+                                            </div>
+
+                                            <!-- File Info -->
+                                            <div class="text-muted small mb-3">
+                                                {% if doc.file_size %}
+                                                    <div><strong>Size:</strong> {{ doc.file_size|filesizeformat }}</div>
+                                                {% endif %}
+                                            </div>
+
+                                            <!-- Actions -->
+                                            <div class="mt-auto">
+                                                <div class="d-grid gap-2">
+                                                    <a href="{{ doc.file.url }}" target="_blank" class="btn btn-primary btn-sm">
+                                                        <i class="fas fa-eye me-2"></i>View Document
+                                                    </a>
+                                                    <a href="{{ doc.file.url }}" download class="btn btn-outline-secondary btn-sm">
+                                                        <i class="fas fa-download me-2"></i>Download
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if documents.has_other_pages %}
+                            <nav aria-label="Documents pagination" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if documents.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1{% if doc_type %}&type={{ doc_type }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">First</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ documents.previous_page_number }}{% if doc_type %}&type={{ doc_type }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Previous</a>
+                                        </li>
+                                    {% endif %}
+
+                                    <li class="page-item active">
+                                        <span class="page-link">
+                                            Page {{ documents.number }} of {{ documents.paginator.num_pages }}
+                                        </span>
+                                    </li>
+
+                                    {% if documents.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ documents.next_page_number }}{% if doc_type %}&type={{ doc_type }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ documents.paginator.num_pages }}{% if doc_type %}&type={{ doc_type }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Last</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No documents found</h5>
+                            <p class="text-muted">
+                                {% if doc_type or status_filter %}
+                                    Try adjusting your filters or <a href="{% url 'procurement:supplier_documents' supplier.pk %}">clear filters</a>.
+                                {% else %}
+                                    Start by <a href="{% url 'procurement:document_create' supplier.pk %}">uploading your first document</a> for this supplier.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

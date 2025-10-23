@@ -1,0 +1,262 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}{{ supplier.name }} - Suppliers - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_list' %}">Suppliers</a></li>
+                            <li class="breadcrumb-item active">{{ supplier.name }}</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0">{{ supplier.name }}</h1>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'procurement:supplier_edit' supplier.pk %}" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>Edit Supplier
+                    </a>
+                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" 
+                            data-bs-toggle="dropdown">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'procurement:communication_create' supplier.pk %}">
+                            <i class="fas fa-comment me-2"></i>Add Communication
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'procurement:document_create' supplier.pk %}">
+                            <i class="fas fa-file-upload me-2"></i>Upload Document
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'procurement:supplier_delete' supplier.pk %}">
+                            <i class="fas fa-trash me-2"></i>Delete Supplier
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Supplier Information -->
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Supplier Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Contact Information</h6>
+                                    {% if supplier.contact_person %}
+                                        <p><strong>Contact Person:</strong> {{ supplier.contact_person }}</p>
+                                    {% endif %}
+                                    {% if supplier.email %}
+                                        <p><strong>Email:</strong> <a href="mailto:{{ supplier.email }}">{{ supplier.email }}</a></p>
+                                    {% endif %}
+                                    {% if supplier.phone %}
+                                        <p><strong>Phone:</strong> <a href="tel:{{ supplier.phone }}">{{ supplier.phone }}</a></p>
+                                    {% endif %}
+                                    {% if supplier.address %}
+                                        <p><strong>Address:</strong><br>{{ supplier.address|linebreaks }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Business Information</h6>
+                                    {% if supplier.tax_id %}
+                                        <p><strong>Tax ID:</strong> {{ supplier.tax_id }}</p>
+                                    {% endif %}
+                                    {% if supplier.payment_terms %}
+                                        <p><strong>Payment Terms:</strong> {{ supplier.payment_terms }}</p>
+                                    {% endif %}
+                                    <p><strong>Status:</strong> 
+                                        {% if supplier.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </p>
+                                    <p><strong>Rating:</strong>
+                                        <div class="rating-stars d-inline-block ms-2" data-rating="{{ supplier.rating }}" data-supplier-id="{{ supplier.pk }}">
+                                            {% for i in "12345" %}
+                                                <span class="star {% if forloop.counter <= supplier.rating %}active{% endif %}">
+                                                    {% if forloop.counter <= supplier.rating %}★{% else %}☆{% endif %}
+                                                </span>
+                                            {% endfor %}
+                                        </div>
+                                    </p>
+                                </div>
+                            </div>
+                            {% if supplier.notes %}
+                                <div class="mt-3">
+                                    <h6>Notes</h6>
+                                    <p>{{ supplier.notes|linebreaks }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Recent Communications -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Recent Communications</h5>
+                            <a href="{% url 'procurement:supplier_communications' supplier.pk %}" class="btn btn-sm btn-outline-primary">
+                                View All
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_communications %}
+                                {% for comm in recent_communications %}
+                                    <div class="d-flex mb-3 {% if not forloop.last %}border-bottom pb-3{% endif %}">
+                                        <div class="flex-shrink-0">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                                 style="width: 40px; height: 40px;">
+                                                {% if comm.communication_type == 'EMAIL' %}
+                                                    <i class="fas fa-envelope"></i>
+                                                {% elif comm.communication_type == 'PHONE' %}
+                                                    <i class="fas fa-phone"></i>
+                                                {% elif comm.communication_type == 'MEETING' %}
+                                                    <i class="fas fa-users"></i>
+                                                {% else %}
+                                                    <i class="fas fa-comment"></i>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">{{ comm.subject }}</h6>
+                                            <p class="mb-1 text-muted small">{{ comm.content|truncatewords:20 }}</p>
+                                            <small class="text-muted">
+                                                {{ comm.communication_date|date:"M d, Y" }} by {{ comm.created_by.get_full_name|default:comm.created_by.username }}
+                                                {% if comm.requires_followup and not comm.is_completed %}
+                                                    <span class="badge bg-warning ms-2">Follow-up Required</span>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted text-center py-3">No communications recorded yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Recent Documents -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Recent Documents</h5>
+                            <a href="{% url 'procurement:supplier_documents' supplier.pk %}" class="btn btn-sm btn-outline-primary">
+                                View All
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_documents %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Document</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                                <th>Uploaded</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for doc in recent_documents %}
+                                            <tr>
+                                                <td>
+                                                    <a href="{{ doc.file.url }}" target="_blank">{{ doc.title }}</a>
+                                                </td>
+                                                <td>{{ doc.get_document_type_display }}</td>
+                                                <td>
+                                                    {% if doc.is_expired %}
+                                                        <span class="document-status expired">Expired</span>
+                                                    {% elif doc.expires_soon %}
+                                                        <span class="document-status expiring">Expires Soon</span>
+                                                    {% else %}
+                                                        <span class="document-status valid">Valid</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ doc.created_at|date:"M d, Y" }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted text-center py-3">No documents uploaded yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6 mb-3">
+                                    <div class="border-end">
+                                        <h4 class="mb-0 text-primary">{{ total_orders }}</h4>
+                                        <small class="text-muted">Total Orders</small>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <h4 class="mb-0 text-success">${{ total_order_value|floatformat:2 }}</h4>
+                                    <small class="text-muted">Order Value</small>
+                                </div>
+                                <div class="col-6">
+                                    <div class="border-end">
+                                        <h4 class="mb-0 text-info">{{ pending_followups }}</h4>
+                                        <small class="text-muted">Pending Follow-ups</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="mb-0 text-warning">{{ expiring_documents }}</h4>
+                                    <small class="text-muted">Expiring Docs</small>
+                                </div>
+                            </div>
+                            {% if avg_delivery_time %}
+                                <hr>
+                                <div class="text-center">
+                                    <h5 class="mb-0">{{ avg_delivery_time|floatformat:1 }} days</h5>
+                                    <small class="text-muted">Avg. Delivery Time</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'procurement:communication_create' supplier.pk %}" class="btn btn-outline-primary">
+                                    <i class="fas fa-comment me-2"></i>Add Communication
+                                </a>
+                                <a href="{% url 'procurement:document_create' supplier.pk %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-file-upload me-2"></i>Upload Document
+                                </a>
+                                <button class="btn btn-outline-info" disabled>
+                                    <i class="fas fa-shopping-cart me-2"></i>Create Purchase Order
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSRF Token for AJAX -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+{% endblock %}

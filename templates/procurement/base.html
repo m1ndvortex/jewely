@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Procurement - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.rating-stars {
+    color: #fbbf24;
+    cursor: pointer;
+}
+.rating-stars .star {
+    font-size: 1.2rem;
+    margin-right: 2px;
+}
+.rating-stars .star:hover,
+.rating-stars .star.active {
+    color: #f59e0b;
+}
+.document-status {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.document-status.valid {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+.document-status.expiring {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+.document-status.expired {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Rating system functionality
+function updateRating(supplierId, rating) {
+    fetch(`/procurement/suppliers/${supplierId}/rating/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: `rating=${rating}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update star display
+            updateStarDisplay(supplierId, data.rating);
+            // Show success message
+            showMessage(data.message, 'success');
+        } else {
+            showMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Failed to update rating', 'error');
+    });
+}
+
+function updateStarDisplay(supplierId, rating) {
+    const container = document.querySelector(`[data-supplier-id="${supplierId}"] .rating-stars`);
+    if (container) {
+        const stars = container.querySelectorAll('.star');
+        stars.forEach((star, index) => {
+            if (index < rating) {
+                star.classList.add('active');
+                star.innerHTML = '★';
+            } else {
+                star.classList.remove('active');
+                star.innerHTML = '☆';
+            }
+        });
+    }
+}
+
+function showMessage(message, type) {
+    // Simple message display - you can enhance this with a proper notification system
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    const container = document.querySelector('.messages-container') || document.querySelector('.container');
+    if (container) {
+        container.insertAdjacentHTML('afterbegin', alertHtml);
+    }
+}
+
+// Initialize rating stars
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.rating-stars').forEach(container => {
+        const supplierId = container.closest('[data-supplier-id]').dataset.supplierId;
+        const stars = container.querySelectorAll('.star');
+        
+        stars.forEach((star, index) => {
+            star.addEventListener('click', () => {
+                updateRating(supplierId, index + 1);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

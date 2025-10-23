@@ -1,0 +1,198 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}Communications - {{ supplier.name }} - Suppliers - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_list' %}">Suppliers</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_detail' supplier.pk %}">{{ supplier.name }}</a></li>
+                            <li class="breadcrumb-item active">Communications</li>
+                        </ol>
+                    </nav>
+                    <h1 class="h3 mb-0">Communication History</h1>
+                    <p class="text-muted mb-0">All communications with {{ supplier.name }}</p>
+                </div>
+                <a href="{% url 'procurement:communication_create' supplier.pk %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add Communication
+                </a>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="type" class="form-label">Communication Type</label>
+                            <select class="form-select" id="type" name="type">
+                                <option value="">All Types</option>
+                                <option value="EMAIL" {% if comm_type == 'EMAIL' %}selected{% endif %}>Email</option>
+                                <option value="PHONE" {% if comm_type == 'PHONE' %}selected{% endif %}>Phone Call</option>
+                                <option value="MEETING" {% if comm_type == 'MEETING' %}selected{% endif %}>Meeting</option>
+                                <option value="VIDEO_CALL" {% if comm_type == 'VIDEO_CALL' %}selected{% endif %}>Video Call</option>
+                                <option value="SMS" {% if comm_type == 'SMS' %}selected{% endif %}>SMS</option>
+                                <option value="LETTER" {% if comm_type == 'LETTER' %}selected{% endif %}>Letter</option>
+                                <option value="OTHER" {% if comm_type == 'OTHER' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="followup" class="form-label">Follow-up Status</label>
+                            <select class="form-select" id="followup" name="followup">
+                                <option value="">All Communications</option>
+                                <option value="pending" {% if followup_filter == 'pending' %}selected{% endif %}>Pending Follow-up</option>
+                                <option value="completed" {% if followup_filter == 'completed' %}selected{% endif %}>Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">Filter</button>
+                            <a href="{% url 'procurement:supplier_communications' supplier.pk %}" class="btn btn-outline-secondary">Clear</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Communications List -->
+            <div class="card">
+                <div class="card-body">
+                    {% if communications %}
+                        {% for comm in communications %}
+                            <div class="d-flex mb-4 {% if not forloop.last %}border-bottom pb-4{% endif %}">
+                                <!-- Communication Type Icon -->
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                         style="width: 50px; height: 50px;">
+                                        {% if comm.communication_type == 'EMAIL' %}
+                                            <i class="fas fa-envelope"></i>
+                                        {% elif comm.communication_type == 'PHONE' %}
+                                            <i class="fas fa-phone"></i>
+                                        {% elif comm.communication_type == 'MEETING' %}
+                                            <i class="fas fa-users"></i>
+                                        {% elif comm.communication_type == 'VIDEO_CALL' %}
+                                            <i class="fas fa-video"></i>
+                                        {% elif comm.communication_type == 'SMS' %}
+                                            <i class="fas fa-sms"></i>
+                                        {% elif comm.communication_type == 'LETTER' %}
+                                            <i class="fas fa-mail-bulk"></i>
+                                        {% else %}
+                                            <i class="fas fa-comment"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Communication Content -->
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">{{ comm.subject }}</h6>
+                                            <div class="d-flex align-items-center text-muted small">
+                                                <span class="badge bg-secondary me-2">{{ comm.get_communication_type_display }}</span>
+                                                <span class="me-3">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    {{ comm.communication_date|date:"M d, Y g:i A" }}
+                                                </span>
+                                                <span class="me-3">
+                                                    <i class="fas fa-user me-1"></i>
+                                                    {{ comm.created_by.get_full_name|default:comm.created_by.username }}
+                                                </span>
+                                                {% if comm.contact_person %}
+                                                    <span>
+                                                        <i class="fas fa-user-tie me-1"></i>
+                                                        {{ comm.contact_person }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            {% if comm.requires_followup and not comm.is_completed %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    Follow-up Required
+                                                    {% if comm.followup_date %}
+                                                        <br><small>{{ comm.followup_date|date:"M d, Y" }}</small>
+                                                    {% endif %}
+                                                </span>
+                                            {% elif comm.is_completed %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>
+                                                    Completed
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Communication Content -->
+                                    <div class="mb-2">
+                                        <p class="mb-0">{{ comm.content|linebreaks }}</p>
+                                    </div>
+
+                                    <!-- Internal Participants -->
+                                    {% if comm.internal_participants.exists %}
+                                        <div class="text-muted small">
+                                            <i class="fas fa-users me-1"></i>
+                                            <strong>Participants:</strong>
+                                            {% for participant in comm.internal_participants.all %}
+                                                {{ participant.get_full_name|default:participant.username }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+
+                        <!-- Pagination -->
+                        {% if communications.has_other_pages %}
+                            <nav aria-label="Communications pagination" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if communications.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1{% if comm_type %}&type={{ comm_type }}{% endif %}{% if followup_filter %}&followup={{ followup_filter }}{% endif %}">First</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ communications.previous_page_number }}{% if comm_type %}&type={{ comm_type }}{% endif %}{% if followup_filter %}&followup={{ followup_filter }}{% endif %}">Previous</a>
+                                        </li>
+                                    {% endif %}
+
+                                    <li class="page-item active">
+                                        <span class="page-link">
+                                            Page {{ communications.number }} of {{ communications.paginator.num_pages }}
+                                        </span>
+                                    </li>
+
+                                    {% if communications.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ communications.next_page_number }}{% if comm_type %}&type={{ comm_type }}{% endif %}{% if followup_filter %}&followup={{ followup_filter }}{% endif %}">Next</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ communications.paginator.num_pages }}{% if comm_type %}&type={{ comm_type }}{% endif %}{% if followup_filter %}&followup={{ followup_filter }}{% endif %}">Last</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No communications found</h5>
+                            <p class="text-muted">
+                                {% if comm_type or followup_filter %}
+                                    Try adjusting your filters or <a href="{% url 'procurement:supplier_communications' supplier.pk %}">clear filters</a>.
+                                {% else %}
+                                    Start by <a href="{% url 'procurement:communication_create' supplier.pk %}">recording your first communication</a> with this supplier.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

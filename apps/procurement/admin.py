@@ -5,7 +5,14 @@ Admin configuration for procurement models.
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import GoodsReceipt, PurchaseOrder, PurchaseOrderItem, Supplier
+from .models import (
+    GoodsReceipt,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    Supplier,
+    SupplierCommunication,
+    SupplierDocument,
+)
 
 
 @admin.register(Supplier)
@@ -201,3 +208,104 @@ class GoodsReceiptAdmin(admin.ModelAdmin):
         self.message_user(request, f"{count} goods receipts were marked as quality passed.")
 
     mark_quality_passed.short_description = "Mark quality check as passed"
+
+
+@admin.register(SupplierCommunication)
+class SupplierCommunicationAdmin(admin.ModelAdmin):
+    """Admin interface for SupplierCommunication model."""
+
+    list_display = [
+        "supplier",
+        "subject",
+        "communication_type",
+        "communication_date",
+        "contact_person",
+        "requires_followup",
+        "is_completed",
+    ]
+    list_filter = [
+        "communication_type",
+        "requires_followup",
+        "is_completed",
+        "communication_date",
+    ]
+    search_fields = [
+        "supplier__name",
+        "subject",
+        "content",
+        "contact_person",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    filter_horizontal = ["internal_participants"]
+
+    fieldsets = (
+        (
+            "Communication Details",
+            {"fields": ("supplier", "communication_type", "subject", "content")},
+        ),
+        ("Participants", {"fields": ("contact_person", "internal_participants")}),
+        ("Follow-up", {"fields": ("requires_followup", "followup_date", "is_completed")}),
+        (
+            "Metadata",
+            {
+                "fields": ("communication_date", "created_by", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related("supplier", "created_by")
+
+
+@admin.register(SupplierDocument)
+class SupplierDocumentAdmin(admin.ModelAdmin):
+    """Admin interface for SupplierDocument model."""
+
+    list_display = [
+        "supplier",
+        "title",
+        "document_type",
+        "issue_date",
+        "expiry_date",
+        "is_expired_display",
+        "is_active",
+    ]
+    list_filter = [
+        "document_type",
+        "is_active",
+        "issue_date",
+        "expiry_date",
+    ]
+    search_fields = [
+        "supplier__name",
+        "title",
+        "description",
+    ]
+    readonly_fields = ["file_size", "mime_type", "created_at", "updated_at"]
+
+    fieldsets = (
+        ("Document Information", {"fields": ("supplier", "document_type", "title", "description")}),
+        ("File Information", {"fields": ("file", "file_size", "mime_type")}),
+        ("Validity", {"fields": ("issue_date", "expiry_date", "is_active")}),
+        (
+            "Metadata",
+            {"fields": ("uploaded_by", "created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def is_expired_display(self, obj):
+        """Display expiry status with color coding."""
+        if obj.is_expired:
+            return format_html('<span style="color: red;">Expired</span>')
+        elif obj.expires_soon:
+            return format_html('<span style="color: orange;">Expires Soon</span>')
+        else:
+            return format_html('<span style="color: green;">Valid</span>')
+
+    is_expired_display.short_description = "Status"
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related("supplier", "uploaded_by")

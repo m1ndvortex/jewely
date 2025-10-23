@@ -478,3 +478,171 @@ class GoodsReceipt(models.Model):
         self.status = "DISCREPANCY"
         self.discrepancy_notes = notes
         self.save(update_fields=["has_discrepancy", "status", "discrepancy_notes"])
+
+
+class SupplierCommunication(models.Model):
+    """
+    Track communication history with suppliers.
+
+    Records all interactions including emails, calls, meetings,
+    and negotiations with suppliers for audit and reference.
+    """
+
+    COMMUNICATION_TYPES = [
+        ("EMAIL", "Email"),
+        ("PHONE", "Phone Call"),
+        ("MEETING", "In-Person Meeting"),
+        ("VIDEO_CALL", "Video Call"),
+        ("SMS", "SMS/Text Message"),
+        ("LETTER", "Letter/Mail"),
+        ("OTHER", "Other"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.CASCADE,
+        related_name="communications",
+        help_text="Supplier this communication is with",
+    )
+
+    # Communication Details
+    communication_type = models.CharField(
+        max_length=20, choices=COMMUNICATION_TYPES, help_text="Type of communication"
+    )
+    subject = models.CharField(max_length=255, help_text="Subject or topic of communication")
+    content = models.TextField(help_text="Content or summary of the communication")
+
+    # Participants
+    contact_person = models.CharField(
+        max_length=255, blank=True, help_text="Supplier contact person involved"
+    )
+    internal_participants = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="supplier_communications",
+        help_text="Internal team members involved",
+    )
+
+    # Status and Follow-up
+    requires_followup = models.BooleanField(
+        default=False, help_text="Whether this communication requires follow-up"
+    )
+    followup_date = models.DateField(
+        null=True, blank=True, help_text="Date when follow-up is needed"
+    )
+    is_completed = models.BooleanField(
+        default=True, help_text="Whether this communication is completed"
+    )
+
+    # Metadata
+    communication_date = models.DateTimeField(
+        default=timezone.now, help_text="Date and time of communication"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="created_supplier_communications"
+    )
+
+    class Meta:
+        db_table = "procurement_supplier_communications"
+        indexes = [
+            models.Index(fields=["supplier", "-communication_date"]),
+            models.Index(fields=["communication_type"]),
+            models.Index(fields=["requires_followup", "followup_date"]),
+            models.Index(fields=["is_completed"]),
+        ]
+        ordering = ["-communication_date"]
+
+    def __str__(self):
+        return f"{self.supplier.name} - {self.subject} ({self.communication_date.date()})"
+
+
+class SupplierDocument(models.Model):
+    """
+    Store supplier certifications and documents.
+
+    Manages important supplier documents including certifications,
+    contracts, insurance papers, and other business documents.
+    """
+
+    DOCUMENT_TYPES = [
+        ("CERTIFICATION", "Certification"),
+        ("CONTRACT", "Contract"),
+        ("INSURANCE", "Insurance Document"),
+        ("TAX_DOCUMENT", "Tax Document"),
+        ("BUSINESS_LICENSE", "Business License"),
+        ("QUALITY_CERTIFICATE", "Quality Certificate"),
+        ("COMPLIANCE_DOCUMENT", "Compliance Document"),
+        ("INVOICE", "Invoice"),
+        ("RECEIPT", "Receipt"),
+        ("OTHER", "Other Document"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.CASCADE,
+        related_name="documents",
+        help_text="Supplier this document belongs to",
+    )
+
+    # Document Information
+    document_type = models.CharField(
+        max_length=30, choices=DOCUMENT_TYPES, help_text="Type of document"
+    )
+    title = models.CharField(max_length=255, help_text="Document title or name")
+    description = models.TextField(blank=True, help_text="Document description")
+
+    # File Information
+    file = models.FileField(upload_to="supplier_documents/%Y/%m/", help_text="Document file")
+    file_size = models.BigIntegerField(null=True, blank=True, help_text="File size in bytes")
+    mime_type = models.CharField(max_length=100, blank=True, help_text="MIME type of the file")
+
+    # Validity and Status
+    issue_date = models.DateField(null=True, blank=True, help_text="Date when document was issued")
+    expiry_date = models.DateField(null=True, blank=True, help_text="Date when document expires")
+    is_active = models.BooleanField(default=True, help_text="Whether document is currently active")
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="uploaded_supplier_documents"
+    )
+
+    class Meta:
+        db_table = "procurement_supplier_documents"
+        indexes = [
+            models.Index(fields=["supplier", "document_type"]),
+            models.Index(fields=["document_type"]),
+            models.Index(fields=["expiry_date"]),
+            models.Index(fields=["is_active"]),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.supplier.name} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        """Auto-populate file metadata on save."""
+        if self.file:
+            self.file_size = self.file.size
+            # You could add MIME type detection here if needed
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        """Check if document is expired."""
+        if not self.expiry_date:
+            return False
+        return timezone.now().date() > self.expiry_date
+
+    @property
+    def expires_soon(self):
+        """Check if document expires within 30 days."""
+        if not self.expiry_date:
+            return False
+        days_until_expiry = (self.expiry_date - timezone.now().date()).days
+        return 0 <= days_until_expiry <= 30

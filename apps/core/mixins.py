@@ -109,3 +109,17 @@ class TenantAccessRequiredMixin(RoleRequiredMixin):
     """
 
     allowed_roles = ["TENANT_OWNER", "TENANT_MANAGER", "TENANT_EMPLOYEE"]
+
+
+class TenantMixin(TenantRequiredMixin, TenantAccessRequiredMixin):
+    """
+    Combined mixin for tenant-scoped views.
+
+    Ensures user belongs to a tenant and has appropriate role.
+
+    Usage:
+        class MyTenantView(TenantMixin, ListView):
+            ...
+    """
+
+    pass
