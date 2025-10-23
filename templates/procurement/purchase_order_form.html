@@ -1,0 +1,443 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if object %}Edit Purchase Order{% else %}Create Purchase Order{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .formset-row {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+    }
+    .delete-row {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    {% if object %}
+                        Edit Purchase Order: {{ object.po_number }}
+                    {% else %}
+                        Create Purchase Order
+                    {% endif %}
+                </h1>
+                <a href="{% if object %}{% url 'procurement:purchase_order_detail' object.pk %}{% else %}{% url 'procurement:purchase_order_list' %}{% endif %}" 
+                   class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+
+            <form method="post" id="purchase-order-form">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <!-- Purchase Order Details -->
+                    <div class="col-md-8">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Purchase Order Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.supplier.id_for_label }}" class="form-label">
+                                                {{ form.supplier.label }} <span class="text-danger">*</span>
+                                            </label>
+                                            {{ form.supplier }}
+                                            {% if form.supplier.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.supplier.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.priority.id_for_label }}" class="form-label">
+                                                {{ form.priority.label }}
+                                            </label>
+                                            {{ form.priority }}
+                                            {% if form.priority.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.priority.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.expected_delivery.id_for_label }}" class="form-label">
+                                                {{ form.expected_delivery.label }}
+                                            </label>
+                                            {{ form.expected_delivery }}
+                                            {% if form.expected_delivery.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.expected_delivery.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.branch.id_for_label }}" class="form-label">
+                                                {{ form.branch.label }}
+                                            </label>
+                                            {{ form.branch }}
+                                            {% if form.branch.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.branch.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.supplier_reference.id_for_label }}" class="form-label">
+                                        {{ form.supplier_reference.label }}
+                                    </label>
+                                    {{ form.supplier_reference }}
+                                    {% if form.supplier_reference.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.supplier_reference.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        {{ form.notes.label }}
+                                    </label>
+                                    {{ form.notes }}
+                                    {% if form.notes.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.notes.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Line Items -->
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Line Items</h5>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-item">
+                                    <i class="fas fa-plus"></i> Add Item
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                {{ formset.management_form }}
+                                
+                                <div id="formset-container">
+                                    {% for form in formset %}
+                                        <div class="formset-row" data-form-index="{{ forloop.counter0 }}">
+                                            {% if form.non_field_errors %}
+                                                <div class="alert alert-danger">
+                                                    {{ form.non_field_errors }}
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label for="{{ form.product_name.id_for_label }}" class="form-label">
+                                                            Product Name <span class="text-danger">*</span>
+                                                        </label>
+                                                        {{ form.product_name }}
+                                                        {% if form.product_name.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.product_name.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="mb-3">
+                                                        <label for="{{ form.product_sku.id_for_label }}" class="form-label">
+                                                            SKU
+                                                        </label>
+                                                        {{ form.product_sku }}
+                                                        {% if form.product_sku.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.product_sku.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="mb-3">
+                                                        <label for="{{ form.quantity.id_for_label }}" class="form-label">
+                                                            Quantity <span class="text-danger">*</span>
+                                                        </label>
+                                                        {{ form.quantity }}
+                                                        {% if form.quantity.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.quantity.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="mb-3">
+                                                        <label for="{{ form.unit_price.id_for_label }}" class="form-label">
+                                                            Unit Price <span class="text-danger">*</span>
+                                                        </label>
+                                                        {{ form.unit_price }}
+                                                        {% if form.unit_price.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.unit_price.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2 d-flex align-items-end">
+                                                    <div class="mb-3 w-100">
+                                                        <label class="form-label">Total</label>
+                                                        <div class="form-control-plaintext fw-bold" id="total-{{ forloop.counter0 }}">
+                                                            $0.00
+                                                        </div>
+                                                    </div>
+                                                    {% if formset.can_delete %}
+                                                        <div class="mb-3 ms-2">
+                                                            {{ form.DELETE }}
+                                                            <button type="button" class="btn btn-sm btn-outline-danger delete-item" 
+                                                                    title="Delete Item">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <div class="mb-3">
+                                                        <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                                            Notes
+                                                        </label>
+                                                        {{ form.notes }}
+                                                        {% if form.notes.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.notes.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {% for hidden in form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                {% if formset.non_form_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ formset.non_form_errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Order Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Subtotal:</span>
+                                    <span id="order-subtotal" class="fw-bold">$0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Tax:</span>
+                                    <span id="order-tax" class="fw-bold">$0.00</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="h5">Total:</span>
+                                    <span id="order-total" class="h5 fw-bold text-primary">$0.00</span>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> 
+                                        {% if object %}Update{% else %}Create{% endif %} Purchase Order
+                                    </button>
+                                    <a href="{% if object %}{% url 'procurement:purchase_order_detail' object.pk %}{% else %}{% url 'procurement:purchase_order_list' %}{% endif %}" 
+                                       class="btn btn-outline-secondary">
+                                        Cancel
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Empty form template for adding new items -->
+<div id="empty-form" style="display: none;">
+    <div class="formset-row" data-form-index="__prefix__">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">Product Name <span class="text-danger">*</span></label>
+                    <input type="text" name="items-__prefix__-product_name" class="form-control" required>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="mb-3">
+                    <label class="form-label">SKU</label>
+                    <input type="text" name="items-__prefix__-product_sku" class="form-control">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="mb-3">
+                    <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                    <input type="number" name="items-__prefix__-quantity" class="form-control quantity-input" min="1" required>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="mb-3">
+                    <label class="form-label">Unit Price <span class="text-danger">*</span></label>
+                    <input type="number" name="items-__prefix__-unit_price" class="form-control unit-price-input" step="0.01" min="0" required>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="mb-3 w-100">
+                    <label class="form-label">Total</label>
+                    <div class="form-control-plaintext fw-bold line-total">$0.00</div>
+                </div>
+                <div class="mb-3 ms-2">
+                    <button type="button" class="btn btn-sm btn-outline-danger delete-item" title="Delete Item">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea name="items-__prefix__-notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="items-__prefix__-id">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let formIndex = {{ formset.total_form_count }};
+    
+    // Add new item
+    document.getElementById('add-item').addEventListener('click', function() {
+        const emptyForm = document.getElementById('empty-form').innerHTML;
+        const newForm = emptyForm.replace(/__prefix__/g, formIndex);
+        
+        const container = document.getElementById('formset-container');
+        const div = document.createElement('div');
+        div.innerHTML = newForm;
+        container.appendChild(div.firstElementChild);
+        
+        // Update form count
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        totalForms.value = parseInt(totalForms.value) + 1;
+        formIndex++;
+        
+        // Attach event listeners to new form
+        attachEventListeners();
+    });
+    
+    // Delete item
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-item')) {
+            const formRow = e.target.closest('.formset-row');
+            const deleteCheckbox = formRow.querySelector('input[name$="-DELETE"]');
+            
+            if (deleteCheckbox) {
+                // Mark for deletion
+                deleteCheckbox.checked = true;
+                formRow.classList.add('delete-row');
+                formRow.style.display = 'none';
+            } else {
+                // Remove new form
+                formRow.remove();
+                const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+                totalForms.value = parseInt(totalForms.value) - 1;
+            }
+            
+            calculateTotals();
+        }
+    });
+    
+    // Calculate line totals and order total
+    function calculateTotals() {
+        let orderSubtotal = 0;
+        
+        document.querySelectorAll('.formset-row:not(.delete-row)').forEach(function(row, index) {
+            if (row.style.display === 'none') return;
+            
+            const quantityInput = row.querySelector('input[name$="-quantity"]');
+            const priceInput = row.querySelector('input[name$="-unit_price"]');
+            const totalElement = row.querySelector('.line-total') || row.querySelector('[id^="total-"]');
+            
+            if (quantityInput && priceInput && totalElement) {
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const price = parseFloat(priceInput.value) || 0;
+                const lineTotal = quantity * price;
+                
+                totalElement.textContent = '$' + lineTotal.toFixed(2);
+                orderSubtotal += lineTotal;
+            }
+        });
+        
+        const tax = orderSubtotal * 0.00; // No tax by default
+        const total = orderSubtotal + tax;
+        
+        document.getElementById('order-subtotal').textContent = '$' + orderSubtotal.toFixed(2);
+        document.getElementById('order-tax').textContent = '$' + tax.toFixed(2);
+        document.getElementById('order-total').textContent = '$' + total.toFixed(2);
+    }
+    
+    // Attach event listeners
+    function attachEventListeners() {
+        document.querySelectorAll('input[name$="-quantity"], input[name$="-unit_price"]').forEach(function(input) {
+            input.removeEventListener('input', calculateTotals);
+            input.addEventListener('input', calculateTotals);
+        });
+    }
+    
+    // Initial setup
+    attachEventListeners();
+    calculateTotals();
+});
+</script>
+{% endblock %}

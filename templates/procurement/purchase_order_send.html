@@ -1,0 +1,272 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}Send Purchase Order {{ purchase_order.po_number }}{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Send Purchase Order to Supplier</h1>
+                <a href="{% url 'procurement:purchase_order_detail' purchase_order.pk %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+
+            <div class="row">
+                <!-- Send Form -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Delivery Options</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="send-form">
+                                {% csrf_token %}
+                                
+                                <!-- Send Method -->
+                                <div class="mb-4">
+                                    <label class="form-label">{{ form.send_method.label }}</label>
+                                    <div class="mt-2">
+                                        {% for choice in form.send_method %}
+                                            <div class="form-check">
+                                                {{ choice.tag }}
+                                                <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                    {{ choice.choice_label }}
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% if form.send_method.help_text %}
+                                        <div class="form-text">{{ form.send_method.help_text }}</div>
+                                    {% endif %}
+                                    {% if form.send_method.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.send_method.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Email Options (shown when email is selected) -->
+                                <div id="email-options" style="display: none;">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-envelope"></i>
+                                        <strong>Email will be sent to:</strong> {{ purchase_order.supplier.email|default:"No email address configured" }}
+                                        {% if not purchase_order.supplier.email %}
+                                            <br><span class="text-danger">Please configure supplier email address before sending.</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.email_subject.id_for_label }}" class="form-label">
+                                            {{ form.email_subject.label }}
+                                        </label>
+                                        {{ form.email_subject }}
+                                        {% if form.email_subject.help_text %}
+                                            <div class="form-text">{{ form.email_subject.help_text }}</div>
+                                        {% endif %}
+                                        {% if form.email_subject.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.email_subject.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="{{ form.email_message.id_for_label }}" class="form-label">
+                                            {{ form.email_message.label }}
+                                        </label>
+                                        {{ form.email_message }}
+                                        {% if form.email_message.help_text %}
+                                            <div class="form-text">{{ form.email_message.help_text }}</div>
+                                        {% endif %}
+                                        {% if form.email_message.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {{ form.email_message.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Additional Options -->
+                                <div class="mb-4">
+                                    <div class="form-check">
+                                        {{ form.include_terms }}
+                                        <label class="form-check-label" for="{{ form.include_terms.id_for_label }}">
+                                            {{ form.include_terms.label }}
+                                        </label>
+                                    </div>
+                                    {% if form.include_terms.help_text %}
+                                        <div class="form-text">{{ form.include_terms.help_text }}</div>
+                                    {% endif %}
+                                </div>
+
+                                {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ form.non_field_errors }}
+                                    </div>
+                                {% endif %}
+
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'procurement:purchase_order_detail' purchase_order.pk %}" 
+                                       class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary btn-lg" id="send-button">
+                                        <i class="fas fa-paper-plane"></i> Send Purchase Order
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Purchase Order Preview -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Purchase Order Preview</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-3">
+                                <h6 class="mb-1">{{ purchase_order.po_number }}</h6>
+                                <small class="text-muted">{{ purchase_order.tenant.company_name }}</small>
+                            </div>
+
+                            <dl class="row small">
+                                <dt class="col-5">Supplier:</dt>
+                                <dd class="col-7">{{ purchase_order.supplier.name }}</dd>
+                                
+                                <dt class="col-5">Total:</dt>
+                                <dd class="col-7"><strong>${{ purchase_order.total_amount|floatformat:2 }}</strong></dd>
+                                
+                                <dt class="col-5">Items:</dt>
+                                <dd class="col-7">{{ purchase_order.items.count }} items</dd>
+                                
+                                <dt class="col-5">Priority:</dt>
+                                <dd class="col-7">
+                                    {% if purchase_order.priority == 'URGENT' %}
+                                        <span class="badge bg-danger">{{ purchase_order.get_priority_display }}</span>
+                                    {% elif purchase_order.priority == 'HIGH' %}
+                                        <span class="badge bg-warning">{{ purchase_order.get_priority_display }}</span>
+                                    {% elif purchase_order.priority == 'NORMAL' %}
+                                        <span class="badge bg-info">{{ purchase_order.get_priority_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ purchase_order.get_priority_display }}</span>
+                                    {% endif %}
+                                </dd>
+                                
+                                <dt class="col-5">Expected:</dt>
+                                <dd class="col-7">{{ purchase_order.expected_delivery|default:"TBD" }}</dd>
+                            </dl>
+
+                            <hr>
+
+                            <h6 class="mb-2">Line Items:</h6>
+                            <div class="small">
+                                {% for item in purchase_order.items.all %}
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>{{ item.product_name|truncatechars:20 }}</span>
+                                        <span>{{ item.quantity }}x ${{ item.unit_price|floatformat:2 }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <hr>
+
+                            <div class="d-flex justify-content-between">
+                                <strong>Total:</strong>
+                                <strong class="text-primary">${{ purchase_order.total_amount|floatformat:2 }}</strong>
+                            </div>
+
+                            {% if purchase_order.notes %}
+                                <hr>
+                                <h6 class="mb-2">Notes:</h6>
+                                <p class="small text-muted mb-0">{{ purchase_order.notes|truncatechars:100 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Supplier Contact Info -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Supplier Contact</h6>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="mb-2">{{ purchase_order.supplier.name }}</h6>
+                            
+                            {% if purchase_order.supplier.contact_person %}
+                                <p class="mb-1 small">
+                                    <i class="fas fa-user text-muted me-1"></i>
+                                    {{ purchase_order.supplier.contact_person }}
+                                </p>
+                            {% endif %}
+                            
+                            {% if purchase_order.supplier.email %}
+                                <p class="mb-1 small">
+                                    <i class="fas fa-envelope text-muted me-1"></i>
+                                    {{ purchase_order.supplier.email }}
+                                </p>
+                            {% else %}
+                                <p class="mb-1 small text-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    No email address
+                                </p>
+                            {% endif %}
+                            
+                            {% if purchase_order.supplier.phone %}
+                                <p class="mb-0 small">
+                                    <i class="fas fa-phone text-muted me-1"></i>
+                                    {{ purchase_order.supplier.phone }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sendMethodInputs = document.querySelectorAll('input[name="send_method"]');
+    const emailOptions = document.getElementById('email-options');
+    const sendButton = document.getElementById('send-button');
+    const supplierEmail = '{{ purchase_order.supplier.email|default:"" }}';
+    
+    function updateEmailOptions() {
+        const selectedMethod = document.querySelector('input[name="send_method"]:checked').value;
+        
+        if (selectedMethod === 'EMAIL' || selectedMethod === 'BOTH') {
+            emailOptions.style.display = 'block';
+            
+            // Disable send button if no supplier email
+            if (!supplierEmail) {
+                sendButton.disabled = true;
+                sendButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> No Supplier Email';
+            } else {
+                sendButton.disabled = false;
+                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Send Purchase Order';
+            }
+        } else {
+            emailOptions.style.display = 'none';
+            sendButton.disabled = false;
+            sendButton.innerHTML = '<i class="fas fa-print"></i> Generate PDF';
+        }
+    }
+    
+    // Attach event listeners
+    sendMethodInputs.forEach(function(input) {
+        input.addEventListener('change', updateEmailOptions);
+    });
+    
+    // Initial setup
+    updateEmailOptions();
+});
+</script>
+{% endblock %}

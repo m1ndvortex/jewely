@@ -1,0 +1,175 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}Approve Purchase Order {{ purchase_order.po_number }}{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Approve Purchase Order</h1>
+                <a href="{% url 'procurement:purchase_order_detail' purchase_order.pk %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+
+            <!-- Purchase Order Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Purchase Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">PO Number:</dt>
+                                <dd class="col-sm-8">{{ purchase_order.po_number }}</dd>
+                                
+                                <dt class="col-sm-4">Supplier:</dt>
+                                <dd class="col-sm-8">{{ purchase_order.supplier.name }}</dd>
+                                
+                                <dt class="col-sm-4">Priority:</dt>
+                                <dd class="col-sm-8">
+                                    {% if purchase_order.priority == 'URGENT' %}
+                                        <span class="badge bg-danger">{{ purchase_order.get_priority_display }}</span>
+                                    {% elif purchase_order.priority == 'HIGH' %}
+                                        <span class="badge bg-warning">{{ purchase_order.get_priority_display }}</span>
+                                    {% elif purchase_order.priority == 'NORMAL' %}
+                                        <span class="badge bg-info">{{ purchase_order.get_priority_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ purchase_order.get_priority_display }}</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-5">Total Amount:</dt>
+                                <dd class="col-sm-7">
+                                    <strong class="text-primary fs-5">${{ purchase_order.total_amount|floatformat:2 }}</strong>
+                                </dd>
+                                
+                                <dt class="col-sm-5">Expected Delivery:</dt>
+                                <dd class="col-sm-7">{{ purchase_order.expected_delivery|default:"TBD" }}</dd>
+                                
+                                <dt class="col-sm-5">Created By:</dt>
+                                <dd class="col-sm-7">{{ purchase_order.created_by.get_full_name|default:purchase_order.created_by.username }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    {% if purchase_order.notes %}
+                        <div class="mt-3">
+                            <strong>Notes:</strong>
+                            <p class="mb-0">{{ purchase_order.notes }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Line Items -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Line Items ({{ purchase_order.items.count }} items)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>SKU</th>
+                                    <th class="text-end">Quantity</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in purchase_order.items.all %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.product_name }}</strong>
+                                            {% if item.notes %}
+                                                <br><small class="text-muted">{{ item.notes }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.product_sku|default:"—" }}</td>
+                                        <td class="text-end">{{ item.quantity }}</td>
+                                        <td class="text-end">${{ item.unit_price|floatformat:2 }}</td>
+                                        <td class="text-end">${{ item.total_price|floatformat:2 }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="4" class="text-end">Subtotal:</th>
+                                    <th class="text-end">${{ purchase_order.subtotal|floatformat:2 }}</th>
+                                </tr>
+                                <tr>
+                                    <th colspan="4" class="text-end">Tax:</th>
+                                    <th class="text-end">${{ purchase_order.tax_amount|floatformat:2 }}</th>
+                                </tr>
+                                <tr class="table-primary">
+                                    <th colspan="4" class="text-end">Total:</th>
+                                    <th class="text-end">${{ purchase_order.total_amount|floatformat:2 }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approval Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Approval Decision</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Review Required:</strong> Please review the purchase order details above before making your approval decision.
+                        Once approved, this purchase order can be sent to the supplier.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.approval_notes.id_for_label }}" class="form-label">
+                                {{ form.approval_notes.label }}
+                            </label>
+                            {{ form.approval_notes }}
+                            {% if form.approval_notes.help_text %}
+                                <div class="form-text">{{ form.approval_notes.help_text }}</div>
+                            {% endif %}
+                            {% if form.approval_notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.approval_notes.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'procurement:purchase_order_detail' purchase_order.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check"></i> Approve Purchase Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

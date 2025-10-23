@@ -9,6 +9,7 @@ using Row-Level Security (RLS).
 import uuid
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -277,6 +278,53 @@ class PurchaseOrder(models.Model):
             1 for item in self.items.all() if item.received_quantity >= item.quantity
         )
         return (received_items / total_items) * 100
+
+    def can_be_approved_by(self, user):
+        """Check if a user can approve this purchase order."""
+        if self.status != "DRAFT":
+            return False
+
+        return PurchaseOrderApprovalThreshold.can_user_approve(user, self.total_amount)
+
+    def get_required_approver_role(self):
+        """Get the required approver role for this purchase order."""
+        return PurchaseOrderApprovalThreshold.get_required_approver_role(
+            self.tenant, self.total_amount
+        )
+
+    def generate_po_number(self):
+        """Generate a unique PO number for this tenant."""
+        from django.utils import timezone
+
+        today = timezone.now().date()
+        year_month = today.strftime("%Y%m")
+
+        # Find the last PO number for this tenant and month
+        last_po = (
+            PurchaseOrder.objects.filter(
+                tenant=self.tenant, po_number__startswith=f"PO-{year_month}-"
+            )
+            .order_by("-po_number")
+            .first()
+        )
+
+        if last_po:
+            # Extract the sequence number and increment
+            try:
+                last_sequence = int(last_po.po_number.split("-")[-1])
+                sequence = last_sequence + 1
+            except (ValueError, IndexError):
+                sequence = 1
+        else:
+            sequence = 1
+
+        return f"PO-{year_month}-{sequence:04d}"
+
+    def save(self, *args, **kwargs):
+        """Auto-generate PO number if not set."""
+        if not self.po_number:
+            self.po_number = self.generate_po_number()
+        super().save(*args, **kwargs)
 
 
 class PurchaseOrderItem(models.Model):
@@ -646,3 +694,111 @@ class SupplierDocument(models.Model):
             return False
         days_until_expiry = (self.expiry_date - timezone.now().date()).days
         return 0 <= days_until_expiry <= 30
+
+
+class PurchaseOrderApprovalThreshold(models.Model):
+    """
+    Define approval thresholds for purchase orders.
+
+    Configures multi-level approval workflow based on purchase order amounts.
+    Different approval levels can be set for different amount ranges.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="po_approval_thresholds",
+        help_text="Tenant that owns this approval threshold",
+    )
+
+    # Threshold Configuration
+    min_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Minimum amount for this approval level",
+    )
+    max_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Maximum amount for this approval level (null = no limit)",
+    )
+
+    # Approval Requirements
+    required_role = models.CharField(
+        max_length=50,
+        choices=[
+            ("TENANT_EMPLOYEE", "Any Employee"),
+            ("TENANT_MANAGER", "Manager or Above"),
+            ("TENANT_OWNER", "Owner Only"),
+        ],
+        default="TENANT_MANAGER",
+        help_text="Minimum role required to approve at this level",
+    )
+
+    # Metadata
+    is_active = models.BooleanField(default=True, help_text="Whether this threshold is active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="created_approval_thresholds"
+    )
+
+    class Meta:
+        db_table = "procurement_approval_thresholds"
+        indexes = [
+            models.Index(fields=["tenant", "is_active"]),
+            models.Index(fields=["min_amount", "max_amount"]),
+        ]
+        ordering = ["min_amount"]
+
+    def __str__(self):
+        max_display = f"${self.max_amount:,.2f}" if self.max_amount else "No Limit"
+        return f"${self.min_amount:,.2f} - {max_display} ({self.get_required_role_display()})"
+
+    def clean(self):
+        """Validate threshold ranges."""
+        super().clean()
+        if self.max_amount and self.min_amount >= self.max_amount:
+            raise ValidationError("Maximum amount must be greater than minimum amount.")
+
+    @classmethod
+    def get_required_approver_role(cls, tenant, amount):
+        """Get the required approver role for a given amount."""
+        threshold = (
+            cls.objects.filter(
+                tenant=tenant,
+                is_active=True,
+                min_amount__lte=amount,
+            )
+            .filter(
+                models.Q(max_amount__gte=amount) | models.Q(max_amount__isnull=True)
+            )
+            .first()
+        )
+
+        return threshold.required_role if threshold else "TENANT_MANAGER"
+
+    @classmethod
+    def can_user_approve(cls, user, amount):
+        """Check if a user can approve a purchase order of given amount."""
+        if not user.tenant:
+            return False
+
+        required_role = cls.get_required_approver_role(user.tenant, amount)
+
+        # Role hierarchy: OWNER > MANAGER > EMPLOYEE
+        role_hierarchy = {
+            "TENANT_EMPLOYEE": 1,
+            "TENANT_MANAGER": 2,
+            "TENANT_OWNER": 3,
+        }
+
+        user_level = role_hierarchy.get(user.role, 0)
+        required_level = role_hierarchy.get(required_role, 2)
+
+        return user_level >= required_level

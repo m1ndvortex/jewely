@@ -8,6 +8,7 @@ from django.utils.html import format_html
 from .models import (
     GoodsReceipt,
     PurchaseOrder,
+    PurchaseOrderApprovalThreshold,
     PurchaseOrderItem,
     Supplier,
     SupplierCommunication,
@@ -309,3 +310,41 @@ class SupplierDocumentAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queryset with select_related."""
         return super().get_queryset(request).select_related("supplier", "uploaded_by")
+
+
+@admin.register(PurchaseOrderApprovalThreshold)
+class PurchaseOrderApprovalThresholdAdmin(admin.ModelAdmin):
+    """Admin interface for PurchaseOrderApprovalThreshold model."""
+
+    list_display = [
+        "tenant",
+        "min_amount",
+        "max_amount_display",
+        "required_role",
+        "is_active",
+        "created_at",
+    ]
+    list_filter = ["required_role", "is_active", "created_at"]
+    search_fields = ["tenant__company_name"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        ("Threshold Configuration", {"fields": ("tenant", "min_amount", "max_amount")}),
+        ("Approval Requirements", {"fields": ("required_role", "is_active")}),
+        (
+            "Audit Information",
+            {"fields": ("created_by", "created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def max_amount_display(self, obj):
+        """Display max amount with 'No Limit' for null values."""
+        if obj.max_amount:
+            return f"${obj.max_amount:,.2f}"
+        return "No Limit"
+
+    max_amount_display.short_description = "Max Amount"
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related("tenant", "created_by")

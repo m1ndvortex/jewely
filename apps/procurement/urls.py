@@ -35,4 +35,31 @@ urlpatterns = [
         views.SupplierDocumentCreateView.as_view(),
         name="document_create",
     ),
+    # Purchase Order URLs
+    path("purchase-orders/", views.PurchaseOrderListView.as_view(), name="purchase_order_list"),
+    path(
+        "purchase-orders/create/",
+        views.PurchaseOrderCreateView.as_view(),
+        name="purchase_order_create",
+    ),
+    path(
+        "purchase-orders/<uuid:pk>/",
+        views.PurchaseOrderDetailView.as_view(),
+        name="purchase_order_detail",
+    ),
+    path(
+        "purchase-orders/<uuid:pk>/edit/",
+        views.PurchaseOrderUpdateView.as_view(),
+        name="purchase_order_edit",
+    ),
+    path(
+        "purchase-orders/<uuid:pk>/approve/",
+        views.purchase_order_approve,
+        name="purchase_order_approve",
+    ),
+    path(
+        "purchase-orders/<uuid:pk>/send/",
+        views.purchase_order_send,
+        name="purchase_order_send",
+    ),
 ]

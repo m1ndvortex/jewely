@@ -1,0 +1,444 @@
+{% extends "procurement/base.html" %}
+{% load static %}
+
+{% block title %}Purchase Order {{ purchase_order.po_number }}{% endblock %}
+
+{% block main_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">Purchase Order {{ purchase_order.po_number }}</h1>
+                    <p class="text-muted mb-0">
+                        Created on {{ purchase_order.created_at|date:"M d, Y" }} by {{ purchase_order.created_by.get_full_name|default:purchase_order.created_by.username }}
+                    </p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'procurement:purchase_order_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                    {% if purchase_order.status == 'DRAFT' %}
+                        <a href="{% url 'procurement:purchase_order_edit' purchase_order.pk %}" class="btn btn-outline-primary">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Main Content -->
+                <div class="col-md-8">
+                    <!-- Status and Actions -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h5 class="mb-2">Status: 
+                                        {% if purchase_order.status == 'DRAFT' %}
+                                            <span class="badge bg-secondary fs-6">{{ purchase_order.get_status_display }}</span>
+                                        {% elif purchase_order.status == 'APPROVED' %}
+                                            <span class="badge bg-success fs-6">{{ purchase_order.get_status_display }}</span>
+                                        {% elif purchase_order.status == 'SENT' %}
+                                            <span class="badge bg-info fs-6">{{ purchase_order.get_status_display }}</span>
+                                        {% elif purchase_order.status == 'PARTIALLY_RECEIVED' %}
+                                            <span class="badge bg-warning fs-6">{{ purchase_order.get_status_display }}</span>
+                                        {% elif purchase_order.status == 'COMPLETED' %}
+                                            <span class="badge bg-primary fs-6">{{ purchase_order.get_status_display }}</span>
+                                        {% elif purchase_order.status == 'CANCELLED' %}
+                                            <span class="badge bg-danger fs-6">{{ purchase_order.get_status_display }}</span>
+                                        {% endif %}
+                                    </h5>
+                                    {% if purchase_order.approved_by %}
+                                        <p class="text-muted mb-0">
+                                            Approved by {{ purchase_order.approved_by.get_full_name|default:purchase_order.approved_by.username }}
+                                            on {{ purchase_order.approved_at|date:"M d, Y" }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    {% if can_approve %}
+                                        <a href="{% url 'procurement:purchase_order_approve' purchase_order.pk %}" 
+                                           class="btn btn-success me-2">
+                                            <i class="fas fa-check"></i> Approve
+                                        </a>
+                                    {% endif %}
+                                    {% if can_send %}
+                                        <a href="{% url 'procurement:purchase_order_send' purchase_order.pk %}" 
+                                           class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i> Send to Supplier
+                                        </a>
+                                    {% endif %}
+                                    {% if purchase_order.status == 'DRAFT' and not can_approve %}
+                                        <div class="alert alert-info mb-0 py-2">
+                                            <small>
+                                                <i class="fas fa-info-circle"></i>
+                                                Requires approval from {{ required_role|title|cut:"_"|cut:"TENANT" }}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Order Details -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Order Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl class="row">
+                                        <dt class="col-sm-4">Supplier:</dt>
+                                        <dd class="col-sm-8">
+                                            <a href="{% url 'procurement:supplier_detail' purchase_order.supplier.pk %}" 
+                                               class="text-decoration-none">
+                                                {{ purchase_order.supplier.name }}
+                                            </a>
+                                        </dd>
+                                        
+                                        <dt class="col-sm-4">Priority:</dt>
+                                        <dd class="col-sm-8">
+                                            {% if purchase_order.priority == 'URGENT' %}
+                                                <span class="badge bg-danger">{{ purchase_order.get_priority_display }}</span>
+                                            {% elif purchase_order.priority == 'HIGH' %}
+                                                <span class="badge bg-warning">{{ purchase_order.get_priority_display }}</span>
+                                            {% elif purchase_order.priority == 'NORMAL' %}
+                                                <span class="badge bg-info">{{ purchase_order.get_priority_display }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ purchase_order.get_priority_display }}</span>
+                                            {% endif %}
+                                        </dd>
+                                        
+                                        <dt class="col-sm-4">Order Date:</dt>
+                                        <dd class="col-sm-8">{{ purchase_order.order_date }}</dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl class="row">
+                                        <dt class="col-sm-5">Expected Delivery:</dt>
+                                        <dd class="col-sm-7">{{ purchase_order.expected_delivery|default:"TBD" }}</dd>
+                                        
+                                        <dt class="col-sm-5">Branch:</dt>
+                                        <dd class="col-sm-7">{{ purchase_order.branch.name|default:"Not specified" }}</dd>
+                                        
+                                        <dt class="col-sm-5">Supplier Reference:</dt>
+                                        <dd class="col-sm-7">{{ purchase_order.supplier_reference|default:"—" }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                            
+                            {% if purchase_order.notes %}
+                                <div class="mt-3">
+                                    <strong>Notes:</strong>
+                                    <p class="mb-0">{{ purchase_order.notes }}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Line Items -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Line Items</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>SKU</th>
+                                            <th class="text-end">Quantity</th>
+                                            <th class="text-end">Unit Price</th>
+                                            <th class="text-end">Total</th>
+                                            {% if purchase_order.status in 'SENT,PARTIALLY_RECEIVED,COMPLETED' %}
+                                                <th class="text-end">Received</th>
+                                            {% endif %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in purchase_order.items.all %}
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ item.product_name }}</strong>
+                                                    {% if item.notes %}
+                                                        <br><small class="text-muted">{{ item.notes }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ item.product_sku|default:"—" }}</td>
+                                                <td class="text-end">{{ item.quantity }}</td>
+                                                <td class="text-end">${{ item.unit_price|floatformat:2 }}</td>
+                                                <td class="text-end">${{ item.total_price|floatformat:2 }}</td>
+                                                {% if purchase_order.status in 'SENT,PARTIALLY_RECEIVED,COMPLETED' %}
+                                                    <td class="text-end">
+                                                        {{ item.received_quantity }}
+                                                        {% if item.is_fully_received %}
+                                                            <i class="fas fa-check text-success ms-1"></i>
+                                                        {% elif item.received_quantity > 0 %}
+                                                            <i class="fas fa-clock text-warning ms-1"></i>
+                                                        {% endif %}
+                                                    </td>
+                                                {% endif %}
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th colspan="{% if purchase_order.status in 'SENT,PARTIALLY_RECEIVED,COMPLETED' %}5{% else %}4{% endif %}" class="text-end">Subtotal:</th>
+                                            <th class="text-end">${{ purchase_order.subtotal|floatformat:2 }}</th>
+                                        </tr>
+                                        <tr>
+                                            <th colspan="{% if purchase_order.status in 'SENT,PARTIALLY_RECEIVED,COMPLETED' %}5{% else %}4{% endif %}" class="text-end">Tax:</th>
+                                            <th class="text-end">${{ purchase_order.tax_amount|floatformat:2 }}</th>
+                                        </tr>
+                                        <tr class="table-primary">
+                                            <th colspan="{% if purchase_order.status in 'SENT,PARTIALLY_RECEIVED,COMPLETED' %}5{% else %}4{% endif %}" class="text-end">Total:</th>
+                                            <th class="text-end">${{ purchase_order.total_amount|floatformat:2 }}</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Goods Receipts -->
+                    {% if goods_receipts %}
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Goods Receipts</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Receipt Number</th>
+                                                <th>Received Date</th>
+                                                <th>Status</th>
+                                                <th>Received By</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for receipt in goods_receipts %}
+                                                <tr>
+                                                    <td>{{ receipt.receipt_number }}</td>
+                                                    <td>{{ receipt.received_date }}</td>
+                                                    <td>
+                                                        {% if receipt.status == 'COMPLETED' %}
+                                                            <span class="badge bg-success">{{ receipt.get_status_display }}</span>
+                                                        {% elif receipt.status == 'DISCREPANCY' %}
+                                                            <span class="badge bg-warning">{{ receipt.get_status_display }}</span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">{{ receipt.get_status_display }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ receipt.received_by.get_full_name|default:receipt.received_by.username }}</td>
+                                                    <td>
+                                                        <a href="#" class="btn btn-sm btn-outline-primary">View</a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-md-4">
+                    <!-- Quick Stats -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Quick Stats</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="border-end">
+                                        <h4 class="text-primary mb-0">{{ purchase_order.items.count }}</h4>
+                                        <small class="text-muted">Line Items</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success mb-0">${{ purchase_order.total_amount|floatformat:2 }}</h4>
+                                    <small class="text-muted">Total Value</small>
+                                </div>
+                            </div>
+                            
+                            {% if purchase_order.status in 'SENT,PARTIALLY_RECEIVED,COMPLETED' %}
+                                <hr>
+                                <div class="text-center">
+                                    <h5 class="text-info mb-0">{{ purchase_order.get_received_percentage|floatformat:0 }}%</h5>
+                                    <small class="text-muted">Items Received</small>
+                                    <div class="progress mt-2">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ purchase_order.get_received_percentage }}%"
+                                             aria-valuenow="{{ purchase_order.get_received_percentage }}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Supplier Information -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Supplier Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="mb-2">
+                                <a href="{% url 'procurement:supplier_detail' purchase_order.supplier.pk %}" 
+                                   class="text-decoration-none">
+                                    {{ purchase_order.supplier.name }}
+                                </a>
+                            </h6>
+                            
+                            {% if purchase_order.supplier.contact_person %}
+                                <p class="mb-1">
+                                    <i class="fas fa-user text-muted me-2"></i>
+                                    {{ purchase_order.supplier.contact_person }}
+                                </p>
+                            {% endif %}
+                            
+                            {% if purchase_order.supplier.email %}
+                                <p class="mb-1">
+                                    <i class="fas fa-envelope text-muted me-2"></i>
+                                    <a href="mailto:{{ purchase_order.supplier.email }}">{{ purchase_order.supplier.email }}</a>
+                                </p>
+                            {% endif %}
+                            
+                            {% if purchase_order.supplier.phone %}
+                                <p class="mb-1">
+                                    <i class="fas fa-phone text-muted me-2"></i>
+                                    <a href="tel:{{ purchase_order.supplier.phone }}">{{ purchase_order.supplier.phone }}</a>
+                                </p>
+                            {% endif %}
+                            
+                            <div class="mt-3">
+                                <small class="text-muted">Rating:</small>
+                                <div class="d-flex align-items-center">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= purchase_order.supplier.rating %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% else %}
+                                            <i class="far fa-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span class="ms-2 small text-muted">({{ purchase_order.supplier.rating }}/5)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Timeline</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-primary"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">Created</h6>
+                                        <p class="mb-0 small text-muted">
+                                            {{ purchase_order.created_at|date:"M d, Y g:i A" }}
+                                            <br>by {{ purchase_order.created_by.get_full_name|default:purchase_order.created_by.username }}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                {% if purchase_order.approved_at %}
+                                    <div class="timeline-item">
+                                        <div class="timeline-marker bg-success"></div>
+                                        <div class="timeline-content">
+                                            <h6 class="mb-1">Approved</h6>
+                                            <p class="mb-0 small text-muted">
+                                                {{ purchase_order.approved_at|date:"M d, Y g:i A" }}
+                                                <br>by {{ purchase_order.approved_by.get_full_name|default:purchase_order.approved_by.username }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if purchase_order.sent_at %}
+                                    <div class="timeline-item">
+                                        <div class="timeline-marker bg-info"></div>
+                                        <div class="timeline-content">
+                                            <h6 class="mb-1">Sent to Supplier</h6>
+                                            <p class="mb-0 small text-muted">
+                                                {{ purchase_order.sent_at|date:"M d, Y g:i A" }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if purchase_order.completed_at %}
+                                    <div class="timeline-item">
+                                        <div class="timeline-marker bg-primary"></div>
+                                        <div class="timeline-content">
+                                            <h6 class="mb-1">Completed</h6>
+                                            <p class="mb-0 small text-muted">
+                                                {{ purchase_order.completed_at|date:"M d, Y g:i A" }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content h6 {
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
