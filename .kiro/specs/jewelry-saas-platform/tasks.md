@@ -297,7 +297,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Track sales by terminal
     - _Requirements: 14_
   
-  - [ ] 9.4 Write multi-branch tests
+  - [-] 9.4 Write multi-branch tests
     - Test branch CRUD operations
     - Test transfer workflows
     - Test inventory updates on transfers

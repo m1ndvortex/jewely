@@ -33,7 +33,7 @@ class BranchManagementTestCase(TestCase):
         # Create tenant using RLS bypass (like platform admin would)
         with bypass_rls():
             self.tenant = Tenant.objects.create(
-                company_name="Test Jewelry Shop", slug="test-shop", status=Tenant.ACTIVE
+                company_name="Test Jewelry Shop Main", slug="test-shop-main", status=Tenant.ACTIVE
             )
 
             # Create users
@@ -466,7 +466,7 @@ class BranchManagementTestCase(TestCase):
 
         data = response.json()
         self.assertEqual(data["name"], "Main Store")
-        self.assertEqual(data["tenant_name"], "Test Jewelry Shop")
+        self.assertEqual(data["tenant_name"], "Test Jewelry Shop Main")
 
     def test_branch_manager_assignment(self):
         """Test branch manager assignment validation."""
@@ -507,7 +507,7 @@ class BranchModelTestCase(TestCase):
     def setUp(self):
         """Set up test data."""
         with bypass_rls():
-            self.tenant = Tenant.objects.create(company_name="Test Shop", slug="test-shop")
+            self.tenant = Tenant.objects.create(company_name="Test Shop Branch Model", slug="test-shop-branch-model")
 
             self.manager = User.objects.create_user(
                 username="manager",
@@ -530,7 +530,7 @@ class BranchModelTestCase(TestCase):
                 is_active=True,
             )
 
-            self.assertEqual(str(branch), "Test Branch (Test Shop)")
+            self.assertEqual(str(branch), "Test Branch (Test Shop Branch Model)")
             self.assertEqual(branch.tenant, self.tenant)
             self.assertEqual(branch.manager, self.manager)
             self.assertTrue(branch.is_active)
@@ -579,7 +579,7 @@ class TerminalManagementTestCase(TestCase):
         with bypass_rls():
             self.tenant = Tenant.objects.create(
                 company_name="Test Jewelry Shop Terminal",
-                slug="test-shop-terminal",
+                slug="test-shop-terminal-mgmt",
                 status=Tenant.ACTIVE,
             )
 
@@ -987,7 +987,7 @@ class StaffAssignmentTestCase(TestCase):
         """Set up test data."""
         with bypass_rls():
             self.tenant = Tenant.objects.create(
-                company_name="Test Jewelry Shop", slug="test-shop", status=Tenant.ACTIVE
+                company_name="Test Jewelry Shop Staff", slug="test-shop-staff", status=Tenant.ACTIVE
             )
 
             self.owner = User.objects.create_user(
