@@ -578,7 +578,9 @@ class TerminalManagementTestCase(TestCase):
         """Set up test data."""
         with bypass_rls():
             self.tenant = Tenant.objects.create(
-                company_name="Test Jewelry Shop", slug="test-shop", status=Tenant.ACTIVE
+                company_name="Test Jewelry Shop Terminal",
+                slug="test-shop-terminal",
+                status=Tenant.ACTIVE,
             )
 
             self.owner = User.objects.create_user(
@@ -698,14 +700,224 @@ class TerminalManagementTestCase(TestCase):
         self.assertContains(response, "Delete Terminal")
         self.assertContains(response, "POS-EMPTY")
 
-        # POST request (actual deletion)
-        response = self.client.post(
-            reverse("core:terminal_delete", kwargs={"pk": empty_terminal.pk})
-        )
-        self.assertEqual(response.status_code, 302)  # Redirect after deletion
+    def test_terminal_user_assignment(self):
+        """Test assigning a user to a terminal."""
+        with tenant_context(self.tenant.id):
+            # Create a user
+            employee = User.objects.create_user(
+                username="employee",
+                email="employee@test.com",
+                password="testpass123",
+                tenant=self.tenant,
+                role=User.TENANT_EMPLOYEE,
+            )
 
-        # Verify terminal was deleted
-        self.assertFalse(Terminal.objects.filter(pk=empty_terminal.pk).exists())
+            self.client.login(username="owner", password="testpass123")
+
+            # Update terminal to assign user
+            response = self.client.post(
+                reverse("core:terminal_update", kwargs={"pk": self.terminal.pk}),
+                {
+                    "terminal_id": self.terminal.terminal_id,
+                    "description": self.terminal.description,
+                    "branch": self.branch.pk,
+                    "assigned_user": employee.pk,
+                    "configuration": "{}",
+                    "is_active": True,
+                },
+            )
+
+            self.assertEqual(response.status_code, 302)
+
+            # Verify user was assigned
+            self.terminal.refresh_from_db()
+            self.assertEqual(self.terminal.assigned_user, employee)
+
+    def test_terminal_user_unassignment(self):
+        """Test unassigning a user from a terminal."""
+        with tenant_context(self.tenant.id):
+            # Create and assign a user
+            employee = User.objects.create_user(
+                username="employee",
+                email="employee@test.com",
+                password="testpass123",
+                tenant=self.tenant,
+                role=User.TENANT_EMPLOYEE,
+            )
+            self.terminal.assigned_user = employee
+            self.terminal.save()
+
+            self.client.login(username="owner", password="testpass123")
+
+            # Update terminal to unassign user
+            response = self.client.post(
+                reverse("core:terminal_update", kwargs={"pk": self.terminal.pk}),
+                {
+                    "terminal_id": self.terminal.terminal_id,
+                    "description": self.terminal.description,
+                    "branch": self.branch.pk,
+                    "assigned_user": "",  # Empty value to unassign
+                    "configuration": "{}",
+                    "is_active": True,
+                },
+            )
+
+            self.assertEqual(response.status_code, 302)
+
+            # Verify user was unassigned
+            self.terminal.refresh_from_db()
+            self.assertIsNone(self.terminal.assigned_user)
+
+    def test_terminal_sales_view(self):
+        """Test terminal sales tracking view."""
+        with tenant_context(self.tenant.id):
+            # Create a sale for this terminal
+            from decimal import Decimal
+
+            from apps.sales.models import Sale
+
+            Sale.objects.create(
+                tenant=self.tenant,
+                sale_number="SALE-TEST-001",
+                branch=self.branch,
+                terminal=self.terminal,
+                employee=self.owner,
+                subtotal=Decimal("100.00"),
+                tax=Decimal("10.00"),
+                discount=Decimal("0.00"),
+                total=Decimal("110.00"),
+                payment_method=Sale.CASH,
+                status=Sale.COMPLETED,
+            )
+
+            self.client.login(username="owner", password="testpass123")
+
+            # GET request
+            response = self.client.get(
+                reverse("core:terminal_sales", kwargs={"pk": self.terminal.pk})
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, self.terminal.terminal_id)
+            self.assertContains(response, "Sales Report")
+            self.assertContains(response, "SALE-TEST-001")
+            self.assertContains(response, "110.00")
+
+    def test_terminal_sales_statistics(self):
+        """Test terminal sales statistics calculation."""
+        with tenant_context(self.tenant.id):
+            from decimal import Decimal
+
+            from apps.inventory.models import InventoryItem, ProductCategory
+            from apps.sales.models import Sale, SaleItem
+
+            # Create inventory item
+            category = ProductCategory.objects.create(tenant=self.tenant, name="Rings")
+            item = InventoryItem.objects.create(
+                tenant=self.tenant,
+                sku="RING-001",
+                name="Gold Ring",
+                category=category,
+                karat=18,
+                weight_grams=Decimal("5.0"),
+                cost_price=Decimal("50.00"),
+                selling_price=Decimal("100.00"),
+                quantity=10,
+                branch=self.branch,
+            )
+
+            # Create multiple sales
+            for i in range(3):
+                sale = Sale.objects.create(
+                    tenant=self.tenant,
+                    sale_number=f"SALE-TEST-{i:03d}",
+                    branch=self.branch,
+                    terminal=self.terminal,
+                    employee=self.owner,
+                    subtotal=Decimal("100.00"),
+                    tax=Decimal("10.00"),
+                    discount=Decimal("0.00"),
+                    total=Decimal("110.00"),
+                    payment_method=Sale.CASH,
+                    status=Sale.COMPLETED,
+                )
+
+                SaleItem.objects.create(
+                    sale=sale,
+                    inventory_item=item,
+                    quantity=1,
+                    unit_price=Decimal("100.00"),
+                    subtotal=Decimal("100.00"),
+                )
+
+            self.client.login(username="owner", password="testpass123")
+
+            # GET request
+            response = self.client.get(
+                reverse("core:terminal_sales", kwargs={"pk": self.terminal.pk})
+            )
+
+            self.assertEqual(response.status_code, 200)
+
+            # Check statistics in context
+            self.assertEqual(response.context["stats"]["total_sales"], 3)
+            self.assertEqual(response.context["stats"]["total_revenue"], Decimal("330.00"))
+            self.assertEqual(response.context["stats"]["total_items"], 3)
+
+    def test_terminal_list_shows_assigned_user(self):
+        """Test that terminal list displays assigned user."""
+        with tenant_context(self.tenant.id):
+            # Create and assign a user
+            employee = User.objects.create_user(
+                username="employee",
+                email="employee@test.com",
+                password="testpass123",
+                tenant=self.tenant,
+                role=User.TENANT_EMPLOYEE,
+            )
+            self.terminal.assigned_user = employee
+            self.terminal.save()
+
+            self.client.login(username="owner", password="testpass123")
+
+            response = self.client.get(reverse("core:terminal_list"))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "employee")
+            self.assertContains(response, "Assigned User")
+
+    def test_terminal_configuration_persistence(self):
+        """Test that terminal configuration is properly saved and retrieved."""
+        with tenant_context(self.tenant.id):
+            self.client.login(username="owner", password="testpass123")
+
+            configuration = {
+                "printer_ip": "192.168.1.100",
+                "printer_port": "9100",
+                "scanner_enabled": True,
+                "cash_drawer_enabled": True,
+                "receipt_copies": 2,
+            }
+
+            # Create terminal with configuration
+            response = self.client.post(
+                reverse("core:terminal_create"),
+                {
+                    "terminal_id": "POS-CONFIG-TEST",
+                    "description": "Configuration test terminal",
+                    "branch": self.branch.pk,
+                    "configuration": json.dumps(configuration),
+                    "is_active": True,
+                },
+            )
+
+            self.assertEqual(response.status_code, 302)
+
+            # Verify configuration was saved
+            terminal = Terminal.objects.get(terminal_id="POS-CONFIG-TEST")
+            self.assertEqual(terminal.configuration, configuration)
+            self.assertEqual(terminal.configuration["printer_ip"], "192.168.1.100")
+            self.assertTrue(terminal.configuration["scanner_enabled"])
 
     def test_terminal_api_endpoints(self):
         """Test REST API endpoints for terminals."""

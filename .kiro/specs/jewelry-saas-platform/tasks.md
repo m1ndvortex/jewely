@@ -290,7 +290,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Update inventory levels on transfer completion
     - _Requirements: 14_
   
-  - [-] 9.3 Implement terminal management
+  - [x] 9.3 Implement terminal management
     - Create terminal registration interface
     - Implement terminal assignment to branches and users
     - Create terminal configuration (printer, scanner, cash drawer settings)
