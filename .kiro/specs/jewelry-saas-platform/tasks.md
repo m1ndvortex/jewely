@@ -245,7 +245,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
 
 
 - [ ] 8. Repair & Custom Order Tracking
-  - [ ] 8.1 Create repair order models
+  - [x] 8.1 Create repair order models
     - Create RepairOrder model with tenant FK, order_number, customer FK, item_description, service_type, status (FSM), dates, cost
     - Create RepairOrderPhoto model for item documentation
     - Implement django-fsm for state management (received → in_progress → quality_check → completed → delivered)

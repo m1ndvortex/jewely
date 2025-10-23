@@ -48,3 +48,6 @@ openpyxl==3.1.2
 
 # Accounting
 django-ledger==0.6.1
+
+# State Machine
+django-fsm==2.8.1

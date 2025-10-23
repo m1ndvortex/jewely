@@ -42,12 +42,14 @@ INSTALLED_APPS = [
     "django_otp.plugins.otp_static",
     "guardian",
     "django_ledger",
+    "django_fsm",
     # Local apps
     "apps.core",
     "apps.inventory",
     "apps.sales",
     "apps.crm",
     "apps.accounting",
+    "apps.repair",
 ]
 
 # Site ID for django-allauth
