@@ -505,7 +505,9 @@ class TerminalListView(LoginRequiredMixin, TenantPermissionMixin, ListView):
         elif status_filter == "inactive":
             queryset = queryset.filter(is_active=False)
 
-        return queryset.select_related("branch").order_by("branch__name", "terminal_id")
+        return queryset.select_related("branch", "assigned_user").order_by(
+            "branch__name", "terminal_id"
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -525,7 +527,7 @@ class TerminalCreateView(LoginRequiredMixin, TenantPermissionMixin, CreateView):
 
     model = Terminal
     template_name = "core/terminal_form.html"
-    fields = ["terminal_id", "description", "branch", "configuration", "is_active"]
+    fields = ["terminal_id", "description", "branch", "assigned_user", "configuration", "is_active"]
     success_url = reverse_lazy("core:terminal_list")
 
     def get_form(self, form_class=None):
@@ -534,6 +536,11 @@ class TerminalCreateView(LoginRequiredMixin, TenantPermissionMixin, CreateView):
         form.fields["branch"].queryset = Branch.objects.filter(
             tenant=self.request.user.tenant, is_active=True
         )
+        # Limit user choices to users from the same tenant
+        form.fields["assigned_user"].queryset = User.objects.filter(
+            tenant=self.request.user.tenant, is_active=True
+        )
+        form.fields["assigned_user"].required = False
         return form
 
     def form_valid(self, form):
@@ -558,7 +565,7 @@ class TerminalUpdateView(LoginRequiredMixin, TenantPermissionMixin, UpdateView):
 
     model = Terminal
     template_name = "core/terminal_form.html"
-    fields = ["terminal_id", "description", "branch", "configuration", "is_active"]
+    fields = ["terminal_id", "description", "branch", "assigned_user", "configuration", "is_active"]
     success_url = reverse_lazy("core:terminal_list")
 
     def get_queryset(self):
@@ -573,6 +580,11 @@ class TerminalUpdateView(LoginRequiredMixin, TenantPermissionMixin, UpdateView):
         form.fields["branch"].queryset = Branch.objects.filter(
             tenant=self.request.user.tenant, is_active=True
         )
+        # Limit user choices to users from the same tenant
+        form.fields["assigned_user"].queryset = User.objects.filter(
+            tenant=self.request.user.tenant, is_active=True
+        )
+        form.fields["assigned_user"].required = False
         return form
 
     def form_valid(self, form):
@@ -761,3 +773,112 @@ class TerminalRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
         )
 
         return Terminal.objects.filter(branch_id__in=branch_ids)
+
+
+class TerminalSalesView(LoginRequiredMixin, TenantPermissionMixin, DetailView):
+    """
+    View for displaying sales statistics for a specific terminal.
+    """
+
+    model = Terminal
+    template_name = "core/terminal_sales.html"
+    context_object_name = "terminal"
+
+    def get_queryset(self):
+        branch_ids = Branch.objects.filter(tenant=self.request.user.tenant).values_list(
+            "id", flat=True
+        )
+        return Terminal.objects.filter(branch_id__in=branch_ids)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        terminal = self.get_object()
+
+        # Get date range from query params (default to last 30 days)
+        from datetime import datetime, timedelta
+
+        from django.utils import timezone
+
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=30)
+
+        # Parse date filters if provided
+        start_param = self.request.GET.get("start_date")
+        end_param = self.request.GET.get("end_date")
+
+        if start_param:
+            try:
+                start_date = timezone.make_aware(datetime.strptime(start_param, "%Y-%m-%d"))
+            except ValueError:
+                pass
+
+        if end_param:
+            try:
+                end_date = timezone.make_aware(datetime.strptime(end_param, "%Y-%m-%d"))
+                # Set to end of day
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+            except ValueError:
+                pass
+
+        # Get sales for this terminal
+        sales = Sale.objects.filter(
+            terminal=terminal, created_at__gte=start_date, created_at__lte=end_date
+        ).select_related("customer", "employee")
+
+        # Calculate statistics
+        from django.db.models import Count, Sum
+
+        stats = sales.aggregate(
+            total_sales=Count("id"),
+            total_revenue=Sum("total"),
+            total_items=Sum("items__quantity"),
+        )
+
+        # Sales by status
+        sales_by_status = (
+            sales.values("status")
+            .annotate(count=Count("id"), revenue=Sum("total"))
+            .order_by("-count")
+        )
+
+        # Sales by payment method
+        sales_by_payment = (
+            sales.values("payment_method")
+            .annotate(count=Count("id"), revenue=Sum("total"))
+            .order_by("-count")
+        )
+
+        # Sales by employee
+        sales_by_employee = (
+            sales.values("employee__username")
+            .annotate(count=Count("id"), revenue=Sum("total"))
+            .order_by("-count")[:10]
+        )
+
+        # Recent sales
+        recent_sales = sales.order_by("-created_at")[:20]
+
+        # Daily sales trend
+        from django.db.models.functions import TruncDate
+
+        daily_sales = (
+            sales.annotate(date=TruncDate("created_at"))
+            .values("date")
+            .annotate(count=Count("id"), revenue=Sum("total"))
+            .order_by("date")
+        )
+
+        context.update(
+            {
+                "start_date": start_date,
+                "end_date": end_date,
+                "stats": stats,
+                "sales_by_status": sales_by_status,
+                "sales_by_payment": sales_by_payment,
+                "sales_by_employee": sales_by_employee,
+                "recent_sales": recent_sales,
+                "daily_sales": daily_sales,
+            }
+        )
+
+        return context

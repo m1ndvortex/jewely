@@ -69,6 +69,16 @@ class Terminal(models.Model):
         help_text="Whether this terminal is currently active and can process sales",
     )
 
+    # User assignment
+    assigned_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_terminals",
+        help_text="User currently assigned to this terminal (optional)",
+    )
+
     # Terminal configuration (can be extended with JSON field for printer settings, etc.)
     configuration = models.JSONField(
         default=dict,

@@ -50,6 +50,11 @@ urlpatterns = [
         branch_views.TerminalDeleteView.as_view(),
         name="terminal_delete",
     ),
+    path(
+        "terminals/<uuid:pk>/sales/",
+        branch_views.TerminalSalesView.as_view(),
+        name="terminal_sales",
+    ),
     # Staff Assignment - Web Views
     path("staff/assignment/", branch_views.staff_assignment_view, name="staff_assignment"),
     # Branch Management - API Views

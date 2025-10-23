@@ -813,3 +813,470 @@ def inventory_turnover_report(request):
     )
 
     return Response(report_data, status=status.HTTP_200_OK)
+
+
+# Inventory Transfer Views
+
+
+class InventoryTransferListView(TenantContextMixin, generics.ListAPIView):
+    """
+    API endpoint for listing inventory transfers with filters.
+
+    Supports:
+    - Filter by status, from_branch, to_branch
+    - Search by transfer_number
+    - Ordering by various fields
+
+    Implements Requirement 14: Multi-Branch Management
+    - Inter-branch inventory transfers with in-transit tracking
+    """
+
+    permission_classes = [permissions.IsAuthenticated, HasTenantAccess]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["transfer_number", "created_at", "status", "total_value"]
+    ordering = ["-created_at"]
+
+    def get_serializer_class(self):
+        """Get the appropriate serializer class."""
+        from .serializers import InventoryTransferListSerializer
+
+        return InventoryTransferListSerializer
+
+    def get_queryset(self):
+        """Get transfers for the current user's tenant with filters."""
+        from .models import InventoryTransfer
+
+        user = self.request.user
+        queryset = InventoryTransfer.objects.filter(tenant=user.tenant).select_related(
+            "from_branch",
+            "to_branch",
+            "requested_by",
+            "approved_by",
+            "shipped_by",
+            "received_by",
+        )
+
+        # Search by transfer number
+        search = self.request.query_params.get("search", None)
+        if search:
+            queryset = queryset.filter(transfer_number__icontains=search)
+
+        # Filter by status
+        status_filter = self.request.query_params.get("status", None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        # Filter by from_branch
+        from_branch_id = self.request.query_params.get("from_branch", None)
+        if from_branch_id:
+            queryset = queryset.filter(from_branch_id=from_branch_id)
+
+        # Filter by to_branch
+        to_branch_id = self.request.query_params.get("to_branch", None)
+        if to_branch_id:
+            queryset = queryset.filter(to_branch_id=to_branch_id)
+
+        # Filter by user's branch (show transfers involving their branch)
+        my_branch = self.request.query_params.get("my_branch", None)
+        if my_branch and my_branch.lower() in ["true", "1", "yes"] and user.branch:
+            queryset = queryset.filter(Q(from_branch=user.branch) | Q(to_branch=user.branch))
+
+        return queryset
+
+
+class InventoryTransferDetailView(TenantContextMixin, generics.RetrieveAPIView):
+    """
+    API endpoint for retrieving a single inventory transfer with all items.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, HasTenantAccess]
+
+    def get_serializer_class(self):
+        """Get the appropriate serializer class."""
+        from .serializers import InventoryTransferDetailSerializer
+
+        return InventoryTransferDetailSerializer
+
+    lookup_field = "id"
+
+    def get_queryset(self):
+        """Get transfers for the current user's tenant."""
+        from .models import InventoryTransfer
+
+        user = self.request.user
+        return (
+            InventoryTransfer.objects.filter(tenant=user.tenant)
+            .select_related(
+                "from_branch",
+                "to_branch",
+                "requested_by",
+                "approved_by",
+                "shipped_by",
+                "received_by",
+            )
+            .prefetch_related("items__inventory_item")
+        )
+
+
+class InventoryTransferCreateView(TenantContextMixin, generics.CreateAPIView):
+    """
+    API endpoint for creating a new inventory transfer request.
+
+    Automatically determines if approval is required based on total value.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, HasTenantAccess]
+
+    def get_serializer_class(self):
+        """Get the appropriate serializer class."""
+        from .serializers import InventoryTransferCreateSerializer
+
+        return InventoryTransferCreateSerializer
+
+    def perform_create(self, serializer):
+        """Set tenant and requested_by from current user."""
+        serializer.save(tenant=self.request.user.tenant, requested_by=self.request.user)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def approve_transfer(request, transfer_id):
+    """
+    Approve a pending inventory transfer.
+
+    Only managers/owners can approve transfers, and they cannot approve their own requests.
+
+    Implements Requirement 14: Multi-Branch Management
+    - Approval workflow for high-value transfers
+    """
+    from django.db import transaction
+
+    from .models import InventoryTransfer
+
+    # Get the transfer
+    try:
+        transfer = InventoryTransfer.objects.select_for_update().get(
+            id=transfer_id, tenant=request.user.tenant
+        )
+    except InventoryTransfer.DoesNotExist:
+        return Response(
+            {"detail": "Transfer not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Check if user can approve
+    if not transfer.can_approve(request.user):
+        return Response(
+            {"detail": "You do not have permission to approve this transfer."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Check if transfer is in pending status
+    if transfer.status != InventoryTransfer.PENDING:
+        return Response(
+            {
+                "detail": f"Transfer cannot be approved. Current status: {transfer.get_status_display()}"
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Approve the transfer
+    try:
+        with transaction.atomic():
+            transfer.approve(request.user)
+            transfer.save()
+
+        from .serializers import InventoryTransferDetailSerializer
+
+        return Response(
+            {
+                "detail": "Transfer approved successfully.",
+                "transfer": InventoryTransferDetailSerializer(transfer).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"detail": f"Error approving transfer: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def reject_transfer(request, transfer_id):
+    """
+    Reject a pending inventory transfer.
+
+    Request body:
+    {
+        "reason": "Reason for rejection"
+    }
+    """
+    from django.db import transaction
+
+    from .models import InventoryTransfer
+
+    # Get the transfer
+    try:
+        transfer = InventoryTransfer.objects.select_for_update().get(
+            id=transfer_id, tenant=request.user.tenant
+        )
+    except InventoryTransfer.DoesNotExist:
+        return Response(
+            {"detail": "Transfer not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Check if user can approve (same permission for reject)
+    if not transfer.can_approve(request.user):
+        return Response(
+            {"detail": "You do not have permission to reject this transfer."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Check if transfer is in pending status
+    if transfer.status != InventoryTransfer.PENDING:
+        return Response(
+            {
+                "detail": f"Transfer cannot be rejected. Current status: {transfer.get_status_display()}"
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Get rejection reason
+    reason = request.data.get("reason", "")
+    if not reason:
+        return Response(
+            {"detail": "Rejection reason is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Reject the transfer
+    try:
+        with transaction.atomic():
+            transfer.reject(request.user, reason)
+            transfer.save()
+
+        from .serializers import InventoryTransferDetailSerializer
+
+        return Response(
+            {
+                "detail": "Transfer rejected successfully.",
+                "transfer": InventoryTransferDetailSerializer(transfer).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"detail": f"Error rejecting transfer: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def ship_transfer(request, transfer_id):
+    """
+    Mark an approved transfer as shipped/in transit.
+
+    This deducts inventory from the source branch.
+    Only users from the source branch can ship transfers.
+    """
+    from django.db import transaction
+
+    from .models import InventoryTransfer
+
+    # Get the transfer
+    try:
+        transfer = InventoryTransfer.objects.select_for_update().get(
+            id=transfer_id, tenant=request.user.tenant
+        )
+    except InventoryTransfer.DoesNotExist:
+        return Response(
+            {"detail": "Transfer not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Check if user can ship
+    if not transfer.can_ship(request.user):
+        return Response(
+            {
+                "detail": "You do not have permission to ship this transfer. Must be from source branch."
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Check if transfer is in approved status
+    if transfer.status != InventoryTransfer.APPROVED:
+        return Response(
+            {
+                "detail": f"Transfer cannot be shipped. Current status: {transfer.get_status_display()}"
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Ship the transfer
+    try:
+        with transaction.atomic():
+            transfer.mark_shipped(request.user)
+            transfer.save()
+
+        from .serializers import InventoryTransferDetailSerializer
+
+        return Response(
+            {
+                "detail": "Transfer marked as shipped. Inventory deducted from source branch.",
+                "transfer": InventoryTransferDetailSerializer(transfer).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except ValueError as e:
+        return Response(
+            {"detail": str(e)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        return Response(
+            {"detail": f"Error shipping transfer: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def receive_transfer(request, transfer_id):
+    """
+    Mark a transfer as received at destination.
+
+    This adds inventory to the destination branch.
+    Only users from the destination branch can receive transfers.
+
+    Request body (optional):
+    {
+        "discrepancies": {
+            "<item_id>": <actual_quantity>,
+            ...
+        }
+    }
+
+    Implements Requirement 14: Multi-Branch Management
+    - Receiving confirmation interface with discrepancy logging
+    - Update inventory levels on transfer completion
+    """
+    from django.db import transaction
+
+    from .models import InventoryTransfer
+
+    # Get the transfer
+    try:
+        transfer = InventoryTransfer.objects.select_for_update().get(
+            id=transfer_id, tenant=request.user.tenant
+        )
+    except InventoryTransfer.DoesNotExist:
+        return Response(
+            {"detail": "Transfer not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Check if user can receive
+    if not transfer.can_receive(request.user):
+        return Response(
+            {
+                "detail": "You do not have permission to receive this transfer. Must be from destination branch."
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Check if transfer is in transit status
+    if transfer.status != InventoryTransfer.IN_TRANSIT:
+        return Response(
+            {
+                "detail": f"Transfer cannot be received. Current status: {transfer.get_status_display()}"
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Get discrepancies if any
+    discrepancies = request.data.get("discrepancies", {})
+
+    # Receive the transfer
+    try:
+        with transaction.atomic():
+            transfer.mark_received(request.user, discrepancies)
+            transfer.save()
+
+        from .serializers import InventoryTransferDetailSerializer
+
+        return Response(
+            {
+                "detail": "Transfer received successfully. Inventory added to destination branch.",
+                "transfer": InventoryTransferDetailSerializer(transfer).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"detail": f"Error receiving transfer: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, HasTenantAccess])
+def cancel_transfer(request, transfer_id):
+    """
+    Cancel a pending or approved transfer.
+
+    Request body:
+    {
+        "reason": "Reason for cancellation"
+    }
+    """
+    from django.db import transaction
+
+    from .models import InventoryTransfer
+
+    # Get the transfer
+    try:
+        transfer = InventoryTransfer.objects.select_for_update().get(
+            id=transfer_id, tenant=request.user.tenant
+        )
+    except InventoryTransfer.DoesNotExist:
+        return Response(
+            {"detail": "Transfer not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Check if transfer can be cancelled
+    if transfer.status not in [InventoryTransfer.PENDING, InventoryTransfer.APPROVED]:
+        return Response(
+            {
+                "detail": f"Transfer cannot be cancelled. Current status: {transfer.get_status_display()}"
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Get cancellation reason
+    reason = request.data.get("reason", "")
+
+    # Cancel the transfer
+    try:
+        with transaction.atomic():
+            transfer.cancel(request.user, reason)
+            transfer.save()
+
+        from .serializers import InventoryTransferDetailSerializer
+
+        return Response(
+            {
+                "detail": "Transfer cancelled successfully.",
+                "transfer": InventoryTransferDetailSerializer(transfer).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"detail": f"Error cancelling transfer: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

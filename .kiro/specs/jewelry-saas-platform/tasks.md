@@ -282,7 +282,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement branch-specific inventory tracking
     - _Requirements: 14_
   
-  - [ ] 9.2 Implement inter-branch transfers
+  - [x] 9.2 Implement inter-branch transfers
     - Create InventoryTransfer model with FSM (pending → approved → in_transit → received)
     - Create transfer request interface
     - Implement approval workflow for high-value transfers
@@ -290,7 +290,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Update inventory levels on transfer completion
     - _Requirements: 14_
   
-  - [ ] 9.3 Implement terminal management
+  - [-] 9.3 Implement terminal management
     - Create terminal registration interface
     - Implement terminal assignment to branches and users
     - Create terminal configuration (printer, scanner, cash drawer settings)

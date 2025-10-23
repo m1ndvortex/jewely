@@ -226,6 +226,9 @@ class TerminalSerializer(serializers.ModelSerializer):
     """
 
     branch_name = serializers.CharField(source="branch.name", read_only=True)
+    assigned_user_username = serializers.CharField(
+        source="assigned_user.username", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Terminal
@@ -237,11 +240,20 @@ class TerminalSerializer(serializers.ModelSerializer):
             "configuration",
             "branch",
             "branch_name",
+            "assigned_user",
+            "assigned_user_username",
             "created_at",
             "updated_at",
             "last_used_at",
         ]
-        read_only_fields = ["id", "branch_name", "created_at", "updated_at", "last_used_at"]
+        read_only_fields = [
+            "id",
+            "branch_name",
+            "assigned_user_username",
+            "created_at",
+            "updated_at",
+            "last_used_at",
+        ]
 
     def validate_branch(self, value):
         """Ensure branch belongs to the same tenant."""

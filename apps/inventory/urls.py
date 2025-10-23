@@ -106,4 +106,45 @@ urlpatterns = [
         views.inventory_turnover_report,
         name="report_turnover",
     ),
+    # Inventory Transfer endpoints
+    path(
+        "api/inventory/transfers/",
+        views.InventoryTransferListView.as_view(),
+        name="transfer_list",
+    ),
+    path(
+        "api/inventory/transfers/create/",
+        views.InventoryTransferCreateView.as_view(),
+        name="transfer_create",
+    ),
+    path(
+        "api/inventory/transfers/<uuid:id>/",
+        views.InventoryTransferDetailView.as_view(),
+        name="transfer_detail",
+    ),
+    path(
+        "api/inventory/transfers/<uuid:transfer_id>/approve/",
+        views.approve_transfer,
+        name="transfer_approve",
+    ),
+    path(
+        "api/inventory/transfers/<uuid:transfer_id>/reject/",
+        views.reject_transfer,
+        name="transfer_reject",
+    ),
+    path(
+        "api/inventory/transfers/<uuid:transfer_id>/ship/",
+        views.ship_transfer,
+        name="transfer_ship",
+    ),
+    path(
+        "api/inventory/transfers/<uuid:transfer_id>/receive/",
+        views.receive_transfer,
+        name="transfer_receive",
+    ),
+    path(
+        "api/inventory/transfers/<uuid:transfer_id>/cancel/",
+        views.cancel_transfer,
+        name="transfer_cancel",
+    ),
 ]
