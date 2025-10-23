@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Repair Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .status-received { background-color: #e3f2fd; color: #1565c0; }
+    .status-in_progress { background-color: #fff3e0; color: #ef6c00; }
+    .status-quality_check { background-color: #f3e5f5; color: #7b1fa2; }
+    .status-completed { background-color: #e8f5e8; color: #2e7d32; }
+    .status-delivered { background-color: #e0f2f1; color: #00695c; }
+    .status-cancelled { background-color: #ffebee; color: #c62828; }
+    
+    .priority-low { color: #4caf50; }
+    .priority-normal { color: #2196f3; }
+    .priority-high { color: #ff9800; }
+    .priority-urgent { color: #f44336; }
+    
+    .overdue {
+        background-color: #ffebee;
+        border-left: 4px solid #f44336;
+    }
+    
+    .photo-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .photo-item {
+        position: relative;
+        border: 1px solid #ddd;
+        border-radius: 0.25rem;
+        overflow: hidden;
+    }
+    
+    .photo-item img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+    }
+    
+    .photo-type {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 0.25rem;
+        font-size: 0.75rem;
+        text-align: center;
+    }
+    
+    .filter-form {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.25rem;
+        margin-bottom: 1rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .transition-btn {
+        padding: 0.375rem 0.75rem;
+        border: none;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .transition-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-start { background-color: #28a745; color: white; }
+    .btn-quality { background-color: #6f42c1; color: white; }
+    .btn-complete { background-color: #007bff; color: white; }
+    .btn-deliver { background-color: #17a2b8; color: white; }
+    .btn-cancel { background-color: #dc3545; color: white; }
+    .btn-return { background-color: #ffc107; color: #212529; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // CSRF token for AJAX requests
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    
+    // Photo upload functionality
+    function uploadPhoto(repairOrderId) {
+        const formData = new FormData();
+        const photoInput = document.getElementById('photo-input');
+        const photoTypeSelect = document.getElementById('photo-type');
+        const descriptionInput = document.getElementById('photo-description');
+        
+        if (!photoInput.files[0]) {
+            alert('Please select a photo to upload.');
+            return;
+        }
+        
+        formData.append('photo', photoInput.files[0]);
+        formData.append('photo_type', photoTypeSelect.value);
+        formData.append('description', descriptionInput.value);
+        formData.append('csrfmiddlewaretoken', csrftoken);
+        
+        fetch(`/repair/${repairOrderId}/upload-photo/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add photo to gallery
+                addPhotoToGallery(data);
+                // Clear form
+                photoInput.value = '';
+                descriptionInput.value = '';
+                // Show success message
+                showMessage('Photo uploaded successfully!', 'success');
+            } else {
+                showMessage('Error uploading photo: ' + JSON.stringify(data.errors), 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Error uploading photo: ' + error, 'error');
+        });
+    }
+    
+    // Status update functionality
+    function updateStatus(repairOrderId, action) {
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('csrfmiddlewaretoken', csrftoken);
+        
+        fetch(`/repair/${repairOrderId}/update-status/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update status display
+                updateStatusDisplay(data.new_status, data.new_status_display);
+                // Show success message
+                showMessage(data.message, 'success');
+                // Reload page to update available actions
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showMessage('Error updating status: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Error updating status: ' + error, 'error');
+        });
+    }
+    
+    // Helper functions
+    function addPhotoToGallery(photoData) {
+        const gallery = document.getElementById('photo-gallery');
+        const photoHtml = `
+            <div class="photo-item">
+                <img src="${photoData.photo_url}" alt="${photoData.photo_type}">
+                <div class="photo-type">${photoData.photo_type}</div>
+            </div>
+        `;
+        gallery.insertAdjacentHTML('beforeend', photoHtml);
+    }
+    
+    function updateStatusDisplay(status, statusDisplay) {
+        const statusElement = document.getElementById('status-display');
+        if (statusElement) {
+            statusElement.className = `status-badge status-${status}`;
+            statusElement.textContent = statusDisplay;
+        }
+    }
+    
+    function showMessage(message, type) {
+        // Create message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+        messageDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Add to page
+        const container = document.querySelector('.container-fluid') || document.body;
+        container.insertBefore(messageDiv, container.firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    }
+    
+    // Filter form auto-submit
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterInputs = document.querySelectorAll('.filter-form select, .filter-form input[type="checkbox"]');
+        filterInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                this.form.submit();
+            });
+        });
+    });
+</script>
+{% endblock %}

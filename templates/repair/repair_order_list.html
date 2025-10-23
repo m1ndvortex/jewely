@@ -1,0 +1,216 @@
+{% extends "repair/base.html" %}
+{% load static %}
+{% load repair_tags %}
+
+{% block title %}Repair Orders{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Repair Orders</h1>
+                <div>
+                    <a href="{% url 'repair:repair_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> New Repair Order
+                    </a>
+                    <a href="{% url 'repair:generate_work_order' %}" class="btn btn-secondary">
+                        <i class="fas fa-file-pdf"></i> Generate Work Order
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <form method="get" class="filter-form">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="">All Statuses</option>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}" {% if value == current_status %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="priority" class="form-label">Priority</label>
+                        <select name="priority" id="priority" class="form-select">
+                            <option value="">All Priorities</option>
+                            {% for value, label in priority_choices %}
+                                <option value="{{ value }}" {% if value == current_priority %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="assigned_to" class="form-label">Assigned To</label>
+                        <select name="assigned_to" id="assigned_to" class="form-select">
+                            <option value="">All Staff</option>
+                            <option value="unassigned" {% if current_assigned_to == 'unassigned' %}selected{% endif %}>
+                                Unassigned
+                            </option>
+                            {% for staff in staff_members %}
+                                <option value="{{ staff.id }}" {% if staff.id|stringformat:"s" == current_assigned_to %}selected{% endif %}>
+                                    {{ staff.get_full_name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="search" class="form-label">Search</label>
+                        <div class="input-group">
+                            <input type="text" name="search" id="search" class="form-control" 
+                                   placeholder="Order #, customer, item..." value="{{ current_search }}">
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input type="checkbox" name="overdue" value="true" id="overdue" class="form-check-input"
+                                   {% if current_overdue == 'true' %}checked{% endif %}>
+                            <label for="overdue" class="form-check-label">Show only overdue</label>
+                        </div>
+                    </div>
+                    <div class="col-md-9 text-end">
+                        <a href="{% url 'repair:repair_list' %}" class="btn btn-outline-secondary btn-sm">
+                            Clear Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+            
+            <!-- Results -->
+            {% if repair_orders %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Item</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Due Date</th>
+                                <th>Assigned To</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in repair_orders %}
+                                <tr {% if order.is_overdue %}class="overdue"{% endif %}>
+                                    <td>
+                                        <a href="{% url 'repair:repair_detail' order.pk %}" class="text-decoration-none">
+                                            {{ order.order_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ order.customer }}</td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 200px;" title="{{ order.item_description }}">
+                                            {{ order.item_description }}
+                                        </div>
+                                    </td>
+                                    <td>{{ order.get_service_type_display }}</td>
+                                    <td>
+                                        <span class="status-badge status-{{ order.status }}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="priority-{{ order.priority|lower }}">
+                                            <i class="fas fa-flag"></i> {{ order.get_priority_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {{ order.estimated_completion|date:"M d, Y" }}
+                                        {% if order.is_overdue %}
+                                            <br><small class="text-danger">
+                                                <i class="fas fa-exclamation-triangle"></i> 
+                                                {{ order.days_until_due|abs_value }} day{{ order.days_until_due|abs_value|pluralize }} overdue
+                                            </small>
+                                        {% elif order.days_until_due <= 3 %}
+                                            <br><small class="text-warning">
+                                                <i class="fas fa-clock"></i> 
+                                                Due in {{ order.days_until_due }} day{{ order.days_until_due|pluralize }}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.assigned_to %}
+                                            {{ order.assigned_to.get_full_name }}
+                                        {% else %}
+                                            <span class="text-muted">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'repair:repair_detail' order.pk %}" 
+                                               class="btn btn-outline-primary btn-sm" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'repair:repair_edit' order.pk %}" 
+                                               class="btn btn-outline-secondary btn-sm" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="Repair orders pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-tools fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No repair orders found</h4>
+                    <p class="text-muted">
+                        {% if request.GET %}
+                            Try adjusting your filters or <a href="{% url 'repair:repair_list' %}">clear all filters</a>.
+                        {% else %}
+                            Get started by <a href="{% url 'repair:repair_create' %}">creating your first repair order</a>.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

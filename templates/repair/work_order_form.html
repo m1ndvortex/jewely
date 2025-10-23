@@ -1,0 +1,234 @@
+{% extends "repair/base.html" %}
+{% load static %}
+
+{% block title %}Generate Work Order{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Generate Work Order</h1>
+                <a href="{% url 'repair:repair_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Repair Orders
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-file-pdf"></i> Work Order Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <!-- Craftsman Selection -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.craftsman.id_for_label }}" class="form-label">
+                                    Assign to Craftsman <span class="text-danger">*</span>
+                                </label>
+                                {{ form.craftsman }}
+                                {% if form.craftsman.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.craftsman.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Select the craftsman who will receive this work order.
+                                </div>
+                            </div>
+                            
+                            <!-- Notes -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                    Instructions/Notes
+                                </label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.notes.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Optional special instructions for the craftsman.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Repair Orders Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                Select Repair Orders <span class="text-danger">*</span>
+                            </label>
+                            {% if form.repair_orders.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.repair_orders.errors.0 }}
+                                </div>
+                            {% endif %}
+                            
+                            <div class="border rounded p-3 bg-light">
+                                {% if form.repair_orders.field.queryset %}
+                                    <div class="row">
+                                        <div class="col-12 mb-2">
+                                            <div class="form-check">
+                                                <input type="checkbox" id="select-all" class="form-check-input">
+                                                <label for="select-all" class="form-check-label fw-bold">
+                                                    Select All Available Orders
+                                                </label>
+                                            </div>
+                                            <hr>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th width="50">Select</th>
+                                                    <th>Order #</th>
+                                                    <th>Customer</th>
+                                                    <th>Item</th>
+                                                    <th>Service</th>
+                                                    <th>Priority</th>
+                                                    <th>Due Date</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for choice in form.repair_orders %}
+                                                    {% with order=choice.choice_value %}
+                                                    <tr>
+                                                        <td>
+                                                            {{ choice.tag }}
+                                                        </td>
+                                                        <td>{{ order.order_number }}</td>
+                                                        <td>{{ order.customer }}</td>
+                                                        <td>
+                                                            <div class="text-truncate" style="max-width: 200px;" title="{{ order.item_description }}">
+                                                                {{ order.item_description }}
+                                                            </div>
+                                                        </td>
+                                                        <td>{{ order.get_service_type_display }}</td>
+                                                        <td>
+                                                            <span class="priority-{{ order.priority|lower }}">
+                                                                <i class="fas fa-flag"></i> {{ order.get_priority_display }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            {{ order.estimated_completion|date:"M d, Y" }}
+                                                            {% if order.is_overdue %}
+                                                                <br><small class="text-danger">
+                                                                    <i class="fas fa-exclamation-triangle"></i> Overdue
+                                                                </small>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <span class="status-badge status-{{ order.status }}">
+                                                                {{ order.get_status_display }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    {% endwith %}
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted mb-0">
+                                            No repair orders available for work order generation.
+                                            <br>
+                                            Only orders with status "Received" or "In Progress" can be included.
+                                        </p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="form-text mt-2">
+                                Select one or more repair orders to include in the work order PDF.
+                                Selected orders will be assigned to the chosen craftsman.
+                            </div>
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'repair:repair_list' %}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary" {% if not form.repair_orders.field.queryset %}disabled{% endif %}>
+                                <i class="fas fa-file-pdf"></i>
+                                Generate Work Order PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Select All functionality
+        const selectAllCheckbox = document.getElementById('select-all');
+        const orderCheckboxes = document.querySelectorAll('input[name="repair_orders"]');
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                orderCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+            
+            // Update select all when individual checkboxes change
+            orderCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const allChecked = Array.from(orderCheckboxes).every(cb => cb.checked);
+                    const noneChecked = Array.from(orderCheckboxes).every(cb => !cb.checked);
+                    
+                    selectAllCheckbox.checked = allChecked;
+                    selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+                });
+            });
+        }
+        
+        // Form validation
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(e) {
+            const selectedOrders = document.querySelectorAll('input[name="repair_orders"]:checked');
+            const craftsman = document.querySelector('select[name="craftsman"]');
+            
+            if (selectedOrders.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one repair order.');
+                return;
+            }
+            
+            if (!craftsman.value) {
+                e.preventDefault();
+                alert('Please select a craftsman.');
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+        });
+    });
+</script>
+{% endblock %}

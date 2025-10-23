@@ -209,6 +209,37 @@ def tenant_access_required(view_func):
     return wrapper
 
 
+def tenant_required(view_func):
+    """
+    Decorator to ensure user belongs to a tenant.
+
+    Usage:
+        @tenant_required
+        def tenant_view(request):
+            ...
+    """
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        user = request.user
+
+        # Check if user is authenticated
+        if not user or not user.is_authenticated:
+            from django.contrib.auth.views import redirect_to_login
+
+            return redirect_to_login(request.get_full_path())
+
+        # Check if user has a tenant
+        if not hasattr(user, "tenant") or not user.tenant:
+            from django.http import HttpResponseForbidden
+
+            return HttpResponseForbidden("Access denied. User must belong to a tenant.")
+
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
 # Class-based view decorators
 
 

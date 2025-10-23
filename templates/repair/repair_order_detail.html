@@ -1,0 +1,322 @@
+{% extends "repair/base.html" %}
+{% load static %}
+{% load repair_tags %}
+
+{% block title %}Repair Order {{ repair_order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Repair Order {{ repair_order.order_number }}</h1>
+                    <span id="status-display" class="status-badge status-{{ repair_order.status }}">
+                        {{ repair_order.get_status_display }}
+                    </span>
+                </div>
+                <div>
+                    <a href="{% url 'repair:repair_edit' repair_order.pk %}" class="btn btn-secondary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'repair:repair_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Main Details -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Order Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Customer:</dt>
+                                <dd class="col-sm-8">{{ repair_order.customer }}</dd>
+                                
+                                <dt class="col-sm-4">Service Type:</dt>
+                                <dd class="col-sm-8">{{ repair_order.get_service_type_display }}</dd>
+                                
+                                <dt class="col-sm-4">Priority:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="priority-{{ repair_order.priority|lower }}">
+                                        <i class="fas fa-flag"></i> {{ repair_order.get_priority_display }}
+                                    </span>
+                                </dd>
+                                
+                                <dt class="col-sm-4">Assigned To:</dt>
+                                <dd class="col-sm-8">
+                                    {% if repair_order.assigned_to %}
+                                        {{ repair_order.assigned_to.get_full_name }}
+                                    {% else %}
+                                        <span class="text-muted">Unassigned</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Received:</dt>
+                                <dd class="col-sm-8">{{ repair_order.received_date|date:"M d, Y g:i A" }}</dd>
+                                
+                                <dt class="col-sm-4">Due Date:</dt>
+                                <dd class="col-sm-8">
+                                    {{ repair_order.estimated_completion|date:"M d, Y" }}
+                                    {% if repair_order.is_overdue %}
+                                        <br><small class="text-danger">
+                                            <i class="fas fa-exclamation-triangle"></i> 
+                                            {{ repair_order.days_until_due|abs_value }} day{{ repair_order.days_until_due|abs_value|pluralize }} overdue
+                                        </small>
+                                    {% elif repair_order.days_until_due <= 3 %}
+                                        <br><small class="text-warning">
+                                            <i class="fas fa-clock"></i> 
+                                            Due in {{ repair_order.days_until_due }} day{{ repair_order.days_until_due|pluralize }}
+                                        </small>
+                                    {% endif %}
+                                </dd>
+                                
+                                <dt class="col-sm-4">Cost Estimate:</dt>
+                                <dd class="col-sm-8">${{ repair_order.cost_estimate }}</dd>
+                                
+                                {% if repair_order.final_cost %}
+                                <dt class="col-sm-4">Final Cost:</dt>
+                                <dd class="col-sm-8">${{ repair_order.final_cost }}</dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Item Description</h6>
+                            <p class="border p-3 bg-light">{{ repair_order.item_description }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if repair_order.service_notes %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h6>Service Notes</h6>
+                            <p class="border p-3 bg-light">{{ repair_order.service_notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Status Actions -->
+            {% if available_transitions %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Status Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="action-buttons">
+                        {% for action, label in available_transitions %}
+                            <button type="button" 
+                                    class="transition-btn btn-{{ action|slice:':4' }}"
+                                    onclick="updateStatus('{{ repair_order.pk }}', '{{ action }}')">
+                                {{ label }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Photos -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Photos</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Photo Upload Form -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="photo-input" class="form-label">Upload Photo</label>
+                            <input type="file" id="photo-input" class="form-control" accept="image/*">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="photo-type" class="form-label">Photo Type</label>
+                            <select id="photo-type" class="form-select">
+                                {% for value, label in photo_form.photo_type.field.choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="photo-description" class="form-label">Description</label>
+                            <input type="text" id="photo-description" class="form-control" placeholder="Optional description">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-primary d-block" 
+                                    onclick="uploadPhoto('{{ repair_order.pk }}')">
+                                <i class="fas fa-upload"></i> Upload
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Photo Gallery -->
+                    <div id="photo-gallery" class="photo-gallery">
+                        {% for photo in repair_order.photos.all %}
+                            <div class="photo-item">
+                                <img src="{{ photo.photo.url }}" alt="{{ photo.get_photo_type_display }}">
+                                <div class="photo-type">{{ photo.get_photo_type_display }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if not repair_order.photos.all %}
+                        <p class="text-muted text-center py-3">
+                            <i class="fas fa-camera fa-2x mb-2"></i><br>
+                            No photos uploaded yet. Upload photos to document the item condition.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Timeline -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Order Received</h6>
+                                <small class="text-muted">{{ repair_order.received_date|date:"M d, Y g:i A" }}</small>
+                                <p class="mb-0">Created by {{ repair_order.created_by.get_full_name }}</p>
+                            </div>
+                        </div>
+                        
+                        {% if repair_order.status != 'received' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-warning"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Work Started</h6>
+                                <small class="text-muted">Status: {{ repair_order.get_status_display }}</small>
+                                {% if repair_order.assigned_to %}
+                                    <p class="mb-0">Assigned to {{ repair_order.assigned_to.get_full_name }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if repair_order.actual_completion %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Work Completed</h6>
+                                <small class="text-muted">{{ repair_order.actual_completion|date:"M d, Y g:i A" }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if repair_order.delivered_date %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-info"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Delivered to Customer</h6>
+                                <small class="text-muted">{{ repair_order.delivered_date|date:"M d, Y g:i A" }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Customer Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Customer Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Name:</dt>
+                        <dd class="col-sm-8">{{ repair_order.customer.first_name }} {{ repair_order.customer.last_name }}</dd>
+                        
+                        {% if repair_order.customer.email %}
+                        <dt class="col-sm-4">Email:</dt>
+                        <dd class="col-sm-8">
+                            <a href="mailto:{{ repair_order.customer.email }}">{{ repair_order.customer.email }}</a>
+                        </dd>
+                        {% endif %}
+                        
+                        {% if repair_order.customer.phone %}
+                        <dt class="col-sm-4">Phone:</dt>
+                        <dd class="col-sm-8">
+                            <a href="tel:{{ repair_order.customer.phone }}">{{ repair_order.customer.phone }}</a>
+                        </dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-4">Customer #:</dt>
+                        <dd class="col-sm-8">{{ repair_order.customer.customer_number }}</dd>
+                    </dl>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'crm:customer_detail' repair_order.customer.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-user"></i> View Customer Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #dee2e6;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -22px;
+        top: 5px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 2px #dee2e6;
+    }
+    
+    .timeline-content h6 {
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+    
+    .timeline-content small {
+        display: block;
+        margin-bottom: 5px;
+    }
+</style>
+{% endblock %}

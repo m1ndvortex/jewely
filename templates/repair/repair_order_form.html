@@ -1,0 +1,220 @@
+{% extends "repair/base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if object %}Edit Repair Order{% else %}New Repair Order{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    {% if object %}
+                        Edit Repair Order {{ object.order_number }}
+                    {% else %}
+                        New Repair Order
+                    {% endif %}
+                </h1>
+                <a href="{% if object %}{% url 'repair:repair_detail' object.pk %}{% else %}{% url 'repair:repair_list' %}{% endif %}" 
+                   class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 
+                    {% if object %}Back to Order{% else %}Back to List{% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Order Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <!-- Customer Selection -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.customer.id_for_label }}" class="form-label">
+                                    Customer <span class="text-danger">*</span>
+                                </label>
+                                {{ form.customer }}
+                                {% if form.customer.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.customer.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Select the customer for this repair order.
+                                </div>
+                            </div>
+                            
+                            <!-- Service Type -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.service_type.id_for_label }}" class="form-label">
+                                    Service Type <span class="text-danger">*</span>
+                                </label>
+                                {{ form.service_type }}
+                                {% if form.service_type.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.service_type.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Item Description -->
+                        <div class="mb-3">
+                            <label for="{{ form.item_description.id_for_label }}" class="form-label">
+                                Item Description <span class="text-danger">*</span>
+                            </label>
+                            {{ form.item_description }}
+                            {% if form.item_description.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.item_description.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Provide a detailed description of the item and any visible damage or issues.
+                            </div>
+                        </div>
+                        
+                        <!-- Service Notes -->
+                        <div class="mb-3">
+                            <label for="{{ form.service_notes.id_for_label }}" class="form-label">
+                                Service Notes
+                            </label>
+                            {{ form.service_notes }}
+                            {% if form.service_notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.service_notes.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Additional notes about the service required or special instructions.
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <!-- Priority -->
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">
+                                    Priority
+                                </label>
+                                {{ form.priority }}
+                                {% if form.priority.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.priority.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Estimated Completion -->
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.estimated_completion.id_for_label }}" class="form-label">
+                                    Estimated Completion <span class="text-danger">*</span>
+                                </label>
+                                {{ form.estimated_completion }}
+                                {% if form.estimated_completion.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.estimated_completion.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Cost Estimate -->
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.cost_estimate.id_for_label }}" class="form-label">
+                                    Cost Estimate <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.cost_estimate }}
+                                </div>
+                                {% if form.cost_estimate.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.cost_estimate.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Assigned To -->
+                        <div class="mb-4">
+                            <label for="{{ form.assigned_to.id_for_label }}" class="form-label">
+                                Assign To
+                            </label>
+                            {{ form.assigned_to }}
+                            {% if form.assigned_to.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.assigned_to.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Optionally assign this repair to a specific staff member.
+                            </div>
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% if object %}{% url 'repair:repair_detail' object.pk %}{% else %}{% url 'repair:repair_list' %}{% endif %}" 
+                               class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                {% if object %}Update Order{% else %}Create Order{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add Bootstrap validation classes
+        const form = document.querySelector('form');
+        const inputs = form.querySelectorAll('input, select, textarea');
+        
+        inputs.forEach(input => {
+            if (input.closest('.invalid-feedback')) {
+                input.classList.add('is-invalid');
+            }
+        });
+        
+        // Form validation on submit
+        form.addEventListener('submit', function(e) {
+            let isValid = true;
+            
+            // Check required fields
+            const requiredFields = form.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please fill in all required fields.');
+            }
+        });
+    });
+</script>
+{% endblock %}

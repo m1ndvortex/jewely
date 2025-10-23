@@ -1,0 +1,265 @@
+{% extends "repair/base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if object %}Edit Custom Order{% else %}New Custom Order{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    {% if object %}
+                        Edit Custom Order {{ object.order_number }}
+                    {% else %}
+                        New Custom Order
+                    {% endif %}
+                </h1>
+                <a href="{% if object %}{% url 'repair:custom_detail' object.pk %}{% else %}{% url 'repair:custom_list' %}{% endif %}" 
+                   class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 
+                    {% if object %}Back to Order{% else %}Back to List{% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Custom Order Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Customer Selection -->
+                        <div class="mb-3">
+                            <label for="{{ form.customer.id_for_label }}" class="form-label">
+                                Customer <span class="text-danger">*</span>
+                            </label>
+                            {{ form.customer }}
+                            {% if form.customer.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.customer.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Select the customer for this custom order.
+                            </div>
+                        </div>
+                        
+                        <!-- Design Description -->
+                        <div class="mb-3">
+                            <label for="{{ form.design_description.id_for_label }}" class="form-label">
+                                Design Description <span class="text-danger">*</span>
+                            </label>
+                            {{ form.design_description }}
+                            {% if form.design_description.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.design_description.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Provide a detailed description of the custom design requested by the customer.
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <!-- Complexity -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.complexity.id_for_label }}" class="form-label">
+                                    Complexity Level
+                                </label>
+                                {{ form.complexity }}
+                                {% if form.complexity.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.complexity.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Assess the complexity of the custom work required.
+                                </div>
+                            </div>
+                            
+                            <!-- Estimated Completion -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.estimated_completion.id_for_label }}" class="form-label">
+                                    Estimated Completion
+                                </label>
+                                {{ form.estimated_completion }}
+                                {% if form.estimated_completion.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.estimated_completion.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Optional estimated completion date.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <!-- Quoted Price -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.quoted_price.id_for_label }}" class="form-label">
+                                    Quoted Price
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.quoted_price }}
+                                </div>
+                                {% if form.quoted_price.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.quoted_price.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Price quoted to the customer for the custom work.
+                                </div>
+                            </div>
+                            
+                            <!-- Deposit Amount -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.deposit_amount.id_for_label }}" class="form-label">
+                                    Deposit Amount
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.deposit_amount }}
+                                </div>
+                                {% if form.deposit_amount.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.deposit_amount.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Deposit amount paid by the customer.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <!-- Designer -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.designer.id_for_label }}" class="form-label">
+                                    Designer
+                                </label>
+                                {{ form.designer }}
+                                {% if form.designer.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.designer.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Assign a designer to create the design.
+                                </div>
+                            </div>
+                            
+                            <!-- Craftsman -->
+                            <div class="col-md-6 mb-4">
+                                <label for="{{ form.craftsman.id_for_label }}" class="form-label">
+                                    Craftsman
+                                </label>
+                                {{ form.craftsman }}
+                                {% if form.craftsman.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.craftsman.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Assign a craftsman to create the piece.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% if object %}{% url 'repair:custom_detail' object.pk %}{% else %}{% url 'repair:custom_list' %}{% endif %}" 
+                               class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                {% if object %}Update Order{% else %}Create Order{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add Bootstrap validation classes
+        const form = document.querySelector('form');
+        const inputs = form.querySelectorAll('input, select, textarea');
+        
+        inputs.forEach(input => {
+            if (input.closest('.invalid-feedback')) {
+                input.classList.add('is-invalid');
+            }
+        });
+        
+        // Deposit validation
+        const quotedPriceInput = document.querySelector('input[name="quoted_price"]');
+        const depositInput = document.querySelector('input[name="deposit_amount"]');
+        
+        function validateDeposit() {
+            const quotedPrice = parseFloat(quotedPriceInput.value) || 0;
+            const deposit = parseFloat(depositInput.value) || 0;
+            
+            if (quotedPrice > 0 && deposit > quotedPrice) {
+                depositInput.setCustomValidity('Deposit cannot exceed quoted price');
+                depositInput.classList.add('is-invalid');
+            } else {
+                depositInput.setCustomValidity('');
+                depositInput.classList.remove('is-invalid');
+            }
+        }
+        
+        if (quotedPriceInput && depositInput) {
+            quotedPriceInput.addEventListener('input', validateDeposit);
+            depositInput.addEventListener('input', validateDeposit);
+        }
+        
+        // Form validation on submit
+        form.addEventListener('submit', function(e) {
+            let isValid = true;
+            
+            // Check required fields
+            const requiredFields = form.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            // Validate deposit
+            validateDeposit();
+            if (depositInput.validity && !depositInput.validity.valid) {
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please correct the errors in the form.');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "repair/base.html" %}
+{% load static %}
+
+{% block title %}Custom Orders{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Custom Orders</h1>
+                <div>
+                    <a href="{% url 'repair:custom_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> New Custom Order
+                    </a>
+                    <a href="{% url 'repair:repair_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-tools"></i> Repair Orders
+                    </a>
+                </div>
+            </div>
+            
+            {% if custom_orders %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Complexity</th>
+                                <th>Quoted Price</th>
+                                <th>Designer</th>
+                                <th>Craftsman</th>
+                                <th>Due Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in custom_orders %}
+                                <tr {% if order.is_overdue %}class="overdue"{% endif %}>
+                                    <td>
+                                        <a href="{% url 'repair:custom_detail' order.pk %}" class="text-decoration-none">
+                                            {{ order.order_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ order.customer }}</td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 250px;" title="{{ order.design_description }}">
+                                            {{ order.design_description }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-{{ order.status }}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ order.get_complexity_display }}</span>
+                                    </td>
+                                    <td>
+                                        {% if order.quoted_price %}
+                                            ${{ order.quoted_price }}
+                                        {% else %}
+                                            <span class="text-muted">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.designer %}
+                                            {{ order.designer.get_full_name }}
+                                        {% else %}
+                                            <span class="text-muted">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.craftsman %}
+                                            {{ order.craftsman.get_full_name }}
+                                        {% else %}
+                                            <span class="text-muted">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.estimated_completion %}
+                                            {{ order.estimated_completion|date:"M d, Y" }}
+                                            {% if order.is_overdue %}
+                                                <br><small class="text-danger">
+                                                    <i class="fas fa-exclamation-triangle"></i> Overdue
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">TBD</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'repair:custom_detail' order.pk %}" 
+                                               class="btn btn-outline-primary btn-sm" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="Custom orders pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-gem fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No custom orders found</h4>
+                    <p class="text-muted">
+                        Get started by <a href="{% url 'repair:custom_create' %}">creating your first custom order</a>.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
