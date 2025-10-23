@@ -11,7 +11,14 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from .models import PurchaseOrder, PurchaseOrderItem, SupplierCommunication, SupplierDocument
+from .models import (
+    GoodsReceipt,
+    GoodsReceiptItem,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    SupplierCommunication,
+    SupplierDocument,
+)
 
 User = get_user_model()
 
@@ -240,3 +247,122 @@ Best regards,
         if self.purchase_order and self.purchase_order.status != "APPROVED":
             raise ValidationError("Only approved purchase orders can be sent.")
         return cleaned_data
+
+
+class GoodsReceiptForm(forms.ModelForm):
+    """Form for creating goods receipts."""
+
+    class Meta:
+        model = GoodsReceipt
+        fields = [
+            "purchase_order",
+            "supplier_invoice_number",
+            "tracking_number",
+            "received_date",
+            "inspection_notes",
+        ]
+        widgets = {
+            "received_date": forms.DateInput(attrs={"type": "date"}),
+            "inspection_notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        tenant = kwargs.pop("tenant", None)
+        super().__init__(*args, **kwargs)
+
+        if tenant:
+            # Filter purchase orders to current tenant and only sent/partially received orders
+            self.fields["purchase_order"].queryset = PurchaseOrder.objects.filter(
+                tenant=tenant, status__in=["SENT", "PARTIALLY_RECEIVED"]
+            )
+        else:
+            self.fields["purchase_order"].queryset = PurchaseOrder.objects.none()
+
+    def clean_received_date(self):
+        """Validate that received date is not in the future."""
+        received_date = self.cleaned_data.get("received_date")
+        if received_date:
+            from django.utils import timezone
+
+            if received_date > timezone.now().date():
+                raise ValidationError("Received date cannot be in the future.")
+        return received_date
+
+
+class GoodsReceiptItemForm(forms.ModelForm):
+    """Form for goods receipt line items."""
+
+    class Meta:
+        model = GoodsReceiptItem
+        fields = [
+            "purchase_order_item",
+            "quantity_received",
+            "quantity_rejected",
+            "quality_check_passed",
+            "quality_notes",
+            "discrepancy_reason",
+        ]
+        widgets = {
+            "quality_notes": forms.Textarea(attrs={"rows": 2}),
+            "quantity_received": forms.NumberInput(attrs={"min": "0"}),
+            "quantity_rejected": forms.NumberInput(attrs={"min": "0", "value": "0"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        purchase_order = kwargs.pop("purchase_order", None)
+        super().__init__(*args, **kwargs)
+
+        if purchase_order:
+            # Filter to items from the selected purchase order
+            self.fields["purchase_order_item"].queryset = purchase_order.items.all()
+        else:
+            self.fields["purchase_order_item"].queryset = PurchaseOrderItem.objects.none()
+
+        # Make some fields optional initially
+        self.fields["quality_check_passed"].required = False
+        self.fields["quality_notes"].required = False
+        self.fields["discrepancy_reason"].required = False
+
+    def clean(self):
+        """Validate quantities and quality check."""
+        cleaned_data = super().clean()
+        quantity_received = cleaned_data.get("quantity_received", 0)
+        quantity_rejected = cleaned_data.get("quantity_rejected", 0)
+        purchase_order_item = cleaned_data.get("purchase_order_item")
+
+        # Validate that rejected quantity doesn't exceed received quantity
+        if quantity_rejected > quantity_received:
+            raise ValidationError("Rejected quantity cannot exceed received quantity.")
+
+        # Validate that we don't receive more than ordered
+        if purchase_order_item and quantity_received > purchase_order_item.remaining_quantity:
+            raise ValidationError(
+                f"Cannot receive more than remaining quantity. "
+                f"Remaining: {purchase_order_item.remaining_quantity}, "
+                f"Trying to receive: {quantity_received}"
+            )
+
+        # If quality check failed, require quality notes
+        quality_check_passed = cleaned_data.get("quality_check_passed")
+        quality_notes = cleaned_data.get("quality_notes")
+        if quality_check_passed is False and not quality_notes:
+            raise ValidationError("Quality notes are required when quality check fails.")
+
+        # If there are rejected items, require discrepancy reason
+        discrepancy_reason = cleaned_data.get("discrepancy_reason")
+        if quantity_rejected > 0 and not discrepancy_reason:
+            raise ValidationError("Discrepancy reason is required when rejecting items.")
+
+        return cleaned_data
+
+
+# Formset for handling multiple goods receipt items
+GoodsReceiptItemFormSet = forms.inlineformset_factory(
+    GoodsReceipt,
+    GoodsReceiptItem,
+    form=GoodsReceiptItemForm,
+    extra=0,
+    min_num=1,
+    validate_min=True,
+    can_delete=False,
+)

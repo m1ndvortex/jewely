@@ -327,7 +327,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Track expected delivery dates
     - _Requirements: 16_
   
-  - [ ] 10.4 Implement goods receiving
+  - [x] 10.4 Implement goods receiving
     - Create goods receipt interface
     - Implement quantity verification
     - Add quality check documentation

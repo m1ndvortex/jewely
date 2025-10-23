@@ -1,0 +1,275 @@
+{% extends "procurement/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Goods Receipt" %} {{ goods_receipt.receipt_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{% trans "Goods Receipt" %} {{ goods_receipt.receipt_number }}</h1>
+                <div>
+                    {% if can_complete %}
+                        <a href="{% url 'procurement:goods_receipt_complete' goods_receipt.pk %}" 
+                           class="btn btn-success me-2">
+                            <i class="fas fa-check"></i> {% trans "Complete Receipt" %}
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'procurement:goods_receipt_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> {% trans "Back to List" %}
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Receipt Information -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Receipt Information" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl class="row">
+                                        <dt class="col-sm-5">{% trans "Receipt Number" %}:</dt>
+                                        <dd class="col-sm-7">{{ goods_receipt.receipt_number }}</dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Purchase Order" %}:</dt>
+                                        <dd class="col-sm-7">
+                                            <a href="{% url 'procurement:purchase_order_detail' goods_receipt.purchase_order.pk %}" 
+                                               class="text-decoration-none">
+                                                {{ goods_receipt.purchase_order.po_number }}
+                                            </a>
+                                        </dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Supplier" %}:</dt>
+                                        <dd class="col-sm-7">
+                                            <a href="{% url 'procurement:supplier_detail' goods_receipt.purchase_order.supplier.pk %}" 
+                                               class="text-decoration-none">
+                                                {{ goods_receipt.purchase_order.supplier.name }}
+                                            </a>
+                                        </dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Received Date" %}:</dt>
+                                        <dd class="col-sm-7">{{ goods_receipt.received_date|date:"M d, Y" }}</dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl class="row">
+                                        <dt class="col-sm-5">{% trans "Status" %}:</dt>
+                                        <dd class="col-sm-7">
+                                            {% if goods_receipt.status == "PENDING" %}
+                                                <span class="badge bg-warning">{{ goods_receipt.get_status_display }}</span>
+                                            {% elif goods_receipt.status == "IN_PROGRESS" %}
+                                                <span class="badge bg-info">{{ goods_receipt.get_status_display }}</span>
+                                            {% elif goods_receipt.status == "COMPLETED" %}
+                                                <span class="badge bg-success">{{ goods_receipt.get_status_display }}</span>
+                                            {% elif goods_receipt.status == "DISCREPANCY" %}
+                                                <span class="badge bg-danger">{{ goods_receipt.get_status_display }}</span>
+                                            {% endif %}
+                                        </dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Received By" %}:</dt>
+                                        <dd class="col-sm-7">{{ goods_receipt.received_by.get_full_name|default:goods_receipt.received_by.username }}</dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Invoice Number" %}:</dt>
+                                        <dd class="col-sm-7">{{ goods_receipt.supplier_invoice_number|default:"—" }}</dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Tracking Number" %}:</dt>
+                                        <dd class="col-sm-7">{{ goods_receipt.tracking_number|default:"—" }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                            
+                            {% if goods_receipt.inspection_notes %}
+                                <div class="mt-3">
+                                    <strong>{% trans "Inspection Notes" %}:</strong>
+                                    <p class="mt-2">{{ goods_receipt.inspection_notes }}</p>
+                                </div>
+                            {% endif %}
+                            
+                            {% if goods_receipt.has_discrepancy and goods_receipt.discrepancy_notes %}
+                                <div class="mt-3">
+                                    <div class="alert alert-warning">
+                                        <strong><i class="fas fa-exclamation-triangle"></i> {% trans "Discrepancy Notes" %}:</strong>
+                                        <p class="mt-2 mb-0">{{ goods_receipt.discrepancy_notes }}</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Receipt Items -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Receipt Items" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if goods_receipt.items.all %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>{% trans "Item" %}</th>
+                                                <th>{% trans "SKU" %}</th>
+                                                <th>{% trans "Ordered" %}</th>
+                                                <th>{% trans "Received" %}</th>
+                                                <th>{% trans "Accepted" %}</th>
+                                                <th>{% trans "Rejected" %}</th>
+                                                <th>{% trans "Quality" %}</th>
+                                                <th>{% trans "Notes" %}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in goods_receipt.items.all %}
+                                                <tr {% if item.has_discrepancy or item.has_quality_issues %}class="table-warning"{% endif %}>
+                                                    <td>{{ item.purchase_order_item.product_name }}</td>
+                                                    <td>{{ item.purchase_order_item.product_sku|default:"—" }}</td>
+                                                    <td>{{ item.purchase_order_item.quantity }}</td>
+                                                    <td>{{ item.quantity_received }}</td>
+                                                    <td>{{ item.quantity_accepted }}</td>
+                                                    <td>
+                                                        {% if item.quantity_rejected > 0 %}
+                                                            <span class="text-danger">{{ item.quantity_rejected }}</span>
+                                                        {% else %}
+                                                            0
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if item.quality_check_passed is True %}
+                                                            <i class="fas fa-check-circle text-success" title="{% trans 'Passed' %}"></i>
+                                                        {% elif item.quality_check_passed is False %}
+                                                            <i class="fas fa-times-circle text-danger" title="{% trans 'Failed' %}"></i>
+                                                        {% else %}
+                                                            <i class="fas fa-clock text-muted" title="{% trans 'Pending' %}"></i>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if item.quality_notes %}
+                                                            <span title="{{ item.quality_notes }}">
+                                                                <i class="fas fa-comment text-info"></i>
+                                                            </span>
+                                                        {% endif %}
+                                                        {% if item.discrepancy_reason %}
+                                                            <span title="{{ item.discrepancy_reason }}">
+                                                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                                                            </span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-box-open fa-2x text-muted mb-3"></i>
+                                    <p class="text-muted">{% trans "No items in this receipt" %}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Quality Check Summary -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Quality Check Summary" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% with total_items=goods_receipt.items.count %}
+                                {% with passed_items=goods_receipt.items.filter:quality_check_passed=True|length %}
+                                    {% with failed_items=goods_receipt.items.filter:quality_check_passed=False|length %}
+                                        {% with pending_items=goods_receipt.items.filter:quality_check_passed__isnull=True|length %}
+                                            <div class="row text-center">
+                                                <div class="col-6">
+                                                    <div class="border rounded p-2">
+                                                        <div class="h4 text-success mb-1">{{ passed_items }}</div>
+                                                        <small class="text-muted">{% trans "Passed" %}</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="border rounded p-2">
+                                                        <div class="h4 text-danger mb-1">{{ failed_items }}</div>
+                                                        <small class="text-muted">{% trans "Failed" %}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% if pending_items > 0 %}
+                                                <div class="mt-2 text-center">
+                                                    <div class="border rounded p-2">
+                                                        <div class="h4 text-muted mb-1">{{ pending_items }}</div>
+                                                        <small class="text-muted">{% trans "Pending" %}</small>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <!-- Three-Way Matching -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Three-Way Matching" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                {% if three_way_match %}
+                                    <i class="fas fa-check-circle text-success fa-2x me-3"></i>
+                                    <div>
+                                        <strong class="text-success">{% trans "Match Complete" %}</strong>
+                                        <p class="text-muted mb-0">{% trans "PO, receipt, and invoice quantities match" %}</p>
+                                    </div>
+                                {% else %}
+                                    <i class="fas fa-exclamation-triangle text-warning fa-2x me-3"></i>
+                                    <div>
+                                        <strong class="text-warning">{% trans "Pending Match" %}</strong>
+                                        <p class="text-muted mb-0">{% trans "Quantities do not match or receipt incomplete" %}</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Order Summary -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Purchase Order Summary" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-6">{% trans "PO Number" %}:</dt>
+                                <dd class="col-sm-6">{{ goods_receipt.purchase_order.po_number }}</dd>
+                                
+                                <dt class="col-sm-6">{% trans "Order Date" %}:</dt>
+                                <dd class="col-sm-6">{{ goods_receipt.purchase_order.order_date|date:"M d, Y" }}</dd>
+                                
+                                <dt class="col-sm-6">{% trans "Total Amount" %}:</dt>
+                                <dd class="col-sm-6">${{ goods_receipt.purchase_order.total_amount|floatformat:2 }}</dd>
+                                
+                                <dt class="col-sm-6">{% trans "PO Status" %}:</dt>
+                                <dd class="col-sm-6">
+                                    <span class="badge bg-info">{{ goods_receipt.purchase_order.get_status_display }}</span>
+                                </dd>
+                            </dl>
+                            
+                            <div class="mt-3">
+                                <a href="{% url 'procurement:purchase_order_detail' goods_receipt.purchase_order.pk %}" 
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-eye"></i> {% trans "View Purchase Order" %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -247,12 +247,15 @@ class PurchaseOrder(models.Model):
     @transition(field=status, source="SENT", target="PARTIALLY_RECEIVED")
     def mark_partially_received(self):
         """Mark order as partially received."""
-        pass
+        self.status = "PARTIALLY_RECEIVED"
+        self.save(update_fields=["status"])
 
     @transition(field=status, source=["SENT", "PARTIALLY_RECEIVED"], target="COMPLETED")
     def mark_completed(self):
         """Mark order as completed."""
+        self.status = "COMPLETED"
         self.completed_at = timezone.now()
+        self.save(update_fields=["status", "completed_at"])
 
     @transition(field=status, source=["DRAFT", "APPROVED"], target="CANCELLED")
     def cancel(self):
@@ -527,6 +530,167 @@ class GoodsReceipt(models.Model):
         self.discrepancy_notes = notes
         self.save(update_fields=["has_discrepancy", "status", "discrepancy_notes"])
 
+    def generate_receipt_number(self):
+        """Generate a unique receipt number for this tenant."""
+        from django.utils import timezone
+
+        today = timezone.now().date()
+        year_month = today.strftime("%Y%m")
+
+        # Find the last receipt number for this tenant and month
+        last_receipt = (
+            GoodsReceipt.objects.filter(
+                tenant=self.tenant, receipt_number__startswith=f"GR-{year_month}-"
+            )
+            .order_by("-receipt_number")
+            .first()
+        )
+
+        if last_receipt:
+            # Extract the sequence number and increment
+            try:
+                last_sequence = int(last_receipt.receipt_number.split("-")[-1])
+                sequence = last_sequence + 1
+            except (ValueError, IndexError):
+                sequence = 1
+        else:
+            sequence = 1
+
+        return f"GR-{year_month}-{sequence:04d}"
+
+    def save(self, *args, **kwargs):
+        """Auto-generate receipt number if not set."""
+        if not self.receipt_number:
+            self.receipt_number = self.generate_receipt_number()
+        super().save(*args, **kwargs)
+
+    def perform_three_way_matching(self):
+        """
+        Perform three-way matching between PO, receipt, and invoice.
+        Returns True if all match, False otherwise.
+        """
+        # Check if all PO items have been received
+        po_items = self.purchase_order.items.all()
+        receipt_items = self.items.all()
+        
+        # Create mapping of PO items to receipt items
+        po_item_map = {}
+        for receipt_item in receipt_items:
+            po_item = receipt_item.purchase_order_item
+            if po_item.id not in po_item_map:
+                po_item_map[po_item.id] = 0
+            po_item_map[po_item.id] += receipt_item.quantity_accepted
+        
+        # Check if quantities match
+        for po_item in po_items:
+            received_qty = po_item_map.get(po_item.id, 0)
+            if received_qty != po_item.quantity:
+                return False
+        
+        return True
+
+
+class GoodsReceiptItem(models.Model):
+    """
+    Line items for goods receipts.
+
+    Tracks individual items received against purchase order items
+    with quantity verification and quality check results.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    goods_receipt = models.ForeignKey(
+        GoodsReceipt,
+        on_delete=models.CASCADE,
+        related_name="items",
+        help_text="Goods receipt this item belongs to",
+    )
+    purchase_order_item = models.ForeignKey(
+        PurchaseOrderItem,
+        on_delete=models.PROTECT,
+        related_name="receipt_items",
+        help_text="Purchase order item being received",
+    )
+
+    # Quantities
+    quantity_received = models.IntegerField(
+        validators=[MinValueValidator(0)],
+        help_text="Quantity actually received",
+    )
+    quantity_accepted = models.IntegerField(
+        validators=[MinValueValidator(0)],
+        help_text="Quantity accepted after quality check",
+    )
+    quantity_rejected = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Quantity rejected due to quality issues",
+    )
+
+    # Quality check
+    quality_check_passed = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether quality check passed for this item",
+    )
+    quality_notes = models.TextField(
+        blank=True,
+        help_text="Notes from quality inspection",
+    )
+
+    # Discrepancy tracking
+    has_discrepancy = models.BooleanField(
+        default=False,
+        help_text="Whether there are discrepancies for this item",
+    )
+    discrepancy_reason = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Reason for discrepancy",
+    )
+
+    # Inventory item created (if applicable)
+    inventory_item = models.ForeignKey(
+        "inventory.InventoryItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="receipt_items",
+        help_text="Inventory item created from this receipt",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "procurement_goods_receipt_items"
+        indexes = [
+            models.Index(fields=["goods_receipt"]),
+            models.Index(fields=["purchase_order_item"]),
+            models.Index(fields=["has_discrepancy"]),
+        ]
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.purchase_order_item.product_name} - {self.quantity_received} received"
+
+    def save(self, *args, **kwargs):
+        """Auto-calculate accepted quantity if not set."""
+        if self.quantity_accepted is None:
+            self.quantity_accepted = self.quantity_received - self.quantity_rejected
+        super().save(*args, **kwargs)
+
+    @property
+    def has_quality_issues(self):
+        """Check if item has quality issues."""
+        return self.quantity_rejected > 0 or self.quality_check_passed is False
+
+    def update_inventory(self):
+        """Update inventory levels based on accepted quantity."""
+        if self.quantity_accepted > 0 and self.purchase_order_item:
+            # Update the purchase order item received quantity
+            self.purchase_order_item.receive_quantity(self.quantity_accepted)
+
 
 class SupplierCommunication(models.Model):
     """
@@ -775,9 +939,7 @@ class PurchaseOrderApprovalThreshold(models.Model):
                 is_active=True,
                 min_amount__lte=amount,
             )
-            .filter(
-                models.Q(max_amount__gte=amount) | models.Q(max_amount__isnull=True)
-            )
+            .filter(models.Q(max_amount__gte=amount) | models.Q(max_amount__isnull=True))
             .first()
         )
 

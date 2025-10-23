@@ -1,0 +1,315 @@
+{% extends "procurement/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Create Goods Receipt" %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{% trans "Create Goods Receipt" %}</h1>
+                <a href="{% url 'procurement:goods_receipt_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> {% trans "Back to List" %}
+                </a>
+            </div>
+
+            <form method="post" id="goods-receipt-form">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-lg-8">
+                        <!-- Receipt Information -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">{% trans "Receipt Information" %}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.purchase_order.id_for_label }}" class="form-label">
+                                                {{ form.purchase_order.label }} <span class="text-danger">*</span>
+                                            </label>
+                                            {{ form.purchase_order }}
+                                            {% if form.purchase_order.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.purchase_order.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="form-text">{{ form.purchase_order.help_text }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.received_date.id_for_label }}" class="form-label">
+                                                {{ form.received_date.label }} <span class="text-danger">*</span>
+                                            </label>
+                                            {{ form.received_date }}
+                                            {% if form.received_date.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.received_date.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.supplier_invoice_number.id_for_label }}" class="form-label">
+                                                {{ form.supplier_invoice_number.label }}
+                                            </label>
+                                            {{ form.supplier_invoice_number }}
+                                            {% if form.supplier_invoice_number.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.supplier_invoice_number.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.tracking_number.id_for_label }}" class="form-label">
+                                                {{ form.tracking_number.label }}
+                                            </label>
+                                            {{ form.tracking_number }}
+                                            {% if form.tracking_number.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.tracking_number.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="{{ form.inspection_notes.id_for_label }}" class="form-label">
+                                        {{ form.inspection_notes.label }}
+                                    </label>
+                                    {{ form.inspection_notes }}
+                                    {% if form.inspection_notes.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.inspection_notes.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Receipt Items -->
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">{% trans "Receipt Items" %}</h5>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-item">
+                                    <i class="fas fa-plus"></i> {% trans "Add Item" %}
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                {{ formset.management_form }}
+                                
+                                <div id="receipt-items">
+                                    {% for form in formset %}
+                                        <div class="receipt-item border rounded p-3 mb-3" data-form-index="{{ forloop.counter0 }}">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="mb-0">{% trans "Item" %} {{ forloop.counter }}</h6>
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-item">
+                                                    <i class="fas fa-trash"></i> {% trans "Remove" %}
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">
+                                                            {% trans "Purchase Order Item" %} <span class="text-danger">*</span>
+                                                        </label>
+                                                        {{ form.purchase_order_item }}
+                                                        {% if form.purchase_order_item.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.purchase_order_item.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">
+                                                            {% trans "Quantity Received" %} <span class="text-danger">*</span>
+                                                        </label>
+                                                        {{ form.quantity_received }}
+                                                        {% if form.quantity_received.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.quantity_received.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">{% trans "Quantity Rejected" %}</label>
+                                                        {{ form.quantity_rejected }}
+                                                        {% if form.quantity_rejected.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.quantity_rejected.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">{% trans "Quality Check" %}</label>
+                                                        {{ form.quality_check_passed }}
+                                                        {% if form.quality_check_passed.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.quality_check_passed.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">{% trans "Quality Notes" %}</label>
+                                                        {{ form.quality_notes }}
+                                                        {% if form.quality_notes.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ form.quality_notes.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">{% trans "Discrepancy Reason" %}</label>
+                                                {{ form.discrepancy_reason }}
+                                                {% if form.discrepancy_reason.errors %}
+                                                    <div class="invalid-feedback d-block">
+                                                        {{ form.discrepancy_reason.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+
+                                            <!-- Hidden fields -->
+                                            {% for hidden in form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+
+                                {% if formset.non_form_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ formset.non_form_errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <!-- Purchase Order Info -->
+                        {% if purchase_order %}
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">{% trans "Purchase Order Details" %}</h5>
+                                </div>
+                                <div class="card-body">
+                                    <dl class="row">
+                                        <dt class="col-sm-5">{% trans "PO Number" %}:</dt>
+                                        <dd class="col-sm-7">{{ purchase_order.po_number }}</dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Supplier" %}:</dt>
+                                        <dd class="col-sm-7">{{ purchase_order.supplier.name }}</dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Order Date" %}:</dt>
+                                        <dd class="col-sm-7">{{ purchase_order.order_date|date:"M d, Y" }}</dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Total Amount" %}:</dt>
+                                        <dd class="col-sm-7">${{ purchase_order.total_amount|floatformat:2 }}</dd>
+                                        
+                                        <dt class="col-sm-5">{% trans "Status" %}:</dt>
+                                        <dd class="col-sm-7">
+                                            <span class="badge bg-info">{{ purchase_order.get_status_display }}</span>
+                                        </dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <!-- Actions -->
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> {% trans "Create Goods Receipt" %}
+                                    </button>
+                                    <a href="{% url 'procurement:goods_receipt_list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> {% trans "Cancel" %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle purchase order selection change
+    const poSelect = document.getElementById('{{ form.purchase_order.id_for_label }}');
+    if (poSelect) {
+        poSelect.addEventListener('change', function() {
+            if (this.value) {
+                // Reload page with selected PO to populate items
+                window.location.href = '{% url "procurement:goods_receipt_create" %}?purchase_order=' + this.value;
+            }
+        });
+    }
+
+    // Handle add/remove item functionality
+    let formIndex = {{ formset.total_form_count }};
+    
+    document.getElementById('add-item').addEventListener('click', function() {
+        // This would need to be implemented with proper Django formset handling
+        alert('{% trans "Please select a purchase order first to add items." %}');
+    });
+
+    document.querySelectorAll('.remove-item').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const item = this.closest('.receipt-item');
+            item.style.display = 'none';
+            // Mark for deletion
+            const deleteField = item.querySelector('input[name$="-DELETE"]');
+            if (deleteField) {
+                deleteField.checked = true;
+            }
+        });
+    });
+
+    // Auto-calculate accepted quantity
+    document.querySelectorAll('input[name$="-quantity_received"], input[name$="-quantity_rejected"]').forEach(function(input) {
+        input.addEventListener('input', function() {
+            const container = this.closest('.receipt-item');
+            const receivedInput = container.querySelector('input[name$="-quantity_received"]');
+            const rejectedInput = container.querySelector('input[name$="-quantity_rejected"]');
+            
+            const received = parseInt(receivedInput.value) || 0;
+            const rejected = parseInt(rejectedInput.value) || 0;
+            
+            // Validate that rejected doesn't exceed received
+            if (rejected > received) {
+                rejectedInput.setCustomValidity('{% trans "Rejected quantity cannot exceed received quantity" %}');
+            } else {
+                rejectedInput.setCustomValidity('');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

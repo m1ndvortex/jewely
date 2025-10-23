@@ -22,6 +22,8 @@ from apps.core.decorators import tenant_required
 from apps.core.mixins import TenantMixin
 
 from .forms import (
+    GoodsReceiptForm,
+    GoodsReceiptItemFormSet,
     PurchaseOrderApprovalForm,
     PurchaseOrderForm,
     PurchaseOrderItemFormSet,
@@ -30,6 +32,7 @@ from .forms import (
     SupplierDocumentForm,
 )
 from .models import (
+    GoodsReceipt,
     PurchaseOrder,
     Supplier,
     SupplierCommunication,
@@ -468,10 +471,10 @@ class PurchaseOrderDetailView(TenantMixin, DetailView):
         context["required_role"] = purchase_order.get_required_approver_role()
 
         # Check if user can send this PO
-        context["can_send"] = (
-            purchase_order.status == "APPROVED"
-            and self.request.user.role in ["TENANT_OWNER", "TENANT_MANAGER"]
-        )
+        context["can_send"] = purchase_order.status == "APPROVED" and self.request.user.role in [
+            "TENANT_OWNER",
+            "TENANT_MANAGER",
+        ]
 
         # Get goods receipts
         context["goods_receipts"] = purchase_order.goods_receipts.select_related(
@@ -500,9 +503,7 @@ class PurchaseOrderCreateView(TenantMixin, CreateView):
         context = super().get_context_data(**kwargs)
 
         if self.request.POST:
-            context["formset"] = PurchaseOrderItemFormSet(
-                self.request.POST, instance=self.object
-            )
+            context["formset"] = PurchaseOrderItemFormSet(self.request.POST, instance=self.object)
         else:
             context["formset"] = PurchaseOrderItemFormSet(instance=self.object)
 
@@ -565,9 +566,7 @@ class PurchaseOrderUpdateView(TenantMixin, UpdateView):
         context = super().get_context_data(**kwargs)
 
         if self.request.POST:
-            context["formset"] = PurchaseOrderItemFormSet(
-                self.request.POST, instance=self.object
-            )
+            context["formset"] = PurchaseOrderItemFormSet(self.request.POST, instance=self.object)
         else:
             context["formset"] = PurchaseOrderItemFormSet(instance=self.object)
 
@@ -929,3 +928,297 @@ def _generate_purchase_order_pdf_content(purchase_order):
     pdf_content = buffer.getvalue()
     buffer.close()
     return pdf_content
+
+
+# Goods Receipt Views
+
+
+@method_decorator([login_required, tenant_required], name="dispatch")
+class GoodsReceiptListView(TenantMixin, ListView):
+    """List view for goods receipts with search and filtering."""
+
+    model = GoodsReceipt
+    template_name = "procurement/goods_receipt_list.html"
+    context_object_name = "goods_receipts"
+    paginate_by = 20
+
+    def get_queryset(self):
+        """Filter goods receipts by tenant and search query."""
+        queryset = GoodsReceipt.objects.filter(tenant=self.request.user.tenant)
+
+        # Search functionality
+        search_query = self.request.GET.get("search", "").strip()
+        if search_query:
+            queryset = queryset.filter(
+                Q(receipt_number__icontains=search_query)
+                | Q(purchase_order__po_number__icontains=search_query)
+                | Q(supplier_invoice_number__icontains=search_query)
+                | Q(tracking_number__icontains=search_query)
+            )
+
+        # Filter by status
+        status_filter = self.request.GET.get("status")
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        # Filter by purchase order
+        po_filter = self.request.GET.get("purchase_order")
+        if po_filter:
+            queryset = queryset.filter(purchase_order_id=po_filter)
+
+        # Filter by discrepancy
+        discrepancy_filter = self.request.GET.get("discrepancy")
+        if discrepancy_filter == "yes":
+            queryset = queryset.filter(has_discrepancy=True)
+        elif discrepancy_filter == "no":
+            queryset = queryset.filter(has_discrepancy=False)
+
+        return queryset.select_related("purchase_order", "received_by").order_by("-received_date")
+
+    def get_context_data(self, **kwargs):
+        """Add filter options to context."""
+        context = super().get_context_data(**kwargs)
+        context["search_query"] = self.request.GET.get("search", "")
+        context["status_filter"] = self.request.GET.get("status", "")
+        context["po_filter"] = self.request.GET.get("purchase_order", "")
+        context["discrepancy_filter"] = self.request.GET.get("discrepancy", "")
+
+        # Add filter options
+        context["purchase_orders"] = PurchaseOrder.objects.filter(
+            tenant=self.request.user.tenant, status__in=["SENT", "PARTIALLY_RECEIVED", "COMPLETED"]
+        ).order_by("-order_date")
+        context["status_choices"] = GoodsReceipt.STATUS_CHOICES
+
+        return context
+
+
+@method_decorator([login_required, tenant_required], name="dispatch")
+class GoodsReceiptDetailView(TenantMixin, DetailView):
+    """Detail view for goods receipt."""
+
+    model = GoodsReceipt
+    template_name = "procurement/goods_receipt_detail.html"
+    context_object_name = "goods_receipt"
+
+    def get_queryset(self):
+        """Filter by tenant."""
+        return GoodsReceipt.objects.filter(tenant=self.request.user.tenant)
+
+    def get_context_data(self, **kwargs):
+        """Add related data to context."""
+        context = super().get_context_data(**kwargs)
+        goods_receipt = self.object
+
+        # Check if user can complete this receipt
+        context["can_complete"] = goods_receipt.status in [
+            "PENDING",
+            "IN_PROGRESS",
+            "DISCREPANCY",
+        ] and self.request.user.role in ["TENANT_OWNER", "TENANT_MANAGER"]
+
+        # Three-way matching status
+        context["three_way_match"] = goods_receipt.perform_three_way_matching()
+
+        return context
+
+
+@method_decorator([login_required, tenant_required], name="dispatch")
+class GoodsReceiptCreateView(TenantMixin, CreateView):
+    """Create view for goods receipts."""
+
+    model = GoodsReceipt
+    form_class = GoodsReceiptForm
+    template_name = "procurement/goods_receipt_form.html"
+
+    def get_form_kwargs(self):
+        """Add tenant to form kwargs."""
+        kwargs = super().get_form_kwargs()
+        kwargs["tenant"] = self.request.user.tenant
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        """Add formset to context."""
+        context = super().get_context_data(**kwargs)
+
+        if self.request.POST:
+            context["formset"] = GoodsReceiptItemFormSet(self.request.POST, instance=self.object)
+        else:
+            context["formset"] = GoodsReceiptItemFormSet(instance=self.object)
+
+        # Add purchase order for formset initialization
+        po_id = self.request.GET.get("purchase_order")
+        if po_id:
+            try:
+                context["purchase_order"] = PurchaseOrder.objects.get(
+                    id=po_id, tenant=self.request.user.tenant
+                )
+            except PurchaseOrder.DoesNotExist:
+                pass
+
+        return context
+
+    def form_valid(self, form):
+        """Validate form and formset together."""
+        context = self.get_context_data()
+        formset = context["formset"]
+
+        with transaction.atomic():
+            if form.is_valid() and formset.is_valid():
+                # Set tenant and received_by
+                form.instance.tenant = self.request.user.tenant
+                form.instance.received_by = self.request.user
+
+                # Save the goods receipt
+                self.object = form.save()
+
+                # Save the formset
+                formset.instance = self.object
+                formset.save()
+
+                # Update purchase order item quantities
+                for receipt_item in self.object.items.all():
+                    receipt_item.update_inventory()
+
+                # Check if receipt has discrepancies
+                has_discrepancy = any(
+                    item.has_discrepancy or item.has_quality_issues
+                    for item in self.object.items.all()
+                )
+                if has_discrepancy:
+                    self.object.has_discrepancy = True
+                    self.object.status = "DISCREPANCY"
+                    self.object.save(update_fields=["has_discrepancy", "status"])
+
+                messages.success(
+                    self.request,
+                    f"Goods Receipt {self.object.receipt_number} created successfully.",
+                )
+                return redirect(self.get_success_url())
+            else:
+                return self.form_invalid(form)
+
+    def get_success_url(self):
+        """Redirect to goods receipt detail page."""
+        return reverse("procurement:goods_receipt_detail", kwargs={"pk": self.object.pk})
+
+
+@login_required
+@tenant_required
+def goods_receipt_complete(request, pk):
+    """Complete a goods receipt and update inventory."""
+    goods_receipt = get_object_or_404(GoodsReceipt, pk=pk, tenant=request.user.tenant)
+
+    # Check if user can complete this receipt
+    if request.user.role not in ["TENANT_OWNER", "TENANT_MANAGER"]:
+        messages.error(request, "You don't have permission to complete goods receipts.")
+        return redirect("procurement:goods_receipt_detail", pk=pk)
+
+    if goods_receipt.status not in ["PENDING", "IN_PROGRESS", "DISCREPANCY"]:
+        messages.error(request, "This goods receipt cannot be completed.")
+        return redirect("procurement:goods_receipt_detail", pk=pk)
+
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                # Update inventory for all accepted items
+                for receipt_item in goods_receipt.items.all():
+                    if receipt_item.quantity_accepted > 0:
+                        # Update PO item received quantities
+                        receipt_item.update_inventory()
+                        # Create or update inventory item
+                        _create_or_update_inventory_item(receipt_item)
+
+                # Mark receipt as completed
+                goods_receipt.mark_completed()
+
+                messages.success(
+                    request,
+                    f"Goods Receipt {goods_receipt.receipt_number} completed successfully. "
+                    f"Inventory has been updated.",
+                )
+                return redirect("procurement:goods_receipt_detail", pk=pk)
+
+        except Exception as e:
+            messages.error(request, f"Error completing goods receipt: {str(e)}")
+
+    context = {
+        "goods_receipt": goods_receipt,
+        "three_way_match": goods_receipt.perform_three_way_matching(),
+    }
+    return render(request, "procurement/goods_receipt_complete.html", context)
+
+
+def _create_or_update_inventory_item(receipt_item):
+    """
+    Create or update inventory item from goods receipt item.
+
+    This function handles the inventory update logic when goods are received.
+    """
+    from apps.inventory.models import InventoryItem, ProductCategory
+
+    po_item = receipt_item.purchase_order_item
+    purchase_order = receipt_item.goods_receipt.purchase_order
+
+    # Try to find existing inventory item by SKU
+    existing_item = None
+    if po_item.product_sku:
+        try:
+            existing_item = InventoryItem.objects.get(
+                tenant=purchase_order.tenant, sku=po_item.product_sku
+            )
+        except InventoryItem.DoesNotExist:
+            pass
+
+    if existing_item:
+        # Update existing inventory
+        existing_item.add_quantity(
+            receipt_item.quantity_accepted,
+            reason=f"Goods receipt {receipt_item.goods_receipt.receipt_number}",
+        )
+        receipt_item.inventory_item = existing_item
+        receipt_item.save(update_fields=["inventory_item"])
+    else:
+        # Create new inventory item
+        # Get or create a default category
+        category, _ = ProductCategory.objects.get_or_create(
+            tenant=purchase_order.tenant,
+            name="Received Items",
+            defaults={"description": "Items received from suppliers"},
+        )
+
+        # Create new inventory item
+        inventory_item = InventoryItem.objects.create(
+            tenant=purchase_order.tenant,
+            sku=po_item.product_sku or f"REC-{receipt_item.id}",
+            name=po_item.product_name,
+            category=category,
+            karat=18,  # Default karat - should be configurable
+            weight_grams=1.0,  # Default weight - should be from PO item
+            cost_price=po_item.unit_price,
+            selling_price=po_item.unit_price * 1.2,  # 20% markup default
+            quantity=receipt_item.quantity_accepted,
+            branch=purchase_order.branch or purchase_order.tenant.branches.first(),
+            supplier_name=purchase_order.supplier.name,
+            supplier_sku=po_item.product_sku,
+            notes=f"Received via GR {receipt_item.goods_receipt.receipt_number}",
+        )
+
+        receipt_item.inventory_item = inventory_item
+        receipt_item.save(update_fields=["inventory_item"])
+
+
+@login_required
+@tenant_required
+def purchase_order_receive(request, pk):
+    """Quick receive goods for a purchase order."""
+    purchase_order = get_object_or_404(PurchaseOrder, pk=pk, tenant=request.user.tenant)
+
+    # Check if PO can be received
+    if purchase_order.status not in ["SENT", "PARTIALLY_RECEIVED"]:
+        messages.error(request, "This purchase order cannot be received.")
+        return redirect("procurement:purchase_order_detail", pk=pk)
+
+    # Redirect to goods receipt creation with pre-filled PO
+    return redirect(
+        f"{reverse('procurement:goods_receipt_create')}?purchase_order={purchase_order.id}"
+    )

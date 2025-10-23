@@ -1,0 +1,196 @@
+{% extends "procurement/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Complete Goods Receipt" %} {{ goods_receipt.receipt_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{% trans "Complete Goods Receipt" %} {{ goods_receipt.receipt_number }}</h1>
+                <a href="{% url 'procurement:goods_receipt_detail' goods_receipt.pk %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> {% trans "Back to Receipt" %}
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Completion Confirmation -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Completion Confirmation" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> {% trans "What happens when you complete this receipt?" %}</h6>
+                                <ul class="mb-0">
+                                    <li>{% trans "Inventory levels will be updated for all accepted items" %}</li>
+                                    <li>{% trans "New inventory items will be created if they don't exist" %}</li>
+                                    <li>{% trans "Purchase order status will be updated" %}</li>
+                                    <li>{% trans "The receipt status will be marked as completed" %}</li>
+                                </ul>
+                            </div>
+
+                            {% if not three_way_match %}
+                                <div class="alert alert-warning">
+                                    <h6><i class="fas fa-exclamation-triangle"></i> {% trans "Three-Way Matching Warning" %}</h6>
+                                    <p class="mb-0">
+                                        {% trans "The quantities in this receipt do not match the purchase order. Please review the items before completing." %}
+                                    </p>
+                                </div>
+                            {% endif %}
+
+                            {% if goods_receipt.has_discrepancy %}
+                                <div class="alert alert-warning">
+                                    <h6><i class="fas fa-exclamation-triangle"></i> {% trans "Discrepancy Warning" %}</h6>
+                                    <p class="mb-0">
+                                        {% trans "This receipt has discrepancies. Completing it will still update inventory with accepted quantities only." %}
+                                    </p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Receipt Items Summary -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Items to be Added to Inventory" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if goods_receipt.items.all %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>{% trans "Item" %}</th>
+                                                <th>{% trans "SKU" %}</th>
+                                                <th>{% trans "Quantity Accepted" %}</th>
+                                                <th>{% trans "Unit Price" %}</th>
+                                                <th>{% trans "Total Value" %}</th>
+                                                <th>{% trans "Action" %}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in goods_receipt.items.all %}
+                                                {% if item.quantity_accepted > 0 %}
+                                                    <tr>
+                                                        <td>{{ item.purchase_order_item.product_name }}</td>
+                                                        <td>{{ item.purchase_order_item.product_sku|default:"—" }}</td>
+                                                        <td>{{ item.quantity_accepted }}</td>
+                                                        <td>${{ item.purchase_order_item.unit_price|floatformat:2 }}</td>
+                                                        <td>${{ item.purchase_order_item.unit_price|mul:item.quantity_accepted|floatformat:2 }}</td>
+                                                        <td>
+                                                            {% if item.inventory_item %}
+                                                                <span class="badge bg-info">{% trans "Update Existing" %}</span>
+                                                            {% else %}
+                                                                <span class="badge bg-success">{% trans "Create New" %}</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-box-open fa-2x text-muted mb-3"></i>
+                                    <p class="text-muted">{% trans "No items to add to inventory" %}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Receipt Summary -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Receipt Summary" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-6">{% trans "Receipt Number" %}:</dt>
+                                <dd class="col-sm-6">{{ goods_receipt.receipt_number }}</dd>
+                                
+                                <dt class="col-sm-6">{% trans "Purchase Order" %}:</dt>
+                                <dd class="col-sm-6">{{ goods_receipt.purchase_order.po_number }}</dd>
+                                
+                                <dt class="col-sm-6">{% trans "Supplier" %}:</dt>
+                                <dd class="col-sm-6">{{ goods_receipt.purchase_order.supplier.name }}</dd>
+                                
+                                <dt class="col-sm-6">{% trans "Received Date" %}:</dt>
+                                <dd class="col-sm-6">{{ goods_receipt.received_date|date:"M d, Y" }}</dd>
+                                
+                                <dt class="col-sm-6">{% trans "Current Status" %}:</dt>
+                                <dd class="col-sm-6">
+                                    <span class="badge bg-warning">{{ goods_receipt.get_status_display }}</span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Impact -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">{% trans "Inventory Impact" %}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% with total_accepted=goods_receipt.items.aggregate:quantity_accepted__sum %}
+                                {% with total_value=0 %}
+                                    <div class="row text-center">
+                                        <div class="col-6">
+                                            <div class="border rounded p-2">
+                                                <div class="h4 text-success mb-1">
+                                                    {% for item in goods_receipt.items.all %}
+                                                        {% if forloop.first %}{{ item.quantity_accepted }}{% else %}+{{ item.quantity_accepted }}{% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                <small class="text-muted">{% trans "Items Added" %}</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="border rounded p-2">
+                                                <div class="h4 text-primary mb-1">
+                                                    ${% for item in goods_receipt.items.all %}{{ item.purchase_order_item.unit_price|mul:item.quantity_accepted|add:total_value }}{% endfor %}
+                                                </div>
+                                                <small class="text-muted">{% trans "Total Value" %}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endwith %}
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="card">
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-check"></i> {% trans "Complete Receipt & Update Inventory" %}
+                                    </button>
+                                    <a href="{% url 'procurement:goods_receipt_detail' goods_receipt.pk %}" 
+                                       class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> {% trans "Cancel" %}
+                                    </a>
+                                </div>
+                            </form>
+                            
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    {% trans "This action cannot be undone. Make sure all information is correct before proceeding." %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

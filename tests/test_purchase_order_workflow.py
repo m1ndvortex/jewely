@@ -48,8 +48,9 @@ class TestPurchaseOrderWorkflow:
 
         # Submit form with line items
         from datetime import date, timedelta
+
         future_date = (date.today() + timedelta(days=30)).strftime("%Y-%m-%d")
-        
+
         data = {
             "supplier": supplier.id,
             "priority": "NORMAL",
@@ -77,8 +78,14 @@ class TestPurchaseOrderWorkflow:
 
         # Debug form errors if not redirecting
         if response.status_code != 302:
-            print("Form errors:", response.context.get('form', {}).errors if response.context else "No context")
-            print("Formset errors:", response.context.get('formset', {}).errors if response.context else "No formset")
+            print(
+                "Form errors:",
+                response.context.get("form", {}).errors if response.context else "No context",
+            )
+            print(
+                "Formset errors:",
+                response.context.get("formset", {}).errors if response.context else "No formset",
+            )
             print("Response content:", response.content.decode()[:500])
 
         # Should redirect to detail page
@@ -192,24 +199,18 @@ class TestPurchaseOrderWorkflow:
             tenant_user.role = "TENANT_MANAGER"
             tenant_user.save()
             assert (
-                PurchaseOrderApprovalThreshold.can_user_approve(
-                    tenant_user, Decimal("500.00")
-                )
+                PurchaseOrderApprovalThreshold.can_user_approve(tenant_user, Decimal("500.00"))
                 is True
             )
             assert (
-                PurchaseOrderApprovalThreshold.can_user_approve(
-                    tenant_user, Decimal("2000.00")
-                )
+                PurchaseOrderApprovalThreshold.can_user_approve(tenant_user, Decimal("2000.00"))
                 is False
             )
 
             tenant_user.role = "TENANT_OWNER"
             tenant_user.save()
             assert (
-                PurchaseOrderApprovalThreshold.can_user_approve(
-                    tenant_user, Decimal("2000.00")
-                )
+                PurchaseOrderApprovalThreshold.can_user_approve(tenant_user, Decimal("2000.00"))
                 is True
             )
 

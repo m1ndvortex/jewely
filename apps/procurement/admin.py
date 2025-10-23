@@ -7,6 +7,7 @@ from django.utils.html import format_html
 
 from .models import (
     GoodsReceipt,
+    GoodsReceiptItem,
     PurchaseOrder,
     PurchaseOrderApprovalThreshold,
     PurchaseOrderItem,
@@ -209,6 +210,87 @@ class GoodsReceiptAdmin(admin.ModelAdmin):
         self.message_user(request, f"{count} goods receipts were marked as quality passed.")
 
     mark_quality_passed.short_description = "Mark quality check as passed"
+
+
+@admin.register(GoodsReceiptItem)
+class GoodsReceiptItemAdmin(admin.ModelAdmin):
+    """Admin interface for GoodsReceiptItem model."""
+
+    list_display = [
+        "goods_receipt",
+        "purchase_order_item",
+        "quantity_received",
+        "quantity_accepted",
+        "quantity_rejected",
+        "quality_check_passed",
+        "has_discrepancy",
+    ]
+    list_filter = [
+        "quality_check_passed",
+        "has_discrepancy",
+        "goods_receipt__status",
+        "created_at",
+    ]
+    search_fields = [
+        "goods_receipt__receipt_number",
+        "purchase_order_item__product_name",
+        "purchase_order_item__product_sku",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["goods_receipt", "purchase_order_item", "inventory_item"]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "goods_receipt",
+                    "purchase_order_item",
+                )
+            },
+        ),
+        (
+            "Quantities",
+            {
+                "fields": (
+                    "quantity_received",
+                    "quantity_accepted",
+                    "quantity_rejected",
+                )
+            },
+        ),
+        (
+            "Quality Control",
+            {
+                "fields": (
+                    "quality_check_passed",
+                    "quality_notes",
+                )
+            },
+        ),
+        (
+            "Discrepancy Tracking",
+            {
+                "fields": (
+                    "has_discrepancy",
+                    "discrepancy_reason",
+                )
+            },
+        ),
+        (
+            "Inventory",
+            {
+                "fields": ("inventory_item",)
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
 
 
 @admin.register(SupplierCommunication)

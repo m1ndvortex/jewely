@@ -70,6 +70,12 @@
                                             <i class="fas fa-paper-plane"></i> Send to Supplier
                                         </a>
                                     {% endif %}
+                                    {% if purchase_order.status in "SENT,PARTIALLY_RECEIVED" %}
+                                        <a href="{% url 'procurement:purchase_order_receive' purchase_order.pk %}" 
+                                           class="btn btn-success ms-2">
+                                            <i class="fas fa-truck"></i> Receive Goods
+                                        </a>
+                                    {% endif %}
                                     {% if purchase_order.status == 'DRAFT' and not can_approve %}
                                         <div class="alert alert-info mb-0 py-2">
                                             <small>
