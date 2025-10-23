@@ -14,22 +14,25 @@ repos:
   - repo: local
     hooks:
       - id: black
-        name: black (via docker)
+        name: 🔧 black (auto-fix formatting)
         entry: docker compose exec -T web black
         language: system
         types: [python]
-        args: ['--check', '--line-length=100']
+        args: ['--line-length=100']
+        # Auto-fixes formatting issues
         
       - id: isort
-        name: isort (via docker)
+        name: 🔧 isort (auto-fix imports)
         entry: docker compose exec -T web isort
         language: system
         types: [python]
-        args: ['--check-only', '--profile', 'black', '--line-length', '100']
+        args: ['--profile', 'black', '--line-length', '100']
+        # Auto-fixes import sorting
         
       - id: flake8
-        name: flake8 (via docker)
+        name: ❌ flake8 (blocks commit - manual fixes required)
         entry: docker compose exec -T web flake8
         language: system
         types: [python]
         args: ['--max-line-length=100', '--extend-ignore=E203,W503']
+        # Blocks commit until manually fixed

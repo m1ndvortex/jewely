@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}{{ branch.name }} - Branch Details{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <nav class="flex mb-4" aria-label="Breadcrumb">
+                        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                            <li class="inline-flex items-center">
+                                <a href="{% url 'core:branch_list' %}" class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                                    Branches
+                                </a>
+                            </li>
+                            <li>
+                                <div class="flex items-center">
+                                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <span class="ml-1 text-gray-500 dark:text-gray-400">{{ branch.name }}</span>
+                                </div>
+                            </li>
+                        </ol>
+                    </nav>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ branch.name }}</h1>
+                    <div class="mt-2 flex items-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                   {% if branch.is_active %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+                            {% if branch.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="{% url 'core:branch_update' branch.pk %}" 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        Edit Branch
+                    </a>
+                    <a href="{% url 'core:branch_delete' branch.pk %}" 
+                       class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        Delete
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Main Content -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Branch Information -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Branch Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name</label>
+                            <p class="text-gray-900 dark:text-white">{{ branch.name }}</p>
+                        </div>
+                        
+                        {% if branch.address %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>
+                            <p class="text-gray-900 dark:text-white">{{ branch.address }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if branch.phone %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone</label>
+                            <p class="text-gray-900 dark:text-white">{{ branch.phone }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if branch.manager %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Manager</label>
+                            <p class="text-gray-900 dark:text-white">{{ branch.manager.get_full_name|default:branch.manager.username }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Created</label>
+                            <p class="text-gray-900 dark:text-white">{{ branch.created_at|date:"M d, Y" }}</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Updated</label>
+                            <p class="text-gray-900 dark:text-white">{{ branch.updated_at|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if branch.opening_hours %}
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Opening Hours</label>
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                            {% for day, hours in branch.opening_hours.items %}
+                            <div class="flex justify-between py-1">
+                                <span class="capitalize text-gray-700 dark:text-gray-300">{{ day }}</span>
+                                <span class="text-gray-900 dark:text-white">{{ hours|default:"Closed" }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Performance Metrics (Last 30 Days)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">${{ total_sales_30d|floatformat:2 }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Total Sales</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-600 dark:text-green-400">{{ sales_count_30d }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Transactions</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">${{ avg_sale_30d|floatformat:2 }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400">Avg. Sale</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-medium text-gray-900 dark:text-white mb-2">Last 7 Days</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Sales:</span>
+                                    <span class="font-medium text-gray-900 dark:text-white">${{ total_sales_7d|floatformat:2 }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Transactions:</span>
+                                    <span class="font-medium text-gray-900 dark:text-white">{{ sales_count_7d }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-900 dark:text-white mb-2">Today</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Sales:</span>
+                                    <span class="font-medium text-gray-900 dark:text-white">${{ total_sales_today|floatformat:2 }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Transactions:</span>
+                                    <span class="font-medium text-gray-900 dark:text-white">{{ sales_count_today }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Recent Sales Activity</h2>
+                    {% if recent_sales %}
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sale #</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Employee</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                {% for sale in recent_sales %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ sale.sale_number }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                        {% if sale.customer %}
+                                            {{ sale.customer.get_full_name }}
+                                        {% else %}
+                                            Walk-in Customer
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                        {{ sale.employee.get_full_name|default:sale.employee.username }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
+                                        ${{ sale.total|floatformat:2 }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                        {{ sale.created_at|date:"M d, H:i" }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 dark:text-gray-400 text-center py-8">No recent sales activity</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Inventory Summary -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Inventory Summary</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Total Items</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ total_items }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Inventory Value</span>
+                            <span class="font-medium text-gray-900 dark:text-white">${{ total_inventory_value|floatformat:2 }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Low Stock Items</span>
+                            <span class="font-medium {% if low_stock_items > 0 %}text-red-600 dark:text-red-400{% else %}text-gray-900 dark:text-white{% endif %}">
+                                {{ low_stock_items }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Out of Stock</span>
+                            <span class="font-medium {% if out_of_stock_items > 0 %}text-red-600 dark:text-red-400{% else %}text-gray-900 dark:text-white{% endif %}">
+                                {{ out_of_stock_items }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button onclick="loadBranchInventory()" 
+                                class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded text-sm font-medium transition-colors dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-200">
+                            View Inventory
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Staff Summary -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Staff Summary</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Total Staff</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ total_staff }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Managers</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ managers }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600 dark:text-gray-400">Employees</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ employees }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+                    <div class="space-y-3">
+                        <a href="{% url 'core:branch_update' branch.pk %}" 
+                           class="block w-full bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded text-center text-sm font-medium transition-colors dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-200">
+                            Edit Branch
+                        </a>
+                        <button onclick="loadBranchInventory()" 
+                                class="block w-full bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded text-center text-sm font-medium transition-colors dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200">
+                            Manage Inventory
+                        </button>
+                        <a href="{% url 'core:branch_performance_dashboard' %}" 
+                           class="block w-full bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded text-center text-sm font-medium transition-colors dark:bg-purple-900 dark:hover:bg-purple-800 dark:text-purple-200">
+                            Compare Performance
+                        </a>
+                        <a href="{% url 'core:terminal_list' %}?branch={{ branch.id }}" 
+                           class="block w-full bg-yellow-50 hover:bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-center text-sm font-medium transition-colors dark:bg-yellow-900 dark:hover:bg-yellow-800 dark:text-yellow-200">
+                            Manage Terminals
+                        </a>
+                        <a href="{% url 'core:staff_assignment' %}" 
+                           class="block w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded text-center text-sm font-medium transition-colors dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200">
+                            Assign Staff
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inventory Modal -->
+<div id="inventoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Branch Inventory</h3>
+                <button onclick="closeInventoryModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="inventoryContent" class="max-h-96 overflow-y-auto">
+                <!-- Inventory content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadBranchInventory() {
+    const modal = document.getElementById('inventoryModal');
+    const content = document.getElementById('inventoryContent');
+    
+    content.innerHTML = '<div class="text-center py-4">Loading...</div>';
+    modal.classList.remove('hidden');
+    
+    fetch(`/api/branches/{{ branch.id }}/inventory/`)
+        .then(response => response.json())
+        .then(data => {
+            let html = '';
+            if (data.items.length > 0) {
+                html = `
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">SKU</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                `;
+                
+                data.items.forEach(item => {
+                    const lowStockClass = item.is_low_stock ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white';
+                    html += `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">${item.sku}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">${item.name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm ${lowStockClass}">${item.quantity}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">$${item.selling_price}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+            } else {
+                html = '<div class="text-center py-8 text-gray-500 dark:text-gray-400">No inventory items found</div>';
+            }
+            
+            content.innerHTML = html;
+        })
+        .catch(error => {
+            content.innerHTML = '<div class="text-center py-4 text-red-600">Error loading inventory</div>';
+        });
+}
+
+function closeInventoryModal() {
+    document.getElementById('inventoryModal').classList.add('hidden');
+}
+
+// Close modal when clicking outside
+document.getElementById('inventoryModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeInventoryModal();
+    }
+});
+</script>
+{% endblock %}

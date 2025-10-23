@@ -328,12 +328,23 @@ class User(AbstractUser):
 
         # Tenant users must have a tenant
         if self.role in [self.TENANT_OWNER, self.TENANT_MANAGER, self.TENANT_EMPLOYEE]:
-            if not self.tenant:
+            if not self.tenant_id:
                 raise ValueError(f"Users with role {self.role} must have a tenant assigned")
 
         # Branch must belong to the same tenant
-        if self.branch and self.tenant:
-            if self.branch.tenant_id != self.tenant_id:
+        if self.branch_id and self.tenant_id:
+            # Use _id fields to avoid triggering database queries
+            if hasattr(self.branch, "tenant_id"):
+                branch_tenant_id = self.branch.tenant_id
+            else:
+                # If branch is not loaded, fetch just the tenant_id
+                branch_tenant_id = (
+                    Branch.objects.filter(id=self.branch_id)
+                    .values_list("tenant_id", flat=True)
+                    .first()
+                )
+
+            if branch_tenant_id != self.tenant_id:
                 raise ValueError("Branch must belong to the same tenant as the user")
 
         super().save(*args, **kwargs)

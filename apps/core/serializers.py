@@ -8,6 +8,10 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from apps.sales.models import Terminal
+
+from .models import Branch
+
 User = get_user_model()
 
 
@@ -179,3 +183,70 @@ class UserPreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["language", "theme"]
+
+
+class BranchSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Branch model.
+    """
+
+    manager_name = serializers.CharField(source="manager.get_full_name", read_only=True)
+    tenant_name = serializers.CharField(source="tenant.company_name", read_only=True)
+
+    class Meta:
+        model = Branch
+        fields = [
+            "id",
+            "name",
+            "address",
+            "phone",
+            "manager",
+            "manager_name",
+            "opening_hours",
+            "is_active",
+            "tenant",
+            "tenant_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "tenant", "tenant_name", "created_at", "updated_at"]
+
+    def validate_manager(self, value):
+        """Ensure manager belongs to the same tenant."""
+        if value and hasattr(self.context.get("request"), "user"):
+            user = self.context["request"].user
+            if user.tenant and value.tenant != user.tenant:
+                raise serializers.ValidationError("Manager must belong to the same tenant.")
+        return value
+
+
+class TerminalSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Terminal model.
+    """
+
+    branch_name = serializers.CharField(source="branch.name", read_only=True)
+
+    class Meta:
+        model = Terminal
+        fields = [
+            "id",
+            "terminal_id",
+            "description",
+            "is_active",
+            "configuration",
+            "branch",
+            "branch_name",
+            "created_at",
+            "updated_at",
+            "last_used_at",
+        ]
+        read_only_fields = ["id", "branch_name", "created_at", "updated_at", "last_used_at"]
+
+    def validate_branch(self, value):
+        """Ensure branch belongs to the same tenant."""
+        if value and hasattr(self.context.get("request"), "user"):
+            user = self.context["request"].user
+            if user.tenant and value.tenant != user.tenant:
+                raise serializers.ValidationError("Branch must belong to the same tenant.")
+        return value

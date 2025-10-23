@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Enhanced pre-commit hook with auto-fixing and clear feedback
+# This script automatically fixes black and isort issues, but blocks on flake8 errors
+
+set -e
+
+echo "🔍 Running pre-commit checks via Docker..."
+
+# Function to run docker command with proper error handling
+run_docker_cmd() {
+    local service="$1"
+    local cmd="$2"
+    local description="$3"
+    
+    echo "🔍 Running $description..."
+    if docker compose exec -T "$service" $cmd; then
+        echo "✅ $description passed!"
+        return 0
+    else
+        echo "❌ $description failed!"
+        return 1
+    fi
+}
+
+# Auto-fix formatting with black
+echo "🔧 Auto-fixing code formatting with black..."
+if docker compose exec -T web black --line-length=100 .; then
+    echo "✅ Black formatting applied!"
+else
+    echo "❌ Black formatting failed!"
+    exit 1
+fi
+
+# Auto-fix import sorting with isort
+echo "🔧 Auto-fixing import sorting with isort..."
+if docker compose exec -T web isort --profile black --line-length 100 .; then
+    echo "✅ Import sorting applied!"
+else
+    echo "❌ Import sorting failed!"
+    exit 1
+fi
+
+# Check for linting issues with flake8 (blocks commit)
+echo "❌ Checking code quality with flake8 (manual fixes required)..."
+if docker compose exec -T web flake8 --max-line-length=100 --extend-ignore=E203,W503 .; then
+    echo "✅ All flake8 checks passed!"
+else
+    echo ""
+    echo "💡 COMMIT BLOCKED: Please fix the flake8 issues above manually."
+    echo "   Common fixes:"
+    echo "   - Remove unused imports (F401)"
+    echo "   - Remove unused variables (F841)" 
+    echo "   - Fix undefined names (F821)"
+    echo "   - Add missing imports"
+    echo ""
+    echo "   After fixing, try committing again."
+    exit 1
+fi
+
+echo ""
+echo "🎉 All pre-commit checks passed! Your code is ready to commit."
+echo "   ✅ Code formatted with black"
+echo "   ✅ Imports sorted with isort" 
+echo "   ✅ Code quality verified with flake8"
+echo ""

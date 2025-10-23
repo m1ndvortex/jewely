@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import views
+from . import branch_views, views
 
 app_name = "core"
 
@@ -24,4 +24,55 @@ urlpatterns = [
     path("api/mfa/confirm/", views.MFAConfirmView.as_view(), name="mfa_confirm"),
     path("api/mfa/disable/", views.MFADisableView.as_view(), name="mfa_disable"),
     path("api/mfa/verify/", views.MFAVerifyView.as_view(), name="mfa_verify"),
+    # Branch Management - Web Views
+    path("branches/", branch_views.BranchListView.as_view(), name="branch_list"),
+    path("branches/create/", branch_views.BranchCreateView.as_view(), name="branch_create"),
+    path("branches/<uuid:pk>/", branch_views.BranchDetailView.as_view(), name="branch_detail"),
+    path("branches/<uuid:pk>/edit/", branch_views.BranchUpdateView.as_view(), name="branch_update"),
+    path(
+        "branches/<uuid:pk>/delete/", branch_views.BranchDeleteView.as_view(), name="branch_delete"
+    ),
+    path(
+        "branches/dashboard/",
+        branch_views.branch_performance_dashboard,
+        name="branch_performance_dashboard",
+    ),
+    # Terminal Management - Web Views
+    path("terminals/", branch_views.TerminalListView.as_view(), name="terminal_list"),
+    path("terminals/create/", branch_views.TerminalCreateView.as_view(), name="terminal_create"),
+    path(
+        "terminals/<uuid:pk>/edit/",
+        branch_views.TerminalUpdateView.as_view(),
+        name="terminal_update",
+    ),
+    path(
+        "terminals/<uuid:pk>/delete/",
+        branch_views.TerminalDeleteView.as_view(),
+        name="terminal_delete",
+    ),
+    # Staff Assignment - Web Views
+    path("staff/assignment/", branch_views.staff_assignment_view, name="staff_assignment"),
+    # Branch Management - API Views
+    path("api/branches/", branch_views.BranchListCreateAPIView.as_view(), name="api_branch_list"),
+    path(
+        "api/branches/<uuid:pk>/",
+        branch_views.BranchRetrieveUpdateDestroyAPIView.as_view(),
+        name="api_branch_detail",
+    ),
+    path(
+        "api/branches/<uuid:branch_id>/inventory/",
+        branch_views.branch_inventory_api,
+        name="api_branch_inventory",
+    ),
+    # Terminal Management - API Views
+    path(
+        "api/terminals/", branch_views.TerminalListCreateAPIView.as_view(), name="api_terminal_list"
+    ),
+    path(
+        "api/terminals/<uuid:pk>/",
+        branch_views.TerminalRetrieveUpdateDestroyAPIView.as_view(),
+        name="api_terminal_detail",
+    ),
+    # Staff Assignment - API Views
+    path("api/staff/assign/", branch_views.assign_staff_to_branch, name="api_assign_staff"),
 ]

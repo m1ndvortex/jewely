@@ -260,14 +260,14 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement customer notifications on status changes
     - _Requirements: 13_
   
-  - [ ] 8.3 Create custom order functionality
+  - [x] 8.3 Create custom order functionality
     - Create CustomOrder model with design specifications
     - Implement material requirement tracking
     - Create pricing calculator for custom orders
     - Link custom orders to inventory when completed
     - _Requirements: 13_
   
-  - [ ] 8.4 Write repair order tests
+  - [x] 8.4 Write repair order tests
     - Test order creation and state transitions
     - Test photo uploads
     - Test notifications
@@ -275,7 +275,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 13, 28_
 
 - [ ] 9. Multi-Branch Management
-  - [ ] 9.1 Implement branch management
+  - [x] 9.1 Implement branch management
     - Create branch CRUD interface
     - Implement branch configuration (address, hours, manager assignment)
     - Create branch performance dashboard with comparative metrics
