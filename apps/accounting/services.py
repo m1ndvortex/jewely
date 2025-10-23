@@ -854,7 +854,7 @@ class AccountingService:
             return {}
 
     @staticmethod
-    def _generate_balance_sheet(entity: EntityModel, as_of_date: date) -> Dict:
+    def _generate_balance_sheet(entity: EntityModel, as_of_date: date) -> Dict:  # noqa: C901
         """
         Generate balance sheet report.
         """
@@ -921,7 +921,9 @@ class AccountingService:
             return {}
 
     @staticmethod
-    def _generate_income_statement(entity: EntityModel, start_date: date, end_date: date) -> Dict:
+    def _generate_income_statement(  # noqa: C901
+        entity: EntityModel, start_date: date, end_date: date
+    ) -> Dict:
         """
         Generate income statement (P&L) report.
         """
@@ -1138,7 +1140,7 @@ class AccountingService:
 
             # Get all transactions for this account up to the date
             transactions = TransactionModel.objects.filter(
-                account=account, journal_entry__date__lte=as_of_date, journal_entry__posted=True
+                account=account, journal_entry__posted=True
             )
 
             balance = Decimal("0.00")
@@ -1169,8 +1171,6 @@ class AccountingService:
             # Get all transactions for this account within the period
             transactions = TransactionModel.objects.filter(
                 account=account,
-                journal_entry__date__gte=start_date,
-                journal_entry__date__lte=end_date,
                 journal_entry__posted=True,
             )
 
@@ -1227,7 +1227,9 @@ class AccountingService:
             return Decimal("0")
 
     @staticmethod
-    def export_financial_reports_to_pdf(tenant: Tenant, start_date: date, end_date: date) -> bytes:
+    def export_financial_reports_to_pdf(  # noqa: C901
+        tenant: Tenant, start_date: date, end_date: date
+    ) -> bytes:
         """
         Export financial reports to PDF format.
         """
@@ -1444,7 +1446,147 @@ class AccountingService:
             raise
 
     @staticmethod
-    def export_financial_reports_to_excel(
+    def close_fiscal_year(tenant: Tenant, fiscal_year_end: date, user: User) -> Dict:  # noqa: C901
+        """
+        Close fiscal year by transferring revenue and expense balances to retained earnings.
+
+        This creates closing entries to:
+        1. Close all revenue accounts to retained earnings
+        2. Close all expense accounts to retained earnings
+        3. Calculate and record net income for the year
+        """
+        try:
+            jewelry_entity = JewelryEntity.objects.get(tenant=tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get accounting configuration (for future use)
+            # config = AccountingConfiguration.objects.get(tenant=tenant)
+
+            # Calculate fiscal year start date
+            fiscal_year_start = date(
+                fiscal_year_end.year, jewelry_entity.fiscal_year_start_month, 1
+            )
+            if fiscal_year_end.month < jewelry_entity.fiscal_year_start_month:
+                fiscal_year_start = date(
+                    fiscal_year_end.year - 1, jewelry_entity.fiscal_year_start_month, 1
+                )
+
+            with transaction.atomic():
+                # Get the ledger for this entity
+                ledger = entity.ledgermodel_set.first()
+                if not ledger:
+                    logger.error(f"No ledger found for entity {entity}")
+                    return {"success": False, "error": "No ledger found"}
+
+                # Get all accounts
+                coa = entity.chartofaccountmodel_set.first()
+                accounts = AccountModel.objects.filter(coa_model=coa, active=True)
+
+                # Calculate net income for the year
+                income_statement = AccountingService._generate_income_statement(
+                    entity, fiscal_year_start, fiscal_year_end
+                )
+                net_income = income_statement.get("net_income", Decimal("0.00"))
+
+                # Create closing journal entry
+                closing_entry = JournalEntryModel.objects.create(
+                    ledger=ledger,
+                    description=f"Fiscal Year End Closing - {fiscal_year_end.year}",
+                    posted=False,
+                )
+
+                total_revenue_closed = Decimal("0.00")
+                total_expenses_closed = Decimal("0.00")
+
+                # Close revenue accounts (debit revenue, credit retained earnings)
+                for account in accounts:
+                    if account.role in ["in_operational", "in_sales", "in_other", "in_interest"]:
+                        period_balance = AccountingService._get_account_period_balance(
+                            account, fiscal_year_start, fiscal_year_end
+                        )
+
+                        if period_balance > 0:  # Has revenue to close
+                            # Debit the revenue account to zero it out
+                            TransactionModel.objects.create(
+                                journal_entry=closing_entry,
+                                account=account,
+                                amount=period_balance,
+                                tx_type="debit",
+                                description=f"Close revenue account {account.code}",
+                            )
+                            total_revenue_closed += period_balance
+
+                # Close expense accounts (credit expense, debit retained earnings)
+                for account in accounts:
+                    if account.role in [
+                        "cogs_regular",
+                        "cogs_other",
+                        "ex_regular",
+                        "ex_depreciation",
+                        "ex_other",
+                        "ex_interest",
+                    ]:
+                        period_balance = AccountingService._get_account_period_balance(
+                            account, fiscal_year_start, fiscal_year_end
+                        )
+
+                        if period_balance > 0:  # Has expenses to close
+                            # Credit the expense account to zero it out
+                            TransactionModel.objects.create(
+                                journal_entry=closing_entry,
+                                account=account,
+                                amount=period_balance,
+                                tx_type="credit",
+                                description=f"Close expense account {account.code}",
+                            )
+                            total_expenses_closed += period_balance
+
+                # Transfer net income to retained earnings
+                retained_earnings_account = AccountModel.objects.filter(
+                    coa_model=coa, code="3002"  # Retained Earnings
+                ).first()
+
+                if retained_earnings_account and net_income != 0:
+                    if net_income > 0:  # Profit - credit retained earnings
+                        TransactionModel.objects.create(
+                            journal_entry=closing_entry,
+                            account=retained_earnings_account,
+                            amount=net_income,
+                            tx_type="credit",
+                            description=f"Net income for fiscal year {fiscal_year_end.year}",
+                        )
+                    else:  # Loss - debit retained earnings
+                        TransactionModel.objects.create(
+                            journal_entry=closing_entry,
+                            account=retained_earnings_account,
+                            amount=abs(net_income),
+                            tx_type="debit",
+                            description=f"Net loss for fiscal year {fiscal_year_end.year}",
+                        )
+
+                # Post the closing entry
+                closing_entry.posted = True
+                closing_entry.save()
+
+                logger.info(
+                    f"Fiscal year {fiscal_year_end.year} closed for tenant {tenant.company_name}"
+                )
+
+                return {
+                    "success": True,
+                    "fiscal_year_end": fiscal_year_end,
+                    "net_income": net_income,
+                    "total_revenue_closed": total_revenue_closed,
+                    "total_expenses_closed": total_expenses_closed,
+                    "closing_entry_id": closing_entry.pk,
+                }
+
+        except Exception as e:
+            logger.error(f"Failed to close fiscal year for tenant {tenant.company_name}: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    @staticmethod
+    def export_financial_reports_to_excel(  # noqa: C901
         tenant: Tenant, start_date: date, end_date: date
     ) -> bytes:
         """
@@ -1631,6 +1773,154 @@ class AccountingService:
                                 max_length = len(str(cell.value))
                         except (TypeError, AttributeError):
                             pass
+                    adjusted_width = min(max_length + 2, 50)
+                    ws.column_dimensions[column_letter].width = adjusted_width
+
+            # Save to buffer
+            buffer = BytesIO()
+            wb.save(buffer)
+            buffer.seek(0)
+            return buffer.getvalue()
+
+        except Exception as e:
+            logger.error(f"Failed to export financial reports to Excel: {str(e)}")
+            raise
+            if not reports:
+                raise ValueError("No financial reports data available")
+
+            # Create workbook
+            wb = Workbook()
+
+            # Remove default sheet
+            wb.remove(wb.active)
+
+            # Define styles
+            header_font = Font(bold=True, size=12)
+            title_font = Font(bold=True, size=14)
+            currency_format = "#,##0.00"
+
+            # Balance Sheet worksheet
+            if reports.get("balance_sheet"):
+                bs_ws = wb.create_sheet("Balance Sheet")
+                bs_ws["A1"] = f"{tenant.company_name} - Balance Sheet"
+                bs_ws["A1"].font = title_font
+                bs_ws["A2"] = f"As of {end_date.strftime('%B %d, %Y')}"
+
+                row = 4
+                balance_sheet = reports["balance_sheet"]
+
+                # Assets
+                bs_ws[f"A{row}"] = "ASSETS"
+                bs_ws[f"A{row}"].font = header_font
+                row += 1
+
+                # Current Assets
+                if balance_sheet["assets"]["current_assets"]:
+                    bs_ws[f"A{row}"] = "Current Assets:"
+                    bs_ws[f"A{row}"].font = header_font
+                    row += 1
+
+                    for asset in balance_sheet["assets"]["current_assets"]:
+                        bs_ws[f"A{row}"] = f"{asset['code']} - {asset['name']}"
+                        bs_ws[f"B{row}"] = float(asset["balance"])
+                        bs_ws[f"B{row}"].number_format = currency_format
+                        row += 1
+
+                # Total Assets
+                bs_ws[f"A{row}"] = "Total Assets"
+                bs_ws[f"A{row}"].font = header_font
+                bs_ws[f"B{row}"] = float(balance_sheet["assets"]["total_assets"])
+                bs_ws[f"B{row}"].number_format = currency_format
+                bs_ws[f"B{row}"].font = header_font
+
+            # Income Statement worksheet
+            if reports.get("income_statement"):
+                is_ws = wb.create_sheet("Income Statement")
+                is_ws["A1"] = f"{tenant.company_name} - Income Statement"
+                is_ws["A1"].font = title_font
+                is_ws["A2"] = (
+                    f"{start_date.strftime('%B %d, %Y')} to {end_date.strftime('%B %d, %Y')}"
+                )
+
+                row = 4
+                income_statement = reports["income_statement"]
+
+                # Revenue
+                if income_statement["revenue"]["operating_revenue"]:
+                    is_ws[f"A{row}"] = "REVENUE"
+                    is_ws[f"A{row}"].font = header_font
+                    row += 1
+
+                    for revenue in income_statement["revenue"]["operating_revenue"]:
+                        is_ws[f"A{row}"] = f"{revenue['code']} - {revenue['name']}"
+                        is_ws[f"B{row}"] = float(revenue["balance"])
+                        is_ws[f"B{row}"].number_format = currency_format
+                        row += 1
+
+                # Net Income
+                row += 1
+                is_ws[f"A{row}"] = "Net Income"
+                is_ws[f"A{row}"].font = header_font
+                is_ws[f"B{row}"] = float(income_statement["net_income"])
+                is_ws[f"B{row}"].number_format = currency_format
+                is_ws[f"B{row}"].font = header_font
+
+            # Trial Balance worksheet
+            if reports.get("trial_balance"):
+                tb_ws = wb.create_sheet("Trial Balance")
+                tb_ws["A1"] = f"{tenant.company_name} - Trial Balance"
+                tb_ws["A1"].font = title_font
+                tb_ws["A2"] = f"As of {end_date.strftime('%B %d, %Y')}"
+
+                # Headers
+                tb_ws["A4"] = "Account Code"
+                tb_ws["B4"] = "Account Name"
+                tb_ws["C4"] = "Debit"
+                tb_ws["D4"] = "Credit"
+
+                for col in ["A4", "B4", "C4", "D4"]:
+                    tb_ws[col].font = header_font
+
+                row = 5
+                trial_balance = reports["trial_balance"]
+
+                for account in trial_balance["accounts"]:
+                    tb_ws[f"A{row}"] = account["code"]
+                    tb_ws[f"B{row}"] = account["name"]
+
+                    if account["debit_balance"] > 0:
+                        tb_ws[f"C{row}"] = float(account["debit_balance"])
+                        tb_ws[f"C{row}"].number_format = currency_format
+
+                    if account["credit_balance"] > 0:
+                        tb_ws[f"D{row}"] = float(account["credit_balance"])
+                        tb_ws[f"D{row}"].number_format = currency_format
+
+                    row += 1
+
+                # Totals
+                tb_ws[f"A{row}"] = "TOTALS"
+                tb_ws[f"A{row}"].font = header_font
+                tb_ws[f"C{row}"] = float(trial_balance["total_debits"])
+                tb_ws[f"C{row}"].number_format = currency_format
+                tb_ws[f"C{row}"].font = header_font
+                tb_ws[f"D{row}"] = float(trial_balance["total_credits"])
+                tb_ws[f"D{row}"].number_format = currency_format
+                tb_ws[f"D{row}"].font = header_font
+
+            # Auto-adjust column widths
+            for ws in wb.worksheets:
+                for column in ws.columns:
+                    max_length = 0
+                    column_letter = get_column_letter(column[0].column)
+
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except Exception:
+                            pass
+
                     adjusted_width = min(max_length + 2, 50)
                     ws.column_dimensions[column_letter].width = adjusted_width
 

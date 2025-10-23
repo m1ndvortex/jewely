@@ -491,3 +491,320 @@ class AccountingViewsTest(TestCase):
 
         # Verify accounting was set up
         self.assertTrue(JewelryEntity.objects.filter(tenant=new_tenant).exists())
+
+    def test_account_balance_calculation_with_transactions(self):
+        """Test account balance calculation with actual transactions."""
+        from datetime import date
+
+        from django_ledger.models import AccountModel, JournalEntryModel, TransactionModel
+
+        from apps.core.tenant_context import tenant_context
+
+        with tenant_context(self.tenant.id):
+            # Get cash account
+            entity = self.jewelry_entity.ledger_entity
+            coa = entity.chartofaccountmodel_set.first()
+            cash_account = AccountModel.objects.get(coa_model=coa, code="1001")
+
+            # Create a manual journal entry to test balance calculation
+            ledger = entity.ledgermodel_set.first()
+            journal_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description="Test transaction for balance calculation",
+                posted=False,
+            )
+
+            # Add a debit transaction to cash account
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=cash_account,
+                amount=Decimal("500.00"),
+                tx_type="debit",
+                description="Test cash debit",
+            )
+
+            # Add a credit transaction to balance the entry
+            sales_account = AccountModel.objects.get(coa_model=coa, code="4001")
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=sales_account,
+                amount=Decimal("500.00"),
+                tx_type="credit",
+                description="Test sales credit",
+            )
+
+            # Post the journal entry
+            journal_entry.posted = True
+            journal_entry.save()
+
+            # Calculate balance
+            balance = AccountingService._get_account_balance_for_date(cash_account, date.today())
+
+            # Cash account is a debit account, so debit increases balance
+            self.assertEqual(balance, Decimal("500.00"))
+
+    def test_fiscal_year_closing_comprehensive(self):
+        """Test comprehensive fiscal year closing functionality."""
+        from datetime import date
+
+        from django_ledger.models import AccountModel, JournalEntryModel, TransactionModel
+
+        from apps.core.tenant_context import tenant_context
+
+        with tenant_context(self.tenant.id):
+            entity = self.jewelry_entity.ledger_entity
+            coa = entity.chartofaccountmodel_set.first()
+            ledger = entity.ledgermodel_set.first()
+
+            # Create some revenue and expense transactions
+            # Revenue transaction
+            revenue_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description="Test revenue for fiscal year closing",
+                posted=False,
+            )
+
+            sales_account = AccountModel.objects.get(coa_model=coa, code="4001")  # Jewelry Sales
+            cash_account = AccountModel.objects.get(coa_model=coa, code="1001")  # Cash
+
+            TransactionModel.objects.create(
+                journal_entry=revenue_entry,
+                account=cash_account,
+                amount=Decimal("1000.00"),
+                tx_type="debit",
+                description="Cash from sales",
+            )
+
+            TransactionModel.objects.create(
+                journal_entry=revenue_entry,
+                account=sales_account,
+                amount=Decimal("1000.00"),
+                tx_type="credit",
+                description="Sales revenue",
+            )
+
+            # Post the revenue entry
+            revenue_entry.posted = True
+            revenue_entry.save()
+
+            # Expense transaction
+            expense_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description="Test expense for fiscal year closing",
+                posted=False,
+            )
+
+            rent_account = AccountModel.objects.get(coa_model=coa, code="5100")  # Rent Expense
+
+            TransactionModel.objects.create(
+                journal_entry=expense_entry,
+                account=rent_account,
+                amount=Decimal("300.00"),
+                tx_type="debit",
+                description="Rent expense",
+            )
+
+            TransactionModel.objects.create(
+                journal_entry=expense_entry,
+                account=cash_account,
+                amount=Decimal("300.00"),
+                tx_type="credit",
+                description="Cash paid for rent",
+            )
+
+            # Post the expense entry
+            expense_entry.posted = True
+            expense_entry.save()
+
+            # Close fiscal year
+            fiscal_year_end = date.today()
+            result = AccountingService.close_fiscal_year(self.tenant, fiscal_year_end, self.user)
+
+            # Verify closing was successful
+            self.assertTrue(result["success"])
+            self.assertEqual(result["net_income"], Decimal("700.00"))  # 1000 revenue - 300 expense
+            self.assertEqual(result["total_revenue_closed"], Decimal("1000.00"))
+            self.assertEqual(result["total_expenses_closed"], Decimal("300.00"))
+
+            # Verify closing entry exists and is posted
+            closing_entry = JournalEntryModel.objects.get(pk=result["closing_entry_id"])
+            self.assertTrue(closing_entry.posted)
+            self.assertIn("Fiscal Year End Closing", closing_entry.description)
+
+            # Verify closing transactions were created
+            closing_transactions = TransactionModel.objects.filter(journal_entry=closing_entry)
+            self.assertGreater(closing_transactions.count(), 0)
+
+    def test_financial_reports_accuracy(self):
+        """Test accuracy of financial reports with known data."""
+        from datetime import date, timedelta
+
+        from django_ledger.models import AccountModel, JournalEntryModel, TransactionModel
+
+        from apps.core.tenant_context import tenant_context
+
+        with tenant_context(self.tenant.id):
+            entity = self.jewelry_entity.ledger_entity
+            coa = entity.chartofaccountmodel_set.first()
+            ledger = entity.ledgermodel_set.first()
+
+            # Create known transactions
+            test_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description="Test entry for report accuracy",
+                posted=False,
+            )
+
+            cash_account = AccountModel.objects.get(coa_model=coa, code="1001")
+            sales_account = AccountModel.objects.get(coa_model=coa, code="4001")
+
+            # $500 cash sale
+            TransactionModel.objects.create(
+                journal_entry=test_entry,
+                account=cash_account,
+                amount=Decimal("500.00"),
+                tx_type="debit",
+                description="Cash from test sale",
+            )
+
+            TransactionModel.objects.create(
+                journal_entry=test_entry,
+                account=sales_account,
+                amount=Decimal("500.00"),
+                tx_type="credit",
+                description="Test sales revenue",
+            )
+
+            # Post the test entry
+            test_entry.posted = True
+            test_entry.save()
+
+            # Generate reports
+            end_date = date.today()
+            start_date = end_date - timedelta(days=1)
+            reports = AccountingService.get_financial_reports(self.tenant, start_date, end_date)
+
+            # Verify balance sheet shows cash asset
+            balance_sheet = reports["balance_sheet"]
+            cash_found = False
+            for asset in balance_sheet["assets"]["current_assets"]:
+                if asset["code"] == "1001":
+                    self.assertEqual(asset["balance"], Decimal("500.00"))
+                    cash_found = True
+                    break
+            self.assertTrue(cash_found, "Cash account not found in balance sheet")
+
+            # Verify income statement shows revenue
+            income_statement = reports["income_statement"]
+            revenue_found = False
+            for revenue in income_statement["revenue"]["operating_revenue"]:
+                if revenue["code"] == "4001":
+                    self.assertEqual(revenue["balance"], Decimal("500.00"))
+                    revenue_found = True
+                    break
+            self.assertTrue(revenue_found, "Sales revenue not found in income statement")
+
+            # Verify net income
+            self.assertEqual(income_statement["net_income"], Decimal("500.00"))
+
+            # Verify trial balance is balanced
+            trial_balance = reports["trial_balance"]
+            self.assertTrue(trial_balance["is_balanced"])
+            self.assertEqual(trial_balance["total_debits"], trial_balance["total_credits"])
+
+    def test_accounting_model_validations(self):
+        """Test accounting model validations and properties."""
+        # Test JewelryChartOfAccounts model
+        account = JewelryChartOfAccounts.objects.create(
+            name="Test Validation Account",
+            account_type="CASH",
+            account_code="9999",
+            description="Test account for validation",
+            is_active=True,
+        )
+
+        # Test string representation
+        self.assertEqual(str(account), "9999 - Test Validation Account")
+
+        # Test AccountingConfiguration model
+        config = AccountingConfiguration.objects.get(tenant=self.tenant)
+        self.assertEqual(str(config), f"Accounting Config for {self.tenant.company_name}")
+        self.assertTrue(config.use_automatic_journal_entries)
+        self.assertEqual(config.inventory_valuation_method, "FIFO")
+
+        # Test JournalEntryTemplate model
+        template = JournalEntryTemplate.objects.create(
+            name="Test Template",
+            template_type="CASH_SALE",
+            description="Test template for validation",
+            is_active=True,
+        )
+        self.assertEqual(str(template), "Test Template")
+
+        # Test JournalEntryTemplateLine model
+        line = JournalEntryTemplateLine.objects.create(
+            template=template,
+            account_code="1001",
+            debit_credit="DEBIT",
+            amount_field="total",
+            description_template="Test line #{sale_number}",
+            order=1,
+        )
+        self.assertEqual(str(line), "Test Template - 1001 (DEBIT)")
+        self.assertEqual(line.order, 1)
+
+    def test_accounting_service_error_handling(self):
+        """Test error handling in accounting service methods."""
+        from datetime import date, timedelta
+
+        # Test with invalid tenant
+        with bypass_rls():
+            invalid_tenant = Tenant.objects.create(
+                company_name="Invalid Tenant", slug="invalid-tenant", status="ACTIVE"
+            )
+
+        # Test get_financial_reports with tenant that has no accounting setup
+        reports = AccountingService.get_financial_reports(
+            invalid_tenant, date.today() - timedelta(days=30), date.today()
+        )
+        self.assertEqual(reports, {})
+
+        # Test get_account_balance with invalid account
+        balance = AccountingService.get_account_balance(
+            invalid_tenant, "INVALID_CODE", date.today()
+        )
+        self.assertEqual(balance, Decimal("0"))
+
+    def test_chart_of_accounts_completeness(self):
+        """Test that all required accounts are created in chart of accounts."""
+        from django_ledger.models import AccountModel
+
+        from apps.core.tenant_context import tenant_context
+
+        with tenant_context(self.tenant.id):
+            entity = self.jewelry_entity.ledger_entity
+            coa = entity.chartofaccountmodel_set.first()
+            accounts = AccountModel.objects.filter(coa_model=coa, active=True)
+
+            # Required accounts for jewelry business
+            required_accounts = {
+                "1001": "Cash - Checking Account",
+                "1002": "Cash - Credit Card Processing",
+                "1200": "Inventory - Finished Goods",
+                "2001": "Accounts Payable",
+                "2003": "Sales Tax Payable",
+                "3002": "Retained Earnings",
+                "4001": "Jewelry Sales",
+                "5001": "Cost of Goods Sold",
+                "5100": "Rent Expense",
+            }
+
+            account_codes = {acc.code: acc.name for acc in accounts}
+
+            for code, expected_name in required_accounts.items():
+                self.assertIn(code, account_codes, f"Required account {code} not found")
+                self.assertEqual(
+                    account_codes[code],
+                    expected_name,
+                    f"Account {code} has wrong name: {account_codes[code]}",
+                )

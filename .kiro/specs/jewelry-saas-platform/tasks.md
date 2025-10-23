@@ -236,7 +236,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add export to PDF and Excel
     - _Requirements: 10, 15_
   
-  - [ ] 7.4 Write accounting tests
+  - [x] 7.4 Write accounting tests
     - Test journal entry creation
     - Test account balances
     - Test financial report generation

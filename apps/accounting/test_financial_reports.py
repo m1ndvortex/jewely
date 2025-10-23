@@ -253,6 +253,167 @@ class FinancialReportsTest:
             # Excel files start with PK (ZIP signature)
             assert excel_data.startswith(b"PK")
 
+    def test_fiscal_year_closing(self):
+        """Test fiscal year closing functionality."""
+        with tenant_context(self.tenant.id):
+            # Create some transactions first
+            sale = Sale.objects.create(
+                tenant=self.tenant,
+                sale_number="SALE-FY001",
+                customer=self.customer,
+                branch=self.branch,
+                terminal=self.terminal,
+                employee=self.user,
+                subtotal=Decimal("1000.00"),
+                tax=Decimal("80.00"),
+                total=Decimal("1080.00"),
+                payment_method="CASH",
+                status="COMPLETED",
+            )
+
+            SaleItem.objects.create(
+                sale=sale,
+                inventory_item=self.inventory_item,
+                quantity=1,
+                unit_price=Decimal("1000.00"),
+                subtotal=Decimal("1000.00"),
+            )
+
+            # Close fiscal year
+            fiscal_year_end = date(date.today().year, 12, 31)
+            result = AccountingService.close_fiscal_year(self.tenant, fiscal_year_end, self.user)
+
+            # Verify closing was successful
+            assert result["success"] is True
+            assert "net_income" in result
+            assert "total_revenue_closed" in result
+            assert "total_expenses_closed" in result
+            assert "closing_entry_id" in result
+
+            # Verify closing journal entry was created
+            from django_ledger.models import JournalEntryModel
+
+            closing_entry = JournalEntryModel.objects.get(pk=result["closing_entry_id"])
+            assert closing_entry.posted is True
+            assert "Fiscal Year End Closing" in closing_entry.description
+
+    def test_comprehensive_accounting_workflow(self):
+        """Test complete accounting workflow from setup to reporting."""
+        with tenant_context(self.tenant.id):
+            # 1. Verify chart of accounts setup
+            from django_ledger.models import AccountModel
+
+            entity = self.jewelry_entity.ledger_entity
+            coa = entity.chartofaccountmodel_set.first()
+            accounts = AccountModel.objects.filter(coa_model=coa, active=True)
+
+            # Verify we have all required account types
+            account_codes = [acc.code for acc in accounts]
+            required_accounts = ["1001", "1200", "2001", "2003", "3002", "4001", "5001", "5100"]
+            for code in required_accounts:
+                assert code in account_codes, f"Required account {code} not found"
+
+            # 2. Test transaction creation and journal entries
+            sale = Sale.objects.create(
+                tenant=self.tenant,
+                sale_number="SALE-WORKFLOW",
+                customer=self.customer,
+                branch=self.branch,
+                terminal=self.terminal,
+                employee=self.user,
+                subtotal=Decimal("500.00"),
+                tax=Decimal("40.00"),
+                total=Decimal("540.00"),
+                payment_method="CASH",
+                status="COMPLETED",
+            )
+
+            SaleItem.objects.create(
+                sale=sale,
+                inventory_item=self.inventory_item,
+                quantity=1,
+                unit_price=Decimal("500.00"),
+                subtotal=Decimal("500.00"),
+            )
+
+            # 3. Verify journal entries were created automatically
+            from django_ledger.models import JournalEntryModel, TransactionModel
+
+            ledger = entity.ledgermodel_set.first()
+            journal_entries = JournalEntryModel.objects.filter(
+                ledger=ledger, description__contains=sale.sale_number
+            )
+            assert journal_entries.count() == 1
+
+            journal_entry = journal_entries.first()
+            transactions = TransactionModel.objects.filter(journal_entry=journal_entry)
+
+            # Verify double-entry bookkeeping
+            total_debits = sum(t.amount for t in transactions if t.tx_type == "debit")
+            total_credits = sum(t.amount for t in transactions if t.tx_type == "credit")
+            assert total_debits == total_credits, "Double-entry bookkeeping violated"
+
+            # 4. Test financial reports generation
+            end_date = date.today()
+            start_date = end_date - timedelta(days=30)
+            reports = AccountingService.get_financial_reports(self.tenant, start_date, end_date)
+
+            # Verify all required reports are generated
+            assert "balance_sheet" in reports
+            assert "income_statement" in reports
+            assert "cash_flow" in reports
+            assert "trial_balance" in reports
+
+            # 5. Verify trial balance is balanced
+            trial_balance = reports["trial_balance"]
+            assert trial_balance["is_balanced"] is True
+            assert trial_balance["total_debits"] == trial_balance["total_credits"]
+
+            # 6. Test account balance calculations
+            cash_account = AccountModel.objects.get(coa_model=coa, code="1001")
+            balance = AccountingService._get_account_balance_for_date(cash_account, end_date)
+            assert isinstance(balance, Decimal)
+
+    def test_tenant_isolation_in_accounting(self):
+        """Test that accounting data is properly isolated between tenants."""
+        # Create a second tenant
+        from apps.core.models import Tenant, User
+        from apps.core.tenant_context import bypass_rls
+
+        with bypass_rls():
+            tenant2 = Tenant.objects.create(
+                company_name="Second Jewelry Shop", slug="second-shop", status="ACTIVE"
+            )
+
+            user2 = User.objects.create_user(
+                username="secondowner",
+                email="owner2@test.com",
+                password="testpass123",
+                tenant=tenant2,
+                role="TENANT_OWNER",
+            )
+
+        # Set up accounting for second tenant
+        jewelry_entity2 = AccountingService.setup_tenant_accounting(tenant2, user2)
+
+        # Test that each tenant has separate accounting entities
+        assert self.jewelry_entity.tenant != jewelry_entity2.tenant
+        assert self.jewelry_entity.ledger_entity != jewelry_entity2.ledger_entity
+
+        # Test that financial reports are isolated
+        with tenant_context(self.tenant.id):
+            reports1 = AccountingService.get_financial_reports(
+                self.tenant, date.today() - timedelta(days=30), date.today()
+            )
+
+        with tenant_context(tenant2.id):
+            reports2 = AccountingService.get_financial_reports(
+                tenant2, date.today() - timedelta(days=30), date.today()
+            )
+
+        # Reports should be different (tenant isolation)
+        assert reports1 != reports2
+
     def test_account_balance_calculation(self):
         """Test account balance calculation."""
         with tenant_context(self.tenant.id):
