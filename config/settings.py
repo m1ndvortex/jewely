@@ -357,3 +357,10 @@ if not DEBUG:
 # Object-level permissions
 ANONYMOUS_USER_NAME = None  # Disable anonymous user
 GUARDIAN_RAISE_403 = True  # Raise PermissionDenied exception for DRF compatibility
+
+# Gold Rate API Configuration
+# Get API keys from environment variables
+# GoldAPI: https://www.goldapi.io/ (requires API key)
+# Metals-API: https://metals-api.com/ (free tier available)
+GOLDAPI_KEY = os.getenv("GOLDAPI_KEY", None)
+METALS_API_KEY = os.getenv("METALS_API_KEY", None)

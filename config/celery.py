@@ -23,17 +23,25 @@ app.autodiscover_tasks()
 
 # Celery Beat Schedule for periodic tasks
 app.conf.beat_schedule = {
-    # Example: Run a task every 5 minutes
-    # 'example-task': {
-    #     'task': 'apps.core.tasks.example_task',
-    #     'schedule': crontab(minute='*/5'),
-    # },
+    # Fetch gold rates every 5 minutes
+    "fetch-gold-rates": {
+        "task": "apps.pricing.tasks.fetch_gold_rates",
+        "schedule": crontab(minute="*/5"),
+        "options": {"queue": "pricing", "priority": 8},
+    },
+    # Clean up old gold rates daily at 3 AM
+    "cleanup-old-gold-rates": {
+        "task": "apps.pricing.tasks.cleanup_old_rates",
+        "schedule": crontab(hour=3, minute=0),
+        "options": {"queue": "pricing", "priority": 3},
+    },
 }
 
 # Task routing configuration
 app.conf.task_routes = {
     "apps.backups.tasks.*": {"queue": "backups", "priority": 10},
     "apps.notifications.tasks.*": {"queue": "notifications", "priority": 5},
+    "apps.pricing.tasks.*": {"queue": "pricing", "priority": 8},
 }
 
 
