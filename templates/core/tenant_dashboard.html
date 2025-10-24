@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Jewelry Shop{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Welcome back! Here's what's happening with your jewelry shop today.
+                    </p>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="refreshDashboard()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Today's Sales -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Today's Sales</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">
+                                        ${{ today_sales.amount|floatformat:2 }}
+                                    </div>
+                                    <div class="ml-2 flex items-baseline text-sm font-semibold {% if today_sales.change_direction == 'up' %}text-green-600{% else %}text-red-600{% endif %}">
+                                        {% if today_sales.change_direction == 'up' %}
+                                            <svg class="self-center flex-shrink-0 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="self-center flex-shrink-0 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        {% endif %}
+                                        <span class="sr-only">{% if today_sales.change_direction == 'up' %}Increased{% else %}Decreased{% endif %} by</span>
+                                        {{ today_sales.change_percent }}%
+                                    </div>
+                                </dd>
+                                <dd class="text-sm text-gray-500 dark:text-gray-400">{{ today_sales.count }} transactions</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Value -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Inventory Value</dt>
+                                <dd class="text-2xl font-semibold text-gray-900 dark:text-white">
+                                    ${{ inventory_value.selling_value|floatformat:2 }}
+                                </dd>
+                                <dd class="text-sm text-gray-500 dark:text-gray-400">{{ inventory_value.total_items }} items ({{ inventory_value.total_quantity }} qty)</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Alerts -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 {% if stock_alerts.total_alerts > 0 %}bg-red-500{% else %}bg-gray-500{% endif %} rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Stock Alerts</dt>
+                                <dd class="text-2xl font-semibold {% if stock_alerts.total_alerts > 0 %}text-red-600{% else %}text-gray-900 dark:text-white{% endif %}">
+                                    {{ stock_alerts.total_alerts }}
+                                </dd>
+                                <dd class="text-sm text-gray-500 dark:text-gray-400">{{ stock_alerts.low_stock_count }} low, {{ stock_alerts.out_of_stock_count }} out</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Orders -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Pending Orders</dt>
+                                <dd class="text-2xl font-semibold text-gray-900 dark:text-white">
+                                    {{ pending_orders.total_pending }}
+                                </dd>
+                                <dd class="text-sm text-gray-500 dark:text-gray-400">{{ pending_orders.overdue_count }} overdue</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Analytics -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Sales Trend Chart -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Sales Trend</h3>
+                        <div class="flex space-x-2">
+                            <select id="salesPeriodSelect" onchange="updateSalesChart()" class="text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md">
+                                <option value="7d">Last 7 days</option>
+                                <option value="30d" selected>Last 30 days</option>
+                                <option value="90d">Last 90 days</option>
+                                <option value="1y">Last year</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div class="relative h-80">
+                        <canvas id="salesTrendChart"></canvas>
+                    </div>
+                    <div id="salesComparison" class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                        <!-- Period-over-period comparison will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Products Chart -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Top Products</h3>
+                </div>
+                <div class="p-6">
+                    <div class="relative h-80">
+                        <canvas id="topProductsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity and Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Recent Sales -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Recent Sales</h3>
+                </div>
+                <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for sale in recent_sales %}
+                    <div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onclick="viewSaleDetails('{{ sale.id }}')">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ sale.sale_number }}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    {% if sale.customer %}{{ sale.customer.get_full_name }}{% else %}Walk-in Customer{% endif %}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">${{ sale.total|floatformat:2 }}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ sale.created_at|date:"M d, H:i" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        No recent sales
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recent Customers -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">New Customers</h3>
+                </div>
+                <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for customer in recent_customers %}
+                    <div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onclick="viewCustomerDetails('{{ customer.id }}')">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-8 w-8">
+                                <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+                                    <span class="text-sm font-medium text-white">{{ customer.first_name.0 }}{{ customer.last_name.0 }}</span>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ customer.get_full_name }}</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ customer.phone }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        No new customers
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Quick Actions</h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <a href="/sales/pos/" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                        New Sale
+                    </a>
+                    <a href="/inventory/add/" class="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Product
+                    </a>
+                    <a href="/customers/add/" class="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        Add Customer
+                    </a>
+                    <a href="/reports/" class="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        View Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let salesTrendChart;
+let topProductsChart;
+
+// Initialize charts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSalesTrendChart();
+    initializeTopProductsChart();
+    
+    // Auto-refresh every 5 minutes
+    setInterval(refreshDashboard, 300000);
+});
+
+function initializeSalesTrendChart() {
+    const ctx = document.getElementById('salesTrendChart').getContext('2d');
+    
+    salesTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: []
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const label = salesTrendChart.data.labels[index];
+                    drillDownSales(label);
+                }
+            }
+        }
+    });
+    
+    updateSalesChart();
+}
+
+function initializeTopProductsChart() {
+    const ctx = document.getElementById('topProductsChart').getContext('2d');
+    
+    topProductsChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Gold Rings', 'Necklaces', 'Bracelets', 'Earrings', 'Other'],
+            datasets: [{
+                data: [30, 25, 20, 15, 10],
+                backgroundColor: [
+                    '#3B82F6',
+                    '#10B981',
+                    '#F59E0B',
+                    '#EF4444',
+                    '#8B5CF6'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const label = topProductsChart.data.labels[index];
+                    drillDownInventory(label);
+                }
+            }
+        }
+    });
+}
+
+function updateSalesChart() {
+    const period = document.getElementById('salesPeriodSelect').value;
+    
+    fetch(`/api/dashboard/sales-trend/?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            salesTrendChart.data.labels = data.labels;
+            salesTrendChart.data.datasets = data.datasets;
+            salesTrendChart.update();
+            
+            // Update comparison text
+            const comparisonEl = document.getElementById('salesComparison');
+            const comparison = data.comparison;
+            const direction = comparison.change_direction === 'up' ? '↗' : '↘';
+            const color = comparison.change_direction === 'up' ? 'text-green-600' : 'text-red-600';
+            
+            comparisonEl.innerHTML = `
+                <span class="${color}">
+                    ${direction} ${Math.abs(comparison.change_percent)}% vs previous period
+                </span>
+                <span class="ml-2 text-gray-500">
+                    ($${comparison.current_total.toLocaleString()} vs $${comparison.previous_total.toLocaleString()})
+                </span>
+            `;
+        })
+        .catch(error => {
+            console.error('Error updating sales chart:', error);
+        });
+}
+
+function refreshDashboard() {
+    // Refresh KPI data
+    fetch('/api/dashboard/stats/')
+        .then(response => response.json())
+        .then(data => {
+            // Update KPI values (you can implement this to update the displayed values)
+            console.log('Dashboard stats updated:', data);
+        })
+        .catch(error => {
+            console.error('Error refreshing dashboard:', error);
+        });
+    
+    // Refresh charts
+    updateSalesChart();
+}
+
+function drillDownSales(date) {
+    // Implement sales drill-down functionality
+    const period = document.getElementById('salesPeriodSelect').value;
+    
+    fetch(`/api/dashboard/sales-drill-down/?period=${period}&date=${date}`)
+        .then(response => response.json())
+        .then(data => {
+            // Show drill-down modal or navigate to detailed view
+            showSalesDrillDown(data);
+        })
+        .catch(error => {
+            console.error('Error drilling down sales:', error);
+        });
+}
+
+function drillDownInventory(category) {
+    // Implement inventory drill-down functionality
+    fetch(`/api/dashboard/inventory-drill-down/?category=${category}`)
+        .then(response => response.json())
+        .then(data => {
+            // Show drill-down modal or navigate to detailed view
+            showInventoryDrillDown(data);
+        })
+        .catch(error => {
+            console.error('Error drilling down inventory:', error);
+        });
+}
+
+function showSalesDrillDown(data) {
+    // Create and show a modal with detailed sales data
+    alert('Sales drill-down data: ' + JSON.stringify(data, null, 2));
+}
+
+function showInventoryDrillDown(data) {
+    // Create and show a modal with detailed inventory data
+    alert('Inventory drill-down data: ' + JSON.stringify(data, null, 2));
+}
+
+function viewSaleDetails(saleId) {
+    // Navigate to sale details page
+    window.location.href = `/sales/${saleId}/`;
+}
+
+function viewCustomerDetails(customerId) {
+    // Navigate to customer details page
+    window.location.href = `/customers/${customerId}/`;
+}
+</script>
+{% endblock %}

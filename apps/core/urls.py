@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import branch_views, views
+from . import branch_views, dashboard_views, views
 
 app_name = "core"
 
@@ -10,6 +10,29 @@ urlpatterns = [
     # Basic views
     path("", views.home, name="home"),
     path("health/", views.health_check, name="health_check"),
+    # Dashboard
+    path("dashboard/", dashboard_views.TenantDashboardView.as_view(), name="tenant_dashboard"),
+    # Dashboard API endpoints
+    path(
+        "api/dashboard/sales-trend/",
+        dashboard_views.SalesTrendChartView.as_view(),
+        name="api_sales_trend",
+    ),
+    path(
+        "api/dashboard/inventory-drill-down/",
+        dashboard_views.InventoryDrillDownView.as_view(),
+        name="api_inventory_drill_down",
+    ),
+    path(
+        "api/dashboard/sales-drill-down/",
+        dashboard_views.SalesDrillDownView.as_view(),
+        name="api_sales_drill_down",
+    ),
+    path(
+        "api/dashboard/stats/",
+        dashboard_views.DashboardStatsView.as_view(),
+        name="api_dashboard_stats",
+    ),
     # Authentication endpoints
     path("api/auth/login/", views.CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
