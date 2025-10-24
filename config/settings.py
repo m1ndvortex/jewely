@@ -6,6 +6,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -223,6 +224,7 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
 CELERY_WORKER_PREFETCH_MULTIPLIER = 4
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+
 
 # Logging Configuration with JSON formatting
 LOGGING = {

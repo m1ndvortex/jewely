@@ -18,6 +18,11 @@ urlpatterns = [
         views.api_calculate_item_price,
         name="api_calculate_item_price",
     ),
+    # Gold rate displays
+    path("gold-rates/widget/", views.gold_rate_widget, name="gold_rate_widget"),
+    path("gold-rates/history/", views.gold_rate_history, name="gold_rate_history"),
+    path("gold-rates/comparison/", views.gold_rate_comparison, name="gold_rate_comparison"),
+    path("api/gold-rates/", views.api_gold_rates, name="api_gold_rates"),
     # Price recalculation
     path("recalculate/all/", views.recalculate_all_prices, name="recalculate_all"),
     path("recalculate/karat/", views.recalculate_by_karat, name="recalculate_by_karat"),

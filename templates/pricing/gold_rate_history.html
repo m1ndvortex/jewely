@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Gold Rate History" %}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% trans "Gold Rate History" %}
+        </h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'pricing:gold_rate_comparison' %}" 
+               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                {% trans "Compare Markets" %}
+            </a>
+            <a href="{% url 'pricing:dashboard' %}" 
+               class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
+                {% trans "Back to Dashboard" %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <form method="get" class="flex flex-wrap gap-4 items-end">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {% trans "Market" %}
+                </label>
+                <select name="market" class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    {% for market_code, market_name in markets %}
+                    <option value="{{ market_code }}" {% if market_code == market %}selected{% endif %}>
+                        {{ market_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {% trans "Time Period" %}
+                </label>
+                <select name="days" class="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                    <option value="7" {% if days == 7 %}selected{% endif %}>{% trans "Last 7 days" %}</option>
+                    <option value="30" {% if days == 30 %}selected{% endif %}>{% trans "Last 30 days" %}</option>
+                    <option value="90" {% if days == 90 %}selected{% endif %}>{% trans "Last 90 days" %}</option>
+                    <option value="365" {% if days == 365 %}selected{% endif %}>{% trans "Last year" %}</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                {% trans "Update" %}
+            </button>
+        </form>
+    </div>
+
+    {% if stats %}
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                {% trans "Current Rate" %}
+            </h3>
+            <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                ${{ stats.latest_rate.rate_per_gram }}/g
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                {{ stats.latest_rate.timestamp|date:"M d, H:i" }}
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                {% trans "Period Change" %}
+            </h3>
+            <div class="text-2xl font-bold {% if stats.is_trending_up %}text-green-600{% else %}text-red-600{% endif %}">
+                {% if stats.is_trending_up %}+{% endif %}${{ stats.total_change|floatformat:2 }}
+            </div>
+            <div class="text-sm {% if stats.is_trending_up %}text-green-600{% else %}text-red-600{% endif %}">
+                {% if stats.is_trending_up %}+{% endif %}{{ stats.total_change_percentage|floatformat:2 }}%
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                {% trans "Highest Rate" %}
+            </h3>
+            <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                ${{ stats.max_rate.rate_per_gram }}/g
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                {{ stats.max_rate.timestamp|date:"M d, H:i" }}
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                {% trans "Lowest Rate" %}
+            </h3>
+            <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                ${{ stats.min_rate.rate_per_gram }}/g
+            </div>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                {{ stats.min_rate.timestamp|date:"M d, H:i" }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            {% trans "Rate Trend" %} - {{ market|title }}
+        </h3>
+        <div class="relative h-96">
+            <canvas id="rateChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Rate Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {% trans "Historical Data" %}
+            </h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Date & Time" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Per Gram" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Per Tola" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Per Ounce" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Source" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for rate in rates %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ rate.timestamp|date:"M d, Y H:i" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                            ${{ rate.rate_per_gram }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            ${{ rate.rate_per_tola }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            ${{ rate.rate_per_ounce }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ rate.source|default:"—" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <!-- No Data -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            {% trans "No Historical Data" %}
+        </h3>
+        <p class="text-gray-600 dark:text-gray-400">
+            {% trans "No gold rate data available for the selected market and time period." %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+{% if chart_data %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('rateChart').getContext('2d');
+    const chartData = {{ chart_data|safe }};
+    
+    // Prepare data for Chart.js
+    const labels = chartData.map(item => item.date);
+    const gramData = chartData.map(item => item.rate_per_gram);
+    const tolaData = chartData.map(item => item.rate_per_tola);
+    const ounceData = chartData.map(item => item.rate_per_ounce);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '{% trans "Per Gram" %}',
+                    data: gramData,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                },
+                {
+                    label: '{% trans "Per Tola" %}',
+                    data: tolaData,
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.1,
+                    hidden: true
+                },
+                {
+                    label: '{% trans "Per Ounce" %}',
+                    data: ounceData,
+                    borderColor: 'rgb(245, 158, 11)',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    tension: 0.1,
+                    hidden: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: '{% trans "Date & Time" %}'
+                    },
+                    ticks: {
+                        maxTicksLimit: 10
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: '{% trans "Rate (USD)" %}'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

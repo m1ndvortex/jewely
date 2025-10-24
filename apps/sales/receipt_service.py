@@ -491,11 +491,21 @@ class ReceiptGenerator:
         """
         template_name = f"sales/receipt_{format_type}.html"
 
+        # Get current gold rates for display on receipt
+        current_gold_rates = None
+        try:
+            from apps.pricing.models import GoldRate
+
+            current_gold_rates = GoldRate.get_latest_rate()
+        except ImportError:
+            pass  # Pricing app not available
+
         context = {
             "sale": self.sale,
             "tenant": self.tenant,
             "items": self.sale.items.select_related("inventory_item").all(),
             "current_time": timezone.now(),
+            "current_gold_rates": current_gold_rates,
             "payment_method_display": dict(self.sale.PAYMENT_METHOD_CHOICES).get(
                 self.sale.payment_method, self.sale.payment_method
             ),

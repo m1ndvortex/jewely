@@ -28,9 +28,9 @@ from apps.pricing.models import (
     PricingRule,
 )
 from apps.pricing.services import (
-    PricingCalculationEngine,
     PriceOverrideService,
     PriceRecalculationService,
+    PricingCalculationEngine,
 )
 
 
@@ -289,8 +289,7 @@ def request_price_override(request):
 
         messages.success(
             request,
-            f"Price override request created for {item.name}. "
-            f"Awaiting manager approval.",
+            f"Price override request created for {item.name}. " f"Awaiting manager approval.",
         )
 
         return redirect("pricing:override_detail", override_id=override_request.id)
@@ -412,11 +411,208 @@ def price_change_history(request):
 
 @login_required
 @tenant_required
+def gold_rate_widget(request):
+    """
+    Live gold rate widget for dashboard display.
+    """
+    # Get latest rates for different markets
+    markets = [
+        GoldRate.INTERNATIONAL,
+        GoldRate.LOCAL,
+        GoldRate.LONDON,
+        GoldRate.NEW_YORK,
+        GoldRate.DUBAI,
+    ]
+
+    rates = {}
+    for market in markets:
+        rate = GoldRate.get_latest_rate(market=market)
+        if rate:
+            # Get previous rate for comparison
+            previous_rate = GoldRate.objects.filter(
+                market=market, currency=rate.currency, timestamp__lt=rate.timestamp
+            ).first()
+
+            change_percentage = Decimal("0.00")
+            if previous_rate:
+                change_percentage = rate.calculate_percentage_change(previous_rate)
+
+            rates[market] = {
+                "rate": rate,
+                "change_percentage": change_percentage,
+                "is_increase": change_percentage > 0,
+                "is_decrease": change_percentage < 0,
+            }
+
+    context = {
+        "rates": rates,
+        "markets": GoldRate.MARKET_CHOICES,
+    }
+
+    return render(request, "pricing/gold_rate_widget.html", context)
+
+
+@login_required
+@tenant_required
+def gold_rate_history(request):
+    """
+    Gold rate history with charts and trend analysis.
+    """
+    # Get parameters
+    market = request.GET.get("market", GoldRate.INTERNATIONAL)
+    days = int(request.GET.get("days", 30))
+
+    # Get historical rates
+    rates = GoldRate.get_rate_history(market=market, days=days)
+
+    # Prepare chart data
+    chart_data = []
+    for rate in rates.reverse():  # Reverse to get chronological order
+        chart_data.append(
+            {
+                "date": rate.timestamp.strftime("%Y-%m-%d %H:%M"),
+                "rate_per_gram": float(rate.rate_per_gram),
+                "rate_per_tola": float(rate.rate_per_tola),
+                "rate_per_ounce": float(rate.rate_per_ounce),
+            }
+        )
+
+    # Calculate statistics
+    if rates:
+        latest_rate = rates.first()
+        oldest_rate = rates.last()
+
+        total_change = latest_rate.rate_per_gram - oldest_rate.rate_per_gram
+        total_change_percentage = (
+            (total_change / oldest_rate.rate_per_gram * 100)
+            if oldest_rate.rate_per_gram > 0
+            else Decimal("0.00")
+        )
+
+        # Calculate min/max
+        rates_list = list(rates)
+        min_rate = min(rates_list, key=lambda r: r.rate_per_gram)
+        max_rate = max(rates_list, key=lambda r: r.rate_per_gram)
+
+        stats = {
+            "latest_rate": latest_rate,
+            "oldest_rate": oldest_rate,
+            "total_change": total_change,
+            "total_change_percentage": total_change_percentage,
+            "min_rate": min_rate,
+            "max_rate": max_rate,
+            "is_trending_up": total_change > 0,
+        }
+    else:
+        stats = None
+
+    context = {
+        "market": market,
+        "days": days,
+        "rates": rates,
+        "chart_data": chart_data,
+        "stats": stats,
+        "markets": GoldRate.MARKET_CHOICES,
+    }
+
+    return render(request, "pricing/gold_rate_history.html", context)
+
+
+@login_required
+@tenant_required
+def gold_rate_comparison(request):
+    """
+    Compare gold rates across different markets.
+    """
+    # Get latest rates for all markets
+    markets = [choice[0] for choice in GoldRate.MARKET_CHOICES]
+
+    comparison_data = []
+    base_rate = None
+
+    for market in markets:
+        rate = GoldRate.get_latest_rate(market=market)
+        if rate:
+            # Use first rate as base for comparison
+            if base_rate is None:
+                base_rate = rate.rate_per_gram
+
+            # Calculate difference from base
+            difference = rate.rate_per_gram - base_rate
+            difference_percentage = (
+                (difference / base_rate * 100) if base_rate > 0 else Decimal("0.00")
+            )
+
+            comparison_data.append(
+                {
+                    "market": market,
+                    "market_display": dict(GoldRate.MARKET_CHOICES)[market],
+                    "rate": rate,
+                    "difference": difference,
+                    "difference_percentage": difference_percentage,
+                    "is_higher": difference > 0,
+                    "is_lower": difference < 0,
+                }
+            )
+
+    # Sort by rate (highest first)
+    comparison_data.sort(key=lambda x: x["rate"].rate_per_gram, reverse=True)
+
+    context = {
+        "comparison_data": comparison_data,
+        "base_market": comparison_data[0]["market"] if comparison_data else None,
+    }
+
+    return render(request, "pricing/gold_rate_comparison.html", context)
+
+
+@login_required
+@tenant_required
+@require_http_methods(["GET"])
+def api_gold_rates(request):
+    """
+    API endpoint to get current gold rates for HTMX updates.
+    """
+    market = request.GET.get("market", GoldRate.INTERNATIONAL)
+
+    rate = GoldRate.get_latest_rate(market=market)
+    if not rate:
+        return JsonResponse({"success": False, "error": "No rate found"}, status=404)
+
+    # Get previous rate for comparison
+    previous_rate = GoldRate.objects.filter(
+        market=market, currency=rate.currency, timestamp__lt=rate.timestamp
+    ).first()
+
+    change_percentage = Decimal("0.00")
+    if previous_rate:
+        change_percentage = rate.calculate_percentage_change(previous_rate)
+
+    return JsonResponse(
+        {
+            "success": True,
+            "rate": {
+                "rate_per_gram": str(rate.rate_per_gram),
+                "rate_per_tola": str(rate.rate_per_tola),
+                "rate_per_ounce": str(rate.rate_per_ounce),
+                "market": rate.market,
+                "currency": rate.currency,
+                "timestamp": rate.timestamp.isoformat(),
+                "change_percentage": str(change_percentage),
+                "is_increase": change_percentage > 0,
+                "is_decrease": change_percentage < 0,
+            },
+        }
+    )
+
+
+@login_required
+@tenant_required
 @require_http_methods(["GET"])
 def api_calculate_item_price(request, item_id):
     """
     API endpoint to calculate price for an inventory item.
-    
+
     Returns JSON with price breakdown and tiered prices.
     """
     tenant = request.user.tenant

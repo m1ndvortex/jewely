@@ -365,7 +365,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement manager approval for manual price overrides
     - _Requirements: 17_
   
-  - [ ] 11.4 Create gold rate displays
+  - [x] 11.4 Create gold rate displays
     - Create live gold rate widget for dashboard
     - Implement rate history chart
     - Display current rates on receipts

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Pricing Dashboard" %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% trans "Pricing Dashboard" %}
+        </h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'pricing:calculate_price' %}" 
+               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                {% trans "Calculate Price" %}
+            </a>
+            {% if user.role in 'TENANT_OWNER,TENANT_MANAGER' %}
+            <button onclick="showRecalculateModal()" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                {% trans "Recalculate Prices" %}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Live Gold Rate Widget and Stats -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Live Gold Rate Widget -->
+        <div class="lg:col-span-2">
+            {% include "pricing/gold_rate_widget.html" %}
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    {% trans "Active Pricing Rules" %}
+                </h3>
+                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {{ pricing_rules.count }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                    {% trans "Rules configured" %}
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    {% trans "Pending Overrides" %}
+                </h3>
+                <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    {{ pending_overrides.count }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                    {% trans "Awaiting approval" %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Price Changes -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {% trans "Recent Price Changes" %}
+                </h3>
+            </div>
+            <div class="p-6">
+                {% if recent_changes %}
+                    <div class="space-y-4">
+                        {% for change in recent_changes %}
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-medium text-gray-900 dark:text-white">
+                                    {{ change.inventory_item.name }}
+                                </div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    {{ change.inventory_item.sku }}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-medium {% if change.is_increase %}text-green-600{% else %}text-red-600{% endif %}">
+                                    ${{ change.old_price }} → ${{ change.new_price }}
+                                </div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    {{ change.changed_at|timesince }} {% trans "ago" %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-4">
+                        <a href="{% url 'pricing:change_history' %}" 
+                           class="text-blue-600 hover:text-blue-800 text-sm">
+                            {% trans "View all changes" %} →
+                        </a>
+                    </div>
+                {% else %}
+                    <p class="text-gray-600 dark:text-gray-400">
+                        {% trans "No recent price changes" %}
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Pending Override Requests -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {% trans "Pending Override Requests" %}
+                </h3>
+            </div>
+            <div class="p-6">
+                {% if pending_overrides %}
+                    <div class="space-y-4">
+                        {% for override in pending_overrides %}
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="font-medium text-gray-900 dark:text-white">
+                                    {{ override.inventory_item.name }}
+                                </div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    {% trans "Requested by" %}: {{ override.requested_by.username }}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-medium text-yellow-600">
+                                    ${{ override.requested_price }}
+                                </div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    {{ override.get_deviation_display }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-4">
+                        <a href="{% url 'pricing:override_list' %}" 
+                           class="text-blue-600 hover:text-blue-800 text-sm">
+                            {% trans "View all requests" %} →
+                        </a>
+                    </div>
+                {% else %}
+                    <p class="text-gray-600 dark:text-gray-400">
+                        {% trans "No pending override requests" %}
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recalculate Prices Modal -->
+{% if user.role in 'TENANT_OWNER,TENANT_MANAGER' %}
+<div id="recalculateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {% trans "Recalculate Prices" %}
+                </h3>
+            </div>
+            <div class="p-6">
+                <p class="text-gray-600 dark:text-gray-400 mb-4">
+                    {% trans "This will recalculate prices for all inventory items based on current gold rates and pricing rules." %}
+                </p>
+                <form method="post" action="{% url 'pricing:recalculate_all' %}">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Customer Tier" %}
+                        </label>
+                        <select name="customer_tier" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            <option value="RETAIL">{% trans "Retail" %}</option>
+                            <option value="WHOLESALE">{% trans "Wholesale" %}</option>
+                            <option value="VIP">{% trans "VIP" %}</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="hideRecalculateModal()" 
+                                class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                            {% trans "Cancel" %}
+                        </button>
+                        <button type="submit" 
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                            {% trans "Recalculate" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function showRecalculateModal() {
+    document.getElementById('recalculateModal').classList.remove('hidden');
+}
+
+function hideRecalculateModal() {
+    document.getElementById('recalculateModal').classList.add('hidden');
+}
+</script>
+{% endblock %}

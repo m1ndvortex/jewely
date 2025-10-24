@@ -251,6 +251,21 @@
             {% endif %}
         </div>
         
+        <!-- Current Gold Rates -->
+        {% if current_gold_rates %}
+        <div class="payment-info">
+            <div><strong>Current Gold Rates ({{ current_gold_rates.timestamp|date:"Y-m-d H:i" }}):</strong></div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 5px;">
+                <span>Per Gram: ${{ current_gold_rates.rate_per_gram|floatformat:2 }}</span>
+                <span>Per Tola: ${{ current_gold_rates.rate_per_tola|floatformat:2 }}</span>
+                <span>Per Ounce: ${{ current_gold_rates.rate_per_ounce|floatformat:2 }}</span>
+            </div>
+            <div style="font-size: 10px; color: #666; margin-top: 3px;">
+                Market: {{ current_gold_rates.get_market_display }} | Source: {{ current_gold_rates.source|default:"N/A" }}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Footer -->
         <div class="footer">
             <div><strong>Thank you for your business!</strong></div>

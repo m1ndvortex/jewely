@@ -29,6 +29,12 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute="*/5"),
         "options": {"queue": "pricing", "priority": 8},
     },
+    # Update inventory prices daily at 2 AM
+    "update-inventory-prices": {
+        "task": "apps.pricing.tasks.update_inventory_prices",
+        "schedule": crontab(hour=2, minute=0),
+        "options": {"queue": "pricing", "priority": 8},
+    },
     # Clean up old gold rates daily at 3 AM
     "cleanup-old-gold-rates": {
         "task": "apps.pricing.tasks.cleanup_old_rates",

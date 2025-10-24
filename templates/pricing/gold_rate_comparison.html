@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Gold Rate Comparison" %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% trans "Gold Rate Comparison" %}
+        </h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'pricing:gold_rate_history' %}" 
+               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                {% trans "View History" %}
+            </a>
+            <a href="{% url 'pricing:dashboard' %}" 
+               class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
+                {% trans "Back to Dashboard" %}
+            </a>
+        </div>
+    </div>
+
+    {% if comparison_data %}
+    <!-- Comparison Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {% for data in comparison_data %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 {% if forloop.first %}ring-2 ring-blue-500{% endif %}">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ data.market_display }}
+                    </h3>
+                    {% if forloop.first %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        {% trans "Highest" %}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                        ${{ data.rate.rate_per_gram }}/g
+                    </div>
+                    {% if not forloop.first %}
+                    <div class="text-sm {% if data.is_higher %}text-green-600{% elif data.is_lower %}text-red-600{% else %}text-gray-500{% endif %}">
+                        {% if data.is_higher %}
+                            +${{ data.difference|floatformat:2 }} (+{{ data.difference_percentage|floatformat:2 }}%)
+                        {% elif data.is_lower %}
+                            ${{ data.difference|floatformat:2 }} ({{ data.difference_percentage|floatformat:2 }}%)
+                        {% else %}
+                            {% trans "Same as base" %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Rate Details -->
+            <div class="space-y-2 mb-4">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Per Tola" %}:</span>
+                    <span class="font-medium text-gray-900 dark:text-white">${{ data.rate.rate_per_tola|floatformat:2 }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Per Ounce" %}:</span>
+                    <span class="font-medium text-gray-900 dark:text-white">${{ data.rate.rate_per_ounce|floatformat:2 }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Currency" %}:</span>
+                    <span class="font-medium text-gray-900 dark:text-white">{{ data.rate.currency }}</span>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
+                <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                    <div>{% trans "Updated" %}: {{ data.rate.timestamp|timesince }} {% trans "ago" %}</div>
+                    {% if data.rate.source %}
+                    <div>{% trans "Source" %}: {{ data.rate.source }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="mt-4">
+                <a href="{% url 'pricing:gold_rate_history' %}?market={{ data.market }}" 
+                   class="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2 rounded-lg text-sm text-center block">
+                    {% trans "View History" %}
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Comparison Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {% trans "Detailed Comparison" %}
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {% trans "All rates compared to" %} {{ comparison_data.0.market_display }} {% trans "market" %}
+            </p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Market" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Per Gram" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Per Tola" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Per Ounce" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Difference" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Last Updated" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for data in comparison_data %}
+                    <tr {% if forloop.first %}class="bg-blue-50 dark:bg-blue-900/20"{% endif %}>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ data.market_display }}
+                                </div>
+                                {% if forloop.first %}
+                                <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                    {% trans "Base" %}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                            ${{ data.rate.rate_per_gram }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            ${{ data.rate.rate_per_tola|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            ${{ data.rate.rate_per_ounce|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if forloop.first %}
+                                <span class="text-gray-500 dark:text-gray-400">—</span>
+                            {% else %}
+                                <div class="{% if data.is_higher %}text-green-600{% elif data.is_lower %}text-red-600{% else %}text-gray-500{% endif %}">
+                                    {% if data.is_higher %}
+                                        <div class="flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            +${{ data.difference|floatformat:2 }}
+                                        </div>
+                                        <div class="text-xs">+{{ data.difference_percentage|floatformat:2 }}%</div>
+                                    {% elif data.is_lower %}
+                                        <div class="flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            -${{ data.difference|floatformat:2 }}
+                                        </div>
+                                        <div class="text-xs">{{ data.difference_percentage|floatformat:2 }}%</div>
+                                    {% else %}
+                                        <span class="text-gray-500">{% trans "Same" %}</span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ data.rate.timestamp|timesince }} {% trans "ago" %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Refresh Button -->
+    <div class="mt-6 text-center">
+        <button onclick="window.location.reload()" 
+                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            {% trans "Refresh Rates" %}
+        </button>
+    </div>
+    {% else %}
+    <!-- No Data -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            {% trans "No Rate Data Available" %}
+        </h3>
+        <p class="text-gray-600 dark:text-gray-400">
+            {% trans "No gold rate data is currently available for comparison." %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

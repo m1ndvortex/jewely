@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Price Calculation Result" %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% trans "Price Calculation Result" %}
+        </h1>
+        <div class="flex space-x-2">
+            <a href="{% url 'pricing:calculate_price' %}" 
+               class="text-blue-600 hover:text-blue-800">
+                ← {% trans "Calculate Another" %}
+            </a>
+            <a href="{% url 'pricing:dashboard' %}" 
+               class="text-blue-600 hover:text-blue-800">
+                {% trans "Dashboard" %}
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Calculation Details -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {% trans "Calculation Details" %}
+            </h2>
+
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Karat" %}:</span>
+                    <span class="font-medium">{{ karat }}K</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Weight" %}:</span>
+                    <span class="font-medium">{{ weight_grams }}g</span>
+                </div>
+                {% if product_type %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Product Type" %}:</span>
+                    <span class="font-medium">{{ product_type }}</span>
+                </div>
+                {% endif %}
+                {% if craftsmanship_level %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Craftsmanship" %}:</span>
+                    <span class="font-medium">{{ craftsmanship_level }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Customer Tier" %}:</span>
+                    <span class="font-medium">{{ customer_tier }}</span>
+                </div>
+                {% if stone_value > 0 %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Stone Value" %}:</span>
+                    <span class="font-medium">${{ stone_value }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Gold Rate" %}:</span>
+                    <span class="font-medium">${{ price_breakdown.gold_rate_per_gram }}/g</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Rule Applied" %}:</span>
+                    <span class="font-medium text-sm">{{ price_breakdown.rule_applied }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Price Breakdown -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {% trans "Price Breakdown" %}
+            </h2>
+
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Gold Value" %}:</span>
+                    <span class="font-medium">${{ price_breakdown.gold_value }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Markup Amount" %}:</span>
+                    <span class="font-medium">${{ price_breakdown.markup_amount }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Making Charges" %}:</span>
+                    <span class="font-medium">${{ price_breakdown.making_charges }}</span>
+                </div>
+                {% if price_breakdown.stone_charges > 0 %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Stone Charges" %}:</span>
+                    <span class="font-medium">${{ price_breakdown.stone_charges }}</span>
+                </div>
+                {% endif %}
+                {% if price_breakdown.fixed_markup > 0 %}
+                <div class="flex justify-between">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Fixed Markup" %}:</span>
+                    <span class="font-medium">${{ price_breakdown.fixed_markup }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+            <div class="flex justify-between text-lg font-bold">
+                <span class="text-gray-900 dark:text-white">{% trans "Total Price" %}:</span>
+                <span class="text-green-600 dark:text-green-400">${{ price_breakdown.total_price }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tiered Pricing -->
+    {% if tiered_prices %}
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {% trans "Pricing by Customer Tier" %}
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for tier, prices in tiered_prices.items %}
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 {% if tier == customer_tier %}bg-blue-50 dark:bg-blue-900 border-blue-300{% endif %}">
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+                    {{ tier|title }}
+                    {% if tier == customer_tier %}
+                        <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded ml-1">
+                            {% trans "Selected" %}
+                        </span>
+                    {% endif %}
+                </h3>
+                <div class="text-lg font-bold text-green-600 dark:text-green-400">
+                    ${{ prices.total_price }}
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                    {% trans "Markup" %}: ${{ prices.markup_amount }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

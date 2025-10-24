@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Calculate Price" %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% trans "Calculate Price" %}
+        </h1>
+        <a href="{% url 'pricing:dashboard' %}" 
+           class="text-blue-600 hover:text-blue-800">
+            ← {% trans "Back to Dashboard" %}
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Price Calculator Form -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {% trans "Price Calculator" %}
+            </h2>
+
+            {% if latest_rate %}
+            <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                <div class="text-sm text-blue-800 dark:text-blue-200">
+                    {% trans "Current Gold Rate" %}: <strong>${{ latest_rate.rate_per_gram }}/g</strong>
+                    ({{ latest_rate.source }})
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Karat" %} *
+                        </label>
+                        <input type="number" name="karat" min="1" max="24" 
+                               value="{{ karat|default:22 }}" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Weight (grams)" %} *
+                        </label>
+                        <input type="number" name="weight_grams" step="0.001" min="0.001" 
+                               value="{{ weight_grams|default:10.0 }}" required
+                               class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Product Type" %}
+                    </label>
+                    <select name="product_type" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="">{% trans "Any Type" %}</option>
+                        {% for value, label in product_types %}
+                        <option value="{{ value }}" {% if product_type == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Craftsmanship Level" %}
+                    </label>
+                    <select name="craftsmanship_level" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="">{% trans "Any Level" %}</option>
+                        {% for value, label in craftsmanship_levels %}
+                        <option value="{{ value }}" {% if craftsmanship_level == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Customer Tier" %}
+                    </label>
+                    <select name="customer_tier" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        {% for value, label in customer_tiers %}
+                        <option value="{{ value }}" {% if customer_tier == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Stone Value" %} ($)
+                    </label>
+                    <input type="number" name="stone_value" step="0.01" min="0" 
+                           value="{{ stone_value|default:0.00 }}"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                    {% trans "Calculate Price" %}
+                </button>
+            </form>
+        </div>
+
+        <!-- Active Pricing Rules -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {% trans "Active Pricing Rules" %}
+            </h2>
+
+            {% if pricing_rules %}
+                <div class="space-y-3">
+                    {% for rule in pricing_rules %}
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <div class="font-medium text-gray-900 dark:text-white">
+                            {{ rule.name }}
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">
+                            {{ rule.karat }}K - {{ rule.get_customer_tier_display }}
+                        </div>
+                        <div class="text-sm text-blue-600 dark:text-blue-400">
+                            {{ rule.get_effective_markup }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-600 dark:text-gray-400">
+                    {% trans "No active pricing rules found. Please configure pricing rules first." %}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
