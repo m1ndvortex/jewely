@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ report_def.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <div class="flex items-center mb-4">
+            <a href="{% url 'reporting:prebuilt_reports' %}" 
+               class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mr-4">
+                <i class="fas fa-arrow-left"></i> {% trans "Back to Reports" %}
+            </a>
+        </div>
+        
+        <div class="flex items-center mb-4">
+            <i class="{{ report_def.icon }} text-3xl text-blue-600 dark:text-blue-400 mr-4"></i>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {{ report_def.name }}
+                </h1>
+                <p class="text-gray-600 dark:text-gray-400">
+                    {{ report_def.description }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Report Parameters Form -->
+        <div class="lg:col-span-2">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                    {% trans "Report Parameters" %}
+                </h2>
+                
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    {% for param in report_def.parameters %}
+                    <div>
+                        <label for="param_{{ param.name }}" 
+                               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {{ param.name|title }}
+                            {% if param.required %}
+                            <span class="text-red-500">*</span>
+                            {% endif %}
+                        </label>
+                        
+                        {% if param.type == "DATERANGE" %}
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                    {% trans "Start Date" %}
+                                </label>
+                                <input type="date" 
+                                       name="param_{{ param.name }}_start"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                       {% if param.required %}required{% endif %}>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                    {% trans "End Date" %}
+                                </label>
+                                <input type="date" 
+                                       name="param_{{ param.name }}_end"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                       {% if param.required %}required{% endif %}>
+                            </div>
+                        </div>
+                        {% elif param.type == "NUMBER" %}
+                        <input type="number" 
+                               name="param_{{ param.name }}"
+                               id="param_{{ param.name }}"
+                               value="{{ param.default|default:'' }}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               {% if param.required %}required{% endif %}>
+                        {% elif param.type == "SELECT" %}
+                        <select name="param_{{ param.name }}"
+                                id="param_{{ param.name }}"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                {% if param.required %}required{% endif %}>
+                            <option value="">{% trans "Select..." %}</option>
+                            {% for option in param.options %}
+                            <option value="{{ option.value }}" 
+                                    {% if option.value == param.default %}selected{% endif %}>
+                                {{ option.label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input type="text" 
+                               name="param_{{ param.name }}"
+                               id="param_{{ param.name }}"
+                               value="{{ param.default|default:'' }}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               {% if param.required %}required{% endif %}>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Output Format -->
+                    <div>
+                        <label for="output_format" 
+                               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Output Format" %}
+                        </label>
+                        <select name="output_format" id="output_format"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                            {% for format in report_def.output_formats %}
+                            <option value="{{ format }}" {% if format == "PDF" %}selected{% endif %}>
+                                {{ format }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Email Recipients -->
+                    <div>
+                        <label for="email_recipients" 
+                               class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Email Recipients" %} <span class="text-gray-500">({% trans "optional" %})</span>
+                        </label>
+                        <input type="email" 
+                               name="email_recipients"
+                               id="email_recipients"
+                               placeholder="{% trans 'Enter email addresses separated by commas' %}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {% trans "Leave empty to download directly" %}
+                        </p>
+                    </div>
+                    
+                    <div class="flex justify-end">
+                        <button type="submit" 
+                                class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
+                            <i class="fas fa-play mr-2"></i>
+                            {% trans "Generate Report" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Report Information -->
+        <div class="lg:col-span-1">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    {% trans "Report Information" %}
+                </h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            {% trans "Category" %}
+                        </dt>
+                        <dd class="text-sm text-gray-900 dark:text-white">
+                            {{ report_def.category|title }}
+                        </dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            {% trans "Available Formats" %}
+                        </dt>
+                        <dd class="text-sm text-gray-900 dark:text-white">
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                {% for format in report_def.output_formats %}
+                                <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                                    {{ format }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            {% trans "Parameters" %}
+                        </dt>
+                        <dd class="text-sm text-gray-900 dark:text-white">
+                            {{ report_def.parameters|length }} {% trans "parameter(s)" %}
+                        </dd>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set default date ranges
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default date ranges for DATERANGE parameters
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    const today = new Date();
+    const defaultDays = 30; // Default to last 30 days
+    
+    dateInputs.forEach(input => {
+        if (input.name.includes('_start')) {
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - defaultDays);
+            input.value = startDate.toISOString().split('T')[0];
+        } else if (input.name.includes('_end')) {
+            input.value = today.toISOString().split('T')[0];
+        }
+    });
+});
+</script>
+{% endblock %}

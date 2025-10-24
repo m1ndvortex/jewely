@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Pre-built Reports" %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            {% trans "Pre-built Reports" %}
+        </h1>
+        <p class="text-gray-600 dark:text-gray-400">
+            {% trans "Ready-to-use reports for common business analysis needs" %}
+        </p>
+    </div>
+
+    {% for category_name, reports in categories.items %}
+    <div class="mb-8">
+        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
+            {{ category_name|title }} {% trans "Reports" %}
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for report in reports %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                <div class="flex items-center mb-4">
+                    <i class="{{ report.icon }} text-2xl text-blue-600 dark:text-blue-400 mr-3"></i>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ report.name }}
+                    </h3>
+                </div>
+                
+                <p class="text-gray-600 dark:text-gray-400 mb-4">
+                    {{ report.description }}
+                </p>
+                
+                <div class="flex flex-wrap gap-2 mb-4">
+                    {% for format in report.output_formats %}
+                    <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                        {{ format }}
+                    </span>
+                    {% endfor %}
+                </div>
+                
+                <a href="{% url 'reporting:'|add:report.id %}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">
+                    <i class="fas fa-play mr-2"></i>
+                    {% trans "Run Report" %}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

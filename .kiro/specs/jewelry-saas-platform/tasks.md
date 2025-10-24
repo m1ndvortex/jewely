@@ -380,14 +380,14 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 17, 28_
 
 - [ ] 12. Reporting & Analytics
-  - [-] 12.1 Create report builder infrastructure
+  - [x] 12.1 Create report builder infrastructure
     - Create Report model for saved reports
     - Implement report parameter system (filters, date ranges, grouping)
     - Create report scheduling with Celery
     - Implement report delivery via email
     - _Requirements: 15_
   
-  - [ ] 12.2 Implement pre-built reports
+  - [x] 12.2 Implement pre-built reports
     - Create sales reports (daily summary, by product, by employee, by branch)
     - Create inventory reports (valuation, turnover, dead stock)
     - Create financial reports (P&L, revenue trends, expense breakdown)

@@ -228,6 +228,43 @@ class ReportQueryEngineTests(TestCase):
         with self.assertRaises(ValueError):
             engine.execute_query(report, {})
 
+    def test_predefined_report_execution(self):
+        """Test execution of predefined reports."""
+        from apps.reporting.models import Report
+        from apps.reporting.services import ReportQueryEngine
+
+        mock_tenant = MagicMock()
+        mock_tenant.id = "test-tenant-id"
+
+        engine = ReportQueryEngine(mock_tenant)
+
+        # Test sales summary report structure
+        report = Report(report_type="PREDEFINED", query_config={"report_name": "sales_summary"})
+
+        # This would normally execute against the database
+        # For testing, we just verify the method exists and handles the report type
+        try:
+            # This will fail due to database access, but we can catch and verify the error type
+            engine.execute_query(report, {})
+        except Exception as e:
+            # Should fail with database error, not ValueError for unknown report
+            self.assertNotIsInstance(e, ValueError)
+
+    def test_unknown_predefined_report(self):
+        """Test handling of unknown predefined report."""
+        from apps.reporting.models import Report
+        from apps.reporting.services import ReportQueryEngine
+
+        mock_tenant = MagicMock()
+        engine = ReportQueryEngine(mock_tenant)
+
+        report = Report(report_type="PREDEFINED", query_config={"report_name": "unknown_report"})
+
+        with self.assertRaises(ValueError) as context:
+            engine.execute_query(report, {})
+
+        self.assertIn("Unknown predefined report", str(context.exception))
+
 
 class CeleryTaskTests(TestCase):
     """Test Celery task functionality."""
@@ -243,6 +280,83 @@ class CeleryTaskTests(TestCase):
         # This should not raise an error
         result = execute_scheduled_reports()
         self.assertIn("Queued 0 scheduled reports", result)
+
+
+class PrebuiltReportServiceTests(TestCase):
+    """Test pre-built report service functionality."""
+
+    def test_get_prebuilt_reports(self):
+        """Test getting all pre-built reports."""
+        from apps.reporting.services import PrebuiltReportService
+
+        reports = PrebuiltReportService.get_prebuilt_reports()
+
+        self.assertIsInstance(reports, list)
+        self.assertGreater(len(reports), 0)
+
+        # Check that all required fields are present
+        for report in reports:
+            self.assertIn("id", report)
+            self.assertIn("name", report)
+            self.assertIn("description", report)
+            self.assertIn("category", report)
+            self.assertIn("parameters", report)
+            self.assertIn("output_formats", report)
+
+    def test_get_prebuilt_report_by_id(self):
+        """Test getting a specific pre-built report."""
+        from apps.reporting.services import PrebuiltReportService
+
+        # Test valid report ID
+        report = PrebuiltReportService.get_prebuilt_report("sales_summary")
+        self.assertEqual(report["id"], "sales_summary")
+        self.assertEqual(report["name"], "Daily Sales Summary")
+        self.assertEqual(report["category"], "SALES")
+
+        # Test invalid report ID
+        with self.assertRaises(ValueError):
+            PrebuiltReportService.get_prebuilt_report("nonexistent_report")
+
+    def test_get_reports_by_category(self):
+        """Test filtering reports by category."""
+        from apps.reporting.services import PrebuiltReportService
+
+        sales_reports = PrebuiltReportService.get_reports_by_category("SALES")
+        self.assertIsInstance(sales_reports, list)
+
+        # All reports should be sales reports
+        for report in sales_reports:
+            self.assertEqual(report["category"], "SALES")
+
+        # Test empty category
+        empty_reports = PrebuiltReportService.get_reports_by_category("NONEXISTENT")
+        self.assertEqual(len(empty_reports), 0)
+
+    def test_report_categories_coverage(self):
+        """Test that all expected categories are covered."""
+        from apps.reporting.services import PrebuiltReportService
+
+        reports = PrebuiltReportService.get_prebuilt_reports()
+        categories = set(report["category"] for report in reports)
+
+        expected_categories = {"SALES", "INVENTORY", "FINANCIAL", "CUSTOMER"}
+        self.assertTrue(expected_categories.issubset(categories))
+
+    def test_report_parameter_structure(self):
+        """Test that report parameters have correct structure."""
+        from apps.reporting.services import PrebuiltReportService
+
+        reports = PrebuiltReportService.get_prebuilt_reports()
+
+        for report in reports:
+            for param in report["parameters"]:
+                self.assertIn("name", param)
+                self.assertIn("type", param)
+                self.assertIn("required", param)
+
+                # Check valid parameter types
+                valid_types = ["TEXT", "NUMBER", "DATE", "DATERANGE", "SELECT", "BRANCH"]
+                self.assertIn(param["type"], valid_types)
 
 
 class ReportIntegrationTests(TestCase):
@@ -289,3 +403,37 @@ class ReportIntegrationTests(TestCase):
 
         self.assertTrue(os.path.exists(filepath))
         self.assertGreater(os.path.getsize(filepath), 0)
+
+    def test_prebuilt_report_data_structure(self):
+        """Test that pre-built reports return expected data structure."""
+        from apps.reporting.services import PrebuiltReportService
+
+        # Test all pre-built reports have consistent structure
+        reports = PrebuiltReportService.get_prebuilt_reports()
+
+        required_fields = [
+            "id",
+            "name",
+            "description",
+            "category",
+            "icon",
+            "parameters",
+            "output_formats",
+        ]
+
+        for report in reports:
+            for field in required_fields:
+                self.assertIn(
+                    field, report, f"Report {report.get('id', 'unknown')} missing field: {field}"
+                )
+
+            # Test output formats are valid
+            valid_formats = ["PDF", "EXCEL", "CSV", "JSON"]
+            for format_type in report["output_formats"]:
+                self.assertIn(format_type, valid_formats)
+
+            # Test parameters structure
+            for param in report["parameters"]:
+                self.assertIn("name", param)
+                self.assertIn("type", param)
+                self.assertIn("required", param)

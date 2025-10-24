@@ -30,7 +30,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from apps.core.models import Tenant
-from apps.reporting.models import Report, ReportExecution
+from apps.reporting.models import Report, ReportCategory, ReportExecution
 
 logger = logging.getLogger(__name__)
 
@@ -136,16 +136,33 @@ class ReportQueryEngine:
         """Execute a predefined report."""
         report_name = report.query_config.get("report_name")
 
-        if report_name == "sales_summary":
-            return self._get_sales_summary(parameters)
-        elif report_name == "inventory_valuation":
-            return self._get_inventory_valuation(parameters)
-        elif report_name == "customer_analysis":
-            return self._get_customer_analysis(parameters)
-        elif report_name == "financial_summary":
-            return self._get_financial_summary(parameters)
-        else:
+        # Map report names to methods to reduce complexity
+        report_methods = {
+            # Sales reports
+            "sales_summary": self._get_sales_summary,
+            "sales_by_product": self._get_sales_by_product,
+            "sales_by_employee": self._get_sales_by_employee,
+            "sales_by_branch": self._get_sales_by_branch,
+            # Inventory reports
+            "inventory_valuation": self._get_inventory_valuation,
+            "inventory_turnover": self._get_inventory_turnover,
+            "dead_stock": self._get_dead_stock,
+            # Financial reports
+            "financial_summary": self._get_financial_summary,
+            "revenue_trends": self._get_revenue_trends,
+            "expense_breakdown": self._get_expense_breakdown,
+            # Customer reports
+            "top_customers": self._get_top_customers,
+            "customer_acquisition": self._get_customer_acquisition,
+            "loyalty_analytics": self._get_loyalty_analytics,
+            # Legacy support
+            "customer_analysis": self._get_customer_analysis,
+        }
+
+        if report_name not in report_methods:
             raise ValueError(f"Unknown predefined report: {report_name}")
+
+        return report_methods[report_name](parameters)
 
     def _execute_custom_query(
         self, query_config: Dict[str, Any], parameters: Dict[str, Any]
@@ -171,8 +188,9 @@ class ReportQueryEngine:
 
             return results
 
+    # Sales Reports
     def _get_sales_summary(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Get sales summary report data."""
+        """Get daily sales summary report data."""
         start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=30))
         end_date = parameters.get("date_range_end", timezone.now())
         branch_id = parameters.get("branch_id")
@@ -184,7 +202,8 @@ class ReportQueryEngine:
             COUNT(s.id) as total_sales,
             SUM(s.total) as total_amount,
             AVG(s.total) as average_sale,
-            SUM(s.tax) as total_tax
+            SUM(s.tax) as total_tax,
+            SUM(s.discount) as total_discount
         FROM sales s
         JOIN core_branches b ON s.branch_id = b.id
         WHERE s.created_at >= %s AND s.created_at <= %s
@@ -206,6 +225,130 @@ class ReportQueryEngine:
             columns = [col[0] for col in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
+    def _get_sales_by_product(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get sales by product report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=30))
+        end_date = parameters.get("date_range_end", timezone.now())
+        branch_id = parameters.get("branch_id")
+        category_id = parameters.get("category_id")
+
+        sql = """
+        SELECT
+            i.sku,
+            i.name as product_name,
+            pc.name as category_name,
+            SUM(si.quantity) as total_quantity_sold,
+            SUM(si.subtotal) as total_revenue,
+            AVG(si.unit_price) as average_price,
+            COUNT(DISTINCT s.id) as number_of_sales,
+            i.karat,
+            i.weight_grams
+        FROM sale_items si
+        JOIN sales s ON si.sale_id = s.id
+        JOIN inventory_items i ON si.inventory_item_id = i.id
+        JOIN inventory_categories pc ON i.category_id = pc.id
+        WHERE s.created_at >= %s AND s.created_at <= %s
+        """
+
+        params = [start_date, end_date]
+
+        if branch_id:
+            sql += " AND s.branch_id = %s"
+            params.append(branch_id)
+
+        if category_id:
+            sql += " AND i.category_id = %s"
+            params.append(category_id)
+
+        sql += """
+        GROUP BY i.id, i.sku, i.name, pc.name, i.karat, i.weight_grams
+        ORDER BY total_revenue DESC
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _get_sales_by_employee(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get sales by employee report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=30))
+        end_date = parameters.get("date_range_end", timezone.now())
+        branch_id = parameters.get("branch_id")
+
+        sql = """
+        SELECT
+            u.first_name,
+            u.last_name,
+            u.email,
+            b.name as branch_name,
+            COUNT(s.id) as total_sales,
+            SUM(s.total) as total_revenue,
+            AVG(s.total) as average_sale_value,
+            SUM(s.tax) as total_tax_collected,
+            MIN(s.created_at) as first_sale_date,
+            MAX(s.created_at) as last_sale_date
+        FROM sales s
+        JOIN users u ON s.employee_id = u.id
+        JOIN core_branches b ON s.branch_id = b.id
+        WHERE s.created_at >= %s AND s.created_at <= %s
+        """
+
+        params = [start_date, end_date]
+
+        if branch_id:
+            sql += " AND s.branch_id = %s"
+            params.append(branch_id)
+
+        sql += """
+        GROUP BY u.id, u.first_name, u.last_name, u.email, b.name
+        ORDER BY total_revenue DESC
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _get_sales_by_branch(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get sales by branch report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=30))
+        end_date = parameters.get("date_range_end", timezone.now())
+
+        sql = """
+        SELECT
+            b.name as branch_name,
+            b.address as branch_address,
+            COUNT(s.id) as total_sales,
+            SUM(s.total) as total_revenue,
+            AVG(s.total) as average_sale_value,
+            SUM(s.tax) as total_tax_collected,
+            COUNT(DISTINCT s.employee_id) as active_employees,
+            COUNT(DISTINCT s.customer_id) as unique_customers,
+            MIN(s.created_at) as first_sale_date,
+            MAX(s.created_at) as last_sale_date
+        FROM sales s
+        JOIN core_branches b ON s.branch_id = b.id
+        WHERE s.created_at >= %s AND s.created_at <= %s
+        GROUP BY b.id, b.name, b.address
+        ORDER BY total_revenue DESC
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, [start_date, end_date])
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    # Inventory Reports
     def _get_inventory_valuation(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get inventory valuation report data."""
         branch_id = parameters.get("branch_id")
@@ -222,8 +365,10 @@ class ReportQueryEngine:
             i.selling_price,
             (i.quantity * i.cost_price) as total_cost_value,
             (i.quantity * i.selling_price) as total_selling_value,
+            ((i.selling_price - i.cost_price) / i.cost_price * 100) as markup_percentage,
             i.karat,
-            i.weight_grams
+            i.weight_grams,
+            i.created_at as date_added
         FROM inventory_items i
         JOIN inventory_categories pc ON i.category_id = pc.id
         JOIN core_branches b ON i.branch_id = b.id
@@ -250,8 +395,367 @@ class ReportQueryEngine:
             columns = [col[0] for col in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
+    def _get_inventory_turnover(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get inventory turnover report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=90))
+        end_date = parameters.get("date_range_end", timezone.now())
+        branch_id = parameters.get("branch_id")
+
+        sql = """
+        SELECT
+            i.sku,
+            i.name as product_name,
+            pc.name as category_name,
+            b.name as branch_name,
+            i.quantity as current_stock,
+            COALESCE(SUM(si.quantity), 0) as quantity_sold,
+            i.cost_price,
+            (i.quantity * i.cost_price) as current_value,
+            CASE
+                WHEN i.quantity > 0 THEN COALESCE(SUM(si.quantity), 0) / i.quantity
+                ELSE 0
+            END as turnover_ratio,
+            CASE
+                WHEN COALESCE(SUM(si.quantity), 0) > 0 THEN
+                    (EXTRACT(DAYS FROM (%s - %s)) * i.quantity) / COALESCE(SUM(si.quantity), 1)
+                ELSE NULL
+            END as days_to_sell_current_stock
+        FROM inventory_items i
+        JOIN inventory_categories pc ON i.category_id = pc.id
+        JOIN core_branches b ON i.branch_id = b.id
+        LEFT JOIN sale_items si ON i.id = si.inventory_item_id
+        LEFT JOIN sales s ON si.sale_id = s.id AND s.created_at >= %s AND s.created_at <= %s
+        WHERE i.is_active = true
+        """
+
+        params = [end_date, start_date, start_date, end_date]
+
+        if branch_id:
+            sql += " AND i.branch_id = %s"
+            params.append(branch_id)
+
+        sql += """
+        GROUP BY i.id, i.sku, i.name, pc.name, b.name, i.quantity, i.cost_price
+        ORDER BY turnover_ratio DESC
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _get_dead_stock(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get dead stock analysis report data."""
+        days_threshold = parameters.get("days_threshold", 90)
+        branch_id = parameters.get("branch_id")
+        cutoff_date = timezone.now() - timedelta(days=days_threshold)
+
+        sql = """
+        SELECT
+            i.sku,
+            i.name as product_name,
+            pc.name as category_name,
+            b.name as branch_name,
+            i.quantity as current_stock,
+            i.cost_price,
+            (i.quantity * i.cost_price) as tied_up_value,
+            i.created_at as date_added,
+            EXTRACT(DAYS FROM (NOW() - i.created_at)) as days_in_inventory,
+            COALESCE(MAX(s.created_at), i.created_at) as last_sale_date,
+            EXTRACT(DAYS FROM (NOW() - COALESCE(MAX(s.created_at), i.created_at))) as days_since_last_sale,
+            COUNT(si.id) as total_sales_count
+        FROM inventory_items i
+        JOIN inventory_categories pc ON i.category_id = pc.id
+        JOIN core_branches b ON i.branch_id = b.id
+        LEFT JOIN sale_items si ON i.id = si.inventory_item_id
+        LEFT JOIN sales s ON si.sale_id = s.id
+        WHERE i.is_active = true
+        AND i.quantity > 0
+        AND (
+            NOT EXISTS (
+                SELECT 1 FROM sale_items si2
+                JOIN sales s2 ON si2.sale_id = s2.id
+                WHERE si2.inventory_item_id = i.id
+                AND s2.created_at >= %s
+            )
+            OR i.created_at < %s
+        )
+        """
+
+        params = [cutoff_date, cutoff_date]
+
+        if branch_id:
+            sql += " AND i.branch_id = %s"
+            params.append(branch_id)
+
+        sql += """
+        GROUP BY i.id, i.sku, i.name, pc.name, b.name, i.quantity, i.cost_price, i.created_at
+        ORDER BY tied_up_value DESC
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, params)
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    # Financial Reports
+    def _get_financial_summary(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get financial summary report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=30))
+        end_date = parameters.get("date_range_end", timezone.now())
+
+        sql = """
+        SELECT
+            'Sales Revenue' as category,
+            SUM(total - tax) as amount,
+            'REVENUE' as type,
+            COUNT(*) as transaction_count
+        FROM sales
+        WHERE created_at >= %s AND created_at <= %s
+        UNION ALL
+        SELECT
+            'Tax Collected' as category,
+            SUM(tax) as amount,
+            'REVENUE' as type,
+            COUNT(*) as transaction_count
+        FROM sales
+        WHERE created_at >= %s AND created_at <= %s
+        UNION ALL
+        SELECT
+            'Inventory Purchases' as category,
+            SUM(total_amount) as amount,
+            'EXPENSE' as type,
+            COUNT(*) as transaction_count
+        FROM procurement_purchaseorders
+        WHERE status = 'COMPLETED' AND created_at >= %s AND created_at <= %s
+        ORDER BY type, amount DESC
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, [start_date, end_date, start_date, end_date, start_date, end_date])
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _get_revenue_trends(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get revenue trends report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=90))
+        end_date = parameters.get("date_range_end", timezone.now())
+        group_by = parameters.get("group_by", "day")  # day, week, month
+
+        if group_by == "week":
+            date_trunc = "DATE_TRUNC('week', s.created_at)"
+        elif group_by == "month":
+            date_trunc = "DATE_TRUNC('month', s.created_at)"
+        else:
+            date_trunc = "DATE(s.created_at)"
+
+        sql = f"""
+        SELECT
+            {date_trunc} as period,
+            SUM(s.total) as total_revenue,
+            SUM(s.total - s.tax) as net_revenue,
+            SUM(s.tax) as tax_amount,
+            COUNT(s.id) as transaction_count,
+            AVG(s.total) as average_transaction_value,
+            COUNT(DISTINCT s.customer_id) as unique_customers
+        FROM sales s
+        WHERE s.created_at >= %s AND s.created_at <= %s
+        GROUP BY {date_trunc}
+        ORDER BY period
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, [start_date, end_date])
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _get_expense_breakdown(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get expense breakdown report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=30))
+        end_date = parameters.get("date_range_end", timezone.now())
+
+        sql = """
+        SELECT
+            'Inventory Purchases' as expense_category,
+            SUM(po.total_amount) as total_amount,
+            COUNT(po.id) as transaction_count,
+            AVG(po.total_amount) as average_amount,
+            'Purchase Orders' as source_type
+        FROM procurement_purchaseorders po
+        WHERE po.status = 'COMPLETED'
+        AND po.created_at >= %s AND po.created_at <= %s
+
+        UNION ALL
+
+        SELECT
+            'Repair Services' as expense_category,
+            SUM(ro.cost_estimate) as total_amount,
+            COUNT(ro.id) as transaction_count,
+            AVG(ro.cost_estimate) as average_amount,
+            'Repair Orders' as source_type
+        FROM repair_repairorders ro
+        WHERE ro.status = 'COMPLETED'
+        AND ro.created_at >= %s AND ro.created_at <= %s
+
+        ORDER BY total_amount DESC
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, [start_date, end_date, start_date, end_date])
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    # Customer Reports
+    def _get_top_customers(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get top customers report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=90))
+        end_date = parameters.get("date_range_end", timezone.now())
+        limit = parameters.get("limit", 50)
+
+        sql = """
+        SELECT
+            c.customer_number,
+            c.first_name,
+            c.last_name,
+            c.email,
+            c.phone,
+            c.loyalty_tier,
+            c.loyalty_points,
+            c.store_credit,
+            c.total_purchases as lifetime_value,
+            COUNT(s.id) as period_orders,
+            SUM(s.total) as period_spending,
+            AVG(s.total) as average_order_value,
+            MAX(s.created_at) as last_purchase_date,
+            MIN(s.created_at) as first_purchase_date,
+            EXTRACT(DAYS FROM (MAX(s.created_at) - MIN(s.created_at))) as customer_lifespan_days
+        FROM crm_customers c
+        LEFT JOIN sales s ON c.id = s.customer_id
+            AND s.created_at >= %s AND s.created_at <= %s
+        GROUP BY c.id, c.customer_number, c.first_name, c.last_name,
+                 c.email, c.phone, c.loyalty_tier, c.loyalty_points,
+                 c.store_credit, c.total_purchases
+        HAVING COUNT(s.id) > 0
+        ORDER BY period_spending DESC
+        LIMIT %s
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, [start_date, end_date, limit])
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _get_customer_acquisition(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get customer acquisition report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=90))
+        end_date = parameters.get("date_range_end", timezone.now())
+        group_by = parameters.get("group_by", "month")  # day, week, month
+
+        if group_by == "week":
+            date_trunc = "DATE_TRUNC('week', c.created_at)"
+        elif group_by == "day":
+            date_trunc = "DATE(c.created_at)"
+        else:
+            date_trunc = "DATE_TRUNC('month', c.created_at)"
+
+        sql = f"""
+        SELECT
+            {date_trunc} as period,
+            COUNT(c.id) as new_customers,
+            COUNT(first_purchase.customer_id) as customers_with_first_purchase,
+            COALESCE(SUM(first_purchase.first_purchase_amount), 0) as first_purchase_revenue,
+            COALESCE(AVG(first_purchase.first_purchase_amount), 0) as avg_first_purchase_value,
+            COUNT(CASE WHEN c.loyalty_tier != 'BRONZE' THEN 1 END) as premium_signups
+        FROM crm_customers c
+        LEFT JOIN (
+            SELECT
+                s.customer_id,
+                MIN(s.total) as first_purchase_amount,
+                MIN(s.created_at) as first_purchase_date
+            FROM sales s
+            GROUP BY s.customer_id
+        ) first_purchase ON c.id = first_purchase.customer_id
+            AND first_purchase.first_purchase_date >= %s
+            AND first_purchase.first_purchase_date <= %s
+        WHERE c.created_at >= %s AND c.created_at <= %s
+        GROUP BY {date_trunc}
+        ORDER BY period
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, [start_date, end_date, start_date, end_date])
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _get_loyalty_analytics(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Get loyalty program analytics report data."""
+        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=90))
+        end_date = parameters.get("date_range_end", timezone.now())
+
+        sql = """
+        SELECT
+            c.loyalty_tier,
+            COUNT(c.id) as customer_count,
+            AVG(c.loyalty_points) as avg_points_balance,
+            SUM(c.loyalty_points) as total_points_outstanding,
+            AVG(c.total_purchases) as avg_lifetime_value,
+            COUNT(period_sales.customer_id) as active_customers_in_period,
+            COALESCE(AVG(period_sales.period_spending), 0) as avg_period_spending,
+            COALESCE(SUM(period_sales.period_spending), 0) as total_period_spending,
+            COUNT(CASE WHEN c.store_credit > 0 THEN 1 END) as customers_with_store_credit,
+            COALESCE(AVG(CASE WHEN c.store_credit > 0 THEN c.store_credit END), 0) as avg_store_credit
+        FROM crm_customers c
+        LEFT JOIN (
+            SELECT
+                s.customer_id,
+                SUM(s.total) as period_spending,
+                COUNT(s.id) as period_orders
+            FROM sales s
+            WHERE s.created_at >= %s AND s.created_at <= %s
+            GROUP BY s.customer_id
+        ) period_sales ON c.id = period_sales.customer_id
+        GROUP BY c.loyalty_tier
+        ORDER BY
+            CASE c.loyalty_tier
+                WHEN 'PLATINUM' THEN 1
+                WHEN 'GOLD' THEN 2
+                WHEN 'SILVER' THEN 3
+                WHEN 'BRONZE' THEN 4
+                ELSE 5
+            END
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
+            )
+            cursor.execute(sql, [start_date, end_date])
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
     def _get_customer_analysis(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Get customer analysis report data."""
+        """Get customer analysis report data (legacy method)."""
         start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=90))
         end_date = parameters.get("date_range_end", timezone.now())
 
@@ -283,43 +787,6 @@ class ReportQueryEngine:
                 "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
             )
             cursor.execute(sql, [start_date, end_date])
-            columns = [col[0] for col in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    def _get_financial_summary(self, parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Get financial summary report data."""
-        start_date = parameters.get("date_range_start", timezone.now() - timedelta(days=30))
-        end_date = parameters.get("date_range_end", timezone.now())
-
-        sql = """
-        SELECT
-            'Sales Revenue' as category,
-            SUM(total - tax) as amount,
-            'REVENUE' as type
-        FROM sales
-        WHERE created_at >= %s AND created_at <= %s
-        UNION ALL
-        SELECT
-            'Tax Collected' as category,
-            SUM(tax) as amount,
-            'REVENUE' as type
-        FROM sales
-        WHERE created_at >= %s AND created_at <= %s
-        UNION ALL
-        SELECT
-            'Inventory Purchases' as category,
-            SUM(total_amount) as amount,
-            'EXPENSE' as type
-        FROM procurement_purchaseorders
-        WHERE status = 'COMPLETED' AND created_at >= %s AND created_at <= %s
-        ORDER BY type, amount DESC
-        """
-
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT set_config('app.current_tenant', %s, false)", [str(self.tenant.id)]
-            )
-            cursor.execute(sql, [start_date, end_date, start_date, end_date, start_date, end_date])
             columns = [col[0] for col in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
@@ -599,6 +1066,296 @@ class ReportEmailService:
         }
 
         return content_types.get(extension, "application/octet-stream")
+
+
+class PrebuiltReportService:
+    """
+    Service for managing pre-built report definitions and metadata.
+    """
+
+    @staticmethod
+    def get_prebuilt_reports() -> List[Dict[str, Any]]:
+        """Get list of all available pre-built reports."""
+        return [
+            # Sales Reports
+            {
+                "id": "sales_summary",
+                "name": "Daily Sales Summary",
+                "description": "Daily breakdown of sales by branch with totals and averages",
+                "category": "SALES",
+                "icon": "fas fa-chart-line",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 30,
+                    },
+                    {"name": "branch_id", "type": "BRANCH", "required": False},
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "sales_by_product",
+                "name": "Sales by Product",
+                "description": "Product performance analysis with quantities and revenue",
+                "category": "SALES",
+                "icon": "fas fa-box",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 30,
+                    },
+                    {"name": "branch_id", "type": "BRANCH", "required": False},
+                    {"name": "category_id", "type": "SELECT", "required": False},
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "sales_by_employee",
+                "name": "Sales by Employee",
+                "description": "Employee performance analysis with sales metrics",
+                "category": "SALES",
+                "icon": "fas fa-user-tie",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 30,
+                    },
+                    {"name": "branch_id", "type": "BRANCH", "required": False},
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "sales_by_branch",
+                "name": "Sales by Branch",
+                "description": "Branch performance comparison with key metrics",
+                "category": "SALES",
+                "icon": "fas fa-store",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 30,
+                    },
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            # Inventory Reports
+            {
+                "id": "inventory_valuation",
+                "name": "Inventory Valuation",
+                "description": "Current inventory value by product and category",
+                "category": "INVENTORY",
+                "icon": "fas fa-warehouse",
+                "parameters": [
+                    {"name": "branch_id", "type": "BRANCH", "required": False},
+                    {"name": "category_id", "type": "SELECT", "required": False},
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "inventory_turnover",
+                "name": "Inventory Turnover Analysis",
+                "description": "Product turnover rates and stock movement analysis",
+                "category": "INVENTORY",
+                "icon": "fas fa-sync-alt",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 90,
+                    },
+                    {"name": "branch_id", "type": "BRANCH", "required": False},
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "dead_stock",
+                "name": "Dead Stock Analysis",
+                "description": "Identify slow-moving and dead stock items",
+                "category": "INVENTORY",
+                "icon": "fas fa-exclamation-triangle",
+                "parameters": [
+                    {"name": "days_threshold", "type": "NUMBER", "required": False, "default": 90},
+                    {"name": "branch_id", "type": "BRANCH", "required": False},
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            # Financial Reports
+            {
+                "id": "financial_summary",
+                "name": "Financial Summary",
+                "description": "Revenue and expense summary with key financial metrics",
+                "category": "FINANCIAL",
+                "icon": "fas fa-dollar-sign",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 30,
+                    },
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "revenue_trends",
+                "name": "Revenue Trends",
+                "description": "Revenue trends over time with period comparisons",
+                "category": "FINANCIAL",
+                "icon": "fas fa-chart-area",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 90,
+                    },
+                    {
+                        "name": "group_by",
+                        "type": "SELECT",
+                        "required": False,
+                        "default": "day",
+                        "options": [
+                            {"value": "day", "label": "Daily"},
+                            {"value": "week", "label": "Weekly"},
+                            {"value": "month", "label": "Monthly"},
+                        ],
+                    },
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "expense_breakdown",
+                "name": "Expense Breakdown",
+                "description": "Detailed breakdown of business expenses by category",
+                "category": "FINANCIAL",
+                "icon": "fas fa-receipt",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 30,
+                    },
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            # Customer Reports
+            {
+                "id": "top_customers",
+                "name": "Top Customers",
+                "description": "Best customers by spending and purchase frequency",
+                "category": "CUSTOMER",
+                "icon": "fas fa-crown",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 90,
+                    },
+                    {"name": "limit", "type": "NUMBER", "required": False, "default": 50},
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "customer_acquisition",
+                "name": "Customer Acquisition",
+                "description": "New customer acquisition trends and first purchase analysis",
+                "category": "CUSTOMER",
+                "icon": "fas fa-user-plus",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 90,
+                    },
+                    {
+                        "name": "group_by",
+                        "type": "SELECT",
+                        "required": False,
+                        "default": "month",
+                        "options": [
+                            {"value": "day", "label": "Daily"},
+                            {"value": "week", "label": "Weekly"},
+                            {"value": "month", "label": "Monthly"},
+                        ],
+                    },
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+            {
+                "id": "loyalty_analytics",
+                "name": "Loyalty Program Analytics",
+                "description": "Loyalty tier analysis and program performance metrics",
+                "category": "CUSTOMER",
+                "icon": "fas fa-medal",
+                "parameters": [
+                    {
+                        "name": "date_range",
+                        "type": "DATERANGE",
+                        "required": True,
+                        "default_days": 90,
+                    },
+                ],
+                "output_formats": ["PDF", "EXCEL", "CSV"],
+            },
+        ]
+
+    @staticmethod
+    def get_prebuilt_report(report_id: str) -> Dict[str, Any]:
+        """Get a specific pre-built report definition."""
+        reports = PrebuiltReportService.get_prebuilt_reports()
+        for report in reports:
+            if report["id"] == report_id:
+                return report
+        raise ValueError(f"Pre-built report '{report_id}' not found")
+
+    @staticmethod
+    def get_reports_by_category(category: str) -> List[Dict[str, Any]]:
+        """Get pre-built reports filtered by category."""
+        reports = PrebuiltReportService.get_prebuilt_reports()
+        return [report for report in reports if report["category"] == category]
+
+    @staticmethod
+    def create_prebuilt_report_instance(tenant: Tenant, report_id: str, user) -> Report:
+        """Create a Report instance for a pre-built report."""
+        report_def = PrebuiltReportService.get_prebuilt_report(report_id)
+
+        # Get or create the category
+        category, _ = ReportCategory.objects.get_or_create(
+            category_type=report_def["category"],
+            defaults={
+                "name": f"{report_def['category'].title()} Reports",
+                "description": f"Pre-built {report_def['category'].lower()} reports",
+                "icon": report_def["icon"],
+            },
+        )
+
+        # Create the report instance
+        report = Report.objects.create(
+            tenant=tenant,
+            name=report_def["name"],
+            description=report_def["description"],
+            category=category,
+            report_type="PREDEFINED",
+            query_config={"report_name": report_id},
+            parameters={"parameters": report_def["parameters"]},
+            output_formats=report_def["output_formats"],
+            created_by=user,
+            is_public=True,  # Pre-built reports are public within tenant
+        )
+
+        return report
 
 
 class ReportExecutionService:
