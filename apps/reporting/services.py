@@ -962,7 +962,7 @@ class ReportExportService:
         # Add title and headers
         start_row = self._add_excel_title(worksheet, report_name)
         headers = self._add_excel_headers(worksheet, data, start_row)
-        
+
         # Add data and format
         self._add_excel_data(worksheet, data, headers, start_row)
         self._adjust_excel_columns(worksheet)

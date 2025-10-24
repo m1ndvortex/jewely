@@ -17,10 +17,18 @@ def update_schedule_next_run(sender, instance, created, **kwargs):
     """
     Update next_run_at when a schedule is created or modified.
     """
+    # Prevent recursion by checking if we're already updating next_run_at
+    if hasattr(instance, "_updating_next_run"):
+        return
+
     if created or instance.status == "ACTIVE":
         # Calculate and update next run time
-        instance.update_next_run()
-        logger.info(f"Updated next run time for schedule: {instance.name}")
+        instance._updating_next_run = True
+        try:
+            instance.update_next_run()
+            logger.info(f"Updated next run time for schedule: {instance.name}")
+        finally:
+            delattr(instance, "_updating_next_run")
 
 
 @receiver(post_save, sender=ReportExecution)
