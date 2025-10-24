@@ -26,11 +26,7 @@ from apps.pricing.services import (
     PriceRecalculationService,
     PricingCalculationEngine,
 )
-from apps.pricing.tasks import (
-    GoldRateService,
-    check_price_alerts,
-    fetch_gold_rates,
-)
+from apps.pricing.tasks import GoldRateService, check_price_alerts, fetch_gold_rates
 
 
 class GoldRateTestCase(TestCase):

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Delivery - {{ report_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .report-details {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .report-details h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .detail-item {
+            margin: 8px 0;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #6c757d;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Report Delivery</h2>
+        <p>Dear {{ tenant_name }} Team,</p>
+        <p>Your scheduled report "<strong>{{ report_name }}</strong>" has been generated and is attached to this email.</p>
+    </div>
+
+    <div class="report-details">
+        <h3>Report Details</h3>
+        <div class="detail-item">
+            <span class="detail-label">Report Name:</span> {{ report_name }}
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Generated On:</span> {{ execution_date }}
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Number of Records:</span> {{ row_count|default:"N/A" }}
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Processing Time:</span> {{ duration|default:"N/A" }}
+        </div>
+    </div>
+
+    <p>The report has been generated in the requested format and contains the latest data based on your specified parameters.</p>
+
+    <p>If you have any questions about this report or need assistance with the reporting system, please contact your system administrator.</p>
+
+    <p><strong>Best regards,</strong><br>
+    {{ tenant_name }} Reporting System</p>
+
+    <div class="footer">
+        <p><em>This is an automated message from the Jewelry Shop Management System.<br>
+        Please do not reply to this email.</em></p>
+    </div>
+</body>
+</html>

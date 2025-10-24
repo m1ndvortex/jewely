@@ -41,6 +41,36 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=3, minute=0),
         "options": {"queue": "pricing", "priority": 3},
     },
+    # Execute scheduled reports every 15 minutes
+    "execute-scheduled-reports": {
+        "task": "apps.reporting.tasks.execute_scheduled_reports",
+        "schedule": crontab(minute="*/15"),
+        "options": {"queue": "reports", "priority": 7},
+    },
+    # Clean up old report files daily at 4 AM
+    "cleanup-old-report-files": {
+        "task": "apps.reporting.tasks.cleanup_old_report_files",
+        "schedule": crontab(hour=4, minute=0),
+        "options": {"queue": "reports", "priority": 2},
+    },
+    # Clean up old execution records weekly on Sunday at 5 AM
+    "cleanup-old-executions": {
+        "task": "apps.reporting.tasks.cleanup_old_executions",
+        "schedule": crontab(hour=5, minute=0, day_of_week=0),
+        "options": {"queue": "reports", "priority": 2},
+    },
+    # Update schedule next runs daily at 1 AM
+    "update-schedule-next-runs": {
+        "task": "apps.reporting.tasks.update_schedule_next_runs",
+        "schedule": crontab(hour=1, minute=0),
+        "options": {"queue": "reports", "priority": 5},
+    },
+    # Generate usage stats weekly on Monday at 6 AM
+    "generate-report-usage-stats": {
+        "task": "apps.reporting.tasks.generate_report_usage_stats",
+        "schedule": crontab(hour=6, minute=0, day_of_week=1),
+        "options": {"queue": "reports", "priority": 3},
+    },
 }
 
 # Task routing configuration
@@ -48,6 +78,7 @@ app.conf.task_routes = {
     "apps.backups.tasks.*": {"queue": "backups", "priority": 10},
     "apps.notifications.tasks.*": {"queue": "notifications", "priority": 5},
     "apps.pricing.tasks.*": {"queue": "pricing", "priority": 8},
+    "apps.reporting.tasks.*": {"queue": "reports", "priority": 7},
 }
 
 

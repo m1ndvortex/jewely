@@ -1,0 +1,20 @@
+Dear {{ tenant_name }} Team,
+
+Your scheduled report "{{ report_name }}" has been generated and is attached to this email.
+
+Report Details:
+- Report Name: {{ report_name }}
+- Generated On: {{ execution_date }}
+- Number of Records: {{ row_count|default:"N/A" }}
+- Processing Time: {{ duration|default:"N/A" }}
+
+The report has been generated in the requested format and contains the latest data based on your specified parameters.
+
+If you have any questions about this report or need assistance with the reporting system, please contact your system administrator.
+
+Best regards,
+{{ tenant_name }} Reporting System
+
+---
+This is an automated message from the Jewelry Shop Management System.
+Please do not reply to this email.

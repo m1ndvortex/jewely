@@ -6,7 +6,6 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
-
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -53,6 +52,7 @@ INSTALLED_APPS = [
     "apps.repair",
     "apps.procurement",
     "apps.pricing",
+    "apps.reporting",
 ]
 
 # Site ID for django-allauth
