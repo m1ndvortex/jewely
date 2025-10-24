@@ -407,7 +407,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add CSV export using django-import-export
     - _Requirements: 15_
   
-  - [ ] 12.5 Write reporting tests
+  - [x] 12.5 Write reporting tests
     - Test report generation
     - Test report scheduling
     - Test export functionality
@@ -416,7 +416,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
 
 
 - [ ] 13. Notification & Communication System
-  - [ ] 13.1 Create notification models
+  - [x] 13.1 Create notification models
     - Create Notification model with user FK, title, message, type, is_read, created_at
     - Create NotificationPreference model for user preferences
     - Add indexes for efficient querying

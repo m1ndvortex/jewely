@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.procurement",
     "apps.pricing",
     "apps.reporting",
+    "apps.notifications",
 ]
 
 # Site ID for django-allauth
