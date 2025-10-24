@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "guardian",
     "django_ledger",
     "django_fsm",
+    "import_export",
     # Local apps
     "apps.core",
     "apps.inventory",

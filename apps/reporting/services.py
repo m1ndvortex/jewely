@@ -23,6 +23,8 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 import openpyxl
+from import_export import resources
+from import_export.formats.base_formats import CSV, JSON, XLSX
 from openpyxl.styles import Font, PatternFill
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -33,6 +35,15 @@ from apps.core.models import Tenant
 from apps.reporting.models import Report, ReportCategory, ReportExecution
 
 logger = logging.getLogger(__name__)
+
+# Optional WeasyPrint import
+try:
+    import weasyprint
+
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    WEASYPRINT_AVAILABLE = False
+    logger.warning("WeasyPrint not available. PDF export will use ReportLab only.")
 
 
 class ReportParameterProcessor:
@@ -791,9 +802,50 @@ class ReportQueryEngine:
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
+class ReportDataResource(resources.Resource):
+    """
+    Django-import-export resource for report data.
+    """
+
+    def __init__(self, data: List[Dict[str, Any]], **kwargs):
+        super().__init__(**kwargs)
+        self.data = data
+
+        # Dynamically create fields based on data keys
+        if data:
+            for key in data[0].keys():
+                self.fields[key] = resources.Field(column_name=key)
+
+    def get_queryset(self):
+        # Return empty queryset since we're working with raw data
+        return []
+
+    def export(self, queryset=None, *args, **kwargs):
+        """Export the data as a Dataset."""
+        from tablib import Dataset
+
+        if not self.data:
+            return Dataset()
+
+        # Create dataset with headers
+        headers = list(self.data[0].keys())
+        dataset = Dataset(headers=headers)
+
+        # Add data rows
+        for row in self.data:
+            dataset.append([row.get(header, "") for header in headers])
+
+        return dataset
+
+
 class ReportExportService:
     """
-    Export report data to various formats.
+    Export report data to various formats using multiple libraries.
+
+    Implements Requirement 15: Advanced Reporting and Analytics
+    - PDF export using ReportLab and WeasyPrint
+    - Excel export using openpyxl and django-import-export
+    - CSV export using django-import-export
     """
 
     def __init__(self, tenant: Tenant):
@@ -801,7 +853,34 @@ class ReportExportService:
 
     def export_to_csv(self, data: List[Dict[str, Any]], filename: str) -> str:
         """
-        Export data to CSV format.
+        Export data to CSV format using django-import-export.
+
+        Args:
+            data: Report data
+            filename: Output filename
+
+        Returns:
+            Path to the generated file
+        """
+        if not data:
+            raise ValueError("No data to export")
+
+        filepath = os.path.join(tempfile.gettempdir(), filename)
+
+        # Use django-import-export for CSV export
+        resource = ReportDataResource(data)
+        dataset = resource.export()
+        csv_format = CSV()
+        export_data = csv_format.export_data(dataset)
+
+        with open(filepath, "w", encoding="utf-8") as csvfile:
+            csvfile.write(export_data)
+
+        return filepath
+
+    def export_to_csv_basic(self, data: List[Dict[str, Any]], filename: str) -> str:
+        """
+        Export data to CSV format using basic CSV writer (fallback method).
 
         Args:
             data: Report data
@@ -823,11 +902,11 @@ class ReportExportService:
 
         return filepath
 
-    def export_to_excel(  # noqa: C901
+    def export_to_excel(
         self, data: List[Dict[str, Any]], filename: str, report_name: str = ""
     ) -> str:
         """
-        Export data to Excel format with formatting.
+        Export data to Excel format using django-import-export with enhanced formatting.
 
         Args:
             data: Report data
@@ -842,33 +921,83 @@ class ReportExportService:
 
         filepath = os.path.join(tempfile.gettempdir(), filename)
 
+        # Use django-import-export for Excel export
+        resource = ReportDataResource(data)
+        dataset = resource.export()
+        xlsx_format = XLSX()
+        export_data = xlsx_format.export_data(dataset)
+
+        # Save the basic export first
+        with open(filepath, "wb") as excelfile:
+            excelfile.write(export_data)
+
+        # Now enhance with formatting using openpyxl
+        if report_name:
+            self._enhance_excel_formatting(filepath, report_name)
+
+        return filepath
+
+    def export_to_excel_advanced(
+        self, data: List[Dict[str, Any]], filename: str, report_name: str = ""
+    ) -> str:
+        """
+        Export data to Excel format with advanced formatting using openpyxl.
+
+        Args:
+            data: Report data
+            filename: Output filename
+            report_name: Report name for the title
+
+        Returns:
+            Path to the generated file
+        """
+        if not data:
+            raise ValueError("No data to export")
+
+        filepath = os.path.join(tempfile.gettempdir(), filename)
         workbook = openpyxl.Workbook()
         worksheet = workbook.active
         worksheet.title = "Report Data"
 
-        # Add title
+        # Add title and headers
+        start_row = self._add_excel_title(worksheet, report_name)
+        headers = self._add_excel_headers(worksheet, data, start_row)
+        
+        # Add data and format
+        self._add_excel_data(worksheet, data, headers, start_row)
+        self._adjust_excel_columns(worksheet)
+
+        workbook.save(filepath)
+        return filepath
+
+    def _add_excel_title(self, worksheet, report_name: str) -> int:
+        """Add title section to Excel worksheet."""
         if report_name:
             worksheet["A1"] = report_name
             worksheet["A1"].font = Font(size=16, bold=True)
             worksheet["A2"] = f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            start_row = 4
-        else:
-            start_row = 1
+            worksheet["A3"] = f"Tenant: {self.tenant.company_name if self.tenant else 'Unknown'}"
+            return 5
+        return 1
 
-        # Add headers
+    def _add_excel_headers(self, worksheet, data: List[Dict], start_row: int) -> List[str]:
+        """Add headers to Excel worksheet."""
         headers = list(data[0].keys())
         for col, header in enumerate(headers, 1):
             cell = worksheet.cell(row=start_row, column=col, value=header)
             cell.font = Font(bold=True)
             cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+        return headers
 
-        # Add data
+    def _add_excel_data(self, worksheet, data: List[Dict], headers: List[str], start_row: int):
+        """Add data rows to Excel worksheet."""
         for row_idx, row_data in enumerate(data, start_row + 1):
             for col_idx, header in enumerate(headers, 1):
                 value = row_data.get(header, "")
                 worksheet.cell(row=row_idx, column=col_idx, value=value)
 
-        # Auto-adjust column widths
+    def _adjust_excel_columns(self, worksheet):
+        """Auto-adjust column widths in Excel worksheet."""
         for column in worksheet.columns:
             max_length = 0
             column_letter = column[0].column_letter
@@ -881,19 +1010,55 @@ class ReportExportService:
             adjusted_width = min(max_length + 2, 50)
             worksheet.column_dimensions[column_letter].width = adjusted_width
 
-        workbook.save(filepath)
-        return filepath
+    def _enhance_excel_formatting(self, filepath: str, report_name: str) -> None:
+        """
+        Enhance Excel file with additional formatting.
+
+        Args:
+            filepath: Path to the Excel file
+            report_name: Report name for the title
+        """
+        try:
+            workbook = openpyxl.load_workbook(filepath)
+            worksheet = workbook.active
+
+            # Insert title rows at the top
+            worksheet.insert_rows(1, 3)
+
+            # Add title
+            worksheet["A1"] = report_name
+            worksheet["A1"].font = Font(size=16, bold=True)
+            worksheet["A2"] = f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            worksheet["A3"] = f"Tenant: {self.tenant.company_name if self.tenant else 'Unknown'}"
+
+            # Format header row (now row 4)
+            for cell in worksheet[4]:
+                if cell.value:
+                    cell.font = Font(bold=True)
+                    cell.fill = PatternFill(
+                        start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
+                    )
+
+            workbook.save(filepath)
+        except Exception as e:
+            logger.warning(f"Failed to enhance Excel formatting: {e}")
+            # Continue without enhanced formatting
 
     def export_to_pdf(
-        self, data: List[Dict[str, Any]], filename: str, report_name: str = ""
+        self,
+        data: List[Dict[str, Any]],
+        filename: str,
+        report_name: str = "",
+        use_weasyprint: bool = False,
     ) -> str:
         """
-        Export data to PDF format.
+        Export data to PDF format using ReportLab or WeasyPrint.
 
         Args:
             data: Report data
             filename: Output filename
             report_name: Report name for the title
+            use_weasyprint: Whether to use WeasyPrint instead of ReportLab
 
         Returns:
             Path to the generated file
@@ -903,11 +1068,24 @@ class ReportExportService:
 
         filepath = os.path.join(tempfile.gettempdir(), filename)
 
+        if use_weasyprint and WEASYPRINT_AVAILABLE:
+            return self._export_to_pdf_weasyprint(data, filepath, report_name)
+        else:
+            if use_weasyprint and not WEASYPRINT_AVAILABLE:
+                logger.warning("WeasyPrint requested but not available. Falling back to ReportLab.")
+            return self._export_to_pdf_reportlab(data, filepath, report_name)
+
+    def _export_to_pdf_reportlab(
+        self, data: List[Dict[str, Any]], filepath: str, report_name: str = ""
+    ) -> str:
+        """
+        Export data to PDF format using ReportLab.
+        """
         doc = SimpleDocTemplate(filepath, pagesize=letter)
         styles = getSampleStyleSheet()
         story = []
 
-        # Add title
+        # Add title and metadata
         if report_name:
             title = Paragraph(report_name, styles["Title"])
             story.append(title)
@@ -917,6 +1095,12 @@ class ReportExportService:
                 f"Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]
             )
             story.append(subtitle)
+
+            tenant_info = Paragraph(
+                f"Tenant: {self.tenant.company_name if self.tenant else 'Unknown'}",
+                styles["Normal"],
+            )
+            story.append(tenant_info)
             story.append(Spacer(1, 12))
 
         # Prepare table data
@@ -926,7 +1110,7 @@ class ReportExportService:
         for row in data:
             table_data.append([str(row.get(header, "")) for header in headers])
 
-        # Create table
+        # Create table with improved styling
         table = Table(table_data)
         table.setStyle(
             TableStyle(
@@ -941,22 +1125,140 @@ class ReportExportService:
                     ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
                     ("FONTSIZE", (0, 1), (-1, -1), 8),
                     ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ]
             )
         )
 
         story.append(table)
+
+        # Add footer with row count
+        story.append(Spacer(1, 12))
+        footer = Paragraph(f"Total rows: {len(data)}", styles["Normal"])
+        story.append(footer)
+
         doc.build(story)
+        return filepath
+
+    def _export_to_pdf_weasyprint(
+        self, data: List[Dict[str, Any]], filepath: str, report_name: str = ""
+    ) -> str:
+        """
+        Export data to PDF format using WeasyPrint.
+        """
+        if not WEASYPRINT_AVAILABLE:
+            raise ImportError("WeasyPrint is not available. Please install system dependencies.")
+
+        # Create HTML content
+        html_content = self._generate_html_for_pdf(data, report_name)
+
+        # Generate PDF using WeasyPrint
+        weasyprint.HTML(string=html_content).write_pdf(filepath)
 
         return filepath
 
-    def export_to_json(self, data: List[Dict[str, Any]], filename: str) -> str:
+    def _generate_html_for_pdf(self, data: List[Dict[str, Any]], report_name: str = "") -> str:
+        """
+        Generate HTML content for PDF export.
+        """
+        headers = list(data[0].keys())
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>{report_name or 'Report'}</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 20px;
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 30px;
+                }}
+                .title {{
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                }}
+                .subtitle {{
+                    font-size: 14px;
+                    color: #666;
+                    margin-bottom: 5px;
+                }}
+                table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }}
+                th, td {{
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: left;
+                }}
+                th {{
+                    background-color: #f2f2f2;
+                    font-weight: bold;
+                }}
+                tr:nth-child(even) {{
+                    background-color: #f9f9f9;
+                }}
+                .footer {{
+                    margin-top: 20px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">{report_name or 'Report'}</div>
+                <div class="subtitle">Generated on: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+                <div class="subtitle">Tenant: {self.tenant.company_name if self.tenant else 'Unknown'}</div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        {''.join(f'<th>{header}</th>' for header in headers)}
+                    </tr>
+                </thead>
+                <tbody>
+        """
+
+        for row in data:
+            html += "<tr>"
+            for header in headers:
+                value = str(row.get(header, ""))
+                html += f"<td>{value}</td>"
+            html += "</tr>"
+
+        html += f"""
+                </tbody>
+            </table>
+
+            <div class="footer">
+                Total rows: {len(data)}
+            </div>
+        </body>
+        </html>
+        """
+
+        return html
+
+    def export_to_json(
+        self, data: List[Dict[str, Any]], filename: str, use_import_export: bool = False
+    ) -> str:
         """
         Export data to JSON format.
 
         Args:
             data: Report data
             filename: Output filename
+            use_import_export: Whether to use django-import-export JSON format
 
         Returns:
             Path to the generated file
@@ -966,17 +1268,111 @@ class ReportExportService:
 
         filepath = os.path.join(tempfile.gettempdir(), filename)
 
-        export_data = {
-            "generated_at": timezone.now().isoformat(),
-            "tenant": self.tenant.company_name,
-            "row_count": len(data),
-            "data": data,
-        }
+        if use_import_export:
+            # Use django-import-export for JSON export
+            resource = ReportDataResource(data)
+            dataset = resource.export()
+            json_format = JSON()
+            export_data = json_format.export_data(dataset)
 
-        with open(filepath, "w", encoding="utf-8") as jsonfile:
-            json.dump(export_data, jsonfile, indent=2, default=str)
+            with open(filepath, "w", encoding="utf-8") as jsonfile:
+                jsonfile.write(export_data)
+        else:
+            # Use custom JSON format with metadata (compatible with existing tests)
+            export_data = {
+                "generated_at": timezone.now().isoformat(),
+                "tenant": self.tenant.company_name if self.tenant else "Unknown",
+                "row_count": len(data),
+                "data": data,
+            }
+
+            with open(filepath, "w", encoding="utf-8") as jsonfile:
+                json.dump(export_data, jsonfile, indent=2, default=str)
 
         return filepath
+
+    def export_data(
+        self, data: List[Dict[str, Any]], format_type: str, filename: str, report_name: str = ""
+    ) -> str:
+        """
+        Export data to the specified format.
+
+        Args:
+            data: Report data
+            format_type: Export format (CSV, EXCEL, PDF, JSON)
+            filename: Output filename
+            report_name: Report name for the title
+
+        Returns:
+            Path to the generated file
+        """
+        if not data:
+            raise ValueError("No data to export")
+
+        format_type = format_type.upper()
+
+        try:
+            if format_type == "CSV":
+                return self.export_to_csv(data, filename)
+            elif format_type == "EXCEL":
+                return self.export_to_excel(data, filename, report_name)
+            elif format_type == "PDF":
+                return self.export_to_pdf(data, filename, report_name)
+            elif format_type == "JSON":
+                return self.export_to_json(data, filename)
+            else:
+                raise ValueError(f"Unsupported export format: {format_type}")
+
+        except Exception as e:
+            logger.error(f"Failed to export data to {format_type}: {e}")
+            raise
+
+    def get_supported_formats(self) -> List[str]:
+        """
+        Get list of supported export formats.
+
+        Returns:
+            List of supported format names
+        """
+        return ["CSV", "EXCEL", "PDF", "JSON"]
+
+    def get_format_mime_type(self, format_type: str) -> str:
+        """
+        Get MIME type for the specified format.
+
+        Args:
+            format_type: Export format
+
+        Returns:
+            MIME type string
+        """
+        mime_types = {
+            "CSV": "text/csv",
+            "EXCEL": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "PDF": "application/pdf",
+            "JSON": "application/json",
+        }
+
+        return mime_types.get(format_type.upper(), "application/octet-stream")
+
+    def get_format_extension(self, format_type: str) -> str:
+        """
+        Get file extension for the specified format.
+
+        Args:
+            format_type: Export format
+
+        Returns:
+            File extension string
+        """
+        extensions = {
+            "CSV": ".csv",
+            "EXCEL": ".xlsx",
+            "PDF": ".pdf",
+            "JSON": ".json",
+        }
+
+        return extensions.get(format_type.upper(), ".txt")
 
 
 class ReportEmailService:
@@ -1045,7 +1441,7 @@ class ReportEmailService:
     def _generate_email_body(self, execution: ReportExecution) -> str:
         """Generate default email body."""
         context = {
-            "tenant_name": self.tenant.company_name,
+            "tenant_name": self.tenant.company_name if self.tenant else "Unknown",
             "report_name": execution.report.name,
             "execution_date": execution.started_at.strftime("%Y-%m-%d %H:%M:%S"),
             "row_count": execution.row_count,

@@ -13,7 +13,6 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-
 from apps.core.models import Branch, Tenant
 from apps.inventory.models import InventoryItem, ProductCategory
 from apps.sales.models import Customer, Sale, SaleItem, Terminal

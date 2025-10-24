@@ -41,7 +41,13 @@ class Command(BaseCommand):
             repair_orders_created = self._create_repair_orders(tenant, customers)
 
         self._print_summary(
-            tenant, branch, categories, inventory_items, customers, sales_created, repair_orders_created
+            tenant,
+            branch,
+            categories,
+            inventory_items,
+            customers,
+            sales_created,
+            repair_orders_created,
         )
 
     def _create_tenant(self, tenant_name):
@@ -206,7 +212,11 @@ class Command(BaseCommand):
                     subtotal = unit_price
 
                     SaleItem.objects.create(
-                        sale=sale, inventory_item=item, quantity=1, unit_price=unit_price, subtotal=subtotal
+                        sale=sale,
+                        inventory_item=item,
+                        quantity=1,
+                        unit_price=unit_price,
+                        subtotal=subtotal,
                     )
 
                     sale.subtotal = subtotal
@@ -241,7 +251,16 @@ class Command(BaseCommand):
 
         return repair_orders_created
 
-    def _print_summary(self, tenant, branch, categories, inventory_items, customers, sales_created, repair_orders_created):
+    def _print_summary(
+        self,
+        tenant,
+        branch,
+        categories,
+        inventory_items,
+        customers,
+        sales_created,
+        repair_orders_created,
+    ):
         """Print summary of created data."""
         self.stdout.write(
             self.style.SUCCESS(
