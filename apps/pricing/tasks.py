@@ -17,7 +17,7 @@ from django.utils import timezone
 import requests
 from celery import shared_task
 
-from apps.pricing.models import GoldRate, PriceAlert
+from apps.pricing.models import GoldRate
 
 logger = logging.getLogger(__name__)
 
@@ -227,9 +227,9 @@ def fetch_gold_rates(self, market: str = GoldRate.INTERNATIONAL) -> Optional[str
             f"Successfully fetched gold rate: {new_rate.rate_per_gram}/g from {new_rate.source}"
         )
 
-        # Check and trigger alerts
+        # Check and trigger alerts (schedule as separate task)
         if previous_rate:
-            check_and_trigger_alerts(new_rate, previous_rate)
+            check_price_alerts.delay()
 
         return f"Gold rate updated: {new_rate.rate_per_gram}/g (source: {new_rate.source})"
 
@@ -241,90 +241,6 @@ def fetch_gold_rates(self, market: str = GoldRate.INTERNATIONAL) -> Optional[str
     except Exception as e:
         logger.exception(f"Unexpected error fetching gold rates: {e}")
         raise
-
-
-def check_and_trigger_alerts(current_rate: GoldRate, previous_rate: GoldRate) -> None:
-    """
-    Check all active price alerts and trigger notifications if conditions are met.
-
-    Args:
-        current_rate: Current GoldRate instance
-        previous_rate: Previous GoldRate instance
-    """
-    # Get all active alerts for this market
-    alerts = PriceAlert.objects.filter(market=current_rate.market, is_active=True)
-
-    for alert in alerts:
-        try:
-            if alert.check_condition(current_rate, previous_rate):
-                # Trigger the alert
-                alert.trigger_alert()
-
-                # Send notifications
-                send_alert_notifications(alert, current_rate, previous_rate)
-
-                logger.info(f"Alert triggered: {alert.name} for tenant {alert.tenant.company_name}")
-
-        except Exception as e:
-            logger.error(f"Error checking alert {alert.id}: {e}")
-
-
-def send_alert_notifications(
-    alert: PriceAlert, current_rate: GoldRate, previous_rate: GoldRate
-) -> None:
-    """
-    Send notifications for triggered price alerts.
-
-    Args:
-        alert: PriceAlert instance
-        current_rate: Current GoldRate instance
-        previous_rate: Previous GoldRate instance
-    """
-    # Calculate change information
-    change_percent = current_rate.calculate_percentage_change(previous_rate)
-
-    # Build notification message for logging
-    logger.info(
-        f"Gold Rate Alert: {alert.name} - "
-        f"Current: {current_rate.rate_per_gram}/g, "
-        f"Previous: {previous_rate.rate_per_gram}/g, "
-        f"Change: {change_percent:+.2f}%"
-    )
-
-    # Send in-app notification
-    if alert.notify_in_app:
-        try:
-            from apps.core.models import User
-
-            # Get tenant owner and managers
-            users = User.objects.filter(
-                tenant=alert.tenant, role__in=["TENANT_OWNER", "TENANT_MANAGER"]
-            )
-
-            # Create in-app notifications (assuming notification model exists)
-            # This would integrate with the notification system from task 13
-            logger.info(f"Would send in-app notification to {users.count()} users")
-
-        except Exception as e:
-            logger.error(f"Failed to send in-app notification: {e}")
-
-    # Send email notification
-    if alert.notify_email:
-        try:
-            # This would integrate with email system from task 13
-            logger.info(f"Would send email notification for alert {alert.name}")
-
-        except Exception as e:
-            logger.error(f"Failed to send email notification: {e}")
-
-    # Send SMS notification
-    if alert.notify_sms:
-        try:
-            # This would integrate with SMS system from task 13
-            logger.info(f"Would send SMS notification for alert {alert.name}")
-
-        except Exception as e:
-            logger.error(f"Failed to send SMS notification: {e}")
 
 
 @shared_task(name="apps.pricing.tasks.cleanup_old_rates")
@@ -359,58 +275,13 @@ def cleanup_old_rates(days_to_keep: int = 365) -> str:
         raise
 
 
-def _update_item_price(item, gold_rate, tenant):
-    """Helper function to update a single item's price."""
-    from apps.pricing.models import PricingRule
-
-    rule = PricingRule.find_matching_rule(
-        tenant=tenant,
-        karat=item.karat,
-        product_type=getattr(item.category, "product_type", None),
-        customer_tier=PricingRule.RETAIL,
-    )
-
-    if not rule:
-        return False
-
-    new_price = rule.calculate_price(
-        weight_grams=item.weight_grams,
-        gold_rate_per_gram=gold_rate.rate_per_gram,
-    )
-
-    # Update if price changed significantly (>1%)
-    price_change = abs(new_price - item.selling_price) / item.selling_price
-    if price_change > Decimal("0.01"):
-        item.selling_price = new_price
-        item.save(update_fields=["selling_price", "updated_at"])
-        return True
-
-    return False
-
-
-def _update_tenant_prices(tenant, gold_rate):
-    """Helper function to update prices for a single tenant."""
-    from apps.inventory.models import InventoryItem
-
-    items = InventoryItem.objects.filter(tenant=tenant, is_active=True)
-    updated_count = 0
-
-    for item in items:
-        try:
-            if _update_item_price(item, gold_rate, tenant):
-                updated_count += 1
-        except Exception as e:
-            logger.error(f"Error updating price for item {item.sku}: {e}")
-
-    return updated_count
-
-
 @shared_task(name="apps.pricing.tasks.update_inventory_prices")
 def update_inventory_prices(tenant_id: str = None) -> str:
     """
     Update inventory item prices based on current gold rates and pricing rules.
 
     This task can be triggered manually or scheduled to run periodically.
+    Uses the PriceRecalculationService for automatic price updates.
 
     Args:
         tenant_id: Optional tenant UUID to update prices for specific tenant only
@@ -420,6 +291,7 @@ def update_inventory_prices(tenant_id: str = None) -> str:
     """
     try:
         from apps.core.models import Tenant
+        from apps.pricing.services import PriceRecalculationService
 
         # Get tenants to process
         if tenant_id:
@@ -433,18 +305,101 @@ def update_inventory_prices(tenant_id: str = None) -> str:
             logger.warning("No gold rate available")
             return "No gold rate available for price updates"
 
-        total_updated = 0
+        total_stats = {
+            "total_items": 0,
+            "updated_items": 0,
+            "failed_items": 0,
+            "skipped_items": 0,
+        }
 
         for tenant in tenants:
             try:
-                updated = _update_tenant_prices(tenant, gold_rate)
-                total_updated += updated
+                # Use the PriceRecalculationService
+                service = PriceRecalculationService(tenant)
+                stats = service.recalculate_all_prices()
+
+                # Aggregate stats
+                total_stats["total_items"] += stats["total_items"]
+                total_stats["updated_items"] += stats["updated_items"]
+                total_stats["failed_items"] += stats["failed_items"]
+                total_stats["skipped_items"] += stats["skipped_items"]
+
+                logger.info(
+                    f"Updated prices for tenant {tenant.company_name}: "
+                    f"{stats['updated_items']} items updated"
+                )
+
             except Exception as e:
                 logger.error(f"Error processing tenant {tenant.company_name}: {e}")
 
-        logger.info(f"Updated prices for {total_updated} inventory items")
-        return f"Updated {total_updated} inventory item prices"
+        logger.info(
+            f"Price update complete: {total_stats['updated_items']} items updated, "
+            f"{total_stats['skipped_items']} skipped, {total_stats['failed_items']} failed"
+        )
+
+        return (
+            f"Updated {total_stats['updated_items']} inventory item prices "
+            f"({total_stats['skipped_items']} skipped, {total_stats['failed_items']} failed)"
+        )
 
     except Exception as e:
         logger.exception(f"Error updating inventory prices: {e}")
+        raise
+
+
+@shared_task(name="apps.pricing.tasks.check_price_alerts")
+def check_price_alerts() -> str:
+    """
+    Check all active price alerts and trigger notifications if conditions are met.
+
+    This task runs after gold rates are updated to check if any alerts should be triggered.
+
+    Returns:
+        str: Summary of alerts checked and triggered
+    """
+    try:
+        from apps.core.models import Tenant
+        from apps.pricing.services import PriceAlertService
+
+        # Get current and previous gold rates
+        current_rate = GoldRate.get_latest_rate()
+        if not current_rate:
+            logger.warning("No current gold rate available")
+            return "No gold rate available for alert checking"
+
+        # Get previous rate (second most recent)
+        previous_rate = (
+            GoldRate.objects.filter(
+                market=current_rate.market,
+                currency=current_rate.currency,
+            )
+            .exclude(id=current_rate.id)
+            .order_by("-timestamp")
+            .first()
+        )
+
+        total_triggered = 0
+
+        # Check alerts for all active tenants
+        tenants = Tenant.objects.filter(status="ACTIVE")
+
+        for tenant in tenants:
+            try:
+                service = PriceAlertService(tenant)
+                triggered_alerts = service.check_alerts(current_rate, previous_rate)
+                total_triggered += len(triggered_alerts)
+
+                if triggered_alerts:
+                    logger.info(
+                        f"Triggered {len(triggered_alerts)} alerts for tenant {tenant.company_name}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Error checking alerts for tenant {tenant.company_name}: {e}")
+
+        logger.info(f"Alert check complete: {total_triggered} alerts triggered")
+        return f"Checked price alerts: {total_triggered} triggered"
+
+    except Exception as e:
+        logger.exception(f"Error checking price alerts: {e}")
         raise

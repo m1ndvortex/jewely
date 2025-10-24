@@ -754,3 +754,306 @@ class PriceAlert(models.Model):
         elif self.alert_type == self.PERCENTAGE_CHANGE:
             return f"Change ≥ {self.percentage_threshold}%"
         return "Unknown condition"
+
+
+class PriceChangeLog(models.Model):
+    """
+    Log of all price changes for audit trail.
+
+    Tracks automatic and manual price changes with reasons and timestamps.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the price change log",
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="price_change_logs",
+        help_text="Tenant that owns this log entry",
+    )
+
+    inventory_item = models.ForeignKey(
+        "inventory.InventoryItem",
+        on_delete=models.CASCADE,
+        related_name="price_changes",
+        help_text="Inventory item whose price changed",
+    )
+
+    old_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Previous selling price",
+    )
+
+    new_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="New selling price",
+    )
+
+    change_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Price change amount (new - old)",
+    )
+
+    change_percentage = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        help_text="Price change percentage",
+    )
+
+    reason = models.TextField(
+        help_text="Reason for price change",
+    )
+
+    changed_by = models.ForeignKey(
+        "core.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="price_changes_made",
+        help_text="User who made the change (null for automatic changes)",
+    )
+
+    changed_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the price was changed",
+    )
+
+    class Meta:
+        db_table = "pricing_change_logs"
+        ordering = ["-changed_at"]
+        verbose_name = "Price Change Log"
+        verbose_name_plural = "Price Change Logs"
+        indexes = [
+            models.Index(fields=["tenant", "-changed_at"], name="price_log_tenant_date_idx"),
+            models.Index(fields=["inventory_item", "-changed_at"], name="price_log_item_date_idx"),
+            models.Index(fields=["-changed_at"], name="price_log_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.inventory_item.sku}: {self.old_price} → {self.new_price}"
+
+    def save(self, *args, **kwargs):
+        """Calculate change amount and percentage if not provided."""
+        if not self.change_amount:
+            self.change_amount = self.new_price - self.old_price
+
+        if not self.change_percentage and self.old_price > 0:
+            self.change_percentage = (self.change_amount / self.old_price) * 100
+
+        super().save(*args, **kwargs)
+
+    def is_increase(self):
+        """Check if this was a price increase."""
+        return self.new_price > self.old_price
+
+    def is_decrease(self):
+        """Check if this was a price decrease."""
+        return self.new_price < self.old_price
+
+
+class PriceOverrideRequest(models.Model):
+    """
+    Price override request model for manager approval workflow.
+
+    Implements Requirement 17: Manager approval for manual price overrides
+    Tracks requests to manually override calculated prices with approval workflow.
+    """
+
+    # Status choices
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
+
+    STATUS_CHOICES = [
+        (PENDING, "Pending Approval"),
+        (APPROVED, "Approved"),
+        (REJECTED, "Rejected"),
+        (CANCELLED, "Cancelled"),
+    ]
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the override request",
+    )
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="price_override_requests",
+        help_text="Tenant that owns this request",
+    )
+
+    inventory_item = models.ForeignKey(
+        "inventory.InventoryItem",
+        on_delete=models.CASCADE,
+        related_name="price_override_requests",
+        help_text="Inventory item to override price for",
+    )
+
+    # Price information
+    current_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Current selling price",
+    )
+
+    calculated_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Price calculated by pricing engine",
+    )
+
+    requested_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Requested new price",
+    )
+
+    deviation_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Deviation from calculated price (requested - calculated)",
+    )
+
+    deviation_percentage = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        help_text="Deviation percentage from calculated price",
+    )
+
+    # Request details
+    reason = models.TextField(
+        help_text="Reason for requesting price override",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=PENDING,
+        help_text="Current status of the request",
+    )
+
+    # Workflow tracking
+    requested_by = models.ForeignKey(
+        "core.User",
+        on_delete=models.PROTECT,
+        related_name="price_overrides_requested",
+        help_text="User who requested the override",
+    )
+
+    requested_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the override was requested",
+    )
+
+    reviewed_by = models.ForeignKey(
+        "core.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="price_overrides_reviewed",
+        help_text="User who reviewed (approved/rejected) the request",
+    )
+
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the request was reviewed",
+    )
+
+    review_notes = models.TextField(
+        blank=True,
+        help_text="Notes from reviewer",
+    )
+
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text="Reason for rejection",
+    )
+
+    class Meta:
+        db_table = "pricing_override_requests"
+        ordering = ["-requested_at"]
+        verbose_name = "Price Override Request"
+        verbose_name_plural = "Price Override Requests"
+        indexes = [
+            models.Index(
+                fields=["tenant", "status", "-requested_at"], name="override_tenant_status_idx"
+            ),
+            models.Index(fields=["inventory_item", "-requested_at"], name="override_item_date_idx"),
+            models.Index(fields=["requested_by", "-requested_at"], name="override_requester_idx"),
+            models.Index(fields=["status", "-requested_at"], name="override_status_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.inventory_item.sku}: {self.requested_price} ({self.status})"
+
+    def approve(self, approved_by, notes: str = ""):
+        """
+        Approve the override request.
+
+        Args:
+            approved_by: User approving the request
+            notes: Optional approval notes
+        """
+        from django.utils import timezone
+
+        self.status = self.APPROVED
+        self.reviewed_by = approved_by
+        self.reviewed_at = timezone.now()
+        self.review_notes = notes
+        self.save(update_fields=["status", "reviewed_by", "reviewed_at", "review_notes"])
+
+    def reject(self, rejected_by, rejection_reason: str):
+        """
+        Reject the override request.
+
+        Args:
+            rejected_by: User rejecting the request
+            rejection_reason: Reason for rejection
+        """
+        from django.utils import timezone
+
+        self.status = self.REJECTED
+        self.reviewed_by = rejected_by
+        self.reviewed_at = timezone.now()
+        self.rejection_reason = rejection_reason
+        self.save(update_fields=["status", "reviewed_by", "reviewed_at", "rejection_reason"])
+
+    def cancel(self):
+        """Cancel the override request."""
+        self.status = self.CANCELLED
+        self.save(update_fields=["status"])
+
+    def is_pending(self):
+        """Check if request is pending approval."""
+        return self.status == self.PENDING
+
+    def is_approved(self):
+        """Check if request was approved."""
+        return self.status == self.APPROVED
+
+    def is_rejected(self):
+        """Check if request was rejected."""
+        return self.status == self.REJECTED
+
+    def get_deviation_display(self):
+        """Get human-readable deviation display."""
+        sign = "+" if self.deviation_amount >= 0 else ""
+        return f"{sign}{self.deviation_amount} ({sign}{self.deviation_percentage:.2f}%)"
