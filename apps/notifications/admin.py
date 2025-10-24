@@ -2,7 +2,14 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
-from .models import Notification, NotificationPreference, NotificationTemplate
+from .models import (
+    EmailCampaign,
+    EmailNotification,
+    EmailTemplate,
+    Notification,
+    NotificationPreference,
+    NotificationTemplate,
+)
 
 
 @admin.register(Notification)
@@ -122,3 +129,215 @@ class NotificationTemplateAdmin(admin.ModelAdmin):
             )
 
         return form
+
+
+@admin.register(EmailNotification)
+class EmailNotificationAdmin(admin.ModelAdmin):
+    """Admin interface for EmailNotification model"""
+
+    list_display = [
+        "subject",
+        "to_email",
+        "status_badge",
+        "email_type",
+        "created_at",
+        "sent_at",
+    ]
+    list_filter = [
+        "status",
+        "email_type",
+        "created_at",
+        "sent_at",
+    ]
+    search_fields = [
+        "subject",
+        "to_email",
+        "user__username",
+        "user__email",
+        "message_id",
+    ]
+    readonly_fields = [
+        "id",
+        "created_at",
+        "sent_at",
+        "delivered_at",
+        "opened_at",
+        "clicked_at",
+        "bounced_at",
+        "failed_at",
+        "message_id",
+    ]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]
+
+    fieldsets = (
+        (
+            _("Email Details"),
+            {"fields": ("subject", "to_email", "from_email", "template_name", "email_type")},
+        ),
+        (
+            _("Status & Tracking"),
+            {"fields": ("status", "message_id", "error_message", "bounce_reason")},
+        ),
+        (_("Scheduling"), {"fields": ("scheduled_at", "campaign_id")}),
+        (
+            _("Timestamps"),
+            {
+                "fields": (
+                    "created_at",
+                    "sent_at",
+                    "delivered_at",
+                    "opened_at",
+                    "clicked_at",
+                    "bounced_at",
+                    "failed_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user", "notification")
+
+    def status_badge(self, obj):
+        """Display status as colored badge"""
+        colors = {
+            "PENDING": "#f59e0b",
+            "SENT": "#3b82f6",
+            "DELIVERED": "#10b981",
+            "OPENED": "#8b5cf6",
+            "CLICKED": "#6366f1",
+            "BOUNCED": "#ef4444",
+            "FAILED": "#ef4444",
+            "COMPLAINED": "#ef4444",
+            "UNSUBSCRIBED": "#6b7280",
+        }
+        color = colors.get(obj.status, "#6b7280")
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    status_badge.short_description = _("Status")
+
+
+@admin.register(EmailTemplate)
+class EmailTemplateAdmin(admin.ModelAdmin):
+    """Admin interface for EmailTemplate model"""
+
+    list_display = [
+        "name",
+        "email_type",
+        "is_active",
+        "updated_at",
+    ]
+    list_filter = [
+        "email_type",
+        "is_active",
+        "updated_at",
+    ]
+    search_fields = [
+        "name",
+        "subject_template",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (_("Template Details"), {"fields": ("name", "email_type", "is_active")}),
+        (_("Email Content"), {"fields": ("subject_template", "html_template", "text_template")}),
+        (_("Timestamps"), {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+
+@admin.register(EmailCampaign)
+class EmailCampaignAdmin(admin.ModelAdmin):
+    """Admin interface for EmailCampaign model"""
+
+    list_display = [
+        "name",
+        "status",
+        "total_recipients",
+        "emails_sent",
+        "delivery_rate",
+        "open_rate",
+        "scheduled_at",
+        "created_at",
+    ]
+    list_filter = [
+        "status",
+        "scheduled_at",
+        "created_at",
+        "sent_at",
+    ]
+    search_fields = [
+        "name",
+        "subject",
+        "created_by__username",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "sent_at",
+        "total_recipients",
+        "emails_sent",
+        "emails_delivered",
+        "emails_opened",
+        "emails_clicked",
+        "emails_bounced",
+        "emails_failed",
+    ]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]
+
+    fieldsets = (
+        (_("Campaign Details"), {"fields": ("name", "subject", "template", "status")}),
+        (_("Targeting"), {"fields": ("target_users", "target_roles", "target_tenant_status")}),
+        (_("Scheduling"), {"fields": ("scheduled_at", "created_by")}),
+        (
+            _("Statistics"),
+            {
+                "fields": (
+                    "total_recipients",
+                    "emails_sent",
+                    "emails_delivered",
+                    "emails_opened",
+                    "emails_clicked",
+                    "emails_bounced",
+                    "emails_failed",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("Timestamps"),
+            {"fields": ("created_at", "updated_at", "sent_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    filter_horizontal = ["target_users"]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("template", "created_by")
+
+    def delivery_rate(self, obj):
+        """Calculate and display delivery rate"""
+        if obj.emails_sent > 0:
+            rate = (obj.emails_delivered / obj.emails_sent) * 100
+            return f"{rate:.1f}%"
+        return "0%"
+
+    delivery_rate.short_description = _("Delivery Rate")
+
+    def open_rate(self, obj):
+        """Calculate and display open rate"""
+        if obj.emails_sent > 0:
+            rate = (obj.emails_opened / obj.emails_sent) * 100
+            return f"{rate:.1f}%"
+        return "0%"
+
+    open_rate.short_description = _("Open Rate")

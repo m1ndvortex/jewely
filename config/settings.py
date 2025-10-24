@@ -295,6 +295,70 @@ LOGS_DIR.mkdir(exist_ok=True)
 
 # Email Configuration
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@jewelryshop.com")
+SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+
+# Django Anymail Configuration (for production email providers)
+if "anymail" in EMAIL_BACKEND.lower():
+    INSTALLED_APPS.append("anymail")
+
+    # Example configuration for different providers
+    # Uncomment and configure based on your email provider
+
+    # For SendGrid
+    if os.getenv("EMAIL_PROVIDER") == "sendgrid":
+        ANYMAIL = {
+            "SENDGRID_API_KEY": os.getenv("SENDGRID_API_KEY"),
+            "SENDGRID_GENERATE_MESSAGE_ID": True,
+            "SENDGRID_MERGE_FIELD_FORMAT": "-{}-",
+            "SENDGRID_API_URL": "https://api.sendgrid.com/v3/",
+        }
+        EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
+
+    # For Mailgun
+    elif os.getenv("EMAIL_PROVIDER") == "mailgun":
+        ANYMAIL = {
+            "MAILGUN_API_KEY": os.getenv("MAILGUN_API_KEY"),
+            "MAILGUN_SENDER_DOMAIN": os.getenv("MAILGUN_SENDER_DOMAIN"),
+            "MAILGUN_API_URL": "https://api.mailgun.net/v3",
+        }
+        EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+
+    # For Amazon SES
+    elif os.getenv("EMAIL_PROVIDER") == "ses":
+        ANYMAIL = {
+            "AMAZON_SES_REGION": os.getenv("AWS_SES_REGION", "us-east-1"),
+            "AMAZON_SES_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
+            "AMAZON_SES_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        }
+        EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
+
+    # For Postmark
+    elif os.getenv("EMAIL_PROVIDER") == "postmark":
+        ANYMAIL = {
+            "POSTMARK_SERVER_TOKEN": os.getenv("POSTMARK_SERVER_TOKEN"),
+            "POSTMARK_API_URL": "https://api.postmarkapp.com/",
+        }
+        EMAIL_BACKEND = "anymail.backends.postmark.EmailBackend"
+
+# SMTP Configuration (fallback)
+if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+    EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+
+# Email webhook configuration for tracking
+EMAIL_WEBHOOK_SECRET = os.getenv("EMAIL_WEBHOOK_SECRET", "")
+
+# Email rate limiting
+EMAIL_RATE_LIMIT = {
+    "TRANSACTIONAL": int(os.getenv("EMAIL_RATE_LIMIT_TRANSACTIONAL", "1000")),  # per hour
+    "MARKETING": int(os.getenv("EMAIL_RATE_LIMIT_MARKETING", "500")),  # per hour
+    "SYSTEM": int(os.getenv("EMAIL_RATE_LIMIT_SYSTEM", "100")),  # per hour
+}
 
 # Django REST Framework Configuration
 REST_FRAMEWORK = {

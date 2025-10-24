@@ -1,0 +1,88 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Receipt - {{ sale.sale_number }}{% endblock %}
+
+{% block content %}
+<h2>Purchase Receipt</h2>
+
+<p>Dear {{ customer.first_name|default:"Valued Customer" }},</p>
+
+<p>Thank you for your purchase! Here is your receipt for your recent transaction.</p>
+
+<div class="alert alert-success">
+    <strong>Receipt Number:</strong> {{ sale.sale_number }}<br>
+    <strong>Date:</strong> {{ sale.created_at|date:"F d, Y g:i A" }}<br>
+    <strong>Branch:</strong> {{ sale.branch.name }}<br>
+    <strong>Served by:</strong> {{ sale.employee.get_full_name|default:sale.employee.username }}
+</div>
+
+<h3>Items Purchased:</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <thead>
+        <tr style="background-color: #f9fafb;">
+            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
+            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">Qty</th>
+            <th style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">Unit Price</th>
+            <th style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in sale.items.all %}
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                <strong>{{ item.inventory_item.name }}</strong><br>
+                <small>{{ item.inventory_item.karat }}K Gold, {{ item.inventory_item.weight_grams }}g</small>
+            </td>
+            <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">{{ item.quantity }}</td>
+            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">${{ item.unit_price }}</td>
+            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">${{ item.subtotal }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="3" style="padding: 12px; text-align: right; border-top: 1px solid #e5e7eb;">Subtotal:</td>
+            <td style="padding: 12px; text-align: right; border-top: 1px solid #e5e7eb;">${{ sale.subtotal }}</td>
+        </tr>
+        {% if sale.discount > 0 %}
+        <tr>
+            <td colspan="3" style="padding: 12px; text-align: right;">Discount:</td>
+            <td style="padding: 12px; text-align: right;">-${{ sale.discount }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td colspan="3" style="padding: 12px; text-align: right;">Tax:</td>
+            <td style="padding: 12px; text-align: right;">${{ sale.tax }}</td>
+        </tr>
+        <tr style="background-color: #f9fafb; font-weight: bold; font-size: 18px;">
+            <td colspan="3" style="padding: 12px; text-align: right; border-top: 2px solid #e5e7eb;">Total:</td>
+            <td style="padding: 12px; text-align: right; border-top: 2px solid #e5e7eb;">${{ sale.total }}</td>
+        </tr>
+    </tfoot>
+</table>
+
+<div style="background-color: #f9fafb; padding: 16px; border-radius: 6px; margin: 20px 0;">
+    <strong>Payment Method:</strong> {{ sale.payment_method|title }}<br>
+    {% if current_gold_rate %}
+    <strong>Gold Rate ({{ current_gold_rate.market }}):</strong> ${{ current_gold_rate.rate_per_gram }}/gram
+    {% endif %}
+</div>
+
+{% if customer.loyalty_points %}
+<div class="alert alert-info">
+    <strong>Loyalty Points Earned:</strong> {{ points_earned|default:0 }} points<br>
+    <strong>Total Points Balance:</strong> {{ customer.loyalty_points }} points
+</div>
+{% endif %}
+
+<p>
+    Thank you for your business! We appreciate your trust in our jewelry and craftsmanship.
+</p>
+
+<p>
+    <small>
+        This receipt serves as proof of purchase. Please keep it for your records.
+        For warranty claims or returns, please present this receipt along with the item.
+    </small>
+</p>
+{% endblock %}

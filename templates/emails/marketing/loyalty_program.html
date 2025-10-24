@@ -1,0 +1,102 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Loyalty Program Update{% endblock %}
+
+{% block header_title %}{{ shop_name|default:"Jewelry Store" }} Loyalty Program{% endblock %}
+
+{% block content %}
+<h2 style="text-align: center; color: #1f2937;">Your Loyalty Status</h2>
+
+<p>Dear {{ user.first_name|default:user.username }},</p>
+
+<p>We wanted to update you on your loyalty program status and share some exciting rewards!</p>
+
+<div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 20px; border-radius: 8px; text-align: center; color: white; margin: 20px 0;">
+    <h3 style="margin: 0 0 10px 0;">{{ customer.loyalty_tier }} Member</h3>
+    <div style="font-size: 32px; font-weight: bold; margin: 10px 0;">{{ customer.loyalty_points }} Points</div>
+    <p style="margin: 0;">Total Lifetime Purchases: ${{ customer.total_purchases }}</p>
+</div>
+
+{% if tier_upgrade %}
+<div class="alert alert-success" style="text-align: center;">
+    <strong>Congratulations!</strong><br>
+    You've been upgraded to {{ new_tier }} status! 
+    Enjoy {{ new_tier_benefits }} and exclusive perks.
+</div>
+{% endif %}
+
+<h3>Your Rewards Summary:</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;"><strong>Current Points:</strong></td>
+        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">{{ customer.loyalty_points }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;"><strong>Points This Month:</strong></td>
+        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">{{ points_this_month }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;"><strong>Next Tier:</strong></td>
+        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">
+            {% if next_tier %}
+            {{ next_tier }} ({{ points_to_next_tier }} points needed)
+            {% else %}
+            You're at the highest tier!
+            {% endif %}
+        </td>
+    </tr>
+    <tr style="background-color: #f9fafb;">
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;"><strong>Available Rewards:</strong></td>
+        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">${{ available_reward_value }}</td>
+    </tr>
+</table>
+
+{% if available_rewards %}
+<h3>Redeem Your Points:</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; margin: 20px 0;">
+    {% for reward in available_rewards %}
+    <div style="flex: 1; min-width: 200px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; text-align: center;">
+        <h4 style="margin: 0 0 8px 0; color: #1f2937;">{{ reward.name }}</h4>
+        <p style="color: #6b7280; margin: 0 0 12px 0; font-size: 14px;">{{ reward.description }}</p>
+        <div style="font-weight: bold; color: #7c3aed;">{{ reward.points_required }} Points</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+    <h4 style="margin: 0 0 12px 0; color: #1e40af;">{{ customer.loyalty_tier }} Benefits:</h4>
+    <ul style="margin: 0; padding-left: 20px; color: #1e40af;">
+        {% for benefit in tier_benefits %}
+        <li>{{ benefit }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% if special_offers %}
+<h3>Exclusive Member Offers:</h3>
+{% for offer in special_offers %}
+<div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 12px 0;">
+    <h4 style="margin: 0 0 8px 0;">{{ offer.title }}</h4>
+    <p style="margin: 0 0 8px 0; color: #6b7280;">{{ offer.description }}</p>
+    <p style="margin: 0; font-weight: bold; color: #dc2626;">Valid until {{ offer.expiry|date:"F d, Y" }}</p>
+</div>
+{% endfor %}
+{% endif %}
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ loyalty_dashboard_url }}" class="button">View Full Loyalty Dashboard</a>
+    <a href="{{ shop_url }}" class="button" style="background-color: #059669;">Continue Shopping</a>
+</div>
+
+<p>
+    Keep shopping to earn more points and unlock even better rewards! 
+    Every purchase brings you closer to exclusive benefits and savings.
+</p>
+
+<p style="text-align: center;">
+    <a href="{{ unsubscribe_url }}" style="color: #6b7280; font-size: 12px; text-decoration: none;">
+        Unsubscribe from loyalty program emails
+    </a>
+</p>
+{% endblock %}

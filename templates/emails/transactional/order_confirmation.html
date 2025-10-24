@@ -1,0 +1,63 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Order Confirmation - {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<h2>Order Confirmation</h2>
+
+<p>Dear {{ user.first_name|default:user.username }},</p>
+
+<p>Thank you for your order! We have received your order and it is being processed.</p>
+
+<div class="alert alert-success">
+    <strong>Order Number:</strong> {{ order.order_number }}<br>
+    <strong>Order Date:</strong> {{ order.created_at|date:"F d, Y" }}<br>
+    <strong>Total Amount:</strong> ${{ order.total_amount }}
+</div>
+
+<h3>Order Details:</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <thead>
+        <tr style="background-color: #f9fafb;">
+            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
+            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">Quantity</th>
+            <th style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">Price</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in order.items.all %}
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                <strong>{{ item.inventory_item.name }}</strong><br>
+                <small>SKU: {{ item.inventory_item.sku }}</small>
+            </td>
+            <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">{{ item.quantity }}</td>
+            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb;">${{ item.subtotal }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="background-color: #f9fafb; font-weight: bold;">
+            <td colspan="2" style="padding: 12px; text-align: right;">Total:</td>
+            <td style="padding: 12px; text-align: right;">${{ order.total_amount }}</td>
+        </tr>
+    </tbody>
+</table>
+
+{% if order.status == 'REPAIR' %}
+<div class="alert alert-info">
+    <strong>Repair Order Information:</strong><br>
+    Your item will be carefully examined and repaired by our skilled craftsmen. 
+    We will contact you once the repair is complete.
+</div>
+{% endif %}
+
+<p>
+    <a href="{{ order_url }}" class="button">View Order Details</a>
+</p>
+
+<p>
+    We will send you another email when your order status changes. 
+    If you have any questions about your order, please don't hesitate to contact us.
+</p>
+
+<p>Thank you for choosing us!</p>
+{% endblock %}

@@ -21,11 +21,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
 
 from .models import Notification, NotificationPreference
-from .services import (
-    get_unread_count,
-    get_user_notifications,
-    mark_notifications_as_read,
-)
+from .services import get_unread_count, get_user_notifications, mark_notifications_as_read
 
 
 class NotificationCenterView(LoginRequiredMixin, ListView):

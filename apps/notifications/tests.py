@@ -1,4 +1,5 @@
 from datetime import time, timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -525,3 +526,221 @@ class NotificationViewTests(TestCase):
 
         # Should return 404 (not found due to user filtering)
         self.assertEqual(response.status_code, 404)
+
+
+class EmailNotificationModelTests(TestCase):
+    """Test cases for email notification models"""
+
+    def setUp(self):
+        """Set up test data"""
+        # Enable RLS bypass for tests
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        # Create tenant first
+        self.tenant = Tenant.objects.create(company_name="Test Company", slug="test-company")
+
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            tenant=self.tenant,
+            role="TENANT_OWNER",
+        )
+
+    def test_email_notification_creation(self):
+        """Test creating an email notification"""
+        from .models import EmailNotification
+
+        email_notification = EmailNotification.objects.create(
+            user=self.user,
+            subject="Test Email",
+            to_email="test@example.com",
+            from_email="noreply@example.com",
+            template_name="test_template",
+            email_type="TRANSACTIONAL",
+        )
+
+        self.assertEqual(email_notification.user, self.user)
+        self.assertEqual(email_notification.subject, "Test Email")
+        self.assertEqual(email_notification.to_email, "test@example.com")
+        self.assertEqual(email_notification.status, "PENDING")
+
+    def test_email_status_update(self):
+        """Test updating email status"""
+        from .models import EmailNotification
+
+        email_notification = EmailNotification.objects.create(
+            user=self.user,
+            subject="Test Email",
+            to_email="test@example.com",
+            from_email="noreply@example.com",
+            template_name="test_template",
+        )
+
+        # Update to sent
+        email_notification.update_status("SENT")
+        self.assertEqual(email_notification.status, "SENT")
+        self.assertIsNotNone(email_notification.sent_at)
+
+        # Update to delivered
+        email_notification.update_status("DELIVERED")
+        self.assertEqual(email_notification.status, "DELIVERED")
+        self.assertIsNotNone(email_notification.delivered_at)
+
+    def test_email_template_creation(self):
+        """Test creating an email template"""
+        from .models import EmailTemplate
+
+        template = EmailTemplate.objects.create(
+            name="test_template",
+            subject_template="Test Subject: {{ name }}",
+            html_template="<h1>Hello {{ name }}</h1>",
+            text_template="Hello {{ name }}",
+            email_type="TRANSACTIONAL",
+        )
+
+        self.assertEqual(template.name, "test_template")
+        self.assertEqual(template.email_type, "TRANSACTIONAL")
+        self.assertTrue(template.is_active)
+
+    def test_email_template_rendering(self):
+        """Test email template rendering"""
+        from .models import EmailTemplate
+
+        template = EmailTemplate.objects.create(
+            name="test_template",
+            subject_template="Hello {{ name }}",
+            html_template="<h1>Welcome {{ name }}</h1><p>You have {{ count }} items.</p>",
+            text_template="Welcome {{ name }}, you have {{ count }} items.",
+        )
+
+        context = {"name": "John", "count": 5}
+        rendered = template.render(context)
+
+        self.assertEqual(rendered["subject"], "Hello John")
+        self.assertIn("Welcome John", rendered["html_body"])
+        self.assertIn("5 items", rendered["html_body"])
+        if rendered.get("text_body"):
+            self.assertEqual(rendered["text_body"], "Welcome John, you have 5 items.")
+
+
+class EmailServiceTests(TestCase):
+    """Test cases for email services"""
+
+    def setUp(self):
+        """Set up test data"""
+        # Enable RLS bypass for tests
+        from apps.core.tenant_context import enable_rls_bypass
+
+        from .models import EmailTemplate
+
+        enable_rls_bypass()
+
+        # Create tenant first
+        self.tenant = Tenant.objects.create(company_name="Test Company", slug="test-company")
+
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            tenant=self.tenant,
+            role="TENANT_OWNER",
+        )
+
+        # Create email template
+        self.email_template = EmailTemplate.objects.create(
+            name="test_template",
+            subject_template="Test Subject: {{ name }}",
+            html_template="<h1>Hello {{ name }}</h1>",
+            text_template="Hello {{ name }}",
+            email_type="TRANSACTIONAL",
+        )
+
+    @patch("apps.notifications.services._send_email_now")
+    def test_send_email_notification(self, mock_send):
+        """Test sending email notification"""
+        from .models import NotificationPreference
+        from .services import send_email_notification
+
+        # Create email preference to allow email notifications
+        NotificationPreference.objects.create(
+            user=self.user, notification_type="TRANSACTIONAL", channel="EMAIL", is_enabled=True
+        )
+
+        context = {"name": "John"}
+
+        email_notification = send_email_notification(
+            user=self.user,
+            template_name="test_template",
+            context=context,
+            email_type="TRANSACTIONAL",
+        )
+
+        self.assertIsNotNone(email_notification)
+        self.assertEqual(email_notification.user, self.user)
+        self.assertEqual(email_notification.template_name, "test_template")
+        self.assertEqual(email_notification.email_type, "TRANSACTIONAL")
+        mock_send.assert_called_once()
+
+    @patch("apps.notifications.services._send_email_now")
+    def test_send_transactional_email(self, mock_send):
+        """Test sending transactional email"""
+        from .models import NotificationPreference
+        from .services import send_transactional_email
+
+        # Create email preference to allow email notifications
+        NotificationPreference.objects.create(
+            user=self.user, notification_type="TRANSACTIONAL", channel="EMAIL", is_enabled=True
+        )
+
+        context = {"name": "John"}
+
+        email_notification = send_transactional_email(
+            user=self.user, template_name="test_template", context=context
+        )
+
+        self.assertIsNotNone(email_notification)
+        self.assertEqual(email_notification.email_type, "TRANSACTIONAL")
+        mock_send.assert_called_once()
+
+    def test_get_email_statistics(self):
+        """Test getting email statistics"""
+        from .models import EmailNotification
+        from .services import get_email_statistics
+
+        # Create test email notifications
+        EmailNotification.objects.create(
+            user=self.user,
+            subject="Test 1",
+            to_email="test@example.com",
+            from_email="noreply@example.com",
+            template_name="test_template",
+            status="SENT",
+        )
+        EmailNotification.objects.create(
+            user=self.user,
+            subject="Test 2",
+            to_email="test@example.com",
+            from_email="noreply@example.com",
+            template_name="test_template",
+            status="DELIVERED",
+        )
+        EmailNotification.objects.create(
+            user=self.user,
+            subject="Test 3",
+            to_email="test@example.com",
+            from_email="noreply@example.com",
+            template_name="test_template",
+            status="OPENED",
+        )
+
+        stats = get_email_statistics(user=self.user)
+
+        self.assertEqual(stats["total"], 3)
+        self.assertEqual(stats["sent"], 3)
+        self.assertEqual(stats["delivered"], 2)
+        self.assertEqual(stats["opened"], 1)
+        self.assertGreater(stats["delivery_rate"], 0)
+        self.assertGreater(stats["open_rate"], 0)

@@ -1,0 +1,118 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Security Alert - {{ alert_type }}{% endblock %}
+
+{% block content %}
+<h2 style="color: #dc2626;">Security Alert</h2>
+
+<p>Dear {{ user.first_name|default:user.username }},</p>
+
+<p>We detected {{ alert_type|lower }} activity on your account and wanted to notify you immediately.</p>
+
+<div class="alert alert-error">
+    <strong>Alert Type:</strong> {{ alert_type }}<br>
+    <strong>Time:</strong> {{ alert_time|date:"F d, Y g:i A T" }}<br>
+    <strong>IP Address:</strong> {{ ip_address }}<br>
+    {% if location %}
+    <strong>Location:</strong> {{ location }}
+    {% endif %}
+</div>
+
+<h3>Alert Details:</h3>
+<div style="background-color: #fef2f2; padding: 16px; border-radius: 6px; margin: 16px 0;">
+    {{ alert_description }}
+</div>
+
+{% if alert_type == "Suspicious Login" %}
+<h3>Login Information:</h3>
+<ul>
+    <li><strong>Device:</strong> {{ device_info }}</li>
+    <li><strong>Browser:</strong> {{ browser_info }}</li>
+    <li><strong>Success:</strong> {{ login_successful|yesno:"Yes,No" }}</li>
+    {% if login_successful %}
+    <li><strong>Session Duration:</strong> {{ session_duration }} minutes</li>
+    {% endif %}
+</ul>
+
+<div class="alert alert-warning">
+    <strong>Was this you?</strong><br>
+    If you recognize this activity, no action is needed. If you don't recognize this activity, 
+    please secure your account immediately.
+</div>
+
+<div style="text-align: center; margin: 20px 0;">
+    <a href="{{ secure_account_url }}" class="button" style="background-color: #dc2626;">Secure My Account</a>
+    <a href="{{ change_password_url }}" class="button">Change Password</a>
+</div>
+
+{% elif alert_type == "Multiple Failed Logins" %}
+<h3>Failed Login Attempts:</h3>
+<ul>
+    <li><strong>Number of Attempts:</strong> {{ failed_attempts }}</li>
+    <li><strong>Time Period:</strong> {{ time_period }}</li>
+    <li><strong>Account Status:</strong> {{ account_locked|yesno:"Temporarily Locked,Active" }}</li>
+</ul>
+
+{% if account_locked %}
+<div class="alert alert-error">
+    <strong>Account Temporarily Locked</strong><br>
+    Your account has been temporarily locked for security. It will be automatically unlocked in {{ unlock_time }} minutes.
+</div>
+{% endif %}
+
+{% elif alert_type == "Data Export" %}
+<h3>Data Export Details:</h3>
+<ul>
+    <li><strong>Data Type:</strong> {{ export_type }}</li>
+    <li><strong>Records Exported:</strong> {{ records_count }}</li>
+    <li><strong>File Size:</strong> {{ file_size }}</li>
+    <li><strong>Export Method:</strong> {{ export_method }}</li>
+</ul>
+
+{% endif %}
+
+<h3>Recommended Actions:</h3>
+<ul>
+    {% for action in recommended_actions %}
+    <li>{{ action }}</li>
+    {% endfor %}
+</ul>
+
+<div style="background-color: #f0f9ff; padding: 16px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+    <strong>Security Best Practices:</strong>
+    <ul style="margin: 8px 0; padding-left: 20px;">
+        <li>Use a strong, unique password for your account</li>
+        <li>Enable two-factor authentication (2FA)</li>
+        <li>Log out when using shared or public computers</li>
+        <li>Regularly review your account activity</li>
+        <li>Keep your contact information up to date</li>
+    </ul>
+</div>
+
+{% if contact_support %}
+<div style="background-color: #fef3c7; padding: 16px; border-radius: 6px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <strong>Need Help?</strong><br>
+    If you need assistance securing your account or have questions about this alert, 
+    please contact our security team immediately:
+    <br><br>
+    <strong>Email:</strong> {{ support_email }}<br>
+    <strong>Phone:</strong> {{ support_phone }}<br>
+    <strong>Reference ID:</strong> {{ alert_reference_id }}
+</div>
+{% endif %}
+
+<p>
+    <a href="{{ account_security_url }}" class="button">Review Account Security</a>
+    <a href="{{ activity_log_url }}" class="button" style="background-color: #6b7280;">View Activity Log</a>
+</p>
+
+<p>
+    This is an automated security alert. We take the security of your account seriously 
+    and will continue to monitor for suspicious activity.
+</p>
+
+<p>
+    <strong>Security Team<br>
+    Jewelry Management System</strong>
+</p>
+{% endblock %}

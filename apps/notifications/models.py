@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
@@ -23,6 +25,8 @@ class Notification(models.Model):
         ("SYSTEM", _("System Notification")),
         ("PROMOTION", _("Promotion")),
         ("APPOINTMENT", _("Appointment Reminder")),
+        ("TRANSACTIONAL", _("Transactional Email")),
+        ("MARKETING", _("Marketing Email")),
     ]
 
     user = models.ForeignKey(
@@ -247,3 +251,300 @@ class NotificationTemplate(models.Model):
             rendered["action_url"] = action_url_template.render(Context(context))
 
         return rendered
+
+
+class EmailNotification(models.Model):
+    """
+    Model to track email notifications and their delivery status.
+    """
+
+    STATUS_CHOICES = [
+        ("PENDING", _("Pending")),
+        ("SENT", _("Sent")),
+        ("DELIVERED", _("Delivered")),
+        ("BOUNCED", _("Bounced")),
+        ("FAILED", _("Failed")),
+        ("OPENED", _("Opened")),
+        ("CLICKED", _("Clicked")),
+        ("COMPLAINED", _("Complained")),
+        ("UNSUBSCRIBED", _("Unsubscribed")),
+    ]
+
+    EMAIL_TYPES = [
+        ("TRANSACTIONAL", _("Transactional")),
+        ("MARKETING", _("Marketing")),
+        ("SYSTEM", _("System")),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="email_notifications",
+        help_text=_("User who received this email"),
+    )
+    notification = models.OneToOneField(
+        "Notification",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="email_notification",
+        help_text=_("Associated in-app notification"),
+    )
+
+    # Email details
+    subject = models.CharField(max_length=255, help_text=_("Email subject"))
+    to_email = models.EmailField(help_text=_("Recipient email address"))
+    from_email = models.EmailField(help_text=_("Sender email address"))
+    template_name = models.CharField(
+        max_length=100, null=True, blank=True, help_text=_("Email template used")
+    )
+    email_type = models.CharField(
+        max_length=20, choices=EMAIL_TYPES, default="TRANSACTIONAL", help_text=_("Type of email")
+    )
+
+    # Delivery tracking
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+        help_text=_("Current delivery status"),
+    )
+    message_id = models.CharField(
+        max_length=255, null=True, blank=True, help_text=_("Email service provider message ID")
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    opened_at = models.DateTimeField(null=True, blank=True)
+    clicked_at = models.DateTimeField(null=True, blank=True)
+    bounced_at = models.DateTimeField(null=True, blank=True)
+    failed_at = models.DateTimeField(null=True, blank=True)
+
+    # Error tracking
+    error_message = models.TextField(
+        null=True, blank=True, help_text=_("Error message if delivery failed")
+    )
+    bounce_reason = models.CharField(
+        max_length=255, null=True, blank=True, help_text=_("Reason for bounce if applicable")
+    )
+
+    # Scheduling
+    scheduled_at = models.DateTimeField(
+        null=True, blank=True, help_text=_("When to send this email (for scheduled emails)")
+    )
+
+    # Campaign tracking
+    campaign_id = models.CharField(
+        max_length=100, null=True, blank=True, help_text=_("Campaign ID for marketing emails")
+    )
+
+    class Meta:
+        db_table = "notifications_email"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="email_user_created_idx"),
+            models.Index(fields=["status"], name="email_status_idx"),
+            models.Index(fields=["scheduled_at"], name="email_scheduled_idx"),
+            models.Index(fields=["campaign_id"], name="email_campaign_idx"),
+            models.Index(fields=["message_id"], name="email_message_id_idx"),
+        ]
+        verbose_name = _("Email Notification")
+        verbose_name_plural = _("Email Notifications")
+
+    def __str__(self):
+        return f"{self.subject} - {self.to_email} ({self.status})"
+
+    def update_status(self, status, timestamp=None, error_message=None, bounce_reason=None):
+        """Update email status with appropriate timestamp"""
+        from django.utils import timezone
+
+        if timestamp is None:
+            timestamp = timezone.now()
+
+        self.status = status
+
+        if status == "SENT":
+            self.sent_at = timestamp
+        elif status == "DELIVERED":
+            self.delivered_at = timestamp
+        elif status == "OPENED":
+            self.opened_at = timestamp
+        elif status == "CLICKED":
+            self.clicked_at = timestamp
+        elif status == "BOUNCED":
+            self.bounced_at = timestamp
+            self.bounce_reason = bounce_reason
+        elif status == "FAILED":
+            self.failed_at = timestamp
+            self.error_message = error_message
+
+        self.save()
+
+
+class EmailTemplate(models.Model):
+    """
+    Model to store email templates for different types of notifications.
+    """
+
+    name = models.CharField(
+        max_length=100, unique=True, help_text=_("Unique name for this email template")
+    )
+    subject_template = models.CharField(
+        max_length=255, help_text=_("Template for email subject (supports Django template syntax)")
+    )
+    html_template = models.TextField(help_text=_("HTML template for email body"))
+    text_template = models.TextField(
+        null=True, blank=True, help_text=_("Plain text template for email body (optional)")
+    )
+    email_type = models.CharField(
+        max_length=20,
+        choices=EmailNotification.EMAIL_TYPES,
+        default="TRANSACTIONAL",
+        help_text=_("Type of email this template is for"),
+    )
+    is_active = models.BooleanField(
+        default=True, help_text=_("Whether this template is active and can be used")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "notifications_email_template"
+        indexes = [
+            models.Index(fields=["email_type", "is_active"], name="email_template_type_active_idx"),
+        ]
+        verbose_name = _("Email Template")
+        verbose_name_plural = _("Email Templates")
+
+    def __str__(self):
+        return f"{self.name} ({self.email_type})"
+
+    def render(self, context):
+        """
+        Render the email template with given context.
+        Returns a dictionary with rendered subject, html_body, and text_body.
+        """
+        from django.template import Context, Template
+
+        subject_template = Template(self.subject_template)
+        html_template = Template(self.html_template)
+
+        rendered = {
+            "subject": subject_template.render(Context(context)),
+            "html_body": html_template.render(Context(context)),
+        }
+
+        if self.text_template:
+            text_template = Template(self.text_template)
+            rendered["text_body"] = text_template.render(Context(context))
+
+        return rendered
+
+
+class EmailCampaign(models.Model):
+    """
+    Model to manage email marketing campaigns.
+    """
+
+    STATUS_CHOICES = [
+        ("DRAFT", _("Draft")),
+        ("SCHEDULED", _("Scheduled")),
+        ("SENDING", _("Sending")),
+        ("SENT", _("Sent")),
+        ("CANCELLED", _("Cancelled")),
+    ]
+
+    name = models.CharField(max_length=255, help_text=_("Campaign name"))
+    subject = models.CharField(max_length=255, help_text=_("Email subject"))
+    template = models.ForeignKey(
+        "EmailTemplate", on_delete=models.PROTECT, help_text=_("Email template to use")
+    )
+
+    # Targeting
+    target_users = models.ManyToManyField(
+        User, blank=True, help_text=_("Specific users to target (leave empty for all users)")
+    )
+    target_roles = models.JSONField(default=list, blank=True, help_text=_("User roles to target"))
+    target_tenant_status = models.JSONField(
+        default=list, blank=True, help_text=_("Tenant statuses to target")
+    )
+
+    # Scheduling
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="DRAFT")
+    scheduled_at = models.DateTimeField(
+        null=True, blank=True, help_text=_("When to send this campaign")
+    )
+
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="created_campaigns"
+    )
+
+    # Statistics (updated by signals)
+    total_recipients = models.IntegerField(default=0)
+    emails_sent = models.IntegerField(default=0)
+    emails_delivered = models.IntegerField(default=0)
+    emails_opened = models.IntegerField(default=0)
+    emails_clicked = models.IntegerField(default=0)
+    emails_bounced = models.IntegerField(default=0)
+    emails_failed = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "notifications_email_campaign"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status"], name="email_campaign_status_idx"),
+            models.Index(fields=["scheduled_at"], name="email_campaign_scheduled_idx"),
+        ]
+        verbose_name = _("Email Campaign")
+        verbose_name_plural = _("Email Campaigns")
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
+
+    def get_target_users(self):
+        """Get all users that match the campaign targeting criteria"""
+        if self.target_users.exists():
+            return self.target_users.all()
+
+        queryset = User.objects.all()
+
+        if self.target_roles:
+            queryset = queryset.filter(role__in=self.target_roles)
+
+        if self.target_tenant_status:
+            queryset = queryset.filter(tenant__status__in=self.target_tenant_status)
+
+        return queryset
+
+    def update_statistics(self):
+        """Update campaign statistics based on email notifications"""
+        emails = EmailNotification.objects.filter(campaign_id=str(self.id))
+
+        self.total_recipients = emails.count()
+        self.emails_sent = emails.filter(
+            status__in=["SENT", "DELIVERED", "OPENED", "CLICKED"]
+        ).count()
+        self.emails_delivered = emails.filter(status__in=["DELIVERED", "OPENED", "CLICKED"]).count()
+        self.emails_opened = emails.filter(status__in=["OPENED", "CLICKED"]).count()
+        self.emails_clicked = emails.filter(status="CLICKED").count()
+        self.emails_bounced = emails.filter(status="BOUNCED").count()
+        self.emails_failed = emails.filter(status="FAILED").count()
+
+        self.save(
+            update_fields=[
+                "total_recipients",
+                "emails_sent",
+                "emails_delivered",
+                "emails_opened",
+                "emails_clicked",
+                "emails_bounced",
+                "emails_failed",
+            ]
+        )

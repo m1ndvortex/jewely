@@ -1,0 +1,64 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Low Stock Alert{% endblock %}
+
+{% block content %}
+<h2>Low Stock Alert</h2>
+
+<p>Dear {{ user.first_name|default:user.username }},</p>
+
+<p>This is an automated alert to inform you that some items in your inventory are running low.</p>
+
+<div class="alert alert-warning">
+    <strong>Alert Type:</strong> Low Stock Warning<br>
+    <strong>Branch:</strong> {{ branch.name|default:"All Branches" }}<br>
+    <strong>Alert Time:</strong> {{ timestamp|date:"F d, Y g:i A" }}
+</div>
+
+<h3>Items with Low Stock:</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <thead>
+        <tr style="background-color: #fef3c7;">
+            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #f59e0b;">Item</th>
+            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #f59e0b;">Current Stock</th>
+            <th style="padding: 12px; text-align: center; border-bottom: 1px solid #f59e0b;">Minimum Level</th>
+            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #f59e0b;">Branch</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in low_stock_items %}
+        <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                <strong>{{ item.name }}</strong><br>
+                <small>SKU: {{ item.sku }} | {{ item.karat }}K Gold</small>
+            </td>
+            <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">
+                <span style="color: #dc2626; font-weight: bold;">{{ item.quantity }}</span>
+            </td>
+            <td style="padding: 12px; text-align: center; border-bottom: 1px solid #e5e7eb;">{{ item.minimum_stock|default:5 }}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">{{ item.branch.name }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="alert alert-info">
+    <strong>Recommended Actions:</strong>
+    <ul style="margin: 8px 0; padding-left: 20px;">
+        <li>Review supplier inventory and place orders for low stock items</li>
+        <li>Consider transferring stock from other branches if available</li>
+        <li>Update minimum stock levels if needed</li>
+        <li>Check for any pending purchase orders for these items</li>
+    </ul>
+</div>
+
+<p>
+    <a href="{{ inventory_url }}" class="button">View Inventory</a>
+    <a href="{{ purchase_orders_url }}" class="button" style="background-color: #059669;">Create Purchase Order</a>
+</p>
+
+<p>
+    This alert was automatically generated based on your inventory monitoring settings. 
+    You can adjust alert thresholds in your inventory management settings.
+</p>
+{% endblock %}

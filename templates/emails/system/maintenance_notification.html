@@ -1,0 +1,81 @@
+{% extends "emails/base.html" %}
+
+{% block title %}System Maintenance Notification{% endblock %}
+
+{% block content %}
+<h2>Scheduled System Maintenance</h2>
+
+<p>Dear {{ user.first_name|default:user.username }},</p>
+
+<p>We are writing to inform you about scheduled maintenance for the Jewelry Management System.</p>
+
+<div class="alert alert-warning">
+    <strong>Maintenance Window:</strong><br>
+    <strong>Start:</strong> {{ maintenance_start|date:"F d, Y g:i A T" }}<br>
+    <strong>End:</strong> {{ maintenance_end|date:"F d, Y g:i A T" }}<br>
+    <strong>Duration:</strong> {{ maintenance_duration }} hours<br>
+    <strong>Type:</strong> {{ maintenance_type }}
+</div>
+
+<h3>What to Expect:</h3>
+<ul>
+    <li><strong>System Unavailability:</strong> The system will be completely unavailable during the maintenance window</li>
+    <li><strong>Data Safety:</strong> All your data is safe and will be preserved during maintenance</li>
+    <li><strong>Automatic Backup:</strong> A full system backup will be performed before maintenance begins</li>
+    {% if offline_mode_available %}
+    <li><strong>Offline Mode:</strong> POS terminals will continue to work in offline mode and sync when system is restored</li>
+    {% endif %}
+</ul>
+
+<h3>Maintenance Activities:</h3>
+<ul>
+    {% for activity in maintenance_activities %}
+    <li>{{ activity }}</li>
+    {% endfor %}
+</ul>
+
+{% if preparation_steps %}
+<div class="alert alert-info">
+    <strong>Recommended Preparation:</strong>
+    <ul style="margin: 8px 0; padding-left: 20px;">
+        {% for step in preparation_steps %}
+        <li>{{ step }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<h3>Expected Improvements:</h3>
+<ul>
+    {% for improvement in expected_improvements %}
+    <li>{{ improvement }}</li>
+    {% endfor %}
+</ul>
+
+{% if emergency_contact %}
+<div style="background-color: #fee2e2; padding: 16px; border-radius: 6px; border-left: 4px solid #ef4444; margin: 20px 0;">
+    <strong>Emergency Contact:</strong><br>
+    If you experience any critical issues during or after maintenance, please contact:<br>
+    <strong>Phone:</strong> {{ emergency_contact.phone }}<br>
+    <strong>Email:</strong> {{ emergency_contact.email }}
+</div>
+{% endif %}
+
+<p>
+    We apologize for any inconvenience this may cause and appreciate your patience as we work to improve our system.
+</p>
+
+<p>
+    <a href="{{ status_page_url }}" class="button">View System Status</a>
+</p>
+
+<p>
+    We will send you another notification once the maintenance is complete and the system is fully operational.
+</p>
+
+<p>Thank you for your understanding.</p>
+
+<p>
+    <strong>The System Administration Team</strong>
+</p>
+{% endblock %}

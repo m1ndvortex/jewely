@@ -2,17 +2,26 @@
 Notification services for creating and managing notifications.
 
 This module provides utility functions for creating notifications,
-checking user preferences, and managing notification delivery.
+checking user preferences, and managing notification delivery including email.
 """
 
 import logging
 from typing import Dict, List, Optional
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.utils import timezone
 
-from .models import Notification, NotificationPreference, NotificationTemplate
+from .models import (
+    EmailCampaign,
+    EmailNotification,
+    EmailTemplate,
+    Notification,
+    NotificationPreference,
+    NotificationTemplate,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -361,3 +370,506 @@ def should_send_notification(user: User, notification_type: str, channel: str) -
         return False
 
     return True
+
+
+# Email notification functions
+
+
+def send_email_notification(
+    user: User,
+    template_name: str,
+    context: Dict,
+    subject: Optional[str] = None,
+    from_email: Optional[str] = None,
+    email_type: str = "TRANSACTIONAL",
+    campaign_id: Optional[str] = None,
+    scheduled_at: Optional[timezone.datetime] = None,
+    create_in_app_notification: bool = True,
+) -> Optional[EmailNotification]:
+    """
+    Send an email notification using a template.
+
+    Args:
+        user: User to send email to
+        template_name: Name of the email template
+        context: Context variables for template rendering
+        subject: Optional override for email subject
+        from_email: Optional override for from email
+        email_type: Type of email (TRANSACTIONAL, MARKETING, SYSTEM)
+        campaign_id: Optional campaign ID for tracking
+        scheduled_at: Optional datetime to schedule email
+        create_in_app_notification: Whether to create corresponding in-app notification
+
+    Returns:
+        EmailNotification instance or None if template not found
+    """
+    try:
+        template = EmailTemplate.objects.get(name=template_name, is_active=True)
+    except EmailTemplate.DoesNotExist:
+        logger.error(f"Email template '{template_name}' not found or inactive")
+        return None
+
+    # Check user preferences - use a generic notification type for email delivery
+    # For transactional emails, we should generally allow them regardless of preferences
+    # But we'll check for a generic 'TRANSACTIONAL' type preference
+    notification_type_for_preference = (
+        "TRANSACTIONAL" if email_type == "TRANSACTIONAL" else "MARKETING"
+    )
+    if not should_send_notification(user, notification_type_for_preference, "EMAIL"):
+        logger.info(f"Email notification skipped for user {user.username} due to preferences")
+        return None
+
+    # Render template
+    rendered = template.render(context)
+    email_subject = subject or rendered["subject"]
+    html_body = rendered["html_body"]
+    text_body = rendered.get("text_body")
+
+    # Create in-app notification if requested
+    in_app_notification = None
+    if create_in_app_notification:
+        in_app_notification = create_notification(
+            user=user,
+            title=email_subject,
+            message=text_body or html_body[:200] + "...",  # Truncate HTML for in-app
+            notification_type="INFO",
+        )
+
+    # Create email notification record
+    email_notification = EmailNotification.objects.create(
+        user=user,
+        notification=in_app_notification,
+        subject=email_subject,
+        to_email=user.email,
+        from_email=from_email or settings.DEFAULT_FROM_EMAIL,
+        template_name=template_name,
+        email_type=email_type,
+        campaign_id=campaign_id,
+        scheduled_at=scheduled_at,
+    )
+
+    # Send immediately if not scheduled
+    if scheduled_at is None:
+        _send_email_now(email_notification, html_body, text_body)
+    else:
+        # Schedule for later (would be handled by Celery task)
+        logger.info(f"Email scheduled for {scheduled_at} for user {user.username}")
+
+    return email_notification
+
+
+def _send_email_now(
+    email_notification: EmailNotification, html_body: str, text_body: Optional[str] = None
+):
+    """
+    Internal function to send email immediately.
+    """
+    try:
+        # Create email message
+        msg = EmailMultiAlternatives(
+            subject=email_notification.subject,
+            body=text_body or html_body,
+            from_email=email_notification.from_email,
+            to=[email_notification.to_email],
+        )
+
+        if html_body:
+            msg.attach_alternative(html_body, "text/html")
+
+        # Send email
+        msg.send()
+
+        # Update status
+        email_notification.update_status("SENT")
+
+        logger.info(f"Email sent successfully to {email_notification.to_email}")
+
+    except Exception as e:
+        # Update status with error
+        email_notification.update_status("FAILED", error_message=str(e))
+        logger.error(f"Failed to send email to {email_notification.to_email}: {str(e)}")
+
+
+def send_transactional_email(
+    user: User, template_name: str, context: Dict, subject: Optional[str] = None
+) -> Optional[EmailNotification]:
+    """
+    Send a transactional email (order confirmations, receipts, password resets, etc.).
+
+    Args:
+        user: User to send email to
+        template_name: Name of the email template
+        context: Context variables for template rendering
+        subject: Optional override for email subject
+
+    Returns:
+        EmailNotification instance or None if failed
+    """
+    return send_email_notification(
+        user=user,
+        template_name=template_name,
+        context=context,
+        subject=subject,
+        email_type="TRANSACTIONAL",
+    )
+
+
+def send_marketing_email(
+    user: User, template_name: str, context: Dict, campaign_id: str, subject: Optional[str] = None
+) -> Optional[EmailNotification]:
+    """
+    Send a marketing email.
+
+    Args:
+        user: User to send email to
+        template_name: Name of the email template
+        context: Context variables for template rendering
+        campaign_id: Campaign ID for tracking
+        subject: Optional override for email subject
+
+    Returns:
+        EmailNotification instance or None if failed
+    """
+    return send_email_notification(
+        user=user,
+        template_name=template_name,
+        context=context,
+        subject=subject,
+        email_type="MARKETING",
+        campaign_id=campaign_id,
+        create_in_app_notification=False,  # Marketing emails don't create in-app notifications
+    )
+
+
+def send_system_email(
+    user: User, template_name: str, context: Dict, subject: Optional[str] = None
+) -> Optional[EmailNotification]:
+    """
+    Send a system email (maintenance notifications, security alerts, etc.).
+
+    Args:
+        user: User to send email to
+        template_name: Name of the email template
+        context: Context variables for template rendering
+        subject: Optional override for email subject
+
+    Returns:
+        EmailNotification instance or None if failed
+    """
+    return send_email_notification(
+        user=user,
+        template_name=template_name,
+        context=context,
+        subject=subject,
+        email_type="SYSTEM",
+    )
+
+
+def schedule_email(
+    user: User,
+    template_name: str,
+    context: Dict,
+    scheduled_at: timezone.datetime,
+    email_type: str = "TRANSACTIONAL",
+    subject: Optional[str] = None,
+) -> Optional[EmailNotification]:
+    """
+    Schedule an email to be sent later.
+
+    Args:
+        user: User to send email to
+        template_name: Name of the email template
+        context: Context variables for template rendering
+        scheduled_at: When to send the email
+        email_type: Type of email
+        subject: Optional override for email subject
+
+    Returns:
+        EmailNotification instance or None if failed
+    """
+    return send_email_notification(
+        user=user,
+        template_name=template_name,
+        context=context,
+        subject=subject,
+        email_type=email_type,
+        scheduled_at=scheduled_at,
+    )
+
+
+def send_bulk_email(
+    users: List[User],
+    template_name: str,
+    context: Dict,
+    email_type: str = "MARKETING",
+    campaign_id: Optional[str] = None,
+    subject: Optional[str] = None,
+) -> List[EmailNotification]:
+    """
+    Send bulk emails to multiple users.
+
+    Args:
+        users: List of users to send emails to
+        template_name: Name of the email template
+        context: Context variables for template rendering
+        email_type: Type of email
+        campaign_id: Optional campaign ID for tracking
+        subject: Optional override for email subject
+
+    Returns:
+        List of EmailNotification instances
+    """
+    email_notifications = []
+
+    for user in users:
+        if user.email:  # Only send to users with email addresses
+            email_notification = send_email_notification(
+                user=user,
+                template_name=template_name,
+                context=context,
+                subject=subject,
+                email_type=email_type,
+                campaign_id=campaign_id,
+                create_in_app_notification=(email_type != "MARKETING"),
+            )
+            if email_notification:
+                email_notifications.append(email_notification)
+
+    logger.info(f"Sent {len(email_notifications)} bulk emails using template '{template_name}'")
+
+    return email_notifications
+
+
+def create_email_campaign(
+    name: str,
+    subject: str,
+    template_name: str,
+    created_by: User,
+    target_users: Optional[List[User]] = None,
+    target_roles: Optional[List[str]] = None,
+    target_tenant_status: Optional[List[str]] = None,
+    scheduled_at: Optional[timezone.datetime] = None,
+) -> EmailCampaign:
+    """
+    Create an email marketing campaign.
+
+    Args:
+        name: Campaign name
+        subject: Email subject
+        template_name: Name of the email template
+        created_by: User creating the campaign
+        target_users: Specific users to target
+        target_roles: User roles to target
+        target_tenant_status: Tenant statuses to target
+        scheduled_at: When to send the campaign
+
+    Returns:
+        EmailCampaign instance
+    """
+    try:
+        template = EmailTemplate.objects.get(name=template_name, is_active=True)
+    except EmailTemplate.DoesNotExist:
+        raise ValueError(f"Email template '{template_name}' not found or inactive")
+
+    campaign = EmailCampaign.objects.create(
+        name=name,
+        subject=subject,
+        template=template,
+        created_by=created_by,
+        scheduled_at=scheduled_at,
+        target_roles=target_roles or [],
+        target_tenant_status=target_tenant_status or [],
+    )
+
+    if target_users:
+        campaign.target_users.set(target_users)
+
+    # Update total recipients count
+    campaign.total_recipients = campaign.get_target_users().count()
+    campaign.save()
+
+    logger.info(f"Created email campaign '{name}' targeting {campaign.total_recipients} users")
+
+    return campaign
+
+
+def send_campaign(campaign: EmailCampaign, context: Optional[Dict] = None) -> int:
+    """
+    Send an email campaign to all targeted users.
+
+    Args:
+        campaign: EmailCampaign instance
+        context: Optional context variables for template rendering
+
+    Returns:
+        Number of emails sent
+    """
+    if campaign.status != "DRAFT" and campaign.status != "SCHEDULED":
+        raise ValueError(f"Campaign '{campaign.name}' cannot be sent (status: {campaign.status})")
+
+    campaign.status = "SENDING"
+    campaign.save()
+
+    target_users = campaign.get_target_users()
+    context = context or {}
+    sent_count = 0
+
+    for user in target_users:
+        if user.email:
+            email_notification = send_marketing_email(
+                user=user,
+                template_name=campaign.template.name,
+                context=context,
+                campaign_id=str(campaign.id),
+                subject=campaign.subject,
+            )
+            if email_notification:
+                sent_count += 1
+
+    # Update campaign status and statistics
+    campaign.status = "SENT"
+    campaign.sent_at = timezone.now()
+    campaign.emails_sent = sent_count
+    campaign.save()
+
+    logger.info(f"Campaign '{campaign.name}' sent to {sent_count} users")
+
+    return sent_count
+
+
+def process_scheduled_emails():
+    """
+    Process scheduled emails that are ready to be sent.
+    This function should be called by a Celery task.
+
+    Returns:
+        Number of emails processed
+    """
+    now = timezone.now()
+
+    # Process scheduled individual emails
+    scheduled_emails = EmailNotification.objects.filter(status="PENDING", scheduled_at__lte=now)
+
+    processed_count = 0
+
+    for email_notification in scheduled_emails:
+        try:
+            # Get template and render
+            template = EmailTemplate.objects.get(name=email_notification.template_name)
+            context = {}  # Context would need to be stored or reconstructed
+            rendered = template.render(context)
+
+            _send_email_now(email_notification, rendered["html_body"], rendered.get("text_body"))
+            processed_count += 1
+
+        except Exception as e:
+            email_notification.update_status("FAILED", error_message=str(e))
+            logger.error(f"Failed to send scheduled email {email_notification.id}: {str(e)}")
+
+    # Process scheduled campaigns
+    scheduled_campaigns = EmailCampaign.objects.filter(status="SCHEDULED", scheduled_at__lte=now)
+
+    for campaign in scheduled_campaigns:
+        try:
+            send_campaign(campaign)
+        except Exception as e:
+            campaign.status = "CANCELLED"
+            campaign.save()
+            logger.error(f"Failed to send scheduled campaign {campaign.id}: {str(e)}")
+
+    logger.info(f"Processed {processed_count} scheduled emails")
+
+    return processed_count
+
+
+def track_email_event(
+    message_id: str, event_type: str, timestamp: Optional[timezone.datetime] = None, **kwargs
+):
+    """
+    Track email delivery events from webhook callbacks.
+
+    Args:
+        message_id: Email service provider message ID
+        event_type: Type of event (sent, delivered, opened, clicked, bounced, failed)
+        timestamp: Event timestamp
+        **kwargs: Additional event data (bounce_reason, error_message, etc.)
+    """
+    try:
+        email_notification = EmailNotification.objects.get(message_id=message_id)
+
+        status_mapping = {
+            "sent": "SENT",
+            "delivered": "DELIVERED",
+            "opened": "OPENED",
+            "clicked": "CLICKED",
+            "bounced": "BOUNCED",
+            "failed": "FAILED",
+            "complained": "COMPLAINED",
+            "unsubscribed": "UNSUBSCRIBED",
+        }
+
+        status = status_mapping.get(event_type.lower())
+        if status:
+            email_notification.update_status(
+                status=status,
+                timestamp=timestamp,
+                error_message=kwargs.get("error_message"),
+                bounce_reason=kwargs.get("bounce_reason"),
+            )
+
+            # Update campaign statistics if this is a campaign email
+            if email_notification.campaign_id:
+                try:
+                    campaign = EmailCampaign.objects.get(id=email_notification.campaign_id)
+                    campaign.update_statistics()
+                except EmailCampaign.DoesNotExist:
+                    pass
+
+            logger.info(f"Updated email {message_id} status to {status}")
+
+    except EmailNotification.DoesNotExist:
+        logger.warning(f"Email notification with message_id {message_id} not found")
+
+
+def get_email_statistics(user: Optional[User] = None, campaign_id: Optional[str] = None) -> Dict:
+    """
+    Get email delivery statistics.
+
+    Args:
+        user: Optional user to filter statistics for
+        campaign_id: Optional campaign ID to filter statistics for
+
+    Returns:
+        Dictionary with email statistics
+    """
+    queryset = EmailNotification.objects.all()
+
+    if user:
+        queryset = queryset.filter(user=user)
+
+    if campaign_id:
+        queryset = queryset.filter(campaign_id=campaign_id)
+
+    stats = {
+        "total": queryset.count(),
+        "sent": queryset.filter(status__in=["SENT", "DELIVERED", "OPENED", "CLICKED"]).count(),
+        "delivered": queryset.filter(status__in=["DELIVERED", "OPENED", "CLICKED"]).count(),
+        "opened": queryset.filter(status__in=["OPENED", "CLICKED"]).count(),
+        "clicked": queryset.filter(status="CLICKED").count(),
+        "bounced": queryset.filter(status="BOUNCED").count(),
+        "failed": queryset.filter(status="FAILED").count(),
+    }
+
+    # Calculate rates
+    if stats["sent"] > 0:
+        stats["delivery_rate"] = round((stats["delivered"] / stats["sent"]) * 100, 2)
+        stats["open_rate"] = round((stats["opened"] / stats["sent"]) * 100, 2)
+        stats["click_rate"] = round((stats["clicked"] / stats["sent"]) * 100, 2)
+        stats["bounce_rate"] = round((stats["bounced"] / stats["sent"]) * 100, 2)
+    else:
+        stats["delivery_rate"] = 0
+        stats["open_rate"] = 0
+        stats["click_rate"] = 0
+        stats["bounce_rate"] = 0
+
+    return stats
