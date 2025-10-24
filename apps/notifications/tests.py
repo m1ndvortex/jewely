@@ -278,3 +278,250 @@ class NotificationTemplateModelTest(TestCase):
         self.assertEqual(rendered["message"], "This is a simple message")
         self.assertNotIn("action_text", rendered)
         self.assertNotIn("action_url", rendered)
+
+
+class NotificationViewTests(TestCase):
+    """Test cases for notification views"""
+
+    def setUp(self):
+        """Set up test data"""
+        # Enable RLS bypass for tests
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        self.tenant = Tenant.objects.create(
+            company_name="Test Jewelry Shop", slug="test-shop", status="ACTIVE"
+        )
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+            tenant=self.tenant,
+            role="TENANT_OWNER",
+        )
+        self.client.force_login(self.user)
+
+    def test_notification_center_view(self):
+        """Test notification center view"""
+        from apps.notifications.services import create_notification
+
+        # Create test notifications
+        create_notification(
+            user=self.user,
+            title="Test Notification 1",
+            message="Message 1",
+            notification_type="INFO",
+        )
+        create_notification(
+            user=self.user,
+            title="Test Notification 2",
+            message="Message 2",
+            notification_type="SUCCESS",
+        )
+
+        response = self.client.get("/notifications/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test Notification 1")
+        self.assertContains(response, "Test Notification 2")
+        self.assertContains(response, "Notification Center")
+
+    def test_notification_center_filtering(self):
+        """Test notification center filtering"""
+        from apps.notifications.services import create_notification
+
+        # Create test notifications
+        create_notification(
+            user=self.user,
+            title="Info Notification",
+            message="Info message",
+            notification_type="INFO",
+        )
+        create_notification(
+            user=self.user,
+            title="Success Notification",
+            message="Success message",
+            notification_type="SUCCESS",
+        )
+
+        # Test filtering by type
+        response = self.client.get("/notifications/?type=SUCCESS")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Success Notification")
+        self.assertNotContains(response, "Info Notification")
+
+    def test_notification_count_view(self):
+        """Test notification count HTMX endpoint"""
+        from apps.notifications.services import create_notification
+
+        # Create unread notifications
+        create_notification(
+            user=self.user, title="Unread 1", message="Message 1", notification_type="INFO"
+        )
+        create_notification(
+            user=self.user, title="Unread 2", message="Message 2", notification_type="INFO"
+        )
+
+        response = self.client.get("/notifications/count/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "2")  # Should show count of 2
+
+    def test_notification_list_view(self):
+        """Test notification list HTMX endpoint"""
+        from apps.notifications.services import create_notification
+
+        # Create test notifications
+        create_notification(
+            user=self.user, title="List Test 1", message="Message 1", notification_type="INFO"
+        )
+        create_notification(
+            user=self.user, title="List Test 2", message="Message 2", notification_type="SUCCESS"
+        )
+
+        response = self.client.get("/notifications/list/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "List Test 1")
+        self.assertContains(response, "List Test 2")
+
+    def test_mark_as_read_view(self):
+        """Test mark as read endpoint"""
+        import json
+
+        from apps.notifications.services import create_notification
+
+        # Create test notifications
+        notification1 = create_notification(
+            user=self.user, title="Test 1", message="Message 1", notification_type="INFO"
+        )
+        notification2 = create_notification(
+            user=self.user, title="Test 2", message="Message 2", notification_type="INFO"
+        )
+
+        # Mark all as read
+        response = self.client.post("/notifications/mark-read/", content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertTrue(data["success"])
+        self.assertEqual(data["marked_count"], 2)
+
+        # Verify notifications are marked as read
+        notification1.refresh_from_db()
+        notification2.refresh_from_db()
+        self.assertTrue(notification1.is_read)
+        self.assertTrue(notification2.is_read)
+
+    def test_mark_single_as_read_view(self):
+        """Test mark single notification as read endpoint"""
+        import json
+
+        from apps.notifications.services import create_notification
+
+        # Create test notification
+        notification = create_notification(
+            user=self.user, title="Single Test", message="Message", notification_type="INFO"
+        )
+
+        response = self.client.post(f"/notifications/mark-read/{notification.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertTrue(data["success"])
+
+        # Verify notification is marked as read
+        notification.refresh_from_db()
+        self.assertTrue(notification.is_read)
+
+    def test_notification_preferences_view_get(self):
+        """Test notification preferences view GET"""
+        response = self.client.get("/notifications/preferences/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Notification Preferences")
+        self.assertContains(response, "Notification Types")
+
+    def test_notification_preferences_view_post(self):
+        """Test notification preferences view POST"""
+        # Submit preferences form
+        response = self.client.post(
+            "/notifications/preferences/",
+            {
+                "INFO_IN_APP": "on",
+                "INFO_EMAIL": "on",
+                "LOW_STOCK_IN_APP": "on",
+                "quiet_hours_start": "22:00",
+                "quiet_hours_end": "08:00",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "updated successfully")
+
+        # Verify preferences were created
+        pref = NotificationPreference.objects.get(
+            user=self.user, notification_type="INFO", channel="EMAIL"
+        )
+        self.assertTrue(pref.is_enabled)
+
+    def test_notification_dropdown_view(self):
+        """Test notification dropdown HTMX endpoint"""
+        from apps.notifications.services import create_notification
+
+        # Create test notifications
+        create_notification(
+            user=self.user, title="Dropdown Test", message="Message", notification_type="INFO"
+        )
+
+        response = self.client.get("/notifications/dropdown/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Dropdown Test")
+        self.assertContains(response, "Notifications")
+
+    def test_unauthenticated_access(self):
+        """Test that unauthenticated users cannot access notification views"""
+        self.client.logout()
+
+        # Test various endpoints
+        endpoints = [
+            "/notifications/",
+            "/notifications/count/",
+            "/notifications/list/",
+            "/notifications/dropdown/",
+            "/notifications/preferences/",
+        ]
+
+        for endpoint in endpoints:
+            response = self.client.get(endpoint)
+            # Should redirect to login or return 302/403
+            self.assertIn(response.status_code, [302, 403])
+
+    def test_cross_user_notification_access(self):
+        """Test that users cannot access other users' notifications"""
+        from apps.notifications.services import create_notification
+
+        # Create another user
+        other_user = User.objects.create_user(
+            username="otheruser",
+            email="other@example.com",
+            tenant=self.tenant,
+            role="TENANT_EMPLOYEE",
+        )
+
+        # Create notification for other user
+        other_notification = create_notification(
+            user=other_user,
+            title="Other User Notification",
+            message="Message",
+            notification_type="INFO",
+        )
+
+        # Try to mark other user's notification as read
+        response = self.client.post(f"/notifications/mark-read/{other_notification.id}/")
+
+        # Should return 404 (not found due to user filtering)
+        self.assertEqual(response.status_code, 404)

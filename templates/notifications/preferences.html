@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load custom_filters %}
+
+{% block title %}{% trans "Notification Preferences" %} - Jewelry Shop{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                        {% trans "Notification Preferences" %}
+                    </h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Customize how and when you receive notifications" %}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'notifications:center' %}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        {% trans "Back to Notifications" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Success/Error Messages -->
+        {% if success_message %}
+        <div class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-green-800 dark:text-green-200">
+                        {{ success_message }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if error_message %}
+        <div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-red-800 dark:text-red-200">
+                        {{ error_message }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-8">
+            {% csrf_token %}
+            
+            <!-- Notification Preferences Table -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                        {% trans "Notification Types" %}
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Choose how you want to receive different types of notifications" %}
+                    </p>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Notification Type" %}
+                                </th>
+                                {% for channel_code, channel_name in channels %}
+                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {{ channel_name }}
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for type_code, type_name in notification_types %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <!-- Icon based on notification type -->
+                                        {% if type_code == 'ERROR' %}
+                                            <div class="flex-shrink-0 h-8 w-8 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                                                <svg class="h-4 w-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                            </div>
+                                        {% elif type_code == 'SUCCESS' %}
+                                            <div class="flex-shrink-0 h-8 w-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                                                <svg class="h-4 w-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                            </div>
+                                        {% elif type_code == 'WARNING' %}
+                                            <div class="flex-shrink-0 h-8 w-8 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
+                                                <svg class="h-4 w-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                                </svg>
+                                            </div>
+                                        {% elif type_code == 'LOW_STOCK' %}
+                                            <div class="flex-shrink-0 h-8 w-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                                                <svg class="h-4 w-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                                </svg>
+                                            </div>
+                                        {% else %}
+                                            <div class="flex-shrink-0 h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                                <svg class="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                            </div>
+                                        {% endif %}
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                                {{ type_name }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                {% for channel_code, channel_name in channels %}
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    {% with pref=preferences|get_item:type_code|get_item:channel_code %}
+                                    <input type="checkbox" 
+                                           name="{{ type_code }}_{{ channel_code }}"
+                                           {% if pref.is_enabled %}checked{% endif %}
+                                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    {% endwith %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Quiet Hours -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                        {% trans "Quiet Hours" %}
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Set times when you don't want to receive non-critical notifications" %}
+                    </p>
+                </div>
+                
+                <div class="px-6 py-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="quiet_hours_start" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {% trans "Start Time" %}
+                            </label>
+                            <input type="time" 
+                                   id="quiet_hours_start" 
+                                   name="quiet_hours_start"
+                                   value="{% if preferences.INFO.IN_APP.quiet_hours_start %}{{ preferences.INFO.IN_APP.quiet_hours_start|time:'H:i' }}{% endif %}"
+                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="quiet_hours_end" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {% trans "End Time" %}
+                            </label>
+                            <input type="time" 
+                                   id="quiet_hours_end" 
+                                   name="quiet_hours_end"
+                                   value="{% if preferences.INFO.IN_APP.quiet_hours_end %}{{ preferences.INFO.IN_APP.quiet_hours_end|time:'H:i' }}{% endif %}"
+                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "During quiet hours, you'll only receive critical notifications (errors and system alerts)" %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="flex justify-end">
+                <button type="submit" 
+                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    {% trans "Save Preferences" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<script>
+// Add some interactivity for better UX
+document.addEventListener('DOMContentLoaded', function() {
+    // Add "Select All" functionality for each channel
+    const channelHeaders = document.querySelectorAll('th[scope="col"]:not(:first-child)');
+    
+    channelHeaders.forEach((header, index) => {
+        const channelIndex = index + 1; // Skip first column
+        const checkboxes = document.querySelectorAll(`tbody tr td:nth-child(${channelIndex + 1}) input[type="checkbox"]`);
+        
+        // Add click handler to header for select all
+        header.style.cursor = 'pointer';
+        header.addEventListener('click', function() {
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        });
+    });
+    
+    // Add row highlighting on hover
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.classList.add('bg-blue-50', 'dark:bg-blue-900/10');
+        });
+        row.addEventListener('mouseleave', function() {
+            this.classList.remove('bg-blue-50', 'dark:bg-blue-900/10');
+        });
+    });
+});
+</script>
+{% endblock %}

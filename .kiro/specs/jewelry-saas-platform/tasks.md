@@ -422,7 +422,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add indexes for efficient querying
     - _Requirements: 19_
   
-  - [ ] 13.2 Implement in-app notifications
+  - [x] 13.2 Implement in-app notifications
     - Create notification center UI component
     - Implement real-time notifications using HTMX polling
     - Add unread count badge

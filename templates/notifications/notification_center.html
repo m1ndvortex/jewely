@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Notification Center" %} - Jewelry Shop{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                        {% trans "Notification Center" %}
+                    </h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Manage your notifications and stay updated" %}
+                    </p>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="{% url 'notifications:preferences' %}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        {% trans "Preferences" %}
+                    </a>
+                    {% if unread_count > 0 %}
+                    <button onclick="markAllAsRead()" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        {% trans "Mark All Read" %}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Filters -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" 
+                                   id="unreadOnlyFilter"
+                                   {% if current_filter.unread_only %}checked{% endif %}
+                                   onchange="applyFilters()"
+                                   class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                {% trans "Unread only" %}
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <label for="typeFilter" class="text-sm text-gray-700 dark:text-gray-300">
+                            {% trans "Type:" %}
+                        </label>
+                        <select id="typeFilter" 
+                                onchange="applyFilters()"
+                                class="text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md">
+                            <option value="">{% trans "All types" %}</option>
+                            {% for type_code, type_name in notification_types %}
+                            <option value="{{ type_code }}" 
+                                    {% if current_filter.type == type_code %}selected{% endif %}>
+                                {{ type_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="ml-auto">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">
+                            {% if unread_count > 0 %}
+                                {% blocktrans count counter=unread_count %}
+                                    {{ counter }} unread notification
+                                {% plural %}
+                                    {{ counter }} unread notifications
+                                {% endblocktrans %}
+                            {% else %}
+                                {% trans "All notifications read" %}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications List -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            {% if notifications %}
+                <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for notification in notifications %}
+                    <div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 {% if not notification.is_read %}bg-blue-50 dark:bg-blue-900/20{% endif %}"
+                         id="notification-{{ notification.id }}">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-start space-x-3 flex-1">
+                                <!-- Notification Icon -->
+                                <div class="flex-shrink-0 mt-1">
+                                    {% if notification.notification_type == 'ERROR' %}
+                                        <div class="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                                            <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                        </div>
+                                    {% elif notification.notification_type == 'SUCCESS' %}
+                                        <div class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                                            <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </div>
+                                    {% elif notification.notification_type == 'WARNING' %}
+                                        <div class="w-8 h-8 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
+                                            <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                            </svg>
+                                        </div>
+                                    {% elif notification.notification_type == 'LOW_STOCK' %}
+                                        <div class="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                                            <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                            </svg>
+                                        </div>
+                                    {% else %}
+                                        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Notification Content -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-sm font-medium text-gray-900 dark:text-white">
+                                            {{ notification.title }}
+                                        </h3>
+                                        {% if not notification.is_read %}
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                                                {% trans "New" %}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                        {{ notification.message }}
+                                    </p>
+                                    <div class="mt-2 flex items-center justify-between">
+                                        <div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                                            <span>{{ notification.created_at|date:"M d, Y H:i" }}</span>
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                {{ notification.get_notification_type_display }}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            {% if notification.action_url and notification.action_text %}
+                                                <a href="{{ notification.action_url }}" 
+                                                   onclick="markAsRead({{ notification.id }})"
+                                                   class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium">
+                                                    {{ notification.action_text }}
+                                                </a>
+                                            {% endif %}
+                                            {% if not notification.is_read %}
+                                                <button onclick="markAsRead({{ notification.id }})" 
+                                                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <div class="bg-white dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 flex justify-between sm:hidden">
+                            {% if page_obj.has_previous %}
+                                <a href="?page={{ page_obj.previous_page_number }}" 
+                                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    {% trans "Previous" %}
+                                </a>
+                            {% endif %}
+                            {% if page_obj.has_next %}
+                                <a href="?page={{ page_obj.next_page_number }}" 
+                                   class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    {% trans "Next" %}
+                                </a>
+                            {% endif %}
+                        </div>
+                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700 dark:text-gray-300">
+                                    {% trans "Showing" %}
+                                    <span class="font-medium">{{ page_obj.start_index }}</span>
+                                    {% trans "to" %}
+                                    <span class="font-medium">{{ page_obj.end_index }}</span>
+                                    {% trans "of" %}
+                                    <span class="font-medium">{{ page_obj.paginator.count }}</span>
+                                    {% trans "notifications" %}
+                                </p>
+                            </div>
+                            <div>
+                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    {% if page_obj.has_previous %}
+                                        <a href="?page={{ page_obj.previous_page_number }}" 
+                                           class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">{% trans "Previous" %}</span>
+                                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                            </svg>
+                                        </a>
+                                    {% endif %}
+                                    
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                                                {{ num }}
+                                            </span>
+                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                            <a href="?page={{ num }}" 
+                                               class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                                {{ num }}
+                                            </a>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if page_obj.has_next %}
+                                        <a href="?page={{ page_obj.next_page_number }}" 
+                                           class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">{% trans "Next" %}</span>
+                                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                            </svg>
+                                        </a>
+                                    {% endif %}
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="px-6 py-12 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM9 7H4l5-5v5zm6 10V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2z"></path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                        {% trans "No notifications" %}
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "You're all caught up! No notifications to display." %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- HTMX for real-time updates -->
+<script src="https://unpkg.com/htmx.org@1.9.6"></script>
+
+<script>
+// Auto-refresh notification count every 30 seconds
+setInterval(function() {
+    htmx.trigger('#notification-count', 'refresh');
+}, 30000);
+
+function applyFilters() {
+    const unreadOnly = document.getElementById('unreadOnlyFilter').checked;
+    const type = document.getElementById('typeFilter').value;
+    
+    let url = '{% url "notifications:center" %}?';
+    if (unreadOnly) url += 'unread_only=true&';
+    if (type) url += 'type=' + type + '&';
+    
+    window.location.href = url;
+}
+
+function markAsRead(notificationId) {
+    fetch(`{% url 'notifications:mark_single_read' 0 %}`.replace('0', notificationId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const notificationEl = document.getElementById(`notification-${notificationId}`);
+            if (notificationEl) {
+                notificationEl.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+                const newBadge = notificationEl.querySelector('.bg-blue-100');
+                if (newBadge) newBadge.remove();
+                const markButton = notificationEl.querySelector('button[onclick*="markAsRead"]');
+                if (markButton) markButton.remove();
+            }
+            // Refresh page to update counts
+            setTimeout(() => window.location.reload(), 500);
+        }
+    })
+    .catch(error => {
+        console.error('Error marking notification as read:', error);
+    });
+}
+
+function markAllAsRead() {
+    if (!confirm('{% trans "Mark all notifications as read?" %}')) return;
+    
+    fetch('{% url "notifications:mark_read" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking all notifications as read:', error);
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

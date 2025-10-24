@@ -1,0 +1,7 @@
+{% load i18n %}
+
+{% if unread_count > 0 %}
+<span class="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+    {% if unread_count > 99 %}99+{% else %}{{ unread_count }}{% endif %}
+</span>
+{% endif %}
