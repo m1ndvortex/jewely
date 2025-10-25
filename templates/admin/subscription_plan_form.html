@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ form_title }}</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Configure subscription plan details and limits</p>
+        </div>
+        <a href="{% url 'core:admin_subscription_plan_list' %}" 
+           class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
+            Cancel
+        </a>
+    </div>
+
+    <!-- Form -->
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Basic Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Plan Name *
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="md:col-span-2">
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Description
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.display_order.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Display Order
+                    </label>
+                    {{ form.display_order }}
+                    {% if form.display_order.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.display_order.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Lower numbers appear first</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Pricing</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ form.price.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Price (USD) *
+                    </label>
+                    {{ form.price }}
+                    {% if form.price.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.price.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.billing_cycle.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Billing Cycle *
+                    </label>
+                    {{ form.billing_cycle }}
+                    {% if form.billing_cycle.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.billing_cycle.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Resource Limits -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Resource Limits</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="{{ form.user_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        User Limit *
+                    </label>
+                    {{ form.user_limit }}
+                    {% if form.user_limit.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.user_limit.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Maximum number of users</p>
+                </div>
+                <div>
+                    <label for="{{ form.branch_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Branch Limit *
+                    </label>
+                    {{ form.branch_limit }}
+                    {% if form.branch_limit.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.branch_limit.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Maximum number of branches</p>
+                </div>
+                <div>
+                    <label for="{{ form.inventory_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Inventory Limit *
+                    </label>
+                    {{ form.inventory_limit }}
+                    {% if form.inventory_limit.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.inventory_limit.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Maximum inventory items</p>
+                </div>
+                <div>
+                    <label for="{{ form.storage_limit_gb.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Storage Limit (GB) *
+                    </label>
+                    {{ form.storage_limit_gb }}
+                    {% if form.storage_limit_gb.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.storage_limit_gb.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Storage space for media files</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="{{ form.api_calls_per_month.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        API Calls per Month *
+                    </label>
+                    {{ form.api_calls_per_month }}
+                    {% if form.api_calls_per_month.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.api_calls_per_month.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Maximum API calls allowed per month</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Flags -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Features</h2>
+            <div class="space-y-4">
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        {{ form.enable_multi_branch }}
+                    </div>
+                    <div class="ml-3">
+                        <label for="{{ form.enable_multi_branch.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                            Multi-Branch Management
+                        </label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Enable management of multiple shop locations</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        {{ form.enable_advanced_reporting }}
+                    </div>
+                    <div class="ml-3">
+                        <label for="{{ form.enable_advanced_reporting.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                            Advanced Reporting
+                        </label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Enable advanced analytics and custom reports</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        {{ form.enable_api_access }}
+                    </div>
+                    <div class="ml-3">
+                        <label for="{{ form.enable_api_access.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                            API Access
+                        </label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Enable REST API for integrations</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        {{ form.enable_custom_branding }}
+                    </div>
+                    <div class="ml-3">
+                        <label for="{{ form.enable_custom_branding.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                            Custom Branding
+                        </label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Enable custom logos, colors, and white-labeling</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        {{ form.enable_priority_support }}
+                    </div>
+                    <div class="ml-3">
+                        <label for="{{ form.enable_priority_support.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                            Priority Support
+                        </label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Enable priority customer support</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'core:admin_subscription_plan_list' %}" 
+               class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg font-medium">
+                Cancel
+            </a>
+            <button type="submit" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
+                {{ submit_text }}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    /* Style form fields */
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        background-color: white;
+    }
+    
+    .dark input[type="text"],
+    .dark input[type="number"],
+    .dark textarea,
+    .dark select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: white;
+    }
+    
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    textarea:focus,
+    select:focus {
+        outline: none;
+        ring: 2px;
+        ring-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+    
+    textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+    
+    input[type="checkbox"] {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 0.25rem;
+        border: 1px solid #d1d5db;
+    }
+</style>
+{% endblock %}

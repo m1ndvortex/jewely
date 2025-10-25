@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import admin_views, branch_views, dashboard_views, settings_views, views
+from . import admin_views, branch_views, dashboard_views, settings_views, subscription_views, views
 
 app_name = "core"
 
@@ -74,6 +74,37 @@ urlpatterns = [
         "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/toggle-active/",
         admin_views.TenantUserToggleActiveView.as_view(),
         name="admin_tenant_user_toggle_active",
+    ),
+    # Subscription Plan Management
+    path(
+        "platform/subscription-plans/",
+        subscription_views.SubscriptionPlanListView.as_view(),
+        name="admin_subscription_plan_list",
+    ),
+    path(
+        "platform/subscription-plans/create/",
+        subscription_views.SubscriptionPlanCreateView.as_view(),
+        name="admin_subscription_plan_create",
+    ),
+    path(
+        "platform/subscription-plans/<uuid:pk>/",
+        subscription_views.SubscriptionPlanDetailView.as_view(),
+        name="admin_subscription_plan_detail",
+    ),
+    path(
+        "platform/subscription-plans/<uuid:pk>/edit/",
+        subscription_views.SubscriptionPlanUpdateView.as_view(),
+        name="admin_subscription_plan_update",
+    ),
+    path(
+        "platform/subscription-plans/<uuid:pk>/archive/",
+        subscription_views.SubscriptionPlanArchiveView.as_view(),
+        name="admin_subscription_plan_archive",
+    ),
+    path(
+        "platform/subscription-plans/<uuid:pk>/activate/",
+        subscription_views.SubscriptionPlanActivateView.as_view(),
+        name="admin_subscription_plan_activate",
     ),
     # Dashboard
     path("dashboard/", dashboard_views.TenantDashboardView.as_view(), name="tenant_dashboard"),

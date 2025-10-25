@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ plan.name }} - Subscription Plan{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ plan.name }}</h1>
+                {% if plan.status == 'active' %}
+                <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Active
+                </span>
+                {% else %}
+                <span class="px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                    Archived
+                </span>
+                {% endif %}
+            </div>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Subscription plan details and configuration</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'core:admin_subscription_plan_list' %}" 
+               class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
+                Back to List
+            </a>
+            <a href="{% url 'core:admin_subscription_plan_update' plan.pk %}" 
+               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                Edit Plan
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Details -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Basic Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h2>
+                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Plan Name</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ plan.name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Display Order</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ plan.display_order }}</dd>
+                    </div>
+                    <div class="md:col-span-2">
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Description</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ plan.description|default:"No description provided" }}
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Pricing -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Pricing</h2>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-4xl font-bold text-gray-900 dark:text-white">${{ plan.price }}</span>
+                    <span class="text-gray-500 dark:text-gray-400">/ {{ plan.get_billing_cycle_display|lower }}</span>
+                </div>
+            </div>
+
+            <!-- Resource Limits -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Resource Limits</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Users</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ plan.user_limit }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Branches</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ plan.branch_limit }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        </svg>
+                    </div>
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Inventory Items</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ plan.inventory_limit }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
+                    </div>
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Storage</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ plan.storage_limit_gb }} GB</p>
+                        </div>
+                        <svg class="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                        </svg>
+                    </div>
+                    <div class="md:col-span-2 flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">API Calls per Month</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ plan.api_calls_per_month }}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Flags -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Features</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Multi-Branch Management</span>
+                        {% if plan.enable_multi_branch %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Advanced Reporting</span>
+                        {% if plan.enable_advanced_reporting %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">API Access</span>
+                        {% if plan.enable_api_access %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Custom Branding</span>
+                        {% if plan.enable_custom_branding %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Priority Support</span>
+                        {% if plan.enable_priority_support %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Actions -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Actions</h2>
+                <div class="space-y-3">
+                    {% if plan.status == 'active' %}
+                    <form method="post" action="{% url 'core:admin_subscription_plan_archive' plan.pk %}" 
+                          onsubmit="return confirm('Are you sure you want to archive this plan? It will no longer be available for new subscriptions.');">
+                        {% csrf_token %}
+                        <button type="submit" 
+                                class="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            Archive Plan
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{% url 'core:admin_subscription_plan_activate' plan.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" 
+                                class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                            Activate Plan
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Statistics</h2>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Subscriptions</dt>
+                        <dd class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ subscription_count }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ plan.created_at|date:"M d, Y" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ plan.updated_at|date:"M d, Y" }}</dd>
+                    </div>
+                    {% if plan.archived_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Archived</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ plan.archived_at|date:"M d, Y" }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+
+            <!-- Recent Subscriptions -->
+            {% if subscribed_tenants %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Subscriptions</h2>
+                <div class="space-y-3">
+                    {% for subscription in subscribed_tenants %}
+                    <div class="flex items-center justify-between">
+                        <a href="{% url 'core:admin_tenant_detail' subscription.tenant.pk %}" 
+                           class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                            {{ subscription.tenant.company_name }}
+                        </a>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                            {{ subscription.created_at|date:"M d" }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
