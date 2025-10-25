@@ -70,3 +70,6 @@ django-hijack==3.4.5
 # Payment Gateway
 # Using stripe 4.x for compatibility with dj-stripe
 stripe==4.2.0
+
+# Cloud Storage (for backups)
+boto3==1.34.51

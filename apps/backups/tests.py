@@ -7,9 +7,10 @@ NO MOCKING - All tests use real PostgreSQL database, real data, and real service
 
 import uuid
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+
+import pytest
 
 from apps.backups.models import Backup, BackupAlert, BackupRestoreLog
 from apps.core.models import Tenant
