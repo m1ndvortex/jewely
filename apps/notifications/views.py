@@ -377,9 +377,29 @@ class CustomerSegmentCreateView(LoginRequiredMixin, View):
         }
         return render(request, self.template_name, context)
 
+    def _build_dynamic_criteria(self, request):
+        """Build criteria dictionary from POST data for dynamic segments."""
+        criteria = {}
+        if request.POST.get("min_total_purchases"):
+            criteria["min_total_purchases"] = float(request.POST.get("min_total_purchases"))
+        if request.POST.get("max_total_purchases"):
+            criteria["max_total_purchases"] = float(request.POST.get("max_total_purchases"))
+        if request.POST.get("last_purchase_days"):
+            criteria["last_purchase_days"] = int(request.POST.get("last_purchase_days"))
+        loyalty_tiers = request.POST.getlist("loyalty_tiers")
+        if loyalty_tiers:
+            criteria["loyalty_tiers"] = loyalty_tiers
+        tags = request.POST.get("tags")
+        if tags:
+            criteria["tags"] = [tag.strip() for tag in tags.split(",")]
+        if request.POST.get("marketing_opt_in"):
+            criteria["marketing_opt_in"] = request.POST.get("marketing_opt_in") == "true"
+        if request.POST.get("sms_opt_in"):
+            criteria["sms_opt_in"] = request.POST.get("sms_opt_in") == "true"
+        return criteria
+
     def post(self, request: HttpRequest) -> HttpResponse:
         from apps.crm.models import Customer
-
         from .services import create_customer_segment
 
         try:
@@ -388,32 +408,7 @@ class CustomerSegmentCreateView(LoginRequiredMixin, View):
             segment_type = request.POST.get("segment_type", "STATIC")
 
             if segment_type == "DYNAMIC":
-                # Build criteria from form data
-                criteria = {}
-
-                if request.POST.get("min_total_purchases"):
-                    criteria["min_total_purchases"] = float(request.POST.get("min_total_purchases"))
-
-                if request.POST.get("max_total_purchases"):
-                    criteria["max_total_purchases"] = float(request.POST.get("max_total_purchases"))
-
-                if request.POST.get("last_purchase_days"):
-                    criteria["last_purchase_days"] = int(request.POST.get("last_purchase_days"))
-
-                loyalty_tiers = request.POST.getlist("loyalty_tiers")
-                if loyalty_tiers:
-                    criteria["loyalty_tiers"] = loyalty_tiers
-
-                tags = request.POST.get("tags")
-                if tags:
-                    criteria["tags"] = [tag.strip() for tag in tags.split(",")]
-
-                if request.POST.get("marketing_opt_in"):
-                    criteria["marketing_opt_in"] = request.POST.get("marketing_opt_in") == "true"
-
-                if request.POST.get("sms_opt_in"):
-                    criteria["sms_opt_in"] = request.POST.get("sms_opt_in") == "true"
-
+                criteria = self._build_dynamic_criteria(request)
                 segment = create_customer_segment(
                     name=name,
                     description=description,
@@ -422,10 +417,8 @@ class CustomerSegmentCreateView(LoginRequiredMixin, View):
                     created_by=request.user,
                 )
             else:
-                # Static segment - get selected customers
                 customer_ids = request.POST.getlist("customers")
                 customers = Customer.objects.filter(id__in=customer_ids) if customer_ids else []
-
                 segment = create_customer_segment(
                     name=name,
                     description=description,
@@ -671,64 +664,54 @@ class SegmentPreviewView(View):
     HTMX endpoint for previewing customer segment results.
     """
 
+    def _build_criteria_from_post(self, request):
+        """Extract criteria from POST data."""
+        criteria = {}
+        if request.POST.get("min_total_purchases"):
+            criteria["min_total_purchases"] = float(request.POST.get("min_total_purchases"))
+        if request.POST.get("max_total_purchases"):
+            criteria["max_total_purchases"] = float(request.POST.get("max_total_purchases"))
+        if request.POST.get("last_purchase_days"):
+            criteria["last_purchase_days"] = int(request.POST.get("last_purchase_days"))
+        loyalty_tiers = request.POST.getlist("loyalty_tiers")
+        if loyalty_tiers:
+            criteria["loyalty_tiers"] = loyalty_tiers
+        tags = request.POST.get("tags")
+        if tags:
+            criteria["tags"] = [tag.strip() for tag in tags.split(",")]
+        return criteria
+
+    def _apply_criteria_to_queryset(self, queryset, criteria):
+        """Apply criteria filters to customer queryset."""
+        if criteria.get("loyalty_tiers"):
+            queryset = queryset.filter(loyalty_tier__name__in=criteria["loyalty_tiers"])
+        if criteria.get("min_total_purchases"):
+            queryset = queryset.filter(total_purchases__gte=criteria["min_total_purchases"])
+        if criteria.get("max_total_purchases"):
+            queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
+        if criteria.get("last_purchase_days"):
+            from datetime import timedelta
+            from django.utils import timezone
+            cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
+            queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
+        if criteria.get("tags"):
+            for tag in criteria["tags"]:
+                queryset = queryset.filter(tags__contains=[tag])
+        return queryset
+
     def post(self, request: HttpRequest) -> HttpResponse:
         from apps.crm.models import Customer
-
-        from .services import get_segment_customers
 
         try:
             segment_type = request.POST.get("segment_type")
 
             if segment_type == "DYNAMIC":
-                # Build criteria and preview customers
-                criteria = {}
-
-                if request.POST.get("min_total_purchases"):
-                    criteria["min_total_purchases"] = float(request.POST.get("min_total_purchases"))
-
-                if request.POST.get("max_total_purchases"):
-                    criteria["max_total_purchases"] = float(request.POST.get("max_total_purchases"))
-
-                if request.POST.get("last_purchase_days"):
-                    criteria["last_purchase_days"] = int(request.POST.get("last_purchase_days"))
-
-                loyalty_tiers = request.POST.getlist("loyalty_tiers")
-                if loyalty_tiers:
-                    criteria["loyalty_tiers"] = loyalty_tiers
-
-                tags = request.POST.get("tags")
-                if tags:
-                    criteria["tags"] = [tag.strip() for tag in tags.split(",")]
-
-                # Apply criteria to get preview
+                criteria = self._build_criteria_from_post(request)
                 queryset = Customer.objects.filter(is_active=True)
-
-                if criteria.get("loyalty_tiers"):
-                    queryset = queryset.filter(loyalty_tier__name__in=criteria["loyalty_tiers"])
-
-                if criteria.get("min_total_purchases"):
-                    queryset = queryset.filter(total_purchases__gte=criteria["min_total_purchases"])
-
-                if criteria.get("max_total_purchases"):
-                    queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
-
-                if criteria.get("last_purchase_days"):
-                    from datetime import timedelta
-
-                    from django.utils import timezone
-
-                    cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
-                    queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
-
-                if criteria.get("tags"):
-                    for tag in criteria["tags"]:
-                        queryset = queryset.filter(tags__contains=[tag])
-
-                customers = queryset[:10]  # Preview first 10
+                queryset = self._apply_criteria_to_queryset(queryset, criteria)
+                customers = queryset[:10]
                 total_count = queryset.count()
-
             else:
-                # Static segment preview
                 customer_ids = request.POST.getlist("customers")
                 customers = Customer.objects.filter(id__in=customer_ids)[:10]
                 total_count = len(customer_ids)

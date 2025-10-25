@@ -876,58 +876,54 @@ class CustomerSegment(models.Model):
             # Dynamic segment - apply criteria
             return self._apply_dynamic_criteria()
 
+    def _apply_purchase_filters(self, queryset, criteria):
+        """Apply purchase-related filters to queryset."""
+        if criteria.get("min_total_purchases"):
+            queryset = queryset.filter(total_purchases__gte=criteria["min_total_purchases"])
+        if criteria.get("max_total_purchases"):
+            queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
+        if criteria.get("last_purchase_days"):
+            from datetime import timedelta
+            from django.utils import timezone
+            cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
+            queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
+        return queryset
+
+    def _apply_age_filters(self, queryset, criteria):
+        """Apply age-related filters to queryset."""
+        if criteria.get("min_age") or criteria.get("max_age"):
+            from datetime import timedelta
+            from django.utils import timezone
+            if criteria.get("min_age"):
+                max_birth_date = timezone.now().date() - timedelta(days=criteria["min_age"] * 365)
+                queryset = queryset.filter(date_of_birth__lte=max_birth_date)
+            if criteria.get("max_age"):
+                min_birth_date = timezone.now().date() - timedelta(days=criteria["max_age"] * 365)
+                queryset = queryset.filter(date_of_birth__gte=min_birth_date)
+        return queryset
+
     def _apply_dynamic_criteria(self):
         """Apply dynamic segmentation criteria to get customers"""
         from apps.crm.models import Customer
 
         queryset = Customer.objects.filter(is_active=True)
-
-        # Apply criteria filters
         criteria = self.criteria or {}
 
-        # Loyalty tier filter
         if criteria.get("loyalty_tiers"):
             queryset = queryset.filter(loyalty_tier__name__in=criteria["loyalty_tiers"])
 
-        # Purchase amount filters
-        if criteria.get("min_total_purchases"):
-            queryset = queryset.filter(total_purchases__gte=criteria["min_total_purchases"])
-        if criteria.get("max_total_purchases"):
-            queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
+        queryset = self._apply_purchase_filters(queryset, criteria)
 
-        # Last purchase date filters
-        if criteria.get("last_purchase_days"):
-            from datetime import timedelta
-
-            from django.utils import timezone
-
-            cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
-            queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
-
-        # Tags filter
         if criteria.get("tags"):
             for tag in criteria["tags"]:
                 queryset = queryset.filter(tags__contains=[tag])
 
-        # Communication preferences
         if criteria.get("marketing_opt_in") is not None:
             queryset = queryset.filter(marketing_opt_in=criteria["marketing_opt_in"])
         if criteria.get("sms_opt_in") is not None:
             queryset = queryset.filter(sms_opt_in=criteria["sms_opt_in"])
 
-        # Age range (if date_of_birth is available)
-        if criteria.get("min_age") or criteria.get("max_age"):
-            from datetime import timedelta
-
-            from django.utils import timezone
-
-            if criteria.get("min_age"):
-                max_birth_date = timezone.now().date() - timedelta(days=criteria["min_age"] * 365)
-                queryset = queryset.filter(date_of_birth__lte=max_birth_date)
-
-            if criteria.get("max_age"):
-                min_birth_date = timezone.now().date() - timedelta(days=criteria["max_age"] * 365)
-                queryset = queryset.filter(date_of_birth__gte=min_birth_date)
+        queryset = self._apply_age_filters(queryset, criteria)
 
         return queryset
 

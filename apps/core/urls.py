@@ -141,6 +141,11 @@ urlpatterns = [
         name="settings_data_management",
     ),
     path(
+        "settings/backup-management/",
+        settings_views.BackupManagementView.as_view(),
+        name="settings_backup_management",
+    ),
+    path(
         "settings/security/",
         settings_views.SecuritySettingsView.as_view(),
         name="settings_security",

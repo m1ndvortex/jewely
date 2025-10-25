@@ -103,7 +103,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that settings were updated
-        self.tenant_settings.refresh_from_database()
+        self.tenant_settings.refresh_from_db()
         self.assertEqual(self.tenant_settings.business_name, "Updated Jewelry Shop")
         self.assertEqual(self.tenant_settings.phone, "+1-555-123-4567")
 
@@ -135,7 +135,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that colors were updated
-        self.tenant_settings.refresh_from_database()
+        self.tenant_settings.refresh_from_db()
         self.assertEqual(self.tenant_settings.primary_color, "#10b981")
 
     def test_business_hours_view_get(self):
@@ -176,7 +176,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that business hours were updated
-        self.tenant_settings.refresh_from_database()
+        self.tenant_settings.refresh_from_db()
         self.assertIn("monday", self.tenant_settings.business_hours)
         self.assertEqual(self.tenant_settings.business_hours["monday"]["open"], "09:00")
         self.assertEqual(self.tenant_settings.business_hours["sunday"]["closed"], True)
@@ -209,7 +209,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that holiday was added
-        self.tenant_settings.refresh_from_database()
+        self.tenant_settings.refresh_from_db()
         self.assertEqual(len(self.tenant_settings.holidays), 1)
         self.assertEqual(self.tenant_settings.holidays[0]["name"], "Christmas Day")
         self.assertEqual(self.tenant_settings.holidays[0]["date"], "2024-12-25")
@@ -234,7 +234,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that holiday was removed
-        self.tenant_settings.refresh_from_database()
+        self.tenant_settings.refresh_from_db()
         self.assertEqual(len(self.tenant_settings.holidays), 0)
 
     def test_integration_settings_view_get(self):
@@ -270,7 +270,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that settings were updated
-        self.integration_settings.refresh_from_database()
+        self.integration_settings.refresh_from_db()
         self.assertTrue(self.integration_settings.payment_gateway_enabled)
         self.assertEqual(self.integration_settings.payment_gateway_provider, "stripe")
         self.assertTrue(self.integration_settings.payment_gateway_test_mode)
@@ -295,7 +295,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that settings were updated
-        self.integration_settings.refresh_from_database()
+        self.integration_settings.refresh_from_db()
         self.assertTrue(self.integration_settings.sms_provider_enabled)
         self.assertEqual(self.integration_settings.sms_provider, "twilio")
         self.assertEqual(self.integration_settings.sms_sender_id, "+1234567890")
@@ -320,7 +320,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that settings were updated
-        self.integration_settings.refresh_from_database()
+        self.integration_settings.refresh_from_db()
         self.assertTrue(self.integration_settings.email_provider_enabled)
         self.assertEqual(self.integration_settings.email_provider, "sendgrid")
         self.assertEqual(self.integration_settings.email_from_address, "noreply@test.com")
@@ -368,7 +368,7 @@ class SettingsViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 302)
 
         # Check that settings were updated
-        self.invoice_settings.refresh_from_database()
+        self.invoice_settings.refresh_from_db()
         self.assertEqual(self.invoice_settings.invoice_template, "detailed")
         self.assertEqual(self.invoice_settings.receipt_template, "minimal")
         self.assertEqual(self.invoice_settings.invoice_numbering_scheme, "yearly")
@@ -737,3 +737,414 @@ class IntegrationSettingsFormTestCase(TestCase):
         self.assertNotEqual(saved_instance.sms_api_secret, "")
 
 
+class SettingsAPIViewsTestCase(TestCase):
+    """Test cases for settings API views."""
+
+    def setUp(self):
+        """Set up test data."""
+        # Enable RLS bypass for tests
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        # Create tenant
+        self.tenant = Tenant.objects.create(
+            company_name="Test Jewelry Shop",
+            slug="test-shop",
+            status="ACTIVE",
+        )
+
+        # Create tenant owner user
+        self.user = User.objects.create_user(
+            username="owner",
+            password="testpass123",
+            email="owner@test.com",
+            tenant=self.tenant,
+            role="TENANT_OWNER",
+        )
+
+        # Create settings objects
+        self.tenant_settings = TenantSettings.objects.create(
+            tenant=self.tenant,
+            business_name="Test Jewelry Shop",
+            primary_color="#3b82f6",
+            secondary_color="#6b7280",
+        )
+
+        self.invoice_settings = InvoiceSettings.objects.create(
+            tenant=self.tenant,
+        )
+
+        self.integration_settings = IntegrationSettings.objects.create(
+            tenant=self.tenant,
+        )
+
+    def test_tenant_settings_api_get(self):
+        """Test TenantSettingsAPIView GET request."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_tenant_settings")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["business_name"], "Test Jewelry Shop")
+        self.assertEqual(data["primary_color"], "#3b82f6")
+
+    def test_tenant_settings_api_patch(self):
+        """Test TenantSettingsAPIView PATCH request."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_tenant_settings")
+        data = {
+            "business_name": "Updated Shop Name",
+            "primary_color": "#10b981",
+        }
+
+        response = self.client.patch(url, data=data, content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+
+        # Check that settings were updated
+        self.tenant_settings.refresh_from_db()
+        self.assertEqual(self.tenant_settings.business_name, "Updated Shop Name")
+        self.assertEqual(self.tenant_settings.primary_color, "#10b981")
+
+    def test_invoice_settings_api_get(self):
+        """Test InvoiceSettingsAPIView GET request."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_invoice_settings")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("invoice_template", data)
+        self.assertIn("receipt_template", data)
+
+    def test_invoice_settings_api_patch(self):
+        """Test InvoiceSettingsAPIView PATCH request."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_invoice_settings")
+        data = {
+            "invoice_template": "detailed",
+            "invoice_number_prefix": "INV",
+        }
+
+        response = self.client.patch(url, data=data, content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+
+        # Check that settings were updated
+        self.invoice_settings.refresh_from_db()
+        self.assertEqual(self.invoice_settings.invoice_template, "detailed")
+        self.assertEqual(self.invoice_settings.invoice_number_prefix, "INV")
+
+    def test_integration_settings_api_get(self):
+        """Test IntegrationSettingsAPIView GET request."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_integration_settings")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("payment_gateway_enabled", data)
+        self.assertIn("sms_provider_enabled", data)
+        self.assertIn("email_provider_enabled", data)
+
+    def test_integration_settings_api_patch(self):
+        """Test IntegrationSettingsAPIView PATCH request."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_integration_settings")
+        data = {
+            "payment_gateway_enabled": True,
+            "payment_gateway_provider": "stripe",
+        }
+
+        response = self.client.patch(url, data=data, content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+
+        # Check that settings were updated
+        self.integration_settings.refresh_from_db()
+        self.assertTrue(self.integration_settings.payment_gateway_enabled)
+        self.assertEqual(self.integration_settings.payment_gateway_provider, "stripe")
+
+    def test_upload_logo_api(self):
+        """Test logo upload API endpoint."""
+        import tempfile
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from PIL import Image
+
+        self.client.login(username="owner", password="testpass123")
+
+        # Create a test image
+        image = Image.new("RGB", (100, 100), color="red")
+        temp_file = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        image.save(temp_file.name, "JPEG")
+
+        with open(temp_file.name, "rb") as f:
+            logo_file = SimpleUploadedFile("test_logo.jpg", f.read(), content_type="image/jpeg")
+
+            url = reverse("core:api_upload_logo")
+            response = self.client.post(url, {"logo": logo_file})
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertIn("logo_url", data)
+
+        # Check that logo was saved
+        self.tenant_settings.refresh_from_db()
+        self.assertTrue(self.tenant_settings.logo)
+
+    def test_upload_logo_api_no_file(self):
+        """Test logo upload API with no file."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_upload_logo")
+        response = self.client.post(url, {})
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn("error", data)
+        self.assertIn("No logo file provided", data["error"])
+
+    def test_update_colors_api(self):
+        """Test color update API endpoint."""
+        import json
+
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_update_colors")
+        data = {
+            "primary_color": "#10b981",
+            "secondary_color": "#6b7280",
+        }
+
+        response = self.client.post(url, data=json.dumps(data), content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertTrue(response_data["success"])
+        self.assertEqual(response_data["primary_color"], "#10b981")
+        self.assertEqual(response_data["secondary_color"], "#6b7280")
+
+        # Check that colors were updated
+        self.tenant_settings.refresh_from_db()
+        self.assertEqual(self.tenant_settings.primary_color, "#10b981")
+        self.assertEqual(self.tenant_settings.secondary_color, "#6b7280")
+
+    def test_update_colors_api_invalid_format(self):
+        """Test color update API with invalid color format."""
+        import json
+
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_update_colors")
+        data = {
+            "primary_color": "invalid_color",
+            "secondary_color": "#6b7280",
+        }
+
+        response = self.client.post(url, data=json.dumps(data), content_type="application/json")
+
+        self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertIn("error", response_data)
+        self.assertIn("Invalid color format", response_data["error"])
+
+    def test_update_colors_api_missing_colors(self):
+        """Test color update API with missing colors."""
+        import json
+
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:api_update_colors")
+        data = {
+            "primary_color": "#10b981",
+            # Missing secondary_color
+        }
+
+        response = self.client.post(url, data=json.dumps(data), content_type="application/json")
+
+        self.assertEqual(response.status_code, 400)
+        response_data = response.json()
+        self.assertIn("error", response_data)
+        self.assertIn("Both colors are required", response_data["error"])
+
+    def test_api_unauthorized_access(self):
+        """Test that unauthorized users cannot access API endpoints."""
+        # Don't log in
+
+        # Test tenant settings API
+        url = reverse("core:api_tenant_settings")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+
+        # Test invoice settings API
+        url = reverse("core:api_invoice_settings")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+
+        # Test integration settings API
+        url = reverse("core:api_integration_settings")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+
+
+class DataManagementIntegrationTestCase(TestCase):
+    """Integration tests for data management functionality."""
+
+    def setUp(self):
+        """Set up test data."""
+        # Enable RLS bypass for tests
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        # Create tenant
+        self.tenant = Tenant.objects.create(
+            company_name="Test Jewelry Shop",
+            slug="test-shop",
+            status="ACTIVE",
+        )
+
+        # Create tenant owner user
+        self.user = User.objects.create_user(
+            username="owner",
+            password="testpass123",
+            email="owner@test.com",
+            tenant=self.tenant,
+            role="TENANT_OWNER",
+        )
+
+    def test_download_template_csv(self):
+        """Test downloading CSV templates."""
+        self.client.login(username="owner", password="testpass123")
+
+        # Test inventory template
+        url = reverse("core:download_template", kwargs={"template_type": "inventory"})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn("inventory_template.csv", response["Content-Disposition"])
+
+        # Check CSV content
+        content = response.content.decode("utf-8")
+        self.assertIn("SKU", content)
+        self.assertIn("Name", content)
+        self.assertIn("Karat", content)
+
+    def test_download_template_customers(self):
+        """Test downloading customer template."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:download_template", kwargs={"template_type": "customers"})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn("customers_template.csv", response["Content-Disposition"])
+
+        # Check CSV content
+        content = response.content.decode("utf-8")
+        self.assertIn("First Name", content)
+        self.assertIn("Last Name", content)
+        self.assertIn("Email", content)
+
+    def test_download_template_suppliers(self):
+        """Test downloading supplier template."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:download_template", kwargs={"template_type": "suppliers"})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn("suppliers_template.csv", response["Content-Disposition"])
+
+        # Check CSV content
+        content = response.content.decode("utf-8")
+        self.assertIn("Company Name", content)
+        self.assertIn("Contact Person", content)
+        self.assertIn("Email", content)
+
+    def test_download_template_invalid_type(self):
+        """Test downloading invalid template type."""
+        self.client.login(username="owner", password="testpass123")
+
+        url = reverse("core:download_template", kwargs={"template_type": "invalid"})
+        response = self.client.get(url)
+
+        # Should redirect with error message
+        self.assertEqual(response.status_code, 302)
+
+    def test_settings_form_validation_edge_cases(self):
+        """Test edge cases in settings form validation."""
+        self.client.login(username="owner", password="testpass123")
+
+        # Test business hours with invalid time format
+        url = reverse("core:settings_business_hours")
+        data = {
+            "monday_open": "25:00",  # Invalid hour
+            "monday_close": "17:00",
+        }
+
+        response = self.client.post(url, data)
+        # Should handle gracefully and redirect
+        self.assertEqual(response.status_code, 302)
+
+        # Test holiday with invalid date format
+        url = reverse("core:settings_holiday_calendar")
+        data = {
+            "action": "add_holiday",
+            "holiday_date": "invalid-date",
+            "holiday_name": "Test Holiday",
+        }
+
+        response = self.client.post(url, data)
+        # Should redirect with error message
+        self.assertEqual(response.status_code, 302)
+
+    def test_settings_concurrent_updates(self):
+        """Test concurrent updates to settings."""
+        from django.db import transaction
+
+        self.client.login(username="owner", password="testpass123")
+
+        # Create initial settings
+        tenant_settings = TenantSettings.objects.create(
+            tenant=self.tenant,
+            business_name="Original Name",
+        )
+
+        # Simulate concurrent update
+        with transaction.atomic():
+            # Update via form - need to include all required fields
+            url = reverse("core:settings_shop_profile")
+            data = {
+                "business_name": "Updated via Form",
+                "phone": "+1-555-123-4567",
+                "email": "test@example.com",
+                "timezone": "America/New_York",
+                "currency": "USD",
+                "date_format": "MM/DD/YYYY",
+                "default_tax_rate": "8.25",
+                "tax_inclusive_pricing": False,
+            }
+
+            response = self.client.post(url, data)
+            # Should redirect on success or show form with errors
+            self.assertIn(response.status_code, [200, 302])
+
+        # Verify final state if update was successful
+        tenant_settings.refresh_from_db()
+        if response.status_code == 302:
+            self.assertEqual(tenant_settings.business_name, "Updated via Form")

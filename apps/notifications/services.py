@@ -6,6 +6,7 @@ checking user preferences, and managing notification delivery including email an
 """
 
 import logging
+import uuid
 from typing import Dict, List, Optional
 
 from django.conf import settings
@@ -15,6 +16,9 @@ from django.db import models
 from django.utils import timezone
 
 from .models import (
+    CampaignAnalytics,
+    CommunicationLog,
+    CustomerSegment,
     EmailCampaign,
     EmailNotification,
     EmailTemplate,
@@ -1967,6 +1971,71 @@ def get_customer_communication_history(
     return list(queryset)
 
 
+def _send_email_to_customer(customer, template_name, context, campaign_id, subject, created_by):
+    """Send email campaign to a single customer."""
+    if not customer.email:
+        return False
+    
+    user = User.objects.filter(email=customer.email).first()
+    if not user:
+        return False
+    
+    email_notification = send_marketing_email(
+        user=user,
+        template_name=template_name,
+        context={**context, "customer": customer},
+        campaign_id=campaign_id,
+        subject=subject,
+    )
+    
+    if email_notification:
+        log_customer_communication(
+            customer=customer,
+            communication_type="EMAIL",
+            direction="OUTBOUND",
+            subject=subject,
+            content=f"Marketing email sent using template: {template_name}",
+            campaign_id=campaign_id,
+            email_notification=email_notification,
+            created_by=created_by,
+        )
+        return True
+    return False
+
+
+def _send_sms_to_customer(customer, template_name, context, campaign_id, created_by):
+    """Send SMS campaign to a single customer."""
+    if not customer.phone:
+        return False
+    
+    user = User.objects.filter(email=customer.email).first() if customer.email else None
+    if not user:
+        user = User.objects.filter(phone=customer.phone).first()
+    if not user:
+        return False
+    
+    sms_notification = send_marketing_sms(
+        user=user,
+        template_name=template_name,
+        context={**context, "customer": customer},
+        campaign_id=campaign_id,
+    )
+    
+    if sms_notification:
+        log_customer_communication(
+            customer=customer,
+            communication_type="SMS",
+            direction="OUTBOUND",
+            subject="Marketing SMS",
+            content=f"Marketing SMS sent using template: {template_name}",
+            campaign_id=campaign_id,
+            sms_notification=sms_notification,
+            created_by=created_by,
+        )
+        return True
+    return False
+
+
 def send_bulk_campaign_to_segment(
     segment_id: str,
     campaign_type: str,
@@ -1989,15 +2058,12 @@ def send_bulk_campaign_to_segment(
     Returns:
         Dictionary with campaign results
     """
-    from apps.crm.models import Customer
-
     from .models import CustomerSegment
 
     try:
         segment = CustomerSegment.objects.get(id=segment_id)
         customers = segment.get_customers()
 
-        # Create campaign analytics
         campaign_id = str(uuid.uuid4())
         analytics = create_campaign_analytics(
             campaign_id=campaign_id,
@@ -2012,80 +2078,24 @@ def send_bulk_campaign_to_segment(
 
         for customer in customers:
             try:
-                if campaign_type == "EMAIL" and customer.email:
-                    # Find or create user for this customer
-                    user = None
-                    if customer.email:
-                        user = User.objects.filter(email=customer.email).first()
-
-                    if user:
-                        email_notification = send_marketing_email(
-                            user=user,
-                            template_name=template_name,
-                            context={**context, "customer": customer},
-                            campaign_id=campaign_id,
-                            subject=subject,
-                        )
-
-                        if email_notification:
-                            # Log communication
-                            log_customer_communication(
-                                customer=customer,
-                                communication_type="EMAIL",
-                                direction="OUTBOUND",
-                                subject=subject,
-                                content=f"Marketing email sent using template: {template_name}",
-                                campaign_id=campaign_id,
-                                email_notification=email_notification,
-                                created_by=created_by,
-                            )
-                            sent_count += 1
-                        else:
-                            failed_count += 1
-                    else:
-                        failed_count += 1
-
-                elif campaign_type == "SMS" and customer.phone:
-                    # Find or create user for this customer
-                    user = None
-                    if customer.email:
-                        user = User.objects.filter(email=customer.email).first()
-                    elif customer.phone:
-                        user = User.objects.filter(phone=customer.phone).first()
-
-                    if user:
-                        sms_notification = send_marketing_sms(
-                            user=user,
-                            template_name=template_name,
-                            context={**context, "customer": customer},
-                            campaign_id=campaign_id,
-                        )
-
-                        if sms_notification:
-                            # Log communication
-                            log_customer_communication(
-                                customer=customer,
-                                communication_type="SMS",
-                                direction="OUTBOUND",
-                                subject="Marketing SMS",
-                                content=f"Marketing SMS sent using template: {template_name}",
-                                campaign_id=campaign_id,
-                                sms_notification=sms_notification,
-                                created_by=created_by,
-                            )
-                            sent_count += 1
-                        else:
-                            failed_count += 1
-                    else:
-                        failed_count += 1
+                success = False
+                if campaign_type == "EMAIL":
+                    success = _send_email_to_customer(
+                        customer, template_name, context, campaign_id, subject, created_by
+                    )
+                elif campaign_type == "SMS":
+                    success = _send_sms_to_customer(
+                        customer, template_name, context, campaign_id, created_by
+                    )
+                
+                if success:
+                    sent_count += 1
                 else:
                     failed_count += 1
-
             except Exception as e:
                 logger.error(f"Failed to send {campaign_type} to customer {customer.id}: {str(e)}")
                 failed_count += 1
 
-        # Update analytics
         analytics.total_recipients = customers.count()
         analytics.messages_sent = sent_count
         analytics.messages_failed = failed_count

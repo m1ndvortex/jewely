@@ -1417,13 +1417,13 @@ class EmailCampaignModelTests(TestCase):
         from .models import EmailCampaign
 
         # Create additional users
-        user2 = User.objects.create_user(
+        User.objects.create_user(
             username="manager",
             email="manager@example.com",
             tenant=self.tenant,
             role="TENANT_MANAGER",
         )
-        user3 = User.objects.create_user(
+        User.objects.create_user(
             username="employee",
             email="employee@example.com",
             tenant=self.tenant,
@@ -2090,7 +2090,7 @@ class CampaignServiceTests(TestCase):
         from .services import create_sms_campaign
 
         # Create SMS template
-        sms_template = SMSTemplate.objects.create(
+        SMSTemplate.objects.create(
             name="sms_campaign_template",
             message_template="{{ campaign_name }}: {{ message }}",
             sms_type="MARKETING",
@@ -2126,7 +2126,7 @@ class CampaignServiceTests(TestCase):
         )
 
         # Create SMS template
-        sms_template = SMSTemplate.objects.create(
+        SMSTemplate.objects.create(
             name="sms_send_template",
             message_template="{{ message }}",
             sms_type="MARKETING",

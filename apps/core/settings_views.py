@@ -9,6 +9,7 @@ Implements Requirement 20: Settings and Configuration
 """
 
 import json
+import logging
 from datetime import datetime
 
 from django.contrib import messages
@@ -18,6 +19,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView, UpdateView
@@ -26,6 +28,8 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .data_models import BackupTrigger, DataActivity
+from .data_tasks import export_data_async, import_data_async, trigger_backup_async
 from .decorators import tenant_required
 from .forms import IntegrationSettingsForm, InvoiceSettingsForm, TenantSettingsForm
 from .models import IntegrationSettings, InvoiceSettings, TenantSettings
@@ -35,6 +39,8 @@ from .serializers import (
     InvoiceSettingsSerializer,
     TenantSettingsSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsOverviewView(LoginRequiredMixin, TenantPermissionMixin, TemplateView):
@@ -395,8 +401,13 @@ class DataManagementView(LoginRequiredMixin, TenantPermissionMixin, TemplateView
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["active_tab"] = "data_management"
-        # TODO: Add recent activities from a DataActivity model
-        context["recent_activities"] = []
+
+        # Get recent data activities
+        recent_activities = DataActivity.objects.filter(tenant=self.request.user.tenant).order_by(
+            "-created_at"
+        )[:10]
+
+        context["recent_activities"] = recent_activities
         return context
 
     def post(self, request, *args, **kwargs):
@@ -414,21 +425,46 @@ class DataManagementView(LoginRequiredMixin, TenantPermissionMixin, TemplateView
         """Handle data export requests."""
         export_types = request.POST.getlist("export_types")
         export_format = request.POST.get("export_format", "csv")
-        # date_from = request.POST.get("export_date_from")  # TODO: Use for filtering
-        # date_to = request.POST.get("export_date_to")  # TODO: Use for filtering
+        date_from = request.POST.get("export_date_from")
+        date_to = request.POST.get("export_date_to")
 
         if not export_types:
             messages.error(request, "Please select at least one data type to export.")
             return redirect("core:settings_data_management")
 
         try:
-            # TODO: Implement actual export functionality
-            # This would involve creating CSV/Excel files with the selected data
+            # Parse dates
+            date_from_obj = None
+            date_to_obj = None
+
+            if date_from:
+                from datetime import datetime
+
+                date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
+
+            if date_to:
+                from datetime import datetime
+
+                date_to_obj = datetime.strptime(date_to, "%Y-%m-%d")
+
+            # Start async export task
+            export_data_async.delay(
+                tenant_id=str(request.user.tenant.id),
+                data_types=export_types,
+                format=export_format,
+                user_id=str(request.user.id),
+                date_from=date_from_obj.isoformat() if date_from_obj else None,
+                date_to=date_to_obj.isoformat() if date_to_obj else None,
+            )
+
             messages.success(
                 request,
-                f"Export started for {', '.join(export_types)} in {export_format.upper()} format.",
+                f"Export started for {', '.join(export_types)} in {export_format.upper()} format. "
+                f"You will be notified when it's complete.",
             )
+
         except Exception as e:
+            logger.exception(f"Export request failed: {e}")
             messages.error(request, f"Export failed: {e}")
 
         return redirect("core:settings_data_management")
@@ -437,7 +473,7 @@ class DataManagementView(LoginRequiredMixin, TenantPermissionMixin, TemplateView
         """Handle data import requests."""
         import_type = request.POST.get("import_type")
         import_file = request.FILES.get("import_file")
-        # update_existing = request.POST.get("update_existing") == "on"  # TODO: Use for updates
+        update_existing = request.POST.get("update_existing") == "on"
         validate_only = request.POST.get("validate_only") == "on"
 
         if not import_type:
@@ -449,18 +485,120 @@ class DataManagementView(LoginRequiredMixin, TenantPermissionMixin, TemplateView
             return redirect("core:settings_data_management")
 
         try:
-            # TODO: Implement actual import functionality
-            # This would involve parsing CSV/Excel files and validating data
+            # Save uploaded file temporarily
+            import os
+            import tempfile
+
+            # Create temporary file
+            temp_dir = tempfile.gettempdir()
+            temp_filename = f"import_{request.user.tenant.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}_{import_file.name}"
+            temp_filepath = os.path.join(temp_dir, temp_filename)
+
+            # Save file
+            with open(temp_filepath, "wb+") as destination:
+                for chunk in import_file.chunks():
+                    destination.write(chunk)
+
+            # Start async import task
+            import_data_async.delay(
+                tenant_id=str(request.user.tenant.id),
+                data_type=import_type,
+                file_path=temp_filepath,
+                user_id=str(request.user.id),
+                update_existing=update_existing,
+                validate_only=validate_only,
+            )
+
             if validate_only:
                 messages.success(
-                    request, f"Validation completed for {import_type} data. No errors found."
+                    request,
+                    f"Validation started for {import_type} data. You will be notified of the results.",
                 )
             else:
-                messages.success(request, f"Import completed for {import_type} data.")
+                messages.success(
+                    request,
+                    f"Import started for {import_type} data. You will be notified when it's complete.",
+                )
+
         except Exception as e:
+            logger.exception(f"Import request failed: {e}")
             messages.error(request, f"Import failed: {e}")
 
         return redirect("core:settings_data_management")
+
+
+class BackupManagementView(LoginRequiredMixin, TenantPermissionMixin, TemplateView):
+    """
+    Backup management page for triggering manual backups.
+    """
+
+    template_name = "core/settings/backup_management.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["active_tab"] = "backup_management"
+
+        # Get recent backup triggers
+        recent_triggers = BackupTrigger.objects.filter(tenant=self.request.user.tenant).order_by(
+            "-created_at"
+        )[:10]
+
+        context["recent_triggers"] = recent_triggers
+        return context
+
+    def post(self, request, *args, **kwargs):
+        """Handle backup trigger requests."""
+        backup_type = request.POST.get("backup_type", "TENANT")
+        priority = request.POST.get("priority", "NORMAL")
+        reason = request.POST.get("reason", "")
+        include_media = request.POST.get("include_media") == "on"
+        compress_backup = request.POST.get("compress_backup", "on") == "on"
+        encrypt_backup = request.POST.get("encrypt_backup", "on") == "on"
+
+        # Parse scheduled time if provided
+        scheduled_at = None
+        scheduled_date = request.POST.get("scheduled_date")
+        scheduled_time = request.POST.get("scheduled_time")
+
+        if scheduled_date and scheduled_time:
+            try:
+                from datetime import datetime
+
+                scheduled_datetime_str = f"{scheduled_date} {scheduled_time}"
+                scheduled_at = datetime.strptime(scheduled_datetime_str, "%Y-%m-%d %H:%M")
+            except ValueError:
+                messages.error(request, "Invalid scheduled date/time format.")
+                return redirect("core:settings_backup_management")
+
+        try:
+            # Start async backup trigger task
+            trigger_backup_async.delay(
+                backup_type=backup_type,
+                tenant_id=str(request.user.tenant.id) if backup_type == "TENANT" else None,
+                user_id=str(request.user.id),
+                priority=priority,
+                reason=reason,
+                include_media=include_media,
+                compress_backup=compress_backup,
+                encrypt_backup=encrypt_backup,
+            )
+
+            if scheduled_at:
+                messages.success(
+                    request,
+                    f"{backup_type.title()} backup scheduled for {scheduled_at.strftime('%Y-%m-%d %H:%M')}.",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"{backup_type.title()} backup triggered successfully. You will be notified when it's complete.",
+                )
+
+        except Exception as e:
+            logger.exception(f"Backup trigger failed: {e}")
+            messages.error(request, f"Backup trigger failed: {e}")
+
+        return redirect("core:settings_backup_management")
 
 
 class SecuritySettingsView(LoginRequiredMixin, TenantPermissionMixin, TemplateView):

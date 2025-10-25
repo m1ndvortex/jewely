@@ -487,13 +487,13 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Store API credentials securely (encrypted)
     - _Requirements: 20_
   
-  - [ ] 14.5 Implement data management
+  - [x] 14.5 Implement data management
     - Create data export functionality (CSV/Excel)
     - Implement data import with validation
     - Create backup trigger interface
     - _Requirements: 20_
   
-  - [ ] 14.6 Write settings tests
+  - [x] 14.6 Write settings tests
     - Test settings CRUD operations
     - Test invoice customization
     - Test data import/export

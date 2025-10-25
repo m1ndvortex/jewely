@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Backup Management - Settings{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Backup Management</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Trigger manual backups and monitor backup status
+            </p>
+        </div>
+
+        <!-- Settings Navigation -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8 px-6" aria-label="Settings">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="{% if active_tab == 'overview' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Overview
+                    </a>
+                    <a href="{% url 'core:settings_shop_profile' %}" 
+                       class="{% if active_tab == 'shop_profile' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Shop Profile
+                    </a>
+                    <a href="{% url 'core:settings_data_management' %}" 
+                       class="{% if active_tab == 'data_management' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Data Management
+                    </a>
+                    <a href="{% url 'core:settings_backup_management' %}" 
+                       class="{% if active_tab == 'backup_management' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Backup Management
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Backup Trigger Section -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Trigger Manual Backup</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Create an immediate or scheduled backup of your shop data for security and compliance.
+                </p>
+
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+
+                    <!-- Backup Type -->
+                    <div>
+                        <label for="backup_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Backup Type
+                        </label>
+                        <select id="backup_type" 
+                                name="backup_type"
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            <option value="TENANT">Tenant-Specific Backup (Recommended)</option>
+                            <option value="FULL">Full Database Backup</option>
+                            <option value="INCREMENTAL">Incremental Backup</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Tenant-specific backup includes only your shop's data
+                        </p>
+                    </div>
+
+                    <!-- Priority -->
+                    <div>
+                        <label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Priority
+                        </label>
+                        <select id="priority" 
+                                name="priority"
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            <option value="NORMAL">Normal</option>
+                            <option value="HIGH">High</option>
+                            <option value="URGENT">Urgent</option>
+                            <option value="LOW">Low</option>
+                        </select>
+                    </div>
+
+                    <!-- Reason -->
+                    <div>
+                        <label for="reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Reason for Backup
+                        </label>
+                        <textarea id="reason" 
+                                  name="reason"
+                                  rows="3"
+                                  placeholder="e.g., Before major system update, End of month backup, etc."
+                                  class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"></textarea>
+                    </div>
+
+                    <!-- Backup Options -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Backup Options
+                        </label>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="include_media" 
+                                       name="include_media"
+                                       checked
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="include_media" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Include media files (images, documents)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="compress_backup" 
+                                       name="compress_backup"
+                                       checked
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="compress_backup" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Compress backup (recommended)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="encrypt_backup" 
+                                       name="encrypt_backup"
+                                       checked
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="encrypt_backup" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Encrypt backup (recommended)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduling -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Schedule Backup (Optional)
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="scheduled_date" class="block text-xs text-gray-500 dark:text-gray-400">
+                                    Date
+                                </label>
+                                <input type="date" 
+                                       id="scheduled_date" 
+                                       name="scheduled_date"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            </div>
+
+                            <div>
+                                <label for="scheduled_time" class="block text-xs text-gray-500 dark:text-gray-400">
+                                    Time
+                                </label>
+                                <input type="time" 
+                                       id="scheduled_time" 
+                                       name="scheduled_time"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            </div>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Leave empty to trigger backup immediately
+                        </p>
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                        </svg>
+                        Trigger Backup
+                    </button>
+                </form>
+            </div>
+
+            <!-- Backup Status Section -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Backup Status</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Monitor the status of your backup requests and download completed backups.
+                </p>
+
+                {% if recent_triggers %}
+                    <div class="space-y-4">
+                        {% for trigger in recent_triggers %}
+                            <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <span class="text-sm font-medium text-gray-900 dark:text-white">
+                                            {{ trigger.get_backup_type_display }}
+                                        </span>
+                                        <span class="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                                   {% if trigger.status == 'COMPLETED' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                   {% elif trigger.status == 'FAILED' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                                   {% elif trigger.status == 'IN_PROGRESS' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                                   {% else %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% endif %}">
+                                            {{ trigger.status|title }}
+                                        </span>
+                                    </div>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ trigger.created_at|date:"M j, Y H:i" }}
+                                    </span>
+                                </div>
+                                
+                                {% if trigger.reason %}
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                        {{ trigger.reason }}
+                                    </p>
+                                {% endif %}
+                                
+                                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                    <span>Priority: {{ trigger.get_priority_display }}</span>
+                                    {% if trigger.duration %}
+                                        <span>Duration: {{ trigger.duration }}</span>
+                                    {% endif %}
+                                    {% if trigger.file_size %}
+                                        <span>Size: {{ trigger.file_size|filesizeformat }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if trigger.error_message %}
+                                    <div class="mt-2 p-2 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded">
+                                        <p class="text-xs text-red-600 dark:text-red-300">
+                                            Error: {{ trigger.error_message }}
+                                        </p>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if trigger.status == 'COMPLETED' and trigger.file_path %}
+                                    <div class="mt-2">
+                                        <a href="#" 
+                                           class="inline-flex items-center text-xs text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                            Download Backup
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                        </svg>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No backup requests yet</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Trigger your first backup using the form on the left</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Backup Information -->
+        <div class="mt-8 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        About Backups
+                    </h3>
+                    <div class="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>Backups are stored in three secure locations for redundancy</li>
+                            <li>All backups are encrypted using AES-256 encryption</li>
+                            <li>Tenant-specific backups include only your shop's data</li>
+                            <li>Full database backups include all platform data (admin only)</li>
+                            <li>Backup files are automatically cleaned up after 30 days</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

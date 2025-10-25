@@ -685,8 +685,6 @@ class IntegrationSettingsForm(forms.ModelForm):
 
         return smtp_port
 
-
-
     def save(self, commit=True):
         """Save the form and handle encrypted fields."""
         instance = super().save(commit=False)
