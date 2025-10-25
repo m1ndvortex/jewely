@@ -10,6 +10,7 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),  # django-allauth URLs
+    path("hijack/", include("hijack.urls")),  # django-hijack URLs for impersonation
     path("", include("apps.core.urls")),
     path("", include("apps.inventory.urls")),
     path("", include("apps.sales.urls")),

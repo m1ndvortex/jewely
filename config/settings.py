@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     "django_ledger",
     "django_fsm",
     "import_export",
+    "hijack",
+    "hijack.contrib.admin",
     # Local apps
     "apps.core",
     "apps.inventory",
@@ -70,6 +72,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Allauth middleware - must be after AuthenticationMiddleware
     "allauth.account.middleware.AccountMiddleware",
+    # Hijack middleware - must be after AuthenticationMiddleware
+    "hijack.middleware.HijackUserMiddleware",
     # Tenant context middleware - must be after AuthenticationMiddleware
     "apps.core.middleware.TenantContextMiddleware",
 ]
@@ -455,3 +459,14 @@ FIELD_ENCRYPTION_KEY = os.getenv(
     "FIELD_ENCRYPTION_KEY",
     "ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg=",  # Default key for development only
 )
+
+# Django Hijack Configuration
+# Secure tenant impersonation for platform administrators
+HIJACK_ALLOW_GET_REQUESTS = False  # Require POST for security
+HIJACK_LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to tenant dashboard after hijack
+HIJACK_LOGOUT_REDIRECT_URL = "/platform/dashboard/"  # Return to admin dashboard after release
+HIJACK_DISPLAY_ADMIN_BUTTON = False  # We'll add custom buttons
+HIJACK_USE_BOOTSTRAP = False  # We use Tailwind CSS
+HIJACK_REGISTER_ADMIN = False  # Don't auto-register in Django admin
+HIJACK_PERMISSION_CHECK = "apps.core.permissions.can_hijack_user"  # Custom permission check
+HIJACK_DECORATOR = "apps.core.decorators.platform_admin_required"  # Require platform admin

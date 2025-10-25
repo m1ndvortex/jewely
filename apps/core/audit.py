@@ -163,3 +163,63 @@ def get_client_ip(request):
     else:
         ip = request.META.get("REMOTE_ADDR")
     return ip
+
+
+
+def log_impersonation_start(hijacker, hijacked, request=None):
+    """
+    Log when a platform admin starts impersonating a tenant user.
+    
+    Args:
+        hijacker: Platform admin who is impersonating
+        hijacked: Tenant user being impersonated
+        request: HTTP request object (optional)
+    """
+    from apps.core.models import PermissionAuditLog
+    
+    # Create a custom action type for impersonation
+    description = f"Started impersonating user {hijacked.username} (ID: {hijacked.id}, Tenant: {hijacked.tenant.company_name if hijacked.tenant else 'None'})"
+    
+    PermissionAuditLog.objects.create(
+        actor=hijacker,
+        target_user=hijacked,
+        action="IMPERSONATION_STARTED",  # Custom action
+        new_value=json.dumps({
+            "hijacked_user_id": str(hijacked.id),
+            "hijacked_username": hijacked.username,
+            "hijacked_tenant_id": str(hijacked.tenant.id) if hijacked.tenant else None,
+            "hijacked_tenant_name": hijacked.tenant.company_name if hijacked.tenant else None,
+        }),
+        description=description,
+        ip_address=get_client_ip(request) if request else None,
+        user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
+    )
+
+
+def log_impersonation_end(hijacker, hijacked, request=None):
+    """
+    Log when a platform admin stops impersonating a tenant user.
+    
+    Args:
+        hijacker: Platform admin who was impersonating
+        hijacked: Tenant user who was being impersonated
+        request: HTTP request object (optional)
+    """
+    from apps.core.models import PermissionAuditLog
+    
+    description = f"Stopped impersonating user {hijacked.username} (ID: {hijacked.id}, Tenant: {hijacked.tenant.company_name if hijacked.tenant else 'None'})"
+    
+    PermissionAuditLog.objects.create(
+        actor=hijacker,
+        target_user=hijacked,
+        action="IMPERSONATION_ENDED",  # Custom action
+        old_value=json.dumps({
+            "hijacked_user_id": str(hijacked.id),
+            "hijacked_username": hijacked.username,
+            "hijacked_tenant_id": str(hijacked.tenant.id) if hijacked.tenant else None,
+            "hijacked_tenant_name": hijacked.tenant.company_name if hijacked.tenant else None,
+        }),
+        description=description,
+        ip_address=get_client_ip(request) if request else None,
+        user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
+    )

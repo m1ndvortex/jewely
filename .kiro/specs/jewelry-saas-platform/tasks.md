@@ -516,28 +516,28 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 4, 28_
 
 - [ ] 16. Tenant Lifecycle Management
-  - [ ] 16.1 Implement tenant management interface
+  - [x] 16.1 Implement tenant management interface
     - Create tenant list view with search and filters (status, plan, date)
     - Create tenant detail view with tabs (Info, Users, Subscription, Activity)
     - Implement tenant creation form with validation
     - Create tenant edit interface
     - _Requirements: 4_
   
-  - [-] 16.2 Implement tenant status management
+  - [x] 16.2 Implement tenant status management
     - Create status change interface with confirmation modal
     - Implement suspend tenant functionality (disable access, retain data)
     - Implement schedule for deletion with grace period
     - Create tenant reactivation functionality
     - _Requirements: 4_
   
-  - [ ] 16.3 Implement tenant impersonation
+  - [x] 16.3 Implement tenant impersonation
     - Integrate django-hijack for secure impersonation
     - Add impersonation button to tenant detail page
     - Log all impersonation events in audit log
     - Display clear indicator when impersonating
     - _Requirements: 4_
   
-  - [ ] 16.4 Implement tenant user management
+  - [x] 16.4 Implement tenant user management
     - Create interface to view tenant users
     - Implement password reset initiation for tenant users
     - Allow role changes for tenant users

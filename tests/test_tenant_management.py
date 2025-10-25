@@ -985,7 +985,7 @@ class TestTenantStatusManagement:
         content = response.content.decode()
         assert "Scheduled Deletion" in content
         # Allow for timing differences (14 or 15 days is acceptable)
-        assert ("15 days remaining" in content or "14 days remaining" in content)
+        assert "15 days remaining" in content or "14 days remaining" in content
 
     def test_tenant_detail_shows_warning_banner_for_suspended(self, client, platform_admin):
         """Test that tenant detail shows warning banner for suspended tenants."""

@@ -88,6 +88,15 @@
             </p>
         </div>
         <div class="flex space-x-3">
+            {% if user_count > 0 and tenant.status == 'ACTIVE' %}
+            <button onclick="showImpersonateModal()" 
+                    class="inline-flex items-center px-4 py-2 border border-purple-300 dark:border-purple-600 rounded-md shadow-sm text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900 hover:bg-purple-100 dark:hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                Impersonate User
+            </button>
+            {% endif %}
             <a href="{% url 'core:admin_tenant_update' tenant.pk %}" 
                class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,6 +225,9 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                             Status
                         </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Actions
+                        </th>
                     </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -244,10 +256,43 @@
                                 </span>
                             {% endif %}
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick="showUserActionsMenu(event, '{{ user.id }}')" 
+                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                                </svg>
+                            </button>
+                            <!-- Dropdown menu -->
+                            <div id="user-menu-{{ user.id }}" class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 z-10">
+                                <div class="py-1" role="menu">
+                                    <button onclick="showChangeRoleModal('{{ user.id }}', '{{ user.username }}', '{{ user.role }}')" 
+                                            class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                        Change Role
+                                    </button>
+                                    <form method="post" action="{% url 'core:admin_tenant_user_reset_password' tenant.pk user.id %}" class="block">
+                                        {% csrf_token %}
+                                        <button type="submit" 
+                                                onclick="return confirm('Send password reset email to {{ user.username }}?')"
+                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            Reset Password
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{% url 'core:admin_tenant_user_toggle_active' tenant.pk user.id %}" class="block">
+                                        {% csrf_token %}
+                                        <button type="submit" 
+                                                onclick="return confirm('{% if user.is_active %}Deactivate{% else %}Activate{% endif %} user {{ user.username }}?')"
+                                                class="block w-full text-left px-4 py-2 text-sm {% if user.is_active %}text-red-700 dark:text-red-400{% else %}text-green-700 dark:text-green-400{% endif %} hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            {% if user.is_active %}Deactivate User{% else %}Activate User{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <td colspan="6" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                             No users found for this tenant
                         </td>
                     </tr>
@@ -436,6 +481,170 @@
     </div>
 </div>
 
+<!-- Change Role Modal -->
+<div id="changeRoleModal" class="hidden fixed z-10 inset-0 overflow-y-auto" aria-labelledby="change-role-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="hideChangeRoleModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <form method="post" id="changeRoleForm">
+                {% csrf_token %}
+                <input type="hidden" id="changeRoleUserId" name="user_id">
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="change-role-modal-title">
+                                Change User Role
+                            </h3>
+                            <div class="mt-4 space-y-4">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    Change role for user: <strong id="changeRoleUsername"></strong>
+                                </p>
+                                
+                                <!-- Role Selection -->
+                                <div>
+                                    <label for="changeRoleSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Select New Role
+                                    </label>
+                                    <select name="role" id="changeRoleSelect" required
+                                            class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                        <option value="TENANT_OWNER">Shop Owner</option>
+                                        <option value="TENANT_MANAGER">Shop Manager</option>
+                                        <option value="TENANT_EMPLOYEE">Shop Employee</option>
+                                    </select>
+                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        Note: Platform Administrator roles cannot be assigned here.
+                                    </p>
+                                </div>
+                                
+                                <!-- Info Message -->
+                                <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-3">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-blue-700 dark:text-blue-200">
+                                                Changing a user's role will affect their permissions and access to features within the tenant.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" 
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Change Role
+                    </button>
+                    <button type="button" onclick="hideChangeRoleModal()" 
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Impersonate User Modal -->
+<div id="impersonateModal" class="hidden fixed z-10 inset-0 overflow-y-auto" aria-labelledby="impersonate-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="hideImpersonateModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <form method="post" id="impersonateForm" onsubmit="return confirmImpersonation()">
+                {% csrf_token %}
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="impersonate-modal-title">
+                                Impersonate Tenant User
+                            </h3>
+                            <div class="mt-4 space-y-4">
+                                <!-- User Selection -->
+                                <div>
+                                    <label for="user_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Select User to Impersonate
+                                    </label>
+                                    <select name="user_id" id="user_id" required
+                                            class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                        <option value="">-- Select a user --</option>
+                                        {% for user in users %}
+                                        <option value="{{ user.id }}">
+                                            {{ user.username }} - {{ user.get_role_display }} {% if user.email %}({{ user.email }}){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        You will be logged in as this user and can access their tenant dashboard.
+                                    </p>
+                                </div>
+                                
+                                <!-- Warning Message -->
+                                <div class="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-3">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-yellow-700 dark:text-yellow-200">
+                                                <strong>Important:</strong> This action will be logged in the audit trail. You will have full access to the user's account and tenant data. Use this feature responsibly for support and debugging purposes only.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Info Message -->
+                                <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-3">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-blue-700 dark:text-blue-200">
+                                                A banner will be displayed at the top of the page while impersonating. Click "Stop Impersonating" to return to your admin account.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" 
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Start Impersonation
+                    </button>
+                    <button type="button" onclick="hideImpersonateModal()" 
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 function showStatusModal() {
     document.getElementById('statusModal').classList.remove('hidden');
@@ -445,6 +654,47 @@ function showStatusModal() {
 
 function hideStatusModal() {
     document.getElementById('statusModal').classList.add('hidden');
+}
+
+function showImpersonateModal() {
+    document.getElementById('impersonateModal').classList.remove('hidden');
+}
+
+function hideImpersonateModal() {
+    document.getElementById('impersonateModal').classList.add('hidden');
+}
+
+function confirmImpersonation() {
+    const userId = document.getElementById('user_id').value;
+    if (!userId) {
+        alert('Please select a user to impersonate.');
+        return false;
+    }
+    
+    const userSelect = document.getElementById('user_id');
+    const selectedOption = userSelect.options[userSelect.selectedIndex];
+    const username = selectedOption.text.split(' - ')[0];
+    
+    const confirmed = confirm(
+        `Are you sure you want to impersonate user "${username}"?\n\n` +
+        `This action will be logged in the audit trail.\n` +
+        `You will have full access to their account and tenant data.`
+    );
+    
+    if (confirmed) {
+        // Update form action to hijack URL
+        const form = document.getElementById('impersonateForm');
+        form.action = '/hijack/acquire/';
+        // Add hidden input for user_pk
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'user_pk';
+        input.value = userId;
+        form.appendChild(input);
+        return true;
+    }
+    
+    return false;
 }
 
 function toggleGracePeriodField() {
@@ -510,5 +760,43 @@ function confirmStatusChange() {
     
     return true;
 }
+
+// User management functions
+function showUserActionsMenu(event, userId) {
+    event.stopPropagation();
+    
+    // Hide all other menus
+    document.querySelectorAll('[id^="user-menu-"]').forEach(menu => {
+        menu.classList.add('hidden');
+    });
+    
+    // Show this menu
+    const menu = document.getElementById('user-menu-' + userId);
+    menu.classList.toggle('hidden');
+}
+
+function showChangeRoleModal(userId, username, currentRole) {
+    document.getElementById('changeRoleModal').classList.remove('hidden');
+    document.getElementById('changeRoleUserId').value = userId;
+    document.getElementById('changeRoleUsername').textContent = username;
+    document.getElementById('changeRoleSelect').value = currentRole;
+    
+    // Update form action
+    const form = document.getElementById('changeRoleForm');
+    form.action = `/platform/tenants/{{ tenant.pk }}/users/${userId}/change-role/`;
+}
+
+function hideChangeRoleModal() {
+    document.getElementById('changeRoleModal').classList.add('hidden');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('[id^="user-menu-"]') && !event.target.closest('button')) {
+        document.querySelectorAll('[id^="user-menu-"]').forEach(menu => {
+            menu.classList.add('hidden');
+        });
+    }
+});
 </script>
 {% endblock %}

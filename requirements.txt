@@ -63,3 +63,6 @@ twilio==8.10.3
 
 # System Monitoring
 psutil==5.9.8
+
+# Admin Impersonation
+django-hijack==3.4.5

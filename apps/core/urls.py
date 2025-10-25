@@ -59,6 +59,22 @@ urlpatterns = [
         admin_views.TenantDeleteView.as_view(),
         name="admin_tenant_delete",
     ),
+    # Tenant User Management
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/reset-password/",
+        admin_views.TenantUserPasswordResetView.as_view(),
+        name="admin_tenant_user_reset_password",
+    ),
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/change-role/",
+        admin_views.TenantUserRoleChangeView.as_view(),
+        name="admin_tenant_user_change_role",
+    ),
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/toggle-active/",
+        admin_views.TenantUserToggleActiveView.as_view(),
+        name="admin_tenant_user_toggle_active",
+    ),
     # Dashboard
     path("dashboard/", dashboard_views.TenantDashboardView.as_view(), name="tenant_dashboard"),
     # Dashboard API endpoints

@@ -634,3 +634,200 @@ class TenantDeleteView(PlatformAdminRequiredMixin, DeleteView):
         )
 
         return context
+
+
+# ============================================================================
+# Tenant User Management Views
+# ============================================================================
+
+
+class TenantUserPasswordResetView(PlatformAdminRequiredMixin, View):
+    """
+    View to initiate password reset for a tenant user.
+    
+    Platform administrators can trigger a password reset email for tenant users
+    without viewing or setting passwords directly.
+    """
+
+    def post(self, request, tenant_pk, user_pk):
+        tenant = get_object_or_404(Tenant, pk=tenant_pk)
+        user = get_object_or_404(User, pk=user_pk, tenant=tenant)
+
+        # Prevent resetting platform admin passwords
+        if user.is_platform_admin():
+            messages.error(request, "Cannot reset password for platform administrators.")
+            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+        try:
+            # Generate password reset token
+            from django.contrib.auth.tokens import default_token_generator
+            from django.utils.encoding import force_bytes
+            from django.utils.http import urlsafe_base64_encode
+
+            # Create reset token
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+            # In production, send email with reset link
+            # For now, we'll just log it and show a success message
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"Password reset initiated for user {user.username} ({user.id}) "
+                f"in tenant {tenant.company_name} ({tenant.id}) by admin {request.user.username}. "
+                f"Token: {token}, UID: {uid}"
+            )
+
+            # TODO: Send email with reset link when email system is implemented (Task 13.3)
+            # For now, show a success message
+            messages.success(
+                request,
+                f'Password reset initiated for user "{user.username}". '
+                f"A password reset email would be sent to {user.email}. "
+                f"(Email system will be implemented in Task 13.3)",
+            )
+
+            # Log the action in audit trail
+            logger.info(
+                f"Admin {request.user.username} initiated password reset for "
+                f"user {user.username} in tenant {tenant.company_name}"
+            )
+
+        except Exception as e:
+            messages.error(request, f"Error initiating password reset: {str(e)}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Error initiating password reset for user {user.username} ({user.id}): {str(e)}",
+                exc_info=True,
+            )
+
+        return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+
+class TenantUserRoleChangeView(PlatformAdminRequiredMixin, View):
+    """
+    View to change a tenant user's role.
+    
+    Platform administrators can change user roles within a tenant.
+    Prevents changing platform admin roles.
+    """
+
+    def post(self, request, tenant_pk, user_pk):
+        tenant = get_object_or_404(Tenant, pk=tenant_pk)
+        user = get_object_or_404(User, pk=user_pk, tenant=tenant)
+        new_role = request.POST.get("role")
+
+        # Validate role
+        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+        if new_role not in valid_roles:
+            messages.error(request, "Invalid role selected.")
+            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+        # Prevent changing platform admin roles
+        if user.is_platform_admin() or new_role == User.PLATFORM_ADMIN:
+            messages.error(
+                request,
+                "Cannot change platform administrator roles. "
+                "Platform admin roles must be managed separately.",
+            )
+            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+        # Prevent changing own role if impersonating
+        if request.user == user:
+            messages.error(request, "Cannot change your own role.")
+            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+        old_role = user.role
+
+        try:
+            # Change role
+            user.role = new_role
+            user.save(update_fields=["role"])
+
+            # Log the action
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"User role changed: {user.username} ({user.id}) in tenant "
+                f"{tenant.company_name} ({tenant.id}) from {old_role} to {new_role} "
+                f"by admin {request.user.username}"
+            )
+
+            # Get display name for old role
+            old_role_display = dict(User.ROLE_CHOICES).get(old_role, old_role)
+
+            messages.success(
+                request,
+                f'Role for user "{user.username}" changed from '
+                f'"{old_role_display}" to "{user.get_role_display()}".',
+            )
+
+        except Exception as e:
+            messages.error(request, f"Error changing user role: {str(e)}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Error changing role for user {user.username} ({user.id}): {str(e)}",
+                exc_info=True,
+            )
+
+        return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+
+class TenantUserToggleActiveView(PlatformAdminRequiredMixin, View):
+    """
+    View to activate or deactivate a tenant user.
+    
+    Platform administrators can enable/disable user accounts.
+    """
+
+    def post(self, request, tenant_pk, user_pk):
+        tenant = get_object_or_404(Tenant, pk=tenant_pk)
+        user = get_object_or_404(User, pk=user_pk, tenant=tenant)
+
+        # Prevent deactivating platform admins
+        if user.is_platform_admin():
+            messages.error(request, "Cannot deactivate platform administrators.")
+            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+        # Prevent deactivating self
+        if request.user == user:
+            messages.error(request, "Cannot deactivate your own account.")
+            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+
+        try:
+            # Toggle active status
+            user.is_active = not user.is_active
+            user.save(update_fields=["is_active"])
+
+            # Log the action
+            import logging
+
+            logger = logging.getLogger(__name__)
+            action = "activated" if user.is_active else "deactivated"
+            logger.info(
+                f"User {action}: {user.username} ({user.id}) in tenant "
+                f"{tenant.company_name} ({tenant.id}) by admin {request.user.username}"
+            )
+
+            messages.success(
+                request,
+                f'User "{user.username}" has been {action}.',
+            )
+
+        except Exception as e:
+            messages.error(request, f"Error changing user status: {str(e)}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Error toggling active status for user {user.username} ({user.id}): {str(e)}",
+                exc_info=True,
+            )
+
+        return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
