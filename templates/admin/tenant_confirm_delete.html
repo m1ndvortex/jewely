@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Delete Tenant - {{ tenant.company_name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center space-x-3 mb-2">
+            <a href="{% url 'core:admin_tenant_detail' tenant.pk %}" 
+               class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-red-600 dark:text-red-400">Delete Tenant</h1>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+            Permanently delete tenant and all associated data
+        </p>
+    </div>
+
+    <!-- Warning Card -->
+    <div class="bg-red-50 dark:bg-red-900 border-2 border-red-200 dark:border-red-700 rounded-lg p-6 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-8 w-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <div class="ml-4 flex-1">
+                <h3 class="text-lg font-medium text-red-900 dark:text-red-200 mb-2">
+                    Warning: This action cannot be undone!
+                </h3>
+                <p class="text-sm text-red-800 dark:text-red-300 mb-4">
+                    {{ warning_message }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tenant Information -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Tenant to be Deleted</h3>
+        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Company Name</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white font-semibold">{{ tenant.company_name }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Slug</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.slug }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.get_status_display }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.created_at|date:"F d, Y" }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Data Impact -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Data That Will Be Deleted</h3>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                <span class="text-sm text-gray-700 dark:text-gray-300">Users</span>
+                <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ user_count }}</span>
+            </div>
+            <div class="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                <span class="text-sm text-gray-700 dark:text-gray-300">Branches</span>
+                <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ branch_count }}</span>
+            </div>
+            <div class="flex items-center justify-between py-2">
+                <span class="text-sm text-gray-700 dark:text-gray-300">All associated data</span>
+                <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                    <svg class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </span>
+            </div>
+        </div>
+        <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            This includes inventory, sales, customers, accounting records, and all other data associated with this tenant.
+        </p>
+    </div>
+
+    <!-- Confirmation Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Confirm Deletion</h3>
+        <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+            To confirm deletion, type the company name <strong class="text-gray-900 dark:text-white">{{ tenant.company_name }}</strong> below:
+        </p>
+        
+        <form method="post" id="deleteForm" onsubmit="return confirmDelete(event)">
+            {% csrf_token %}
+            
+            <div class="mb-6">
+                <input type="text" 
+                       id="confirmInput" 
+                       placeholder="Type company name to confirm"
+                       class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                       required>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <a href="{% url 'core:admin_tenant_detail' tenant.pk %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        id="deleteButton"
+                        disabled
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Delete Tenant Permanently
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const expectedName = "{{ tenant.company_name }}";
+const confirmInput = document.getElementById('confirmInput');
+const deleteButton = document.getElementById('deleteButton');
+
+confirmInput.addEventListener('input', function() {
+    if (this.value === expectedName) {
+        deleteButton.disabled = false;
+        deleteButton.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+        deleteButton.disabled = true;
+        deleteButton.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+});
+
+function confirmDelete(event) {
+    if (confirmInput.value !== expectedName) {
+        event.preventDefault();
+        alert('Please type the exact company name to confirm deletion.');
+        return false;
+    }
+    
+    return confirm('Are you absolutely sure? This action cannot be undone and all data will be permanently deleted.');
+}
+</script>
+{% endblock %}

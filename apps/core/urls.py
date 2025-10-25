@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import branch_views, dashboard_views, settings_views, views
+from . import admin_views, branch_views, dashboard_views, settings_views, views
 
 app_name = "core"
 
@@ -10,6 +10,55 @@ urlpatterns = [
     # Basic views
     path("", views.home, name="home"),
     path("health/", views.health_check, name="health_check"),
+    # Platform Admin Panel
+    path("platform/dashboard/", admin_views.AdminDashboardView.as_view(), name="admin_dashboard"),
+    path(
+        "platform/api/tenant-metrics/",
+        admin_views.TenantMetricsAPIView.as_view(),
+        name="admin_api_tenant_metrics",
+    ),
+    path(
+        "platform/api/system-health/",
+        admin_views.SystemHealthAPIView.as_view(),
+        name="admin_api_system_health",
+    ),
+    path(
+        "platform/api/tenant-signup-chart/",
+        admin_views.TenantSignupChartAPIView.as_view(),
+        name="admin_api_tenant_signup_chart",
+    ),
+    path(
+        "platform/api/error-feed/",
+        admin_views.ErrorFeedAPIView.as_view(),
+        name="admin_api_error_feed",
+    ),
+    # Tenant Management
+    path("platform/tenants/", admin_views.TenantListView.as_view(), name="admin_tenant_list"),
+    path(
+        "platform/tenants/create/",
+        admin_views.TenantCreateView.as_view(),
+        name="admin_tenant_create",
+    ),
+    path(
+        "platform/tenants/<uuid:pk>/",
+        admin_views.TenantDetailView.as_view(),
+        name="admin_tenant_detail",
+    ),
+    path(
+        "platform/tenants/<uuid:pk>/edit/",
+        admin_views.TenantUpdateView.as_view(),
+        name="admin_tenant_update",
+    ),
+    path(
+        "platform/tenants/<uuid:pk>/status/",
+        admin_views.TenantStatusChangeView.as_view(),
+        name="admin_tenant_status_change",
+    ),
+    path(
+        "platform/tenants/<uuid:pk>/delete/",
+        admin_views.TenantDeleteView.as_view(),
+        name="admin_tenant_delete",
+    ),
     # Dashboard
     path("dashboard/", dashboard_views.TenantDashboardView.as_view(), name="tenant_dashboard"),
     # Dashboard API endpoints

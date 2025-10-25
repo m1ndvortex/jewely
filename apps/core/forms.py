@@ -4,7 +4,7 @@ Forms for core app settings and configuration.
 
 from django import forms
 
-from .models import IntegrationSettings, InvoiceSettings, TenantSettings
+from .models import IntegrationSettings, InvoiceSettings, Tenant, TenantSettings
 
 
 class TenantSettingsForm(forms.ModelForm):
@@ -714,3 +714,159 @@ class IntegrationSettingsForm(forms.ModelForm):
             instance.save()
 
         return instance
+
+
+class TenantCreateForm(forms.ModelForm):
+    """
+    Form for creating new tenants.
+
+    Used by platform administrators to manually create tenant accounts.
+    """
+
+    class Meta:
+        model = Tenant
+        fields = ["company_name", "slug", "status"]
+
+        widgets = {
+            "company_name": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "Enter company name",
+                    "required": True,
+                }
+            ),
+            "slug": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "URL-friendly identifier (auto-generated if left blank)",
+                }
+            ),
+            "status": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                }
+            ),
+        }
+
+        help_texts = {
+            "company_name": "The official name of the jewelry shop business",
+            "slug": "Leave blank to auto-generate from company name",
+            "status": "Initial status for the tenant account",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Make slug optional (will be auto-generated)
+        self.fields["slug"].required = False
+
+        # Set default status to ACTIVE
+        self.fields["status"].initial = Tenant.ACTIVE
+
+    def clean_company_name(self):
+        """Validate company name."""
+        company_name = self.cleaned_data.get("company_name", "").strip()
+
+        if not company_name:
+            raise forms.ValidationError("Company name is required.")
+
+        if len(company_name) < 2:
+            raise forms.ValidationError("Company name must be at least 2 characters long.")
+
+        return company_name
+
+    def clean_slug(self):
+        """Validate and auto-generate slug if not provided."""
+        slug = self.cleaned_data.get("slug", "").strip()
+
+        # If slug is not provided, it will be auto-generated in the model's save method
+        if not slug:
+            return slug
+
+        # Validate slug format
+        import re
+
+        if not re.match(r"^[a-z0-9-]+$", slug):
+            raise forms.ValidationError(
+                "Slug can only contain lowercase letters, numbers, and hyphens."
+            )
+
+        # Check for uniqueness
+        if Tenant.objects.filter(slug=slug).exists():
+            raise forms.ValidationError("This slug is already in use.")
+
+        return slug
+
+
+class TenantEditForm(forms.ModelForm):
+    """
+    Form for editing existing tenants.
+
+    Used by platform administrators to modify tenant details.
+    """
+
+    class Meta:
+        model = Tenant
+        fields = ["company_name", "slug", "status"]
+
+        widgets = {
+            "company_name": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "Enter company name",
+                    "required": True,
+                }
+            ),
+            "slug": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "URL-friendly identifier",
+                    "required": True,
+                }
+            ),
+            "status": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                }
+            ),
+        }
+
+        help_texts = {
+            "company_name": "The official name of the jewelry shop business",
+            "slug": "URL-friendly identifier (must be unique)",
+            "status": "Current operational status of the tenant",
+        }
+
+    def clean_company_name(self):
+        """Validate company name."""
+        company_name = self.cleaned_data.get("company_name", "").strip()
+
+        if not company_name:
+            raise forms.ValidationError("Company name is required.")
+
+        if len(company_name) < 2:
+            raise forms.ValidationError("Company name must be at least 2 characters long.")
+
+        return company_name
+
+    def clean_slug(self):
+        """Validate slug uniqueness."""
+        slug = self.cleaned_data.get("slug", "").strip()
+
+        if not slug:
+            raise forms.ValidationError("Slug is required.")
+
+        # Validate slug format
+        import re
+
+        if not re.match(r"^[a-z0-9-]+$", slug):
+            raise forms.ValidationError(
+                "Slug can only contain lowercase letters, numbers, and hyphens."
+            )
+
+        # Check for uniqueness (excluding current instance)
+        existing = Tenant.objects.filter(slug=slug).exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise forms.ValidationError("This slug is already in use.")
+
+        return slug

@@ -1975,11 +1975,11 @@ def _send_email_to_customer(customer, template_name, context, campaign_id, subje
     """Send email campaign to a single customer."""
     if not customer.email:
         return False
-    
+
     user = User.objects.filter(email=customer.email).first()
     if not user:
         return False
-    
+
     email_notification = send_marketing_email(
         user=user,
         template_name=template_name,
@@ -1987,7 +1987,7 @@ def _send_email_to_customer(customer, template_name, context, campaign_id, subje
         campaign_id=campaign_id,
         subject=subject,
     )
-    
+
     if email_notification:
         log_customer_communication(
             customer=customer,
@@ -2007,20 +2007,20 @@ def _send_sms_to_customer(customer, template_name, context, campaign_id, created
     """Send SMS campaign to a single customer."""
     if not customer.phone:
         return False
-    
+
     user = User.objects.filter(email=customer.email).first() if customer.email else None
     if not user:
         user = User.objects.filter(phone=customer.phone).first()
     if not user:
         return False
-    
+
     sms_notification = send_marketing_sms(
         user=user,
         template_name=template_name,
         context={**context, "customer": customer},
         campaign_id=campaign_id,
     )
-    
+
     if sms_notification:
         log_customer_communication(
             customer=customer,
@@ -2087,7 +2087,7 @@ def send_bulk_campaign_to_segment(
                     success = _send_sms_to_customer(
                         customer, template_name, context, campaign_id, created_by
                     )
-                
+
                 if success:
                     sent_count += 1
                 else:

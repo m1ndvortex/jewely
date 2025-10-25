@@ -35,6 +35,7 @@ class TenantContextMiddleware(MiddlewareMixin):
     # Paths that don't require tenant context
     EXEMPT_PATHS = [
         "/admin/",  # Django admin (platform admin)
+        "/platform/",  # Platform admin dashboard
         "/api/auth/login/",
         "/api/auth/register/",
         "/api/auth/refresh/",
@@ -59,8 +60,10 @@ class TenantContextMiddleware(MiddlewareMixin):
 
         # Check if path is exempt from tenant context
         if self._is_exempt_path(request.path):
-            # For admin paths, enable RLS bypass if user is platform admin
-            if request.path.startswith("/admin/") and self._is_platform_admin(request.user):
+            # For admin and platform paths, enable RLS bypass if user is platform admin
+            if (
+                request.path.startswith("/admin/") or request.path.startswith("/platform/")
+            ) and self._is_platform_admin(request.user):
                 enable_rls_bypass()
                 logger.debug(f"RLS bypass enabled for platform admin: {request.user}")
             return None

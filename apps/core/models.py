@@ -60,6 +60,19 @@ class Tenant(models.Model):
         auto_now=True, help_text="Timestamp when the tenant was last updated"
     )
 
+    # Status management fields
+    suspended_at = models.DateTimeField(
+        null=True, blank=True, help_text="Timestamp when the tenant was suspended"
+    )
+
+    scheduled_deletion_at = models.DateTimeField(
+        null=True, blank=True, help_text="Timestamp when the tenant is scheduled for deletion"
+    )
+
+    deletion_grace_period_days = models.IntegerField(
+        default=30, help_text="Number of days before permanent deletion after scheduling"
+    )
+
     class Meta:
         db_table = "tenants"
         ordering = ["-created_at"]
@@ -88,15 +101,93 @@ class Tenant(models.Model):
         """Check if tenant is in active status."""
         return self.status == self.ACTIVE
 
-    def suspend(self):
-        """Suspend the tenant account."""
+    def is_suspended(self):
+        """Check if tenant is suspended."""
+        return self.status == self.SUSPENDED
+
+    def is_pending_deletion(self):
+        """Check if tenant is pending deletion."""
+        return self.status == self.PENDING_DELETION
+
+    def suspend(self, reason=None):
+        """
+        Suspend the tenant account.
+
+        This disables access for all tenant users while retaining all data.
+        The tenant can be reactivated later.
+
+        Args:
+            reason: Optional reason for suspension (for audit logging)
+        """
+        from django.utils import timezone
+
         self.status = self.SUSPENDED
-        self.save(update_fields=["status", "updated_at"])
+        self.suspended_at = timezone.now()
+        self.save(update_fields=["status", "suspended_at", "updated_at"])
 
     def activate(self):
-        """Activate the tenant account."""
+        """
+        Activate the tenant account.
+
+        This reactivates a suspended or pending deletion tenant,
+        restoring full access.
+        """
         self.status = self.ACTIVE
-        self.save(update_fields=["status", "updated_at"])
+        self.suspended_at = None
+        self.scheduled_deletion_at = None
+        self.save(update_fields=["status", "suspended_at", "scheduled_deletion_at", "updated_at"])
+
+    def schedule_for_deletion(self, grace_period_days=None):
+        """
+        Schedule the tenant for deletion with a grace period.
+
+        During the grace period, the tenant is suspended but data is retained.
+        After the grace period expires, the tenant can be permanently deleted.
+
+        Args:
+            grace_period_days: Number of days before deletion (default: 30)
+        """
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        if grace_period_days is not None:
+            self.deletion_grace_period_days = grace_period_days
+
+        self.status = self.PENDING_DELETION
+        self.scheduled_deletion_at = timezone.now() + timedelta(
+            days=self.deletion_grace_period_days
+        )
+        self.save(
+            update_fields=[
+                "status",
+                "scheduled_deletion_at",
+                "deletion_grace_period_days",
+                "updated_at",
+            ]
+        )
+
+    def cancel_deletion(self):
+        """
+        Cancel scheduled deletion and reactivate the tenant.
+
+        This is an alias for activate() for clarity.
+        """
+        self.activate()
+
+    def get_deletion_date(self):
+        """Get the date when the tenant will be permanently deleted."""
+        return self.scheduled_deletion_at
+
+    def days_until_deletion(self):
+        """Get the number of days remaining until permanent deletion."""
+        if not self.scheduled_deletion_at:
+            return None
+
+        from django.utils import timezone
+
+        delta = self.scheduled_deletion_at - timezone.now()
+        return max(0, delta.days)
 
     def mark_for_deletion(self):
         """Mark tenant for deletion."""

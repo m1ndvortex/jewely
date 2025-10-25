@@ -60,3 +60,6 @@ django-anymail==10.2
 
 # SMS
 twilio==8.10.3
+
+# System Monitoring
+psutil==5.9.8

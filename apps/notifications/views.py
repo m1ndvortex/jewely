@@ -400,6 +400,7 @@ class CustomerSegmentCreateView(LoginRequiredMixin, View):
 
     def post(self, request: HttpRequest) -> HttpResponse:
         from apps.crm.models import Customer
+
         from .services import create_customer_segment
 
         try:
@@ -691,7 +692,9 @@ class SegmentPreviewView(View):
             queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
         if criteria.get("last_purchase_days"):
             from datetime import timedelta
+
             from django.utils import timezone
+
             cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
             queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
         if criteria.get("tags"):

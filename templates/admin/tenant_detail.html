@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ tenant.company_name }} - Tenant Details{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Status Warnings -->
+    {% if tenant.status == 'SUSPENDED' %}
+    <div class="mb-6 bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    Tenant Suspended
+                </h3>
+                <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                    <p>
+                        This tenant is currently suspended. All users have been denied access, but data is retained.
+                        {% if tenant.suspended_at %}
+                        Suspended on {{ tenant.suspended_at|date:"F d, Y at g:i A" }}.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% elif tenant.status == 'PENDING_DELETION' %}
+    <div class="mb-6 bg-red-50 dark:bg-red-900 border-l-4 border-red-400 p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                    Tenant Scheduled for Deletion
+                </h3>
+                <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                    <p>
+                        <strong>Warning:</strong> This tenant is scheduled for permanent deletion.
+                        {% if tenant.scheduled_deletion_at %}
+                        <br>Deletion date: <strong>{{ tenant.scheduled_deletion_at|date:"F d, Y at g:i A" }}</strong>
+                        <br>Days remaining: <strong>{{ tenant.days_until_deletion }}</strong>
+                        {% endif %}
+                    </p>
+                    <p class="mt-2">
+                        During the grace period, access is disabled but data is retained. You can reactivate the tenant to cancel deletion.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <div class="flex items-center space-x-3">
+                <a href="{% url 'core:admin_tenant_list' %}" 
+                   class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                </a>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ tenant.company_name }}</h1>
+                {% if tenant.status == 'ACTIVE' %}
+                    <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        Active
+                    </span>
+                {% elif tenant.status == 'SUSPENDED' %}
+                    <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        Suspended
+                    </span>
+                {% elif tenant.status == 'PENDING_DELETION' %}
+                    <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        Pending Deletion
+                    </span>
+                {% endif %}
+            </div>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Tenant ID: {{ tenant.id }}
+            </p>
+        </div>
+        <div class="flex space-x-3">
+            <a href="{% url 'core:admin_tenant_update' tenant.pk %}" 
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Edit
+            </a>
+            <button onclick="showStatusModal()" 
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                </svg>
+                Change Status
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <a href="?tab=info" 
+               class="{% if active_tab == 'info' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Information
+            </a>
+            <a href="?tab=users" 
+               class="{% if active_tab == 'users' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Users
+                <span class="ml-2 py-0.5 px-2 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-300">
+                    {{ user_count }}
+                </span>
+            </a>
+            <a href="?tab=subscription" 
+               class="{% if active_tab == 'subscription' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Subscription
+            </a>
+            <a href="?tab=activity" 
+               class="{% if active_tab == 'activity' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Activity
+            </a>
+        </nav>
+    </div>
+
+    <!-- Tab Content -->
+    {% if active_tab == 'info' %}
+        <!-- Information Tab -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Basic Information</h3>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Company Name</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.company_name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Slug</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.slug }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.get_status_display }}</dd>
+                    </div>
+                    {% if tenant.status == 'SUSPENDED' and tenant.suspended_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Suspended At</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.suspended_at|date:"F d, Y g:i A" }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if tenant.status == 'PENDING_DELETION' and tenant.scheduled_deletion_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Scheduled Deletion</dt>
+                        <dd class="mt-1 text-sm text-red-600 dark:text-red-400 font-semibold">
+                            {{ tenant.scheduled_deletion_at|date:"F d, Y g:i A" }}
+                            <span class="block text-xs mt-1">
+                                ({{ tenant.days_until_deletion }} days remaining)
+                            </span>
+                        </dd>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.created_at|date:"F d, Y g:i A" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ tenant.updated_at|date:"F d, Y g:i A" }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Statistics</h3>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user_count }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Branches</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ branch_count }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+    {% elif active_tab == 'users' %}
+        <!-- Users Tab -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Tenant Users</h3>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Username
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Email
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Role
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Branch
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Status
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for user in users %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                            {{ user.username }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ user.email }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ user.get_role_display }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ user.branch.name|default:"—" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.is_active %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    Active
+                                </span>
+                            {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                                    Inactive
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                            No users found for this tenant
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    {% elif active_tab == 'subscription' %}
+        <!-- Subscription Tab -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Subscription Details</h3>
+            <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700 dark:text-blue-200">
+                            Subscription management will be implemented in Task 17.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% elif active_tab == 'activity' %}
+        <!-- Activity Tab -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Recent Activity</h3>
+            <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700 dark:text-blue-200">
+                            Activity logging will be implemented in Task 20 (Audit Logs).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Danger Zone -->
+    <div class="mt-8 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6">
+        <h3 class="text-lg font-medium text-red-900 dark:text-red-200 mb-2">Danger Zone</h3>
+        <p class="text-sm text-red-700 dark:text-red-300 mb-4">
+            Permanently delete this tenant and all associated data. This action cannot be undone.
+        </p>
+        <a href="{% url 'core:admin_tenant_delete' tenant.pk %}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Delete Tenant
+        </a>
+    </div>
+</div>
+
+<!-- Status Change Modal -->
+<div id="statusModal" class="hidden fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="hideStatusModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <form method="post" action="{% url 'core:admin_tenant_status_change' tenant.pk %}" onsubmit="return confirmStatusChange()">
+                {% csrf_token %}
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                                Change Tenant Status
+                            </h3>
+                            <div class="mt-4 space-y-4">
+                                <!-- Status Selection -->
+                                <div>
+                                    <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Select New Status
+                                    </label>
+                                    <select name="status" id="status" required onchange="toggleGracePeriodField()"
+                                            class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                        <option value="ACTIVE" {% if tenant.status == 'ACTIVE' %}selected{% endif %}>Active - Full access restored</option>
+                                        <option value="SUSPENDED" {% if tenant.status == 'SUSPENDED' %}selected{% endif %}>Suspended - Access disabled, data retained</option>
+                                        <option value="PENDING_DELETION" {% if tenant.status == 'PENDING_DELETION' %}selected{% endif %}>Pending Deletion - Schedule for permanent deletion</option>
+                                    </select>
+                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        Current status: <strong>{{ tenant.get_status_display }}</strong>
+                                    </p>
+                                </div>
+                                
+                                <!-- Grace Period (only for Pending Deletion) -->
+                                <div id="gracePeriodField" class="{% if tenant.status != 'PENDING_DELETION' %}hidden{% endif %}">
+                                    <label for="grace_period_days" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Grace Period (Days)
+                                    </label>
+                                    <input type="number" name="grace_period_days" id="grace_period_days" 
+                                           value="30" min="1" max="365"
+                                           class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                        Number of days before permanent deletion (1-365 days)
+                                    </p>
+                                </div>
+                                
+                                <!-- Reason -->
+                                <div>
+                                    <label for="reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Reason (Optional)
+                                    </label>
+                                    <textarea name="reason" id="reason" rows="3"
+                                              class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                              placeholder="Enter reason for status change..."></textarea>
+                                </div>
+                                
+                                <!-- Warning Messages -->
+                                <div id="suspendWarning" class="hidden bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-3">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-yellow-700 dark:text-yellow-200">
+                                                Suspending will disable access for all tenant users. Data will be retained and the tenant can be reactivated later.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="deletionWarning" class="hidden bg-red-50 dark:bg-red-900 border-l-4 border-red-400 p-3">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-red-700 dark:text-red-200">
+                                                <strong>Warning:</strong> This will schedule the tenant for permanent deletion. During the grace period, access is disabled but data is retained. You can reactivate the tenant before the grace period expires to cancel deletion.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="activateInfo" class="hidden bg-green-50 dark:bg-green-900 border-l-4 border-green-400 p-3">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-green-700 dark:text-green-200">
+                                                Activating will restore full access for all tenant users and cancel any scheduled deletion.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="submit" 
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Change Status
+                    </button>
+                    <button type="button" onclick="hideStatusModal()" 
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showStatusModal() {
+    document.getElementById('statusModal').classList.remove('hidden');
+    toggleGracePeriodField();
+    updateWarningMessages();
+}
+
+function hideStatusModal() {
+    document.getElementById('statusModal').classList.add('hidden');
+}
+
+function toggleGracePeriodField() {
+    const status = document.getElementById('status').value;
+    const gracePeriodField = document.getElementById('gracePeriodField');
+    
+    if (status === 'PENDING_DELETION') {
+        gracePeriodField.classList.remove('hidden');
+    } else {
+        gracePeriodField.classList.add('hidden');
+    }
+    
+    updateWarningMessages();
+}
+
+function updateWarningMessages() {
+    const status = document.getElementById('status').value;
+    const suspendWarning = document.getElementById('suspendWarning');
+    const deletionWarning = document.getElementById('deletionWarning');
+    const activateInfo = document.getElementById('activateInfo');
+    
+    // Hide all warnings first
+    suspendWarning.classList.add('hidden');
+    deletionWarning.classList.add('hidden');
+    activateInfo.classList.add('hidden');
+    
+    // Show appropriate warning
+    if (status === 'SUSPENDED') {
+        suspendWarning.classList.remove('hidden');
+    } else if (status === 'PENDING_DELETION') {
+        deletionWarning.classList.remove('hidden');
+    } else if (status === 'ACTIVE') {
+        activateInfo.classList.remove('hidden');
+    }
+}
+
+function confirmStatusChange() {
+    const status = document.getElementById('status').value;
+    const currentStatus = '{{ tenant.status }}';
+    
+    // Skip confirmation if status hasn't changed
+    if (status === currentStatus) {
+        alert('Status has not changed.');
+        return false;
+    }
+    
+    // Confirm for critical actions
+    if (status === 'PENDING_DELETION') {
+        const gracePeriod = document.getElementById('grace_period_days').value;
+        return confirm(
+            `Are you sure you want to schedule this tenant for deletion?\n\n` +
+            `The tenant will be permanently deleted in ${gracePeriod} days.\n` +
+            `During this period, access will be disabled but data will be retained.\n\n` +
+            `You can reactivate the tenant before the grace period expires to cancel deletion.`
+        );
+    } else if (status === 'SUSPENDED') {
+        return confirm(
+            'Are you sure you want to suspend this tenant?\n\n' +
+            'This will disable access for all tenant users, but data will be retained.\n' +
+            'The tenant can be reactivated later.'
+        );
+    }
+    
+    return true;
+}
+</script>
+{% endblock %}

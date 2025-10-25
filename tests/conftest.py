@@ -195,3 +195,57 @@ def authenticated_api_client(tenant_user):
     client = APIClient()
     client.force_authenticate(user=tenant_user)
     return client
+
+
+@pytest.fixture
+def platform_admin(django_user_model):
+    """
+    Fixture for creating a platform administrator user.
+
+    Platform admins have no tenant and can manage all tenants.
+    """
+    import uuid
+
+    from apps.core.tenant_context import bypass_rls
+
+    # Generate unique username for each test to avoid conflicts
+    unique_id = str(uuid.uuid4())[:8]
+    username = f"admin-{unique_id}"
+    email = f"admin-{unique_id}@example.com"
+
+    with bypass_rls():
+        user = django_user_model.objects.create_user(
+            username=username,
+            email=email,
+            password="adminpass123",
+            tenant=None,  # Platform admins have no tenant
+            role="PLATFORM_ADMIN",
+        )
+    return user
+
+
+@pytest.fixture
+def tenant_owner(tenant, django_user_model):
+    """
+    Fixture for creating a tenant owner user.
+
+    Tenant owners have full access to their tenant's data.
+    """
+    import uuid
+
+    from apps.core.tenant_context import bypass_rls
+
+    # Generate unique username for each test to avoid conflicts
+    unique_id = str(uuid.uuid4())[:8]
+    username = f"owner-{unique_id}"
+    email = f"owner-{unique_id}@example.com"
+
+    with bypass_rls():
+        user = django_user_model.objects.create_user(
+            username=username,
+            email=email,
+            password="ownerpass123",
+            tenant=tenant,
+            role="TENANT_OWNER",
+        )
+    return user

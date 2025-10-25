@@ -884,7 +884,9 @@ class CustomerSegment(models.Model):
             queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
         if criteria.get("last_purchase_days"):
             from datetime import timedelta
+
             from django.utils import timezone
+
             cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
             queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
         return queryset
@@ -893,7 +895,9 @@ class CustomerSegment(models.Model):
         """Apply age-related filters to queryset."""
         if criteria.get("min_age") or criteria.get("max_age"):
             from datetime import timedelta
+
             from django.utils import timezone
+
             if criteria.get("min_age"):
                 max_birth_date = timezone.now().date() - timedelta(days=criteria["min_age"] * 365)
                 queryset = queryset.filter(date_of_birth__lte=max_birth_date)
