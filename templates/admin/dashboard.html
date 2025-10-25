@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Admin Dashboard - Platform Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1f2937;
+    }
+    
+    .metric-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .metric-change {
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    
+    .metric-change.positive {
+        color: #10b981;
+    }
+    
+    .metric-change.negative {
+        color: #ef4444;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .status-healthy {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    
+    .status-warning {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+    
+    .status-critical {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    
+    .progress-bar {
+        height: 8px;
+        background-color: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-fill.healthy {
+        background-color: #10b981;
+    }
+    
+    .progress-fill.warning {
+        background-color: #f59e0b;
+    }
+    
+    .progress-fill.critical {
+        background-color: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Platform Admin Dashboard</h1>
+        <p class="text-gray-600 mt-2">Monitor platform health, tenant metrics, and system performance</p>
+    </div>
+    
+    <!-- Tenant Metrics Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Tenant Metrics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="tenant-metrics">
+            <!-- Total Tenants -->
+            <div class="metric-card">
+                <div class="metric-label">Total Tenants</div>
+                <div class="metric-value" id="total-tenants">{{ tenant_metrics.total }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600">{{ tenant_metrics.new_signups_30d }} new in last 30 days</span>
+                </div>
+            </div>
+            
+            <!-- Active Tenants -->
+            <div class="metric-card">
+                <div class="metric-label">Active Tenants</div>
+                <div class="metric-value text-green-600" id="active-tenants">{{ tenant_metrics.active }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600">{{ tenant_metrics.new_signups_today }} new today</span>
+                </div>
+            </div>
+            
+            <!-- Suspended Tenants -->
+            <div class="metric-card">
+                <div class="metric-label">Suspended</div>
+                <div class="metric-value text-yellow-600" id="suspended-tenants">{{ tenant_metrics.suspended }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600">Requires attention</span>
+                </div>
+            </div>
+            
+            <!-- Pending Deletion -->
+            <div class="metric-card">
+                <div class="metric-label">Pending Deletion</div>
+                <div class="metric-value text-red-600" id="pending-deletion">{{ tenant_metrics.pending_deletion }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600">Scheduled for removal</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Revenue Metrics Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Revenue Metrics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- MRR -->
+            <div class="metric-card">
+                <div class="metric-label">Monthly Recurring Revenue (MRR)</div>
+                <div class="metric-value">${{ revenue_metrics.mrr|floatformat:2 }}</div>
+                {% if revenue_metrics.note %}
+                <div class="text-sm text-gray-500 mt-2">{{ revenue_metrics.note }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- ARR -->
+            <div class="metric-card">
+                <div class="metric-label">Annual Recurring Revenue (ARR)</div>
+                <div class="metric-value">${{ revenue_metrics.arr|floatformat:2 }}</div>
+            </div>
+            
+            <!-- Churn Rate -->
+            <div class="metric-card">
+                <div class="metric-label">Churn Rate</div>
+                <div class="metric-value">{{ revenue_metrics.churn_rate|floatformat:2 }}%</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Health Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">System Health</h2>
+        {% if system_health.error %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-red-800">Error loading system health: {{ system_health.error }}</p>
+        </div>
+        {% else %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- System Resources -->
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-gray-900">System Resources</h3>
+                    <span class="status-badge status-{{ system_health.status }}" id="system-status">
+                        {{ system_health.status|upper }}
+                    </span>
+                </div>
+                
+                <!-- CPU -->
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">CPU Usage</span>
+                        <span class="text-sm font-semibold" id="cpu-percent">{{ system_health.cpu_percent }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if system_health.cpu_percent > 80 %}critical{% elif system_health.cpu_percent > 60 %}warning{% else %}healthy{% endif %}" 
+                             style="width: {{ system_health.cpu_percent }}%"></div>
+                    </div>
+                </div>
+                
+                <!-- Memory -->
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">Memory Usage</span>
+                        <span class="text-sm font-semibold" id="memory-percent">
+                            {{ system_health.memory_percent }}% ({{ system_health.memory_used_gb }}GB / {{ system_health.memory_total_gb }}GB)
+                        </span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if system_health.memory_percent > 80 %}critical{% elif system_health.memory_percent > 60 %}warning{% else %}healthy{% endif %}" 
+                             style="width: {{ system_health.memory_percent }}%"></div>
+                    </div>
+                </div>
+                
+                <!-- Disk -->
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">Disk Usage</span>
+                        <span class="text-sm font-semibold" id="disk-percent">
+                            {{ system_health.disk_percent }}% ({{ system_health.disk_used_gb }}GB / {{ system_health.disk_total_gb }}GB)
+                        </span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if system_health.disk_percent > 80 %}critical{% elif system_health.disk_percent > 60 %}warning{% else %}healthy{% endif %}" 
+                             style="width: {{ system_health.disk_percent }}%"></div>
+                    </div>
+                </div>
+                
+                <!-- Database Connections -->
+                <div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-600">Database Connections</span>
+                        <span class="text-sm font-semibold" id="db-connections">{{ system_health.db_connections }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tenant Signup Chart -->
+            <div class="metric-card">
+                <h3 class="font-semibold text-gray-900 mb-4">Tenant Signups (Last 30 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="signup-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Error Feed Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Errors</h2>
+        <div class="metric-card">
+            <div id="error-feed">
+                <p class="text-gray-500 text-center py-8">Error feed will be available after Sentry integration</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    // Auto-refresh intervals (in milliseconds)
+    const TENANT_METRICS_REFRESH = 30000;  // 30 seconds
+    const SYSTEM_HEALTH_REFRESH = 10000;   // 10 seconds
+    
+    // Initialize signup chart
+    let signupChart = null;
+    
+    function initSignupChart() {
+        const ctx = document.getElementById('signup-chart');
+        if (!ctx) return;
+        
+        fetch('/platform/api/tenant-signup-chart/')
+            .then(response => response.json())
+            .then(data => {
+                if (signupChart) {
+                    signupChart.destroy();
+                }
+                
+                signupChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'New Signups',
+                            data: data.data,
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading signup chart:', error));
+    }
+    
+    // Update tenant metrics
+    function updateTenantMetrics() {
+        fetch('/platform/api/tenant-metrics/')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-tenants').textContent = data.total;
+                document.getElementById('active-tenants').textContent = data.active;
+                document.getElementById('suspended-tenants').textContent = data.suspended;
+                document.getElementById('pending-deletion').textContent = data.pending_deletion;
+            })
+            .catch(error => console.error('Error updating tenant metrics:', error));
+    }
+    
+    // Update system health
+    function updateSystemHealth() {
+        fetch('/platform/api/system-health/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('System health error:', data.error);
+                    return;
+                }
+                
+                // Update CPU
+                document.getElementById('cpu-percent').textContent = data.cpu_percent + '%';
+                
+                // Update Memory
+                document.getElementById('memory-percent').textContent = 
+                    `${data.memory_percent}% (${data.memory_used_gb}GB / ${data.memory_total_gb}GB)`;
+                
+                // Update Disk
+                document.getElementById('disk-percent').textContent = 
+                    `${data.disk_percent}% (${data.disk_used_gb}GB / ${data.disk_total_gb}GB)`;
+                
+                // Update DB Connections
+                document.getElementById('db-connections').textContent = data.db_connections;
+                
+                // Update status badge
+                const statusBadge = document.getElementById('system-status');
+                statusBadge.textContent = data.status.toUpperCase();
+                statusBadge.className = 'status-badge status-' + data.status;
+            })
+            .catch(error => console.error('Error updating system health:', error));
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initSignupChart();
+        
+        // Set up auto-refresh
+        setInterval(updateTenantMetrics, TENANT_METRICS_REFRESH);
+        setInterval(updateSystemHealth, SYSTEM_HEALTH_REFRESH);
+    });
+</script>
+{% endblock %}

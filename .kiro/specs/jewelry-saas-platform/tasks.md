@@ -502,7 +502,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
 ## Phase 3: Admin Panel - Platform Management
 
 - [ ] 15. Admin Dashboard
-  - [ ] 15.1 Create admin dashboard
+  - [x] 15.1 Create admin dashboard
     - Implement tenant metrics widget (signups, active, suspended)
     - Create revenue metrics widget (MRR, ARR, churn rate)
     - Implement system health widget (CPU, memory, disk, database)
@@ -510,7 +510,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add real-time charts using Chart.js with HTMX updates
     - _Requirements: 4_
   
-  - [ ] 15.2 Write admin dashboard tests
+  - [x] 15.2 Write admin dashboard tests
     - Test dashboard data accuracy
     - Test real-time updates
     - _Requirements: 4, 28_
