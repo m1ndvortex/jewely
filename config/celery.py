@@ -23,6 +23,12 @@ app.autodiscover_tasks()
 
 # Celery Beat Schedule for periodic tasks
 app.conf.beat_schedule = {
+    # Daily full database backup at 2:00 AM
+    "daily-full-database-backup": {
+        "task": "apps.backups.tasks.daily_full_database_backup",
+        "schedule": crontab(hour=2, minute=0),
+        "options": {"queue": "backups", "priority": 10},
+    },
     # Fetch gold rates every 5 minutes
     "fetch-gold-rates": {
         "task": "apps.pricing.tasks.fetch_gold_rates",
