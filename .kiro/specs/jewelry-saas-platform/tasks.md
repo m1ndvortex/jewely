@@ -516,14 +516,14 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 4, 28_
 
 - [ ] 16. Tenant Lifecycle Management
-  - [x] 16.1 Implement tenant management interface
+  - [ ] 16.1 Implement tenant management interface
     - Create tenant list view with search and filters (status, plan, date)
     - Create tenant detail view with tabs (Info, Users, Subscription, Activity)
     - Implement tenant creation form with validation
     - Create tenant edit interface
     - _Requirements: 4_
   
-  - [x] 16.2 Implement tenant status management
+  - [-] 16.2 Implement tenant status management
     - Create status change interface with confirmation modal
     - Implement suspend tenant functionality (disable access, retain data)
     - Implement schedule for deletion with grace period

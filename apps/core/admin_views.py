@@ -515,30 +515,78 @@ class TenantStatusChangeView(PlatformAdminRequiredMixin, View):
     - Reactivate: Restores full access
     """
 
+    def _handle_activate(self, tenant):
+        """Handle tenant activation."""
+        tenant.activate()
+        return "reactivated"
+
+    def _handle_suspend(self, tenant, reason):
+        """Handle tenant suspension."""
+        tenant.suspend(reason=reason)
+        return "suspended"
+
+    def _handle_schedule_deletion(self, tenant, grace_period_days):
+        """Handle scheduling tenant for deletion."""
+        grace_days = int(grace_period_days)
+        if grace_days < 1 or grace_days > 365:
+            raise ValueError("Grace period must be between 1 and 365 days")
+        tenant.schedule_for_deletion(grace_period_days=grace_days)
+        return f"scheduled for deletion (grace period: {grace_days} days)"
+
     def post(self, request, pk):
         tenant = get_object_or_404(Tenant, pk=pk)
         new_status = request.POST.get("status")
+        grace_period_days = request.POST.get("grace_period_days", "30")
+        reason = request.POST.get("reason", "").strip()
 
         if new_status not in [Tenant.ACTIVE, Tenant.SUSPENDED, Tenant.PENDING_DELETION]:
             messages.error(request, "Invalid status value.")
             return redirect("core:admin_tenant_detail", pk=pk)
 
         old_status = tenant.status
-        tenant.status = new_status
-        tenant.save(update_fields=["status", "updated_at"])
 
-        # Log the status change (will be enhanced with audit log in task 20)
-        import logging
+        try:
+            # Handle status change
+            if new_status == Tenant.ACTIVE:
+                action_message = self._handle_activate(tenant)
+            elif new_status == Tenant.SUSPENDED:
+                action_message = self._handle_suspend(tenant, reason)
+            elif new_status == Tenant.PENDING_DELETION:
+                action_message = self._handle_schedule_deletion(tenant, grace_period_days)
 
-        logger = logging.getLogger(__name__)
-        logger.info(
-            f"Tenant status changed: {tenant.company_name} ({tenant.id}) "
-            f"from {old_status} to {new_status} by {request.user.username}"
-        )
+            # Log the status change
+            import logging
 
-        messages.success(
-            request, f'Tenant "{tenant.company_name}" status changed successfully.'
-        )
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"Tenant status changed: {tenant.company_name} ({tenant.id}) "
+                f"from {old_status} to {new_status} by {request.user.username}. "
+                f"Reason: {reason or 'Not provided'}"
+            )
+
+            messages.success(request, f'Tenant "{tenant.company_name}" has been {action_message}.')
+
+            # Show deletion info if applicable
+            if new_status == Tenant.PENDING_DELETION:
+                deletion_date = tenant.get_deletion_date()
+                if deletion_date:
+                    messages.info(
+                        request,
+                        f'Tenant will be permanently deleted on {deletion_date.strftime("%B %d, %Y at %I:%M %p")}. '
+                        f"You can reactivate the tenant before this date to cancel deletion.",
+                    )
+
+        except ValueError as e:
+            messages.error(request, f"Invalid grace period: {e}")
+        except Exception as e:
+            messages.error(request, f"Error changing tenant status: {str(e)}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Error changing tenant status for {tenant.company_name} ({tenant.id}): {str(e)}",
+                exc_info=True,
+            )
 
         return redirect("core:admin_tenant_detail", pk=pk)
 
