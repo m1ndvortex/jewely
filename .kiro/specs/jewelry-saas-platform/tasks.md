@@ -445,14 +445,14 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Manage customer opt-in/opt-out preferences
     - _Requirements: 19_
   
-  - [ ] 13.5 Create customer communication tools
+  - [x] 13.5 Create customer communication tools
     - Implement bulk email/SMS campaigns
     - Create customer segmentation for targeted messaging
     - Log all customer communications
     - Implement campaign analytics (open rates, click rates, conversions)
     - _Requirements: 19_
   
-  - [ ] 13.6 Write notification tests
+  - [x] 13.6 Write notification tests
     - Test notification creation and delivery
     - Test email sending
     - Test SMS sending
@@ -460,7 +460,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 19, 28_
 
 - [ ] 14. Settings & Configuration
-  - [ ] 14.1 Create tenant settings models
+  - [x] 14.1 Create tenant settings models
     - Create TenantSettings model with business info, branding, hours, holidays
     - Create InvoiceSettings model for invoice customization
     - Create IntegrationSettings model for API credentials

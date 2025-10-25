@@ -344,3 +344,356 @@ class DashboardAPITestCase(TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response["Content-Type"], "application/json")
+
+
+class TenantSettingsTestCase(TestCase):
+    """Test cases for TenantSettings model."""
+
+    def setUp(self):
+        """Set up test data."""
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        self.tenant = Tenant.objects.create(
+            company_name="Settings Test Shop", slug="settings-test-shop"
+        )
+
+    def tearDown(self):
+        """Clean up after tests."""
+        from apps.core.tenant_context import clear_tenant_context
+
+        try:
+            clear_tenant_context()
+        except Exception:
+            pass
+
+    def test_tenant_settings_creation(self):
+        """Test creating tenant settings."""
+        from apps.core.models import TenantSettings
+
+        settings = TenantSettings.objects.create(
+            tenant=self.tenant,
+            business_name="Official Business Name",
+            business_registration_number="REG123456",
+            tax_identification_number="TAX789012",
+            address_line_1="123 Business St",
+            city="Business City",
+            country="Business Country",
+            phone="555-0123",
+            email="business@example.com",
+            currency=TenantSettings.CURRENCY_USD,
+            timezone="America/New_York",
+            default_tax_rate=0.0825,
+        )
+
+        self.assertEqual(settings.tenant, self.tenant)
+        self.assertEqual(settings.business_name, "Official Business Name")
+        self.assertEqual(settings.currency, "USD")
+        self.assertEqual(settings.default_tax_rate, 0.0825)
+
+    def test_tenant_settings_str_method(self):
+        """Test TenantSettings string representation."""
+        from apps.core.models import TenantSettings
+
+        settings = TenantSettings.objects.create(tenant=self.tenant)
+        expected_str = f"Settings for {self.tenant.company_name}"
+        self.assertEqual(str(settings), expected_str)
+
+    def test_get_full_address_method(self):
+        """Test get_full_address method."""
+        from apps.core.models import TenantSettings
+
+        settings = TenantSettings.objects.create(
+            tenant=self.tenant,
+            address_line_1="123 Main St",
+            address_line_2="Suite 100",
+            city="New York",
+            state_province="NY",
+            postal_code="10001",
+            country="USA",
+        )
+
+        expected_address = "123 Main St, Suite 100, New York, NY, 10001, USA"
+        self.assertEqual(settings.get_full_address(), expected_address)
+
+    def test_get_full_address_with_empty_fields(self):
+        """Test get_full_address with some empty fields."""
+        from apps.core.models import TenantSettings
+
+        settings = TenantSettings.objects.create(
+            tenant=self.tenant,
+            address_line_1="123 Main St",
+            city="New York",
+            country="USA",
+        )
+
+        expected_address = "123 Main St, New York, USA"
+        self.assertEqual(settings.get_full_address(), expected_address)
+
+    def test_is_business_day_method(self):
+        """Test is_business_day method."""
+        import datetime
+
+        from apps.core.models import TenantSettings
+
+        settings = TenantSettings.objects.create(
+            tenant=self.tenant,
+            business_hours={
+                "monday": {"open": "09:00", "close": "18:00", "closed": False},
+                "tuesday": {"open": "09:00", "close": "18:00", "closed": False},
+                "sunday": {"closed": True},
+            },
+            holidays=[{"date": "2024-01-01", "name": "New Year's Day"}],
+        )
+
+        # Test regular business day
+        monday = datetime.date(2024, 1, 8)  # A Monday
+        self.assertTrue(settings.is_business_day(monday))
+
+        # Test holiday
+        new_year = datetime.date(2024, 1, 1)
+        self.assertFalse(settings.is_business_day(new_year))
+
+    def test_get_business_hours_for_day(self):
+        """Test get_business_hours_for_day method."""
+        from apps.core.models import TenantSettings
+
+        settings = TenantSettings.objects.create(
+            tenant=self.tenant,
+            business_hours={
+                "monday": {"open": "09:00", "close": "18:00", "closed": False},
+                "sunday": {"closed": True},
+            },
+        )
+
+        monday_hours = settings.get_business_hours_for_day("Monday")
+        self.assertEqual(monday_hours["open"], "09:00")
+        self.assertEqual(monday_hours["close"], "18:00")
+        self.assertFalse(monday_hours["closed"])
+
+        # Test day not in business_hours (should return default)
+        saturday_hours = settings.get_business_hours_for_day("Saturday")
+        self.assertTrue(saturday_hours["closed"])
+
+
+class InvoiceSettingsTestCase(TestCase):
+    """Test cases for InvoiceSettings model."""
+
+    def setUp(self):
+        """Set up test data."""
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        self.tenant = Tenant.objects.create(
+            company_name="Invoice Test Shop", slug="invoice-test-shop"
+        )
+
+    def tearDown(self):
+        """Clean up after tests."""
+        from apps.core.tenant_context import clear_tenant_context
+
+        try:
+            clear_tenant_context()
+        except Exception:
+            pass
+
+    def test_invoice_settings_creation(self):
+        """Test creating invoice settings."""
+        from apps.core.models import InvoiceSettings
+
+        settings = InvoiceSettings.objects.create(
+            tenant=self.tenant,
+            invoice_template=InvoiceSettings.TEMPLATE_STANDARD,
+            invoice_number_prefix="INV",
+            next_invoice_number=1001,
+            receipt_number_prefix="RCP",
+            next_receipt_number=2001,
+        )
+
+        self.assertEqual(settings.tenant, self.tenant)
+        self.assertEqual(settings.invoice_number_prefix, "INV")
+        self.assertEqual(settings.next_invoice_number, 1001)
+
+    def test_invoice_settings_str_method(self):
+        """Test InvoiceSettings string representation."""
+        from apps.core.models import InvoiceSettings
+
+        settings = InvoiceSettings.objects.create(tenant=self.tenant)
+        expected_str = f"Invoice Settings for {self.tenant.company_name}"
+        self.assertEqual(str(settings), expected_str)
+
+    def test_generate_invoice_number_sequential(self):
+        """Test generating sequential invoice numbers."""
+        from apps.core.models import InvoiceSettings
+
+        settings = InvoiceSettings.objects.create(
+            tenant=self.tenant,
+            invoice_numbering_scheme=InvoiceSettings.NUMBERING_SEQUENTIAL,
+            invoice_number_prefix="INV",
+            invoice_number_format="{prefix}-{number:06d}",
+            next_invoice_number=1,
+        )
+
+        # Generate first invoice number
+        invoice_num1 = settings.generate_invoice_number()
+        self.assertEqual(invoice_num1, "INV-000001")
+
+        # Check that counter was incremented by fetching from database
+        updated_settings = InvoiceSettings.objects.get(id=settings.id)
+        self.assertEqual(updated_settings.next_invoice_number, 2)
+
+        # Generate second invoice number
+        invoice_num2 = settings.generate_invoice_number()
+        self.assertEqual(invoice_num2, "INV-000002")
+
+    def test_generate_receipt_number_sequential(self):
+        """Test generating sequential receipt numbers."""
+        from apps.core.models import InvoiceSettings
+
+        settings = InvoiceSettings.objects.create(
+            tenant=self.tenant,
+            receipt_numbering_scheme=InvoiceSettings.NUMBERING_SEQUENTIAL,
+            receipt_number_prefix="RCP",
+            receipt_number_format="{prefix}-{number:06d}",
+            next_receipt_number=1,
+        )
+
+        # Generate first receipt number
+        receipt_num1 = settings.generate_receipt_number()
+        self.assertEqual(receipt_num1, "RCP-000001")
+
+        # Check that counter was incremented by fetching from database
+        updated_settings = InvoiceSettings.objects.get(id=settings.id)
+        self.assertEqual(updated_settings.next_receipt_number, 2)
+
+
+class IntegrationSettingsTestCase(TestCase):
+    """Test cases for IntegrationSettings model."""
+
+    def setUp(self):
+        """Set up test data."""
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        self.tenant = Tenant.objects.create(
+            company_name="Integration Test Shop", slug="integration-test-shop"
+        )
+
+    def tearDown(self):
+        """Clean up after tests."""
+        from apps.core.tenant_context import clear_tenant_context
+
+        try:
+            clear_tenant_context()
+        except Exception:
+            pass
+
+    def test_integration_settings_creation(self):
+        """Test creating integration settings."""
+        from apps.core.models import IntegrationSettings
+
+        settings = IntegrationSettings.objects.create(
+            tenant=self.tenant,
+            payment_gateway_enabled=True,
+            payment_gateway_provider="stripe",
+            sms_provider_enabled=True,
+            sms_provider="twilio",
+            email_provider_enabled=True,
+            email_provider="sendgrid",
+        )
+
+        self.assertEqual(settings.tenant, self.tenant)
+        self.assertTrue(settings.payment_gateway_enabled)
+        self.assertEqual(settings.payment_gateway_provider, "stripe")
+
+    def test_integration_settings_str_method(self):
+        """Test IntegrationSettings string representation."""
+        from apps.core.models import IntegrationSettings
+
+        settings = IntegrationSettings.objects.create(tenant=self.tenant)
+        expected_str = f"Integration Settings for {self.tenant.company_name}"
+        self.assertEqual(str(settings), expected_str)
+
+    def test_encrypt_decrypt_field_methods(self):
+        """Test field encryption and decryption methods."""
+        from django.conf import settings as django_settings
+
+        from apps.core.models import IntegrationSettings
+
+        # Skip test if encryption key not configured
+        if not hasattr(django_settings, "FIELD_ENCRYPTION_KEY"):
+            self.skipTest("FIELD_ENCRYPTION_KEY not configured")
+
+        integration_settings = IntegrationSettings.objects.create(tenant=self.tenant)
+
+        # Test encryption/decryption
+        test_value = "secret_api_key_12345"
+        encrypted = integration_settings.encrypt_field(test_value)
+
+        # Encrypted value should be different from original
+        self.assertNotEqual(encrypted, test_value)
+
+        # Decrypted value should match original
+        decrypted = integration_settings.decrypt_field(encrypted)
+        self.assertEqual(decrypted, test_value)
+
+    def test_payment_gateway_key_methods(self):
+        """Test payment gateway key setter/getter methods."""
+        from django.conf import settings as django_settings
+
+        from apps.core.models import IntegrationSettings
+
+        # Skip test if encryption key not configured
+        if not hasattr(django_settings, "FIELD_ENCRYPTION_KEY"):
+            self.skipTest("FIELD_ENCRYPTION_KEY not configured")
+
+        integration_settings = IntegrationSettings.objects.create(tenant=self.tenant)
+
+        # Test API key
+        test_api_key = "pk_test_12345"
+        integration_settings.set_payment_gateway_api_key(test_api_key)
+        retrieved_key = integration_settings.get_payment_gateway_api_key()
+        self.assertEqual(retrieved_key, test_api_key)
+
+        # Test secret key
+        test_secret_key = "sk_test_67890"
+        integration_settings.set_payment_gateway_secret_key(test_secret_key)
+        retrieved_secret = integration_settings.get_payment_gateway_secret_key()
+        self.assertEqual(retrieved_secret, test_secret_key)
+
+    def test_sms_api_key_methods(self):
+        """Test SMS API key setter/getter methods."""
+        from django.conf import settings as django_settings
+
+        from apps.core.models import IntegrationSettings
+
+        # Skip test if encryption key not configured
+        if not hasattr(django_settings, "FIELD_ENCRYPTION_KEY"):
+            self.skipTest("FIELD_ENCRYPTION_KEY not configured")
+
+        integration_settings = IntegrationSettings.objects.create(tenant=self.tenant)
+
+        test_sms_key = "twilio_api_key_12345"
+        integration_settings.set_sms_api_key(test_sms_key)
+        retrieved_key = integration_settings.get_sms_api_key()
+        self.assertEqual(retrieved_key, test_sms_key)
+
+    def test_email_api_key_methods(self):
+        """Test email API key setter/getter methods."""
+        from django.conf import settings as django_settings
+
+        from apps.core.models import IntegrationSettings
+
+        # Skip test if encryption key not configured
+        if not hasattr(django_settings, "FIELD_ENCRYPTION_KEY"):
+            self.skipTest("FIELD_ENCRYPTION_KEY not configured")
+
+        integration_settings = IntegrationSettings.objects.create(tenant=self.tenant)
+
+        test_email_key = "sendgrid_api_key_12345"
+        integration_settings.set_email_api_key(test_email_key)
+        retrieved_key = integration_settings.get_email_api_key()
+        self.assertEqual(retrieved_key, test_email_key)

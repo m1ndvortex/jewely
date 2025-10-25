@@ -5,7 +5,7 @@ Django admin configuration for core models.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import Branch, Tenant, User
+from .models import Branch, IntegrationSettings, InvoiceSettings, Tenant, TenantSettings, User
 
 
 @admin.register(Tenant)
@@ -193,3 +193,412 @@ class UserAdmin(BaseUserAdmin):
         """Optimize queryset with select_related."""
         qs = super().get_queryset(request)
         return qs.select_related("tenant", "branch")
+
+
+@admin.register(TenantSettings)
+class TenantSettingsAdmin(admin.ModelAdmin):
+    """Admin interface for TenantSettings model."""
+
+    list_display = [
+        "tenant",
+        "business_name",
+        "currency",
+        "timezone",
+        "require_mfa_for_managers",
+        "updated_at",
+    ]
+
+    list_filter = [
+        "currency",
+        "timezone",
+        "require_mfa_for_managers",
+        "tax_inclusive_pricing",
+        "created_at",
+    ]
+
+    search_fields = [
+        "tenant__company_name",
+        "business_name",
+        "email",
+        "phone",
+    ]
+
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Business Information",
+            {
+                "fields": (
+                    "tenant",
+                    "business_name",
+                    "business_registration_number",
+                    "tax_identification_number",
+                )
+            },
+        ),
+        (
+            "Contact Information",
+            {
+                "fields": (
+                    "address_line_1",
+                    "address_line_2",
+                    "city",
+                    "state_province",
+                    "postal_code",
+                    "country",
+                    "phone",
+                    "fax",
+                    "email",
+                    "website",
+                )
+            },
+        ),
+        (
+            "Branding",
+            {
+                "fields": (
+                    "logo",
+                    "primary_color",
+                    "secondary_color",
+                )
+            },
+        ),
+        (
+            "Localization",
+            {
+                "fields": (
+                    "timezone",
+                    "currency",
+                    "date_format",
+                )
+            },
+        ),
+        (
+            "Business Operations",
+            {
+                "fields": (
+                    "business_hours",
+                    "holidays",
+                )
+            },
+        ),
+        (
+            "Tax Configuration",
+            {
+                "fields": (
+                    "default_tax_rate",
+                    "tax_inclusive_pricing",
+                )
+            },
+        ),
+        (
+            "Security Settings",
+            {
+                "fields": (
+                    "require_mfa_for_managers",
+                    "password_expiry_days",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["tenant__company_name"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("tenant")
+
+
+@admin.register(InvoiceSettings)
+class InvoiceSettingsAdmin(admin.ModelAdmin):
+    """Admin interface for InvoiceSettings model."""
+
+    list_display = [
+        "tenant",
+        "invoice_template",
+        "invoice_number_prefix",
+        "next_invoice_number",
+        "receipt_number_prefix",
+        "next_receipt_number",
+        "updated_at",
+    ]
+
+    list_filter = [
+        "invoice_template",
+        "receipt_template",
+        "invoice_numbering_scheme",
+        "receipt_numbering_scheme",
+        "show_tax_breakdown",
+        "created_at",
+    ]
+
+    search_fields = [
+        "tenant__company_name",
+        "invoice_number_prefix",
+        "receipt_number_prefix",
+    ]
+
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Settings",
+            {
+                "fields": (
+                    "tenant",
+                    "invoice_template",
+                    "receipt_template",
+                )
+            },
+        ),
+        (
+            "Invoice Numbering",
+            {
+                "fields": (
+                    "invoice_numbering_scheme",
+                    "invoice_number_prefix",
+                    "invoice_number_format",
+                    "next_invoice_number",
+                )
+            },
+        ),
+        (
+            "Receipt Numbering",
+            {
+                "fields": (
+                    "receipt_numbering_scheme",
+                    "receipt_number_prefix",
+                    "receipt_number_format",
+                    "next_receipt_number",
+                )
+            },
+        ),
+        (
+            "Display Options",
+            {
+                "fields": (
+                    "show_item_codes",
+                    "show_item_descriptions",
+                    "show_item_weights",
+                    "show_karat_purity",
+                    "show_tax_breakdown",
+                    "show_payment_terms",
+                )
+            },
+        ),
+        (
+            "Custom Fields",
+            {
+                "fields": (
+                    "custom_field_1_label",
+                    "custom_field_1_value",
+                    "custom_field_2_label",
+                    "custom_field_2_value",
+                )
+            },
+        ),
+        (
+            "Footer & Terms",
+            {
+                "fields": (
+                    "invoice_footer_text",
+                    "receipt_footer_text",
+                    "payment_terms",
+                    "return_policy",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["tenant__company_name"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("tenant")
+
+
+@admin.register(IntegrationSettings)
+class IntegrationSettingsAdmin(admin.ModelAdmin):
+    """Admin interface for IntegrationSettings model."""
+
+    list_display = [
+        "tenant",
+        "payment_gateway_enabled",
+        "payment_gateway_provider",
+        "sms_provider_enabled",
+        "sms_provider",
+        "email_provider_enabled",
+        "email_provider",
+        "gold_rate_api_enabled",
+        "updated_at",
+    ]
+
+    list_filter = [
+        "payment_gateway_enabled",
+        "payment_gateway_provider",
+        "sms_provider_enabled",
+        "sms_provider",
+        "email_provider_enabled",
+        "email_provider",
+        "gold_rate_api_enabled",
+        "payment_gateway_test_mode",
+        "created_at",
+    ]
+
+    search_fields = [
+        "tenant__company_name",
+        "payment_gateway_provider",
+        "sms_provider",
+        "email_provider",
+        "email_from_address",
+    ]
+
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Settings",
+            {"fields": ("tenant",)},
+        ),
+        (
+            "Payment Gateway",
+            {
+                "fields": (
+                    "payment_gateway_enabled",
+                    "payment_gateway_provider",
+                    "payment_gateway_api_key",
+                    "payment_gateway_secret_key",
+                    "payment_gateway_webhook_secret",
+                    "payment_gateway_test_mode",
+                )
+            },
+        ),
+        (
+            "SMS Provider",
+            {
+                "fields": (
+                    "sms_provider_enabled",
+                    "sms_provider",
+                    "sms_api_key",
+                    "sms_api_secret",
+                    "sms_sender_id",
+                )
+            },
+        ),
+        (
+            "Email Provider",
+            {
+                "fields": (
+                    "email_provider_enabled",
+                    "email_provider",
+                    "email_api_key",
+                    "email_from_address",
+                    "email_from_name",
+                )
+            },
+        ),
+        (
+            "SMTP Settings",
+            {
+                "fields": (
+                    "smtp_host",
+                    "smtp_port",
+                    "smtp_username",
+                    "smtp_password",
+                    "smtp_use_tls",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Gold Rate API",
+            {
+                "fields": (
+                    "gold_rate_api_enabled",
+                    "gold_rate_api_provider",
+                    "gold_rate_api_key",
+                    "gold_rate_update_frequency",
+                )
+            },
+        ),
+        (
+            "Webhooks",
+            {
+                "fields": (
+                    "webhook_url",
+                    "webhook_secret",
+                    "webhook_events",
+                )
+            },
+        ),
+        (
+            "Additional Configuration",
+            {
+                "fields": ("additional_config",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["tenant__company_name"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("tenant")
+
+    def get_form(self, request, obj=None, **kwargs):
+        """Customize form to show encrypted fields as password inputs."""
+        form = super().get_form(request, obj, **kwargs)
+
+        # Make sensitive fields use password input
+        sensitive_fields = [
+            "payment_gateway_api_key",
+            "payment_gateway_secret_key",
+            "payment_gateway_webhook_secret",
+            "sms_api_key",
+            "sms_api_secret",
+            "email_api_key",
+            "smtp_password",
+            "gold_rate_api_key",
+            "webhook_secret",
+        ]
+
+        for field_name in sensitive_fields:
+            if field_name in form.base_fields:
+                form.base_fields[field_name].widget.attrs["type"] = "password"
+
+        return form
