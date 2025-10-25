@@ -73,3 +73,6 @@ stripe==4.2.0
 
 # Cloud Storage (for backups)
 boto3==1.34.51
+
+# Encryption
+cryptography==42.0.5

@@ -14,8 +14,9 @@ import os
 import tempfile
 from pathlib import Path
 
-import pytest
 from django.conf import settings
+
+import pytest
 
 from apps.backups.storage import (
     BackblazeB2Storage,

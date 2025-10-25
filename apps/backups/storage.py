@@ -13,9 +13,10 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from django.conf import settings
+
 import boto3
 from botocore.exceptions import ClientError
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
