@@ -577,7 +577,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Create automated subscription lifecycle management
     - _Requirements: 5_
   
-  - [ ] 17.5 Write subscription tests
+  - [x] 17.5 Write subscription tests
     - Test plan CRUD operations
     - Test subscription assignment
     - Test limit overrides
@@ -586,7 +586,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
 
 
 - [ ] 18. Enterprise Backup & Disaster Recovery System
-  - [ ] 18.1 Create backup models
+  - [x] 18.1 Create backup models
     - Create Backup model with all fields (backup_type, tenant FK, filename, size, checksum, storage paths, status, metadata)
     - Create BackupRestoreLog model for restore tracking
     - Create BackupAlert model for alert management
