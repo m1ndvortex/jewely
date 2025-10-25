@@ -9,6 +9,10 @@ from .models import (
     Notification,
     NotificationPreference,
     NotificationTemplate,
+    SMSCampaign,
+    SMSNotification,
+    SMSOptOut,
+    SMSTemplate,
 )
 
 
@@ -341,3 +345,377 @@ class EmailCampaignAdmin(admin.ModelAdmin):
         return "0%"
 
     open_rate.short_description = _("Open Rate")
+
+
+# SMS Admin Classes
+
+
+@admin.register(SMSNotification)
+class SMSNotificationAdmin(admin.ModelAdmin):
+    """Admin interface for SMS notifications"""
+    
+    list_display = [
+        "id",
+        "user",
+        "to_phone",
+        "sms_type",
+        "status_badge",
+        "created_at",
+        "sent_at",
+        "delivered_at",
+    ]
+    list_filter = [
+        "sms_type",
+        "status",
+        "created_at",
+        "sent_at",
+    ]
+    search_fields = [
+        "user__username",
+        "user__email",
+        "to_phone",
+        "message",
+        "message_sid",
+    ]
+    readonly_fields = [
+        "id",
+        "message_sid",
+        "created_at",
+        "sent_at",
+        "delivered_at",
+        "failed_at",
+        "price",
+        "price_unit",
+    ]
+    raw_id_fields = ["user", "notification"]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]
+    
+    fieldsets = [
+        (
+            _("SMS Details"),
+            {
+                "fields": (
+                    "user",
+                    "notification",
+                    "message",
+                    "to_phone",
+                    "from_phone",
+                    "sms_type",
+                    "template_name",
+                )
+            },
+        ),
+        (
+            _("Delivery Status"),
+            {
+                "fields": (
+                    "status",
+                    "message_sid",
+                    "error_message",
+                    "error_code",
+                )
+            },
+        ),
+        (
+            _("Timestamps"),
+            {
+                "fields": (
+                    "created_at",
+                    "sent_at",
+                    "delivered_at",
+                    "failed_at",
+                    "scheduled_at",
+                )
+            },
+        ),
+        (
+            _("Campaign & Cost"),
+            {
+                "fields": (
+                    "campaign_id",
+                    "price",
+                    "price_unit",
+                )
+            },
+        ),
+    ]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user", "notification")
+
+    def status_badge(self, obj):
+        """Display status as colored badge"""
+        colors = {
+            "PENDING": "#f59e0b",
+            "QUEUED": "#3b82f6",
+            "SENT": "#10b981",
+            "DELIVERED": "#059669",
+            "FAILED": "#ef4444",
+            "UNDELIVERED": "#ef4444",
+        }
+        color = colors.get(obj.status, "#6b7280")
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    status_badge.short_description = _("Status")
+
+
+@admin.register(SMSTemplate)
+class SMSTemplateAdmin(admin.ModelAdmin):
+    """Admin interface for SMS templates"""
+    
+    list_display = [
+        "name",
+        "sms_type",
+        "is_active",
+        "message_length",
+        "created_at",
+        "updated_at",
+    ]
+    list_filter = [
+        "sms_type",
+        "is_active",
+        "created_at",
+    ]
+    search_fields = [
+        "name",
+        "message_template",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["sms_type", "name"]
+    
+    fieldsets = [
+        (
+            _("Template Details"),
+            {
+                "fields": (
+                    "name",
+                    "sms_type",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            _("Message Content"),
+            {
+                "fields": (
+                    "message_template",
+                )
+            },
+        ),
+        (
+            _("Timestamps"),
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    ]
+
+    def message_length(self, obj):
+        """Display message template length"""
+        length = len(obj.message_template)
+        if length > 160:
+            color = "#ef4444"  # Red for long messages
+        elif length > 120:
+            color = "#f59e0b"  # Orange for medium messages
+        else:
+            color = "#10b981"  # Green for short messages
+        
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{} chars</span>',
+            color,
+            length,
+        )
+
+    message_length.short_description = _("Length")
+
+    def get_form(self, request, obj=None, **kwargs):
+        """Customize form to show template syntax help"""
+        form = super().get_form(request, obj, **kwargs)
+
+        if "message_template" in form.base_fields:
+            form.base_fields["message_template"].help_text = _(
+                "Use Django template syntax. Keep under 160 characters for single SMS. Available variables depend on context."
+            )
+
+        return form
+
+
+@admin.register(SMSOptOut)
+class SMSOptOutAdmin(admin.ModelAdmin):
+    """Admin interface for SMS opt-outs"""
+    
+    list_display = [
+        "user",
+        "transactional_opt_out",
+        "marketing_opt_out",
+        "system_opt_out",
+        "alert_opt_out",
+        "opted_out_at",
+    ]
+    list_filter = [
+        "transactional_opt_out",
+        "marketing_opt_out",
+        "system_opt_out",
+        "alert_opt_out",
+        "opted_out_at",
+    ]
+    search_fields = [
+        "user__username",
+        "user__email",
+        "reason",
+    ]
+    readonly_fields = [
+        "opted_out_at",
+    ]
+    raw_id_fields = ["user"]
+    date_hierarchy = "opted_out_at"
+    ordering = ["-opted_out_at"]
+    
+    fieldsets = [
+        (
+            _("User"),
+            {
+                "fields": (
+                    "user",
+                    "reason",
+                    "opted_out_at",
+                )
+            },
+        ),
+        (
+            _("Opt-out Preferences"),
+            {
+                "fields": (
+                    "transactional_opt_out",
+                    "marketing_opt_out",
+                    "system_opt_out",
+                    "alert_opt_out",
+                )
+            },
+        ),
+    ]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user")
+
+
+@admin.register(SMSCampaign)
+class SMSCampaignAdmin(admin.ModelAdmin):
+    """Admin interface for SMS campaigns"""
+    
+    list_display = [
+        "name",
+        "template",
+        "status",
+        "total_recipients",
+        "sms_sent",
+        "sms_delivered",
+        "delivery_rate",
+        "total_cost",
+        "created_at",
+        "sent_at",
+    ]
+    list_filter = [
+        "status",
+        "created_at",
+        "sent_at",
+        "scheduled_at",
+    ]
+    search_fields = [
+        "name",
+        "template__name",
+        "created_by__username",
+    ]
+    readonly_fields = [
+        "total_recipients",
+        "sms_sent",
+        "sms_delivered",
+        "sms_failed",
+        "total_cost",
+        "created_at",
+        "updated_at",
+        "sent_at",
+    ]
+    raw_id_fields = ["template", "created_by"]
+    filter_horizontal = ["target_users"]
+    date_hierarchy = "created_at"
+    ordering = ["-created_at"]
+    
+    fieldsets = [
+        (
+            _("Campaign Details"),
+            {
+                "fields": (
+                    "name",
+                    "template",
+                    "status",
+                    "created_by",
+                )
+            },
+        ),
+        (
+            _("Targeting"),
+            {
+                "fields": (
+                    "target_users",
+                    "target_roles",
+                    "target_tenant_status",
+                )
+            },
+        ),
+        (
+            _("Scheduling"),
+            {
+                "fields": (
+                    "scheduled_at",
+                )
+            },
+        ),
+        (
+            _("Statistics"),
+            {
+                "fields": (
+                    "total_recipients",
+                    "sms_sent",
+                    "sms_delivered",
+                    "sms_failed",
+                    "total_cost",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("Timestamps"),
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                    "sent_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    ]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("template", "created_by")
+
+    def delivery_rate(self, obj):
+        """Calculate and display delivery rate"""
+        if obj.sms_sent > 0:
+            rate = (obj.sms_delivered / obj.sms_sent) * 100
+            return f"{rate:.1f}%"
+        return "0%"
+
+    delivery_rate.short_description = _("Delivery Rate")

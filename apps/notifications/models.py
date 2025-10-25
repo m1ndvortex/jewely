@@ -444,6 +444,245 @@ class EmailTemplate(models.Model):
         return rendered
 
 
+class SMSNotification(models.Model):
+    """
+    Model to track SMS notifications and their delivery status.
+    """
+
+    STATUS_CHOICES = [
+        ("PENDING", _("Pending")),
+        ("QUEUED", _("Queued")),
+        ("SENT", _("Sent")),
+        ("DELIVERED", _("Delivered")),
+        ("FAILED", _("Failed")),
+        ("UNDELIVERED", _("Undelivered")),
+    ]
+
+    SMS_TYPES = [
+        ("TRANSACTIONAL", _("Transactional")),
+        ("MARKETING", _("Marketing")),
+        ("SYSTEM", _("System")),
+        ("ALERT", _("Alert")),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sms_notifications",
+        help_text=_("User who received this SMS"),
+    )
+    notification = models.OneToOneField(
+        "Notification",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="sms_notification",
+        help_text=_("Associated in-app notification"),
+    )
+
+    # SMS details
+    message = models.TextField(max_length=1600, help_text=_("SMS message content"))
+    to_phone = models.CharField(max_length=20, help_text=_("Recipient phone number"))
+    from_phone = models.CharField(
+        max_length=20, null=True, blank=True, help_text=_("Sender phone number")
+    )
+    template_name = models.CharField(
+        max_length=100, null=True, blank=True, help_text=_("SMS template used")
+    )
+    sms_type = models.CharField(
+        max_length=20, choices=SMS_TYPES, default="TRANSACTIONAL", help_text=_("Type of SMS")
+    )
+
+    # Delivery tracking
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+        help_text=_("Current delivery status"),
+    )
+    message_sid = models.CharField(
+        max_length=255, null=True, blank=True, help_text=_("Twilio message SID")
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    failed_at = models.DateTimeField(null=True, blank=True)
+
+    # Error tracking
+    error_message = models.TextField(
+        null=True, blank=True, help_text=_("Error message if delivery failed")
+    )
+    error_code = models.CharField(
+        max_length=10, null=True, blank=True, help_text=_("Twilio error code if applicable")
+    )
+
+    # Scheduling
+    scheduled_at = models.DateTimeField(
+        null=True, blank=True, help_text=_("When to send this SMS (for scheduled SMS)")
+    )
+
+    # Campaign tracking
+    campaign_id = models.CharField(
+        max_length=100, null=True, blank=True, help_text=_("Campaign ID for marketing SMS")
+    )
+
+    # Cost tracking
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text=_("Cost of sending this SMS"),
+    )
+    price_unit = models.CharField(
+        max_length=10, null=True, blank=True, help_text=_("Currency unit for price")
+    )
+
+    class Meta:
+        db_table = "notifications_sms"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="sms_user_created_idx"),
+            models.Index(fields=["status"], name="sms_status_idx"),
+            models.Index(fields=["scheduled_at"], name="sms_scheduled_idx"),
+            models.Index(fields=["campaign_id"], name="sms_campaign_idx"),
+            models.Index(fields=["message_sid"], name="sms_message_sid_idx"),
+        ]
+        verbose_name = _("SMS Notification")
+        verbose_name_plural = _("SMS Notifications")
+
+    def __str__(self):
+        return f"SMS to {self.to_phone} ({self.status})"
+
+    def update_status(self, status, timestamp=None, error_message=None, error_code=None, price=None, price_unit=None):
+        """Update SMS status with appropriate timestamp"""
+        from django.utils import timezone
+
+        if timestamp is None:
+            timestamp = timezone.now()
+
+        self.status = status
+
+        if status == "SENT":
+            self.sent_at = timestamp
+        elif status == "DELIVERED":
+            self.delivered_at = timestamp
+        elif status == "FAILED" or status == "UNDELIVERED":
+            self.failed_at = timestamp
+            self.error_message = error_message
+            self.error_code = error_code
+
+        if price is not None:
+            self.price = price
+            self.price_unit = price_unit
+
+        self.save()
+
+
+class SMSTemplate(models.Model):
+    """
+    Model to store SMS templates for different types of notifications.
+    """
+
+    name = models.CharField(
+        max_length=100, unique=True, help_text=_("Unique name for this SMS template")
+    )
+    message_template = models.TextField(
+        max_length=1600, help_text=_("SMS message template (supports Django template syntax)")
+    )
+    sms_type = models.CharField(
+        max_length=20,
+        choices=SMSNotification.SMS_TYPES,
+        default="TRANSACTIONAL",
+        help_text=_("Type of SMS this template is for"),
+    )
+    is_active = models.BooleanField(
+        default=True, help_text=_("Whether this template is active and can be used")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "notifications_sms_template"
+        indexes = [
+            models.Index(fields=["sms_type", "is_active"], name="sms_template_type_active_idx"),
+        ]
+        verbose_name = _("SMS Template")
+        verbose_name_plural = _("SMS Templates")
+
+    def __str__(self):
+        return f"{self.name} ({self.sms_type})"
+
+    def render(self, context):
+        """
+        Render the SMS template with given context.
+        Returns a dictionary with rendered message.
+        """
+        from django.template import Context, Template
+
+        message_template = Template(self.message_template)
+
+        rendered = {
+            "message": message_template.render(Context(context)),
+        }
+
+        return rendered
+
+
+class SMSOptOut(models.Model):
+    """
+    Model to track SMS opt-out preferences for users.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="sms_opt_out",
+        help_text=_("User who opted out of SMS"),
+    )
+    opted_out_at = models.DateTimeField(
+        auto_now_add=True, help_text=_("When the user opted out")
+    )
+    reason = models.CharField(
+        max_length=255, null=True, blank=True, help_text=_("Reason for opting out")
+    )
+    
+    # Allow opt-out by SMS type
+    transactional_opt_out = models.BooleanField(
+        default=False, help_text=_("Opted out of transactional SMS")
+    )
+    marketing_opt_out = models.BooleanField(
+        default=True, help_text=_("Opted out of marketing SMS (default: True)")
+    )
+    system_opt_out = models.BooleanField(
+        default=False, help_text=_("Opted out of system SMS")
+    )
+    alert_opt_out = models.BooleanField(
+        default=False, help_text=_("Opted out of alert SMS")
+    )
+
+    class Meta:
+        db_table = "notifications_sms_opt_out"
+        verbose_name = _("SMS Opt-Out")
+        verbose_name_plural = _("SMS Opt-Outs")
+
+    def __str__(self):
+        return f"SMS Opt-Out: {self.user.username}"
+
+    def is_opted_out_for_type(self, sms_type):
+        """Check if user is opted out for a specific SMS type"""
+        type_mapping = {
+            "TRANSACTIONAL": self.transactional_opt_out,
+            "MARKETING": self.marketing_opt_out,
+            "SYSTEM": self.system_opt_out,
+            "ALERT": self.alert_opt_out,
+        }
+        return type_mapping.get(sms_type, False)
+
+
 class EmailCampaign(models.Model):
     """
     Model to manage email marketing campaigns.
@@ -546,5 +785,111 @@ class EmailCampaign(models.Model):
                 "emails_clicked",
                 "emails_bounced",
                 "emails_failed",
+            ]
+        )
+
+
+class SMSCampaign(models.Model):
+    """
+    Model to manage SMS marketing campaigns.
+    """
+
+    STATUS_CHOICES = [
+        ("DRAFT", _("Draft")),
+        ("SCHEDULED", _("Scheduled")),
+        ("SENDING", _("Sending")),
+        ("SENT", _("Sent")),
+        ("CANCELLED", _("Cancelled")),
+    ]
+
+    name = models.CharField(max_length=255, help_text=_("Campaign name"))
+    template = models.ForeignKey(
+        "SMSTemplate", on_delete=models.PROTECT, help_text=_("SMS template to use")
+    )
+
+    # Targeting
+    target_users = models.ManyToManyField(
+        User, blank=True, help_text=_("Specific users to target (leave empty for all users)")
+    )
+    target_roles = models.JSONField(default=list, blank=True, help_text=_("User roles to target"))
+    target_tenant_status = models.JSONField(
+        default=list, blank=True, help_text=_("Tenant statuses to target")
+    )
+
+    # Scheduling
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="DRAFT")
+    scheduled_at = models.DateTimeField(
+        null=True, blank=True, help_text=_("When to send this campaign")
+    )
+
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="created_sms_campaigns"
+    )
+
+    # Statistics (updated by signals)
+    total_recipients = models.IntegerField(default=0)
+    sms_sent = models.IntegerField(default=0)
+    sms_delivered = models.IntegerField(default=0)
+    sms_failed = models.IntegerField(default=0)
+    total_cost = models.DecimalField(
+        max_digits=10, decimal_places=4, default=0, help_text=_("Total cost of campaign")
+    )
+
+    class Meta:
+        db_table = "notifications_sms_campaign"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status"], name="sms_campaign_status_idx"),
+            models.Index(fields=["scheduled_at"], name="sms_campaign_scheduled_idx"),
+        ]
+        verbose_name = _("SMS Campaign")
+        verbose_name_plural = _("SMS Campaigns")
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
+
+    def get_target_users(self):
+        """Get all users that match the campaign targeting criteria"""
+        if self.target_users.exists():
+            return self.target_users.all()
+
+        queryset = User.objects.all()
+
+        if self.target_roles:
+            queryset = queryset.filter(role__in=self.target_roles)
+
+        if self.target_tenant_status:
+            queryset = queryset.filter(tenant__status__in=self.target_tenant_status)
+
+        return queryset
+
+    def update_statistics(self):
+        """Update campaign statistics based on SMS notifications"""
+        sms_messages = SMSNotification.objects.filter(campaign_id=str(self.id))
+
+        self.total_recipients = sms_messages.count()
+        self.sms_sent = sms_messages.filter(
+            status__in=["SENT", "DELIVERED"]
+        ).count()
+        self.sms_delivered = sms_messages.filter(status="DELIVERED").count()
+        self.sms_failed = sms_messages.filter(status__in=["FAILED", "UNDELIVERED"]).count()
+        
+        # Calculate total cost
+        total_cost = sms_messages.aggregate(
+            total=models.Sum('price')
+        )['total'] or 0
+        self.total_cost = total_cost
+
+        self.save(
+            update_fields=[
+                "total_recipients",
+                "sms_sent",
+                "sms_delivered",
+                "sms_failed",
+                "total_cost",
             ]
         )

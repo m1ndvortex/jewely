@@ -360,6 +360,22 @@ EMAIL_RATE_LIMIT = {
     "SYSTEM": int(os.getenv("EMAIL_RATE_LIMIT_SYSTEM", "100")),  # per hour
 }
 
+# Twilio SMS Configuration
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
+
+# SMS webhook configuration for tracking
+SMS_WEBHOOK_SECRET = os.getenv("SMS_WEBHOOK_SECRET", "")
+
+# SMS rate limiting
+SMS_RATE_LIMIT = {
+    "TRANSACTIONAL": int(os.getenv("SMS_RATE_LIMIT_TRANSACTIONAL", "100")),  # per hour
+    "MARKETING": int(os.getenv("SMS_RATE_LIMIT_MARKETING", "50")),  # per hour
+    "SYSTEM": int(os.getenv("SMS_RATE_LIMIT_SYSTEM", "20")),  # per hour
+    "ALERT": int(os.getenv("SMS_RATE_LIMIT_ALERT", "200")),  # per hour
+}
+
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

@@ -11,6 +11,9 @@ This module provides views for managing in-app notifications including:
 import json
 from typing import Any, Dict
 
+import logging
+
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -21,7 +24,9 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
 
 from .models import Notification, NotificationPreference
-from .services import get_unread_count, get_user_notifications, mark_notifications_as_read
+from .services import get_unread_count, get_user_notifications, mark_notifications_as_read, track_sms_event
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationCenterView(LoginRequiredMixin, ListView):
@@ -284,3 +289,40 @@ class NotificationDropdownView(View):
                 "unread_count": unread_count,
             },
         )
+
+
+@require_http_methods(["POST"])
+def sms_webhook(request: HttpRequest) -> HttpResponse:
+    """
+    Webhook endpoint for Twilio SMS delivery status updates.
+    """
+    try:
+        # Verify webhook signature if secret is configured
+        webhook_secret = getattr(settings, 'SMS_WEBHOOK_SECRET', '')
+        if webhook_secret:
+            # TODO: Implement Twilio signature verification
+            # This would verify the X-Twilio-Signature header
+            pass
+        
+        # Extract Twilio webhook data
+        message_sid = request.POST.get('MessageSid')
+        message_status = request.POST.get('MessageStatus')
+        error_code = request.POST.get('ErrorCode')
+        error_message = request.POST.get('ErrorMessage')
+        
+        if message_sid and message_status:
+            # Track the SMS event
+            track_sms_event(
+                message_sid=message_sid,
+                event_type=message_status,
+                error_code=error_code,
+                error_message=error_message,
+            )
+            
+            return HttpResponse("OK", status=200)
+        else:
+            return HttpResponse("Missing required parameters", status=400)
+            
+    except Exception as e:
+        logger.error(f"SMS webhook error: {str(e)}")
+        return HttpResponse("Internal Server Error", status=500)

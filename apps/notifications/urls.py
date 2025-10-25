@@ -26,4 +26,6 @@ urlpatterns = [
     path("webhooks/mailgun/", MailgunWebhookView.as_view(), name="mailgun_webhook"),
     path("webhooks/postmark/", PostmarkWebhookView.as_view(), name="postmark_webhook"),
     path("webhooks/ses/", SESWebhookView.as_view(), name="ses_webhook"),
+    # SMS webhooks for delivery tracking
+    path("webhooks/sms/", views.sms_webhook, name="sms_webhook"),
 ]

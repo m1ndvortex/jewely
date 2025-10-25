@@ -2,7 +2,7 @@
 Notification services for creating and managing notifications.
 
 This module provides utility functions for creating notifications,
-checking user preferences, and managing notification delivery including email.
+checking user preferences, and managing notification delivery including email and SMS.
 """
 
 import logging
@@ -21,6 +21,10 @@ from .models import (
     Notification,
     NotificationPreference,
     NotificationTemplate,
+    SMSCampaign,
+    SMSNotification,
+    SMSOptOut,
+    SMSTemplate,
 )
 
 User = get_user_model()
@@ -872,4 +876,667 @@ def get_email_statistics(user: Optional[User] = None, campaign_id: Optional[str]
         stats["click_rate"] = 0
         stats["bounce_rate"] = 0
 
+    return stats
+
+
+# SMS notification functions
+
+
+def _get_twilio_client():
+    """
+    Get Twilio client instance.
+    """
+    try:
+        from twilio.rest import Client
+        
+        account_sid = getattr(settings, 'TWILIO_ACCOUNT_SID', None)
+        auth_token = getattr(settings, 'TWILIO_AUTH_TOKEN', None)
+        
+        if not account_sid or not auth_token:
+            logger.error("Twilio credentials not configured")
+            return None
+            
+        return Client(account_sid, auth_token)
+    except ImportError:
+        logger.error("Twilio library not installed")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to initialize Twilio client: {str(e)}")
+        return None
+
+
+def _normalize_phone_number(phone_number: str) -> str:
+    """
+    Normalize phone number to E.164 format.
+    
+    Args:
+        phone_number: Phone number to normalize
+        
+    Returns:
+        Normalized phone number in E.164 format
+    """
+    import re
+    
+    # If it already starts with +, return as is (already normalized)
+    if phone_number.startswith('+'):
+        return phone_number
+    
+    # Remove all non-digit characters
+    digits_only = re.sub(r'\D', '', phone_number)
+    
+    # If it starts with 1 and has 11 digits, it's likely US/Canada
+    if len(digits_only) == 11 and digits_only.startswith('1'):
+        return f"+{digits_only}"
+    
+    # If it has 10 digits, assume US/Canada and add +1
+    elif len(digits_only) == 10:
+        return f"+1{digits_only}"
+    
+    # Otherwise, add + and return
+    else:
+        return f"+{digits_only}"
+
+
+def is_user_opted_out_sms(user: User, sms_type: str = "MARKETING") -> bool:
+    """
+    Check if user has opted out of SMS notifications.
+    
+    Args:
+        user: User to check
+        sms_type: Type of SMS to check (TRANSACTIONAL, MARKETING, SYSTEM, ALERT)
+        
+    Returns:
+        True if user is opted out, False otherwise
+    """
+    try:
+        opt_out = SMSOptOut.objects.get(user=user)
+        return opt_out.is_opted_out_for_type(sms_type)
+    except SMSOptOut.DoesNotExist:
+        # If no opt-out record exists, only marketing is opted out by default
+        return sms_type == "MARKETING"
+
+
+def opt_out_user_sms(user: User, sms_type: str = "MARKETING", reason: Optional[str] = None) -> SMSOptOut:
+    """
+    Opt user out of SMS notifications.
+    
+    Args:
+        user: User to opt out
+        sms_type: Type of SMS to opt out of
+        reason: Optional reason for opting out
+        
+    Returns:
+        SMSOptOut instance
+    """
+    opt_out, created = SMSOptOut.objects.get_or_create(
+        user=user,
+        defaults={'reason': reason}
+    )
+    
+    # Set the appropriate opt-out flag
+    if sms_type == "TRANSACTIONAL":
+        opt_out.transactional_opt_out = True
+    elif sms_type == "MARKETING":
+        opt_out.marketing_opt_out = True
+    elif sms_type == "SYSTEM":
+        opt_out.system_opt_out = True
+    elif sms_type == "ALERT":
+        opt_out.alert_opt_out = True
+    
+    opt_out.save()
+    
+    logger.info(f"User {user.username} opted out of {sms_type} SMS")
+    
+    return opt_out
+
+
+def opt_in_user_sms(user: User, sms_type: str = "MARKETING") -> Optional[SMSOptOut]:
+    """
+    Opt user back in to SMS notifications.
+    
+    Args:
+        user: User to opt in
+        sms_type: Type of SMS to opt in to
+        
+    Returns:
+        SMSOptOut instance or None if no opt-out record exists
+    """
+    try:
+        opt_out = SMSOptOut.objects.get(user=user)
+        
+        # Clear the appropriate opt-out flag
+        if sms_type == "TRANSACTIONAL":
+            opt_out.transactional_opt_out = False
+        elif sms_type == "MARKETING":
+            opt_out.marketing_opt_out = False
+        elif sms_type == "SYSTEM":
+            opt_out.system_opt_out = False
+        elif sms_type == "ALERT":
+            opt_out.alert_opt_out = False
+        
+        opt_out.save()
+        
+        logger.info(f"User {user.username} opted in to {sms_type} SMS")
+        
+        return opt_out
+        
+    except SMSOptOut.DoesNotExist:
+        logger.info(f"User {user.username} was not opted out of {sms_type} SMS")
+        return None
+
+
+def send_sms_notification(
+    user: User,
+    message: str,
+    sms_type: str = "TRANSACTIONAL",
+    template_name: Optional[str] = None,
+    campaign_id: Optional[str] = None,
+    scheduled_at: Optional[timezone.datetime] = None,
+    create_in_app_notification: bool = True,
+) -> Optional[SMSNotification]:
+    """
+    Send an SMS notification to a user.
+    
+    Args:
+        user: User to send SMS to
+        message: SMS message content
+        sms_type: Type of SMS (TRANSACTIONAL, MARKETING, SYSTEM, ALERT)
+        template_name: Optional template name used
+        campaign_id: Optional campaign ID for tracking
+        scheduled_at: Optional datetime to schedule SMS
+        create_in_app_notification: Whether to create corresponding in-app notification
+        
+    Returns:
+        SMSNotification instance or None if failed
+    """
+    # Check if user has a phone number
+    if not user.phone:
+        logger.warning(f"User {user.username} has no phone number for SMS")
+        return None
+    
+    # Check if user is opted out
+    if is_user_opted_out_sms(user, sms_type):
+        logger.info(f"SMS skipped for user {user.username} - opted out of {sms_type}")
+        return None
+    
+    # Check user preferences
+    if not should_send_notification(user, sms_type, "SMS"):
+        logger.info(f"SMS skipped for user {user.username} due to preferences")
+        return None
+    
+    # Normalize phone number
+    try:
+        normalized_phone = _normalize_phone_number(user.phone)
+    except Exception as e:
+        logger.error(f"Failed to normalize phone number {user.phone}: {str(e)}")
+        return None
+    
+    # Create in-app notification if requested
+    in_app_notification = None
+    if create_in_app_notification:
+        in_app_notification = create_notification(
+            user=user,
+            title="SMS Notification",
+            message=message[:200] + "..." if len(message) > 200 else message,
+            notification_type="INFO",
+        )
+    
+    # Create SMS notification record
+    sms_notification = SMSNotification.objects.create(
+        user=user,
+        notification=in_app_notification,
+        message=message,
+        to_phone=normalized_phone,
+        from_phone=getattr(settings, 'TWILIO_PHONE_NUMBER', None),
+        template_name=template_name,
+        sms_type=sms_type,
+        campaign_id=campaign_id,
+        scheduled_at=scheduled_at,
+    )
+    
+    # Send immediately if not scheduled
+    if scheduled_at is None:
+        _send_sms_now(sms_notification)
+    else:
+        logger.info(f"SMS scheduled for {scheduled_at} for user {user.username}")
+    
+    return sms_notification
+
+
+def _send_sms_now(sms_notification: SMSNotification):
+    """
+    Internal function to send SMS immediately using Twilio.
+    """
+    client = _get_twilio_client()
+    if not client:
+        sms_notification.update_status("FAILED", error_message="Twilio client not available")
+        return
+    
+    try:
+        # Send SMS via Twilio
+        message = client.messages.create(
+            body=sms_notification.message,
+            from_=sms_notification.from_phone or getattr(settings, 'TWILIO_PHONE_NUMBER'),
+            to=sms_notification.to_phone
+        )
+        
+        # Update SMS notification with Twilio response
+        sms_notification.message_sid = message.sid
+        sms_notification.update_status(
+            "SENT" if message.status in ['queued', 'sent'] else "FAILED",
+            price=float(message.price) if message.price else None,
+            price_unit=message.price_unit
+        )
+        
+        logger.info(f"SMS sent successfully to {sms_notification.to_phone}, SID: {message.sid}")
+        
+    except Exception as e:
+        # Update status with error
+        sms_notification.update_status("FAILED", error_message=str(e))
+        logger.error(f"Failed to send SMS to {sms_notification.to_phone}: {str(e)}")
+
+
+def send_sms_from_template(
+    user: User,
+    template_name: str,
+    context: Dict,
+    sms_type: str = "TRANSACTIONAL",
+    campaign_id: Optional[str] = None,
+    scheduled_at: Optional[timezone.datetime] = None,
+) -> Optional[SMSNotification]:
+    """
+    Send an SMS using a template.
+    
+    Args:
+        user: User to send SMS to
+        template_name: Name of the SMS template
+        context: Context variables for template rendering
+        sms_type: Type of SMS
+        campaign_id: Optional campaign ID for tracking
+        scheduled_at: Optional datetime to schedule SMS
+        
+    Returns:
+        SMSNotification instance or None if failed
+    """
+    try:
+        template = SMSTemplate.objects.get(name=template_name, is_active=True)
+    except SMSTemplate.DoesNotExist:
+        logger.error(f"SMS template '{template_name}' not found or inactive")
+        return None
+    
+    # Render template
+    rendered = template.render(context)
+    message = rendered["message"]
+    
+    # Ensure message is within SMS length limits
+    if len(message) > 1600:
+        logger.warning(f"SMS message truncated from {len(message)} to 1600 characters")
+        message = message[:1597] + "..."
+    
+    return send_sms_notification(
+        user=user,
+        message=message,
+        sms_type=sms_type,
+        template_name=template_name,
+        campaign_id=campaign_id,
+        scheduled_at=scheduled_at,
+    )
+
+
+def send_transactional_sms(
+    user: User, template_name: str, context: Dict
+) -> Optional[SMSNotification]:
+    """
+    Send a transactional SMS (order confirmations, appointments, etc.).
+    
+    Args:
+        user: User to send SMS to
+        template_name: Name of the SMS template
+        context: Context variables for template rendering
+        
+    Returns:
+        SMSNotification instance or None if failed
+    """
+    return send_sms_from_template(
+        user=user,
+        template_name=template_name,
+        context=context,
+        sms_type="TRANSACTIONAL",
+    )
+
+
+def send_alert_sms(
+    user: User, template_name: str, context: Dict
+) -> Optional[SMSNotification]:
+    """
+    Send an alert SMS (low stock, payment reminders, etc.).
+    
+    Args:
+        user: User to send SMS to
+        template_name: Name of the SMS template
+        context: Context variables for template rendering
+        
+    Returns:
+        SMSNotification instance or None if failed
+    """
+    return send_sms_from_template(
+        user=user,
+        template_name=template_name,
+        context=context,
+        sms_type="ALERT",
+    )
+
+
+def send_marketing_sms(
+    user: User, template_name: str, context: Dict, campaign_id: str
+) -> Optional[SMSNotification]:
+    """
+    Send a marketing SMS.
+    
+    Args:
+        user: User to send SMS to
+        template_name: Name of the SMS template
+        context: Context variables for template rendering
+        campaign_id: Campaign ID for tracking
+        
+    Returns:
+        SMSNotification instance or None if failed
+    """
+    return send_sms_from_template(
+        user=user,
+        template_name=template_name,
+        context=context,
+        sms_type="MARKETING",
+        campaign_id=campaign_id,
+    )
+
+
+def schedule_sms(
+    user: User,
+    template_name: str,
+    context: Dict,
+    scheduled_at: timezone.datetime,
+    sms_type: str = "TRANSACTIONAL",
+) -> Optional[SMSNotification]:
+    """
+    Schedule an SMS to be sent later.
+    
+    Args:
+        user: User to send SMS to
+        template_name: Name of the SMS template
+        context: Context variables for template rendering
+        scheduled_at: When to send the SMS
+        sms_type: Type of SMS
+        
+    Returns:
+        SMSNotification instance or None if failed
+    """
+    return send_sms_from_template(
+        user=user,
+        template_name=template_name,
+        context=context,
+        sms_type=sms_type,
+        scheduled_at=scheduled_at,
+    )
+
+
+def send_bulk_sms(
+    users: List[User],
+    template_name: str,
+    context: Dict,
+    sms_type: str = "MARKETING",
+    campaign_id: Optional[str] = None,
+) -> List[SMSNotification]:
+    """
+    Send bulk SMS to multiple users.
+    
+    Args:
+        users: List of users to send SMS to
+        template_name: Name of the SMS template
+        context: Context variables for template rendering
+        sms_type: Type of SMS
+        campaign_id: Optional campaign ID for tracking
+        
+    Returns:
+        List of SMSNotification instances
+    """
+    sms_notifications = []
+    
+    for user in users:
+        if user.phone:  # Only send to users with phone numbers
+            sms_notification = send_sms_from_template(
+                user=user,
+                template_name=template_name,
+                context=context,
+                sms_type=sms_type,
+                campaign_id=campaign_id,
+            )
+            if sms_notification:
+                sms_notifications.append(sms_notification)
+    
+    logger.info(f"Sent {len(sms_notifications)} bulk SMS using template '{template_name}'")
+    
+    return sms_notifications
+
+
+def create_sms_campaign(
+    name: str,
+    template_name: str,
+    created_by: User,
+    target_users: Optional[List[User]] = None,
+    target_roles: Optional[List[str]] = None,
+    target_tenant_status: Optional[List[str]] = None,
+    scheduled_at: Optional[timezone.datetime] = None,
+) -> SMSCampaign:
+    """
+    Create an SMS marketing campaign.
+    
+    Args:
+        name: Campaign name
+        template_name: Name of the SMS template
+        created_by: User creating the campaign
+        target_users: Specific users to target
+        target_roles: User roles to target
+        target_tenant_status: Tenant statuses to target
+        scheduled_at: When to send the campaign
+        
+    Returns:
+        SMSCampaign instance
+    """
+    try:
+        template = SMSTemplate.objects.get(name=template_name, is_active=True)
+    except SMSTemplate.DoesNotExist:
+        raise ValueError(f"SMS template '{template_name}' not found or inactive")
+    
+    campaign = SMSCampaign.objects.create(
+        name=name,
+        template=template,
+        created_by=created_by,
+        scheduled_at=scheduled_at,
+        target_roles=target_roles or [],
+        target_tenant_status=target_tenant_status or [],
+    )
+    
+    if target_users:
+        campaign.target_users.set(target_users)
+    
+    # Update total recipients count
+    campaign.total_recipients = campaign.get_target_users().filter(phone__isnull=False).exclude(phone='').count()
+    campaign.save()
+    
+    logger.info(f"Created SMS campaign '{name}' targeting {campaign.total_recipients} users")
+    
+    return campaign
+
+
+def send_sms_campaign(campaign: SMSCampaign, context: Optional[Dict] = None) -> int:
+    """
+    Send an SMS campaign to all targeted users.
+    
+    Args:
+        campaign: SMSCampaign instance
+        context: Optional context variables for template rendering
+        
+    Returns:
+        Number of SMS sent
+    """
+    if campaign.status != "DRAFT" and campaign.status != "SCHEDULED":
+        raise ValueError(f"Campaign '{campaign.name}' cannot be sent (status: {campaign.status})")
+    
+    campaign.status = "SENDING"
+    campaign.save()
+    
+    target_users = campaign.get_target_users().filter(phone__isnull=False).exclude(phone='')
+    context = context or {}
+    sent_count = 0
+    
+    for user in target_users:
+        sms_notification = send_sms_from_template(
+            user=user,
+            template_name=campaign.template.name,
+            context=context,
+            sms_type="MARKETING",
+            campaign_id=str(campaign.id),
+        )
+        if sms_notification:
+            sent_count += 1
+    
+    # Update campaign status and statistics
+    campaign.status = "SENT"
+    campaign.sent_at = timezone.now()
+    campaign.sms_sent = sent_count
+    campaign.save()
+    
+    logger.info(f"SMS campaign '{campaign.name}' sent to {sent_count} users")
+    
+    return sent_count
+
+
+def process_scheduled_sms():
+    """
+    Process scheduled SMS that are ready to be sent.
+    This function should be called by a Celery task.
+    
+    Returns:
+        Number of SMS processed
+    """
+    now = timezone.now()
+    
+    # Process scheduled individual SMS
+    scheduled_sms = SMSNotification.objects.filter(status="PENDING", scheduled_at__lte=now)
+    
+    processed_count = 0
+    
+    for sms_notification in scheduled_sms:
+        try:
+            _send_sms_now(sms_notification)
+            processed_count += 1
+        except Exception as e:
+            sms_notification.update_status("FAILED", error_message=str(e))
+            logger.error(f"Failed to send scheduled SMS {sms_notification.id}: {str(e)}")
+    
+    # Process scheduled campaigns
+    scheduled_campaigns = SMSCampaign.objects.filter(status="SCHEDULED", scheduled_at__lte=now)
+    
+    for campaign in scheduled_campaigns:
+        try:
+            send_sms_campaign(campaign)
+        except Exception as e:
+            campaign.status = "CANCELLED"
+            campaign.save()
+            logger.error(f"Failed to send scheduled SMS campaign {campaign.id}: {str(e)}")
+    
+    logger.info(f"Processed {processed_count} scheduled SMS")
+    
+    return processed_count
+
+
+def track_sms_event(
+    message_sid: str, event_type: str, timestamp: Optional[timezone.datetime] = None, **kwargs
+):
+    """
+    Track SMS delivery events from Twilio webhook callbacks.
+    
+    Args:
+        message_sid: Twilio message SID
+        event_type: Type of event (sent, delivered, failed, undelivered)
+        timestamp: Event timestamp
+        **kwargs: Additional event data (error_code, error_message, etc.)
+    """
+    try:
+        sms_notification = SMSNotification.objects.get(message_sid=message_sid)
+        
+        status_mapping = {
+            "queued": "QUEUED",
+            "sent": "SENT",
+            "delivered": "DELIVERED",
+            "failed": "FAILED",
+            "undelivered": "UNDELIVERED",
+        }
+        
+        status = status_mapping.get(event_type.lower())
+        if status:
+            sms_notification.update_status(
+                status=status,
+                timestamp=timestamp,
+                error_message=kwargs.get("error_message"),
+                error_code=kwargs.get("error_code"),
+            )
+            
+            # Update campaign statistics if this is a campaign SMS
+            if sms_notification.campaign_id:
+                try:
+                    campaign = SMSCampaign.objects.get(id=sms_notification.campaign_id)
+                    campaign.update_statistics()
+                except SMSCampaign.DoesNotExist:
+                    pass
+            
+            logger.info(f"Updated SMS {message_sid} status to {status}")
+    
+    except SMSNotification.DoesNotExist:
+        logger.warning(f"SMS notification with message_sid {message_sid} not found")
+
+
+def get_sms_statistics(user: Optional[User] = None, campaign_id: Optional[str] = None) -> Dict:
+    """
+    Get SMS delivery statistics.
+    
+    Args:
+        user: Optional user to filter statistics for
+        campaign_id: Optional campaign ID to filter statistics for
+        
+    Returns:
+        Dictionary with SMS statistics
+    """
+    queryset = SMSNotification.objects.all()
+    
+    if user:
+        queryset = queryset.filter(user=user)
+    
+    if campaign_id:
+        queryset = queryset.filter(campaign_id=campaign_id)
+    
+    stats = {
+        "total": queryset.count(),
+        "sent": queryset.filter(status__in=["SENT", "DELIVERED"]).count(),
+        "delivered": queryset.filter(status="DELIVERED").count(),
+        "failed": queryset.filter(status__in=["FAILED", "UNDELIVERED"]).count(),
+        "pending": queryset.filter(status="PENDING").count(),
+        "queued": queryset.filter(status="QUEUED").count(),
+    }
+    
+    # Calculate rates
+    if stats["sent"] > 0:
+        stats["delivery_rate"] = round((stats["delivered"] / stats["sent"]) * 100, 2)
+        stats["failure_rate"] = round((stats["failed"] / stats["sent"]) * 100, 2)
+    else:
+        stats["delivery_rate"] = 0
+        stats["failure_rate"] = 0
+    
+    # Calculate total cost
+    total_cost = queryset.aggregate(
+        total=models.Sum('price')
+    )['total'] or 0
+    stats["total_cost"] = float(total_cost)
+    
     return stats

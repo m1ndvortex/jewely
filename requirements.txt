@@ -57,3 +57,6 @@ requests==2.31.0
 
 # Email
 django-anymail==10.2
+
+# SMS
+twilio==8.10.3
