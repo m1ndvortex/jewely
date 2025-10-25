@@ -448,3 +448,10 @@ GUARDIAN_RAISE_403 = True  # Raise PermissionDenied exception for DRF compatibil
 # Metals-API: https://metals-api.com/ (free tier available)
 GOLDAPI_KEY = os.getenv("GOLDAPI_KEY", None)
 METALS_API_KEY = os.getenv("METALS_API_KEY", None)
+
+# Field Encryption Settings
+# For encrypting sensitive integration credentials
+FIELD_ENCRYPTION_KEY = os.getenv(
+    "FIELD_ENCRYPTION_KEY", 
+    "ZmDfcTF7_60GrrY167zsiPd67pEvs0aGOv2oasOM1Pg="  # Default key for development only
+)

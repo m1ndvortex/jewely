@@ -18,7 +18,6 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView, UpdateView
@@ -28,7 +27,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .decorators import tenant_required
-from .forms import InvoiceSettingsForm, TenantSettingsForm
+from .forms import IntegrationSettingsForm, InvoiceSettingsForm, TenantSettingsForm
 from .models import IntegrationSettings, InvoiceSettings, TenantSettings
 from .permissions import TenantPermissionMixin
 from .serializers import (
@@ -354,113 +353,36 @@ class InvoiceCustomizationView(LoginRequiredMixin, TenantPermissionMixin, Update
         return super().form_invalid(form)
 
 
-class IntegrationSettingsView(LoginRequiredMixin, TenantPermissionMixin, TemplateView):
+class IntegrationSettingsView(LoginRequiredMixin, TenantPermissionMixin, UpdateView):
     """
     Integration settings page.
     Handles payment gateway, SMS provider, and email service configuration.
     """
 
+    model = IntegrationSettings
+    form_class = IntegrationSettingsForm
     template_name = "core/settings/integration_settings.html"
+    success_url = reverse_lazy("core:settings_integration")
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def get_object(self, queryset=None):
+        """Get or create IntegrationSettings for current tenant."""
         integration_settings, _ = IntegrationSettings.objects.get_or_create(
             tenant=self.request.user.tenant
         )
+        return integration_settings
 
-        context.update(
-            {
-                "integration_settings": integration_settings,
-                "active_tab": "integration",
-            }
-        )
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["active_tab"] = "integration"
         return context
 
-    def post(self, request, *args, **kwargs):
-        """Handle integration settings updates."""
-        integration_settings, _ = IntegrationSettings.objects.get_or_create(
-            tenant=request.user.tenant
-        )
+    def form_valid(self, form):
+        messages.success(self.request, "Integration settings updated successfully.")
+        return super().form_valid(form)
 
-        section = request.POST.get("section")
-
-        try:
-            if section == "payment":
-                # Payment gateway settings
-                integration_settings.payment_gateway_enabled = (
-                    request.POST.get("payment_gateway_enabled") == "on"
-                )
-                integration_settings.payment_gateway_provider = request.POST.get(
-                    "payment_gateway_provider", ""
-                )
-                integration_settings.payment_gateway_test_mode = (
-                    request.POST.get("payment_gateway_test_mode") == "on"
-                )
-
-                # Encrypt and store API credentials
-                api_key = request.POST.get("payment_gateway_api_key", "")
-                secret_key = request.POST.get("payment_gateway_secret_key", "")
-
-                if api_key:
-                    integration_settings.set_payment_gateway_api_key(api_key)
-                if secret_key:
-                    integration_settings.set_payment_gateway_secret_key(secret_key)
-
-                messages.success(request, "Payment gateway settings updated successfully.")
-
-            elif section == "sms":
-                # SMS provider settings
-                integration_settings.sms_provider_enabled = (
-                    request.POST.get("sms_provider_enabled") == "on"
-                )
-                integration_settings.sms_provider = request.POST.get("sms_provider", "")
-                integration_settings.sms_sender_id = request.POST.get("sms_sender_id", "")
-
-                # Encrypt and store API credentials
-                api_key = request.POST.get("sms_api_key", "")
-                api_secret = request.POST.get("sms_api_secret", "")
-
-                if api_key:
-                    integration_settings.set_sms_api_key(api_key)
-                if api_secret:
-                    integration_settings.set_sms_api_secret(api_secret)
-
-                messages.success(request, "SMS provider settings updated successfully.")
-
-            elif section == "email":
-                # Email provider settings
-                integration_settings.email_provider_enabled = (
-                    request.POST.get("email_provider_enabled") == "on"
-                )
-                integration_settings.email_provider = request.POST.get("email_provider", "")
-                integration_settings.email_from_address = request.POST.get("email_from_address", "")
-                integration_settings.email_from_name = request.POST.get("email_from_name", "")
-
-                # Handle different provider types
-                if integration_settings.email_provider == "smtp":
-                    integration_settings.smtp_host = request.POST.get("smtp_host", "")
-                    integration_settings.smtp_port = request.POST.get("smtp_port") or None
-                    integration_settings.smtp_username = request.POST.get("smtp_username", "")
-                    integration_settings.smtp_use_tls = request.POST.get("smtp_use_tls") == "on"
-
-                    # Encrypt SMTP password
-                    smtp_password = request.POST.get("smtp_password", "")
-                    if smtp_password:
-                        integration_settings.set_smtp_password(smtp_password)
-                else:
-                    # API-based email provider
-                    api_key = request.POST.get("email_api_key", "")
-                    if api_key:
-                        integration_settings.set_email_api_key(api_key)
-
-                messages.success(request, "Email provider settings updated successfully.")
-
-            integration_settings.save()
-
-        except Exception as e:
-            messages.error(request, f"Error updating integration settings: {e}")
-
-        return redirect("core:settings_integration")
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
 
 
 class DataManagementView(LoginRequiredMixin, TenantPermissionMixin, TemplateView):

@@ -609,3 +609,131 @@ class InvoiceSettingsModelTestCase(TestCase):
         # Check that counter was incremented
         updated_settings = InvoiceSettings.objects.get(id=settings.id)
         self.assertEqual(updated_settings.next_receipt_number, 2)
+
+
+class IntegrationSettingsFormTestCase(TestCase):
+    """Test cases for IntegrationSettingsForm."""
+
+    def setUp(self):
+        """Set up test data."""
+        # Enable RLS bypass for tests
+        from apps.core.tenant_context import enable_rls_bypass
+
+        enable_rls_bypass()
+
+        self.tenant = Tenant.objects.create(
+            company_name="Test Shop",
+            slug="test-shop",
+            status="ACTIVE",
+        )
+
+        self.integration_settings = IntegrationSettings.objects.create(tenant=self.tenant)
+
+    def test_form_validation_payment_gateway(self):
+        """Test form validation for payment gateway settings."""
+        from apps.core.forms import IntegrationSettingsForm
+
+        # Test that provider is required when payment gateway is enabled
+        form_data = {
+            "payment_gateway_enabled": True,
+            "payment_gateway_provider": "",  # Empty provider
+        }
+
+        form = IntegrationSettingsForm(data=form_data, instance=self.integration_settings)
+        self.assertFalse(form.is_valid())
+        self.assertIn("payment_gateway_provider", form.errors)
+
+    def test_form_validation_sms_provider(self):
+        """Test form validation for SMS provider settings."""
+        from apps.core.forms import IntegrationSettingsForm
+
+        # Test that provider is required when SMS is enabled
+        form_data = {
+            "sms_provider_enabled": True,
+            "sms_provider": "",  # Empty provider
+        }
+
+        form = IntegrationSettingsForm(data=form_data, instance=self.integration_settings)
+        self.assertFalse(form.is_valid())
+        self.assertIn("sms_provider", form.errors)
+
+    def test_form_validation_email_provider(self):
+        """Test form validation for email provider settings."""
+        from apps.core.forms import IntegrationSettingsForm
+
+        # Test that provider is required when email is enabled
+        form_data = {
+            "email_provider_enabled": True,
+            "email_provider": "",  # Empty provider
+        }
+
+        form = IntegrationSettingsForm(data=form_data, instance=self.integration_settings)
+        self.assertFalse(form.is_valid())
+        self.assertIn("email_provider", form.errors)
+
+    def test_form_validation_smtp_settings(self):
+        """Test form validation for SMTP settings."""
+        from apps.core.forms import IntegrationSettingsForm
+
+        # Test that SMTP host is required when SMTP provider is selected
+        form_data = {
+            "email_provider_enabled": True,
+            "email_provider": "smtp",
+            "smtp_host": "",  # Empty host
+        }
+
+        form = IntegrationSettingsForm(data=form_data, instance=self.integration_settings)
+        self.assertFalse(form.is_valid())
+        self.assertIn("smtp_host", form.errors)
+
+        # Test that SMTP port is required when SMTP provider is selected
+        form_data = {
+            "email_provider_enabled": True,
+            "email_provider": "smtp",
+            "smtp_host": "smtp.gmail.com",
+            "smtp_port": "",  # Empty port
+        }
+
+        form = IntegrationSettingsForm(data=form_data, instance=self.integration_settings)
+        self.assertFalse(form.is_valid())
+        self.assertIn("smtp_port", form.errors)
+
+    def test_form_save_with_encrypted_fields(self):
+        """Test form save with encrypted credential fields."""
+        from apps.core.forms import IntegrationSettingsForm
+
+        form_data = {
+            "payment_gateway_enabled": True,
+            "payment_gateway_provider": "stripe",
+            "payment_gateway_test_mode": True,
+            "payment_gateway_api_key_input": "test_api_key",
+            "payment_gateway_secret_key_input": "test_secret_key",
+            "sms_provider_enabled": True,
+            "sms_provider": "twilio",
+            "sms_sender_id": "+1234567890",
+            "sms_api_key_input": "test_sms_key",
+            "sms_api_secret_input": "test_sms_secret",
+        }
+
+        form = IntegrationSettingsForm(data=form_data, instance=self.integration_settings)
+        if not form.is_valid():
+            print("Form errors:", form.errors)
+        self.assertTrue(form.is_valid())
+
+        saved_instance = form.save()
+
+        # Check that settings were saved
+        self.assertTrue(saved_instance.payment_gateway_enabled)
+        self.assertEqual(saved_instance.payment_gateway_provider, "stripe")
+        self.assertTrue(saved_instance.payment_gateway_test_mode)
+        self.assertTrue(saved_instance.sms_provider_enabled)
+        self.assertEqual(saved_instance.sms_provider, "twilio")
+        self.assertEqual(saved_instance.sms_sender_id, "+1234567890")
+
+        # Check that encrypted fields were set (they should not be empty)
+        self.assertNotEqual(saved_instance.payment_gateway_api_key, "")
+        self.assertNotEqual(saved_instance.payment_gateway_secret_key, "")
+        self.assertNotEqual(saved_instance.sms_api_key, "")
+        self.assertNotEqual(saved_instance.sms_api_secret, "")
+
+

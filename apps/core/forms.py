@@ -4,7 +4,7 @@ Forms for core app settings and configuration.
 
 from django import forms
 
-from .models import InvoiceSettings, TenantSettings
+from .models import IntegrationSettings, InvoiceSettings, TenantSettings
 
 
 class TenantSettingsForm(forms.ModelForm):
@@ -378,3 +378,341 @@ class InvoiceSettingsForm(forms.ModelForm):
             raise forms.ValidationError(f"Invalid format string: {e}")
 
         return format_str
+
+
+class IntegrationSettingsForm(forms.ModelForm):
+    """
+    Form for editing integration settings including payment gateways, SMS providers, and email services.
+    """
+
+    # Custom fields for sensitive data that need special handling
+    payment_gateway_api_key_input = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                "placeholder": "Enter API key (leave blank to keep existing)",
+            }
+        ),
+        help_text="Leave blank to keep existing API key",
+    )
+
+    payment_gateway_secret_key_input = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                "placeholder": "Enter secret key (leave blank to keep existing)",
+            }
+        ),
+        help_text="Leave blank to keep existing secret key",
+    )
+
+    sms_api_key_input = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                "placeholder": "Enter API key (leave blank to keep existing)",
+            }
+        ),
+        help_text="Leave blank to keep existing API key",
+    )
+
+    sms_api_secret_input = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                "placeholder": "Enter API secret (leave blank to keep existing)",
+            }
+        ),
+        help_text="Leave blank to keep existing API secret",
+    )
+
+    email_api_key_input = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                "placeholder": "Enter API key (leave blank to keep existing)",
+            }
+        ),
+        help_text="Leave blank to keep existing API key",
+    )
+
+    smtp_password_input = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                "placeholder": "Enter SMTP password (leave blank to keep existing)",
+            }
+        ),
+        help_text="Leave blank to keep existing SMTP password",
+    )
+
+    class Meta:
+        model = IntegrationSettings
+        fields = [
+            # Payment Gateway
+            "payment_gateway_enabled",
+            "payment_gateway_provider",
+            "payment_gateway_test_mode",
+            # SMS Provider
+            "sms_provider_enabled",
+            "sms_provider",
+            "sms_sender_id",
+            # Email Provider
+            "email_provider_enabled",
+            "email_provider",
+            "email_from_address",
+            "email_from_name",
+            # SMTP Settings
+            "smtp_host",
+            "smtp_port",
+            "smtp_username",
+            "smtp_use_tls",
+            # Gold Rate API
+            "gold_rate_api_enabled",
+            "gold_rate_api_provider",
+            "gold_rate_update_frequency",
+            # Webhook Settings
+            "webhook_url",
+        ]
+
+        widgets = {
+            # Payment Gateway
+            "payment_gateway_enabled": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700",
+                }
+            ),
+            "payment_gateway_provider": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                }
+            ),
+            "payment_gateway_test_mode": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700",
+                }
+            ),
+            # SMS Provider
+            "sms_provider_enabled": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700",
+                }
+            ),
+            "sms_provider": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                }
+            ),
+            "sms_sender_id": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "+1234567890",
+                }
+            ),
+            # Email Provider
+            "email_provider_enabled": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700",
+                }
+            ),
+            "email_provider": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "onchange": "toggleEmailProvider()",
+                }
+            ),
+            "email_from_address": forms.EmailInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "noreply@yourshop.com",
+                }
+            ),
+            "email_from_name": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "Your Jewelry Shop",
+                }
+            ),
+            # SMTP Settings
+            "smtp_host": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "smtp.gmail.com",
+                }
+            ),
+            "smtp_port": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "587",
+                    "min": "1",
+                    "max": "65535",
+                }
+            ),
+            "smtp_username": forms.TextInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "your-email@gmail.com",
+                }
+            ),
+            "smtp_use_tls": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700",
+                }
+            ),
+            # Gold Rate API
+            "gold_rate_api_enabled": forms.CheckboxInput(
+                attrs={
+                    "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700",
+                }
+            ),
+            "gold_rate_api_provider": forms.Select(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                }
+            ),
+            "gold_rate_update_frequency": forms.NumberInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "60",
+                    "min": "1",
+                    "max": "1440",
+                }
+            ),
+            # Webhook Settings
+            "webhook_url": forms.URLInput(
+                attrs={
+                    "class": "mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm",
+                    "placeholder": "https://your-app.com/webhook",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Add provider choices dynamically
+        self.fields["payment_gateway_provider"].choices = [
+            ("", "Select Provider"),
+            ("stripe", "Stripe"),
+            ("paypal", "PayPal"),
+            ("square", "Square"),
+            ("razorpay", "Razorpay"),
+        ]
+
+        self.fields["sms_provider"].choices = [
+            ("", "Select Provider"),
+            ("twilio", "Twilio"),
+            ("nexmo", "Vonage (Nexmo)"),
+            ("aws_sns", "AWS SNS"),
+        ]
+
+        self.fields["email_provider"].choices = [
+            ("", "Select Provider"),
+            ("sendgrid", "SendGrid"),
+            ("mailgun", "Mailgun"),
+            ("aws_ses", "AWS SES"),
+            ("smtp", "SMTP"),
+        ]
+
+        self.fields["gold_rate_api_provider"].choices = [
+            ("", "Select Provider"),
+            ("goldapi", "GoldAPI"),
+            ("metals_api", "Metals-API"),
+            ("fixer", "Fixer.io"),
+        ]
+
+        # Make all fields optional by default
+        for field_name, field in self.fields.items():
+            if not field_name.endswith("_input"):
+                field.required = False
+
+    def clean_payment_gateway_provider(self):
+        """Validate payment gateway provider when enabled."""
+        enabled = self.cleaned_data.get("payment_gateway_enabled", False)
+        provider = self.cleaned_data.get("payment_gateway_provider", "")
+
+        if enabled and not provider:
+            raise forms.ValidationError("Provider is required when payment gateway is enabled.")
+
+        return provider
+
+    def clean_sms_provider(self):
+        """Validate SMS provider when enabled."""
+        enabled = self.cleaned_data.get("sms_provider_enabled", False)
+        provider = self.cleaned_data.get("sms_provider", "")
+
+        if enabled and not provider:
+            raise forms.ValidationError("Provider is required when SMS is enabled.")
+
+        return provider
+
+    def clean_email_provider(self):
+        """Validate email provider when enabled."""
+        enabled = self.cleaned_data.get("email_provider_enabled", False)
+        provider = self.cleaned_data.get("email_provider", "")
+
+        if enabled and not provider:
+            raise forms.ValidationError("Provider is required when email is enabled.")
+
+        return provider
+
+    def clean_smtp_host(self):
+        """Validate SMTP host when SMTP provider is selected."""
+        email_provider = self.cleaned_data.get("email_provider", "")
+        smtp_host = self.cleaned_data.get("smtp_host", "")
+
+        if email_provider == "smtp" and not smtp_host:
+            raise forms.ValidationError("SMTP host is required when using SMTP provider.")
+
+        return smtp_host
+
+    def clean_smtp_port(self):
+        """Validate SMTP port when SMTP provider is selected."""
+        email_provider = self.cleaned_data.get("email_provider", "")
+        smtp_port = self.cleaned_data.get("smtp_port")
+
+        if email_provider == "smtp" and not smtp_port:
+            raise forms.ValidationError("SMTP port is required when using SMTP provider.")
+
+        if smtp_port and (smtp_port < 1 or smtp_port > 65535):
+            raise forms.ValidationError("SMTP port must be between 1 and 65535.")
+
+        return smtp_port
+
+
+
+    def save(self, commit=True):
+        """Save the form and handle encrypted fields."""
+        instance = super().save(commit=False)
+
+        # Handle encrypted fields
+        if self.cleaned_data.get("payment_gateway_api_key_input"):
+            instance.set_payment_gateway_api_key(self.cleaned_data["payment_gateway_api_key_input"])
+
+        if self.cleaned_data.get("payment_gateway_secret_key_input"):
+            instance.set_payment_gateway_secret_key(
+                self.cleaned_data["payment_gateway_secret_key_input"]
+            )
+
+        if self.cleaned_data.get("sms_api_key_input"):
+            instance.set_sms_api_key(self.cleaned_data["sms_api_key_input"])
+
+        if self.cleaned_data.get("sms_api_secret_input"):
+            instance.set_sms_api_secret(self.cleaned_data["sms_api_secret_input"])
+
+        if self.cleaned_data.get("email_api_key_input"):
+            instance.set_email_api_key(self.cleaned_data["email_api_key_input"])
+
+        if self.cleaned_data.get("smtp_password_input"):
+            instance.set_smtp_password(self.cleaned_data["smtp_password_input"])
+
+        if commit:
+            instance.save()
+
+        return instance

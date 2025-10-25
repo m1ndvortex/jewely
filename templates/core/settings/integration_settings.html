@@ -50,236 +50,205 @@
             </div>
         </div>
 
-        <div class="space-y-8">
+        <!-- Integration Settings Form -->
+        <form method="post" class="space-y-8">
+            {% csrf_token %}
+            
             <!-- Payment Gateway Settings -->
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Payment Gateway</h3>
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-                    <input type="hidden" name="section" value="payment">
-                    
+                
+                <div class="space-y-6">
                     <div class="flex items-center">
-                        <input type="checkbox" 
-                               id="payment_gateway_enabled" 
-                               name="payment_gateway_enabled"
-                               {% if integration_settings.payment_gateway_enabled %}checked{% endif %}
-                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
-                        <label for="payment_gateway_enabled" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        {{ form.payment_gateway_enabled }}
+                        <label for="{{ form.payment_gateway_enabled.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                             Enable payment gateway integration
                         </label>
                     </div>
+                    {% if form.payment_gateway_enabled.errors %}
+                        <div class="text-red-600 text-sm">{{ form.payment_gateway_enabled.errors }}</div>
+                    {% endif %}
 
-                    <div id="payment_settings" class="{% if not integration_settings.payment_gateway_enabled %}opacity-50{% endif %}">
+                    <div id="payment_settings" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="payment_gateway_provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.payment_gateway_provider.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Provider
                                 </label>
-                                <select id="payment_gateway_provider" 
-                                        name="payment_gateway_provider"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
-                                    <option value="">Select Provider</option>
-                                    <option value="stripe" {% if integration_settings.payment_gateway_provider == 'stripe' %}selected{% endif %}>Stripe</option>
-                                    <option value="paypal" {% if integration_settings.payment_gateway_provider == 'paypal' %}selected{% endif %}>PayPal</option>
-                                    <option value="square" {% if integration_settings.payment_gateway_provider == 'square' %}selected{% endif %}>Square</option>
-                                    <option value="razorpay" {% if integration_settings.payment_gateway_provider == 'razorpay' %}selected{% endif %}>Razorpay</option>
-                                </select>
+                                {{ form.payment_gateway_provider }}
+                                {% if form.payment_gateway_provider.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.payment_gateway_provider.errors }}</div>
+                                {% endif %}
                             </div>
 
                             <div class="flex items-center">
-                                <input type="checkbox" 
-                                       id="payment_gateway_test_mode" 
-                                       name="payment_gateway_test_mode"
-                                       {% if integration_settings.payment_gateway_test_mode %}checked{% endif %}
-                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
-                                <label for="payment_gateway_test_mode" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                {{ form.payment_gateway_test_mode }}
+                                <label for="{{ form.payment_gateway_test_mode.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                                     Test mode (sandbox)
                                 </label>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="payment_gateway_api_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.payment_gateway_api_key_input.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     API Key
                                 </label>
-                                <input type="password" 
-                                       id="payment_gateway_api_key" 
-                                       name="payment_gateway_api_key"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="Enter API key">
+                                {{ form.payment_gateway_api_key_input }}
+                                {% if form.payment_gateway_api_key_input.help_text %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ form.payment_gateway_api_key_input.help_text }}</p>
+                                {% endif %}
+                                {% if form.payment_gateway_api_key_input.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.payment_gateway_api_key_input.errors }}</div>
+                                {% endif %}
                             </div>
 
                             <div>
-                                <label for="payment_gateway_secret_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.payment_gateway_secret_key_input.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Secret Key
                                 </label>
-                                <input type="password" 
-                                       id="payment_gateway_secret_key" 
-                                       name="payment_gateway_secret_key"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="Enter secret key">
+                                {{ form.payment_gateway_secret_key_input }}
+                                {% if form.payment_gateway_secret_key_input.help_text %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ form.payment_gateway_secret_key_input.help_text }}</p>
+                                {% endif %}
+                                {% if form.payment_gateway_secret_key_input.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.payment_gateway_secret_key_input.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
-
-                    <button type="submit" 
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Save Payment Settings
-                    </button>
-                </form>
+                </div>
             </div>
 
             <!-- SMS Provider Settings -->
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">SMS Provider</h3>
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-                    <input type="hidden" name="section" value="sms">
-                    
+                
+                <div class="space-y-6">
                     <div class="flex items-center">
-                        <input type="checkbox" 
-                               id="sms_provider_enabled" 
-                               name="sms_provider_enabled"
-                               {% if integration_settings.sms_provider_enabled %}checked{% endif %}
-                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
-                        <label for="sms_provider_enabled" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        {{ form.sms_provider_enabled }}
+                        <label for="{{ form.sms_provider_enabled.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                             Enable SMS notifications
                         </label>
                     </div>
+                    {% if form.sms_provider_enabled.errors %}
+                        <div class="text-red-600 text-sm">{{ form.sms_provider_enabled.errors }}</div>
+                    {% endif %}
 
-                    <div id="sms_settings" class="{% if not integration_settings.sms_provider_enabled %}opacity-50{% endif %}">
+                    <div id="sms_settings" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="sms_provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.sms_provider.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Provider
                                 </label>
-                                <select id="sms_provider" 
-                                        name="sms_provider"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
-                                    <option value="">Select Provider</option>
-                                    <option value="twilio" {% if integration_settings.sms_provider == 'twilio' %}selected{% endif %}>Twilio</option>
-                                    <option value="nexmo" {% if integration_settings.sms_provider == 'nexmo' %}selected{% endif %}>Vonage (Nexmo)</option>
-                                    <option value="aws_sns" {% if integration_settings.sms_provider == 'aws_sns' %}selected{% endif %}>AWS SNS</option>
-                                </select>
+                                {{ form.sms_provider }}
+                                {% if form.sms_provider.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.sms_provider.errors }}</div>
+                                {% endif %}
                             </div>
 
                             <div>
-                                <label for="sms_sender_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.sms_sender_id.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Sender ID / Phone Number
                                 </label>
-                                <input type="text" 
-                                       id="sms_sender_id" 
-                                       name="sms_sender_id"
-                                       value="{{ integration_settings.sms_sender_id }}"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="+1234567890">
+                                {{ form.sms_sender_id }}
+                                {% if form.sms_sender_id.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.sms_sender_id.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="sms_api_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.sms_api_key_input.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     API Key / Account SID
                                 </label>
-                                <input type="password" 
-                                       id="sms_api_key" 
-                                       name="sms_api_key"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="Enter API key">
+                                {{ form.sms_api_key_input }}
+                                {% if form.sms_api_key_input.help_text %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ form.sms_api_key_input.help_text }}</p>
+                                {% endif %}
+                                {% if form.sms_api_key_input.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.sms_api_key_input.errors }}</div>
+                                {% endif %}
                             </div>
 
                             <div>
-                                <label for="sms_api_secret" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.sms_api_secret_input.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     API Secret / Auth Token
                                 </label>
-                                <input type="password" 
-                                       id="sms_api_secret" 
-                                       name="sms_api_secret"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="Enter API secret">
+                                {{ form.sms_api_secret_input }}
+                                {% if form.sms_api_secret_input.help_text %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ form.sms_api_secret_input.help_text }}</p>
+                                {% endif %}
+                                {% if form.sms_api_secret_input.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.sms_api_secret_input.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
-
-                    <button type="submit" 
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Save SMS Settings
-                    </button>
-                </form>
+                </div>
             </div>
 
             <!-- Email Provider Settings -->
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Email Provider</h3>
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-                    <input type="hidden" name="section" value="email">
-                    
+                
+                <div class="space-y-6">
                     <div class="flex items-center">
-                        <input type="checkbox" 
-                               id="email_provider_enabled" 
-                               name="email_provider_enabled"
-                               {% if integration_settings.email_provider_enabled %}checked{% endif %}
-                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
-                        <label for="email_provider_enabled" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        {{ form.email_provider_enabled }}
+                        <label for="{{ form.email_provider_enabled.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                             Enable custom email provider (uses Django default if disabled)
                         </label>
                     </div>
+                    {% if form.email_provider_enabled.errors %}
+                        <div class="text-red-600 text-sm">{{ form.email_provider_enabled.errors }}</div>
+                    {% endif %}
 
-                    <div id="email_settings" class="{% if not integration_settings.email_provider_enabled %}opacity-50{% endif %}">
+                    <div id="email_settings" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="email_provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.email_provider.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Provider
                                 </label>
-                                <select id="email_provider" 
-                                        name="email_provider"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                        onchange="toggleEmailProvider()">
-                                    <option value="">Select Provider</option>
-                                    <option value="sendgrid" {% if integration_settings.email_provider == 'sendgrid' %}selected{% endif %}>SendGrid</option>
-                                    <option value="mailgun" {% if integration_settings.email_provider == 'mailgun' %}selected{% endif %}>Mailgun</option>
-                                    <option value="aws_ses" {% if integration_settings.email_provider == 'aws_ses' %}selected{% endif %}>AWS SES</option>
-                                    <option value="smtp" {% if integration_settings.email_provider == 'smtp' %}selected{% endif %}>SMTP</option>
-                                </select>
+                                {{ form.email_provider }}
+                                {% if form.email_provider.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.email_provider.errors }}</div>
+                                {% endif %}
                             </div>
 
                             <div>
-                                <label for="email_from_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.email_from_address.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     From Email Address
                                 </label>
-                                <input type="email" 
-                                       id="email_from_address" 
-                                       name="email_from_address"
-                                       value="{{ integration_settings.email_from_address }}"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="noreply@yourshop.com">
+                                {{ form.email_from_address }}
+                                {% if form.email_from_address.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.email_from_address.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="email_from_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.email_from_name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     From Name
                                 </label>
-                                <input type="text" 
-                                       id="email_from_name" 
-                                       name="email_from_name"
-                                       value="{{ integration_settings.email_from_name }}"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="Your Jewelry Shop">
+                                {{ form.email_from_name }}
+                                {% if form.email_from_name.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.email_from_name.errors }}</div>
+                                {% endif %}
                             </div>
 
                             <div id="email_api_key_div">
-                                <label for="email_api_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label for="{{ form.email_api_key_input.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     API Key
                                 </label>
-                                <input type="password" 
-                                       id="email_api_key" 
-                                       name="email_api_key"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                       placeholder="Enter API key">
+                                {{ form.email_api_key_input }}
+                                {% if form.email_api_key_input.help_text %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ form.email_api_key_input.help_text }}</p>
+                                {% endif %}
+                                {% if form.email_api_key_input.errors %}
+                                    <div class="text-red-600 text-sm">{{ form.email_api_key_input.errors }}</div>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -288,73 +257,125 @@
                             <h4 class="text-md font-medium text-gray-900 dark:text-white">SMTP Configuration</h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label for="smtp_host" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label for="{{ form.smtp_host.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                         SMTP Host
                                     </label>
-                                    <input type="text" 
-                                           id="smtp_host" 
-                                           name="smtp_host"
-                                           value="{{ integration_settings.smtp_host }}"
-                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                           placeholder="smtp.gmail.com">
+                                    {{ form.smtp_host }}
+                                    {% if form.smtp_host.errors %}
+                                        <div class="text-red-600 text-sm">{{ form.smtp_host.errors }}</div>
+                                    {% endif %}
                                 </div>
 
                                 <div>
-                                    <label for="smtp_port" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label for="{{ form.smtp_port.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                         SMTP Port
                                     </label>
-                                    <input type="number" 
-                                           id="smtp_port" 
-                                           name="smtp_port"
-                                           value="{{ integration_settings.smtp_port }}"
-                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                           placeholder="587">
+                                    {{ form.smtp_port }}
+                                    {% if form.smtp_port.errors %}
+                                        <div class="text-red-600 text-sm">{{ form.smtp_port.errors }}</div>
+                                    {% endif %}
                                 </div>
 
                                 <div>
-                                    <label for="smtp_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label for="{{ form.smtp_username.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                         SMTP Username
                                     </label>
-                                    <input type="text" 
-                                           id="smtp_username" 
-                                           name="smtp_username"
-                                           value="{{ integration_settings.smtp_username }}"
-                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                           placeholder="your-email@gmail.com">
+                                    {{ form.smtp_username }}
+                                    {% if form.smtp_username.errors %}
+                                        <div class="text-red-600 text-sm">{{ form.smtp_username.errors }}</div>
+                                    {% endif %}
                                 </div>
 
                                 <div>
-                                    <label for="smtp_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    <label for="{{ form.smtp_password_input.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                         SMTP Password
                                     </label>
-                                    <input type="password" 
-                                           id="smtp_password" 
-                                           name="smtp_password"
-                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                           placeholder="Enter SMTP password">
+                                    {{ form.smtp_password_input }}
+                                    {% if form.smtp_password_input.help_text %}
+                                        <p class="text-xs text-gray-500 mt-1">{{ form.smtp_password_input.help_text }}</p>
+                                    {% endif %}
+                                    {% if form.smtp_password_input.errors %}
+                                        <div class="text-red-600 text-sm">{{ form.smtp_password_input.errors }}</div>
+                                    {% endif %}
                                 </div>
                             </div>
 
                             <div class="flex items-center">
-                                <input type="checkbox" 
-                                       id="smtp_use_tls" 
-                                       name="smtp_use_tls"
-                                       {% if integration_settings.smtp_use_tls %}checked{% endif %}
-                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
-                                <label for="smtp_use_tls" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                {{ form.smtp_use_tls }}
+                                <label for="{{ form.smtp_use_tls.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                                     Use TLS encryption
                                 </label>
                             </div>
                         </div>
                     </div>
-
-                    <button type="submit" 
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Save Email Settings
-                    </button>
-                </form>
+                </div>
             </div>
-        </div>
+
+            <!-- Gold Rate API Settings -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Gold Rate API</h3>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center">
+                        {{ form.gold_rate_api_enabled }}
+                        <label for="{{ form.gold_rate_api_enabled.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            Enable automatic gold rate updates
+                        </label>
+                    </div>
+                    {% if form.gold_rate_api_enabled.errors %}
+                        <div class="text-red-600 text-sm">{{ form.gold_rate_api_enabled.errors }}</div>
+                    {% endif %}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="{{ form.gold_rate_api_provider.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Provider
+                            </label>
+                            {{ form.gold_rate_api_provider }}
+                            {% if form.gold_rate_api_provider.errors %}
+                                <div class="text-red-600 text-sm">{{ form.gold_rate_api_provider.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label for="{{ form.gold_rate_update_frequency.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Update Frequency (minutes)
+                            </label>
+                            {{ form.gold_rate_update_frequency }}
+                            {% if form.gold_rate_update_frequency.errors %}
+                                <div class="text-red-600 text-sm">{{ form.gold_rate_update_frequency.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Webhook Settings -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Webhook Configuration</h3>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label for="{{ form.webhook_url.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Webhook URL
+                        </label>
+                        {{ form.webhook_url }}
+                        {% if form.webhook_url.errors %}
+                            <div class="text-red-600 text-sm">{{ form.webhook_url.errors }}</div>
+                        {% endif %}
+                        <p class="text-xs text-gray-500 mt-1">URL to receive webhook notifications for events</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="flex justify-end">
+                <button type="submit" 
+                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Save Integration Settings
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
