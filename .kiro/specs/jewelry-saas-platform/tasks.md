@@ -558,13 +558,13 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add indexes for efficient querying
     - _Requirements: 5_
   
-  - [-] 17.2 Implement subscription plan management
+  - [x] 17.2 Implement subscription plan management
     - Create plan CRUD interface
     - Implement plan configuration form (name, price, limits)
     - Create plan archiving functionality
     - _Requirements: 5_
   
-  - [ ] 17.3 Implement tenant subscription management
+  - [x] 17.3 Implement tenant subscription management
     - Create tenant subscription list with filters
     - Implement manual plan assignment
     - Create limit override interface

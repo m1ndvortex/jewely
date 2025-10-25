@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Subscription Details - {{ subscription.tenant.company_name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Subscription Details</h1>
+                <p class="text-gray-600 dark:text-gray-400">{{ subscription.tenant.company_name }}</p>
+            </div>
+            <a href="{% url 'core:admin_tenant_subscription_list' %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
+                Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-6">
+        {% for message in messages %}
+        <div class="p-4 rounded-md {% if message.tags == 'success' %}bg-green-50 dark:bg-green-900 text-green-800 dark:text-green-200{% elif message.tags == 'error' %}bg-red-50 dark:bg-red-900 text-red-800 dark:text-red-200{% elif message.tags == 'warning' %}bg-yellow-50 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200{% else %}bg-blue-50 dark:bg-blue-900 text-blue-800 dark:text-blue-200{% endif %} mb-4">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Subscription Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Subscription Information</h2>
+                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Current Plan</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white font-semibold">{{ subscription.plan.name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                        <dd class="mt-1">
+                            {% if subscription.status == 'active' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span>
+                            {% elif subscription.status == 'trial' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Trial</span>
+                            {% elif subscription.status == 'past_due' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Past Due</span>
+                            {% elif subscription.status == 'cancelled' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Cancelled</span>
+                            {% elif subscription.status == 'expired' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">Expired</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Price</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">${{ subscription.plan.price }}/{{ subscription.plan.billing_cycle }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Next Billing Date</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {% if subscription.next_billing_date %}
+                            {{ subscription.next_billing_date|date:"M d, Y" }}
+                            {% else %}
+                            <span class="text-gray-400">N/A</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ subscription.created_at|date:"M d, Y" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ subscription.updated_at|date:"M d, Y" }}</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Resource Limits -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Resource Limits</h2>
+                    <a href="{% url 'core:admin_tenant_subscription_limit_override' subscription.pk %}" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium">
+                        Edit Overrides
+                    </a>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Users</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                Plan default: {{ subscription.plan.user_limit }}
+                                {% if subscription.user_limit_override %}(Overridden){% endif %}
+                            </p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ effective_limits.user_limit }}</p>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Branches</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                Plan default: {{ subscription.plan.branch_limit }}
+                                {% if subscription.branch_limit_override %}(Overridden){% endif %}
+                            </p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ effective_limits.branch_limit }}</p>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Inventory Items</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                Plan default: {{ subscription.plan.inventory_limit }}
+                                {% if subscription.inventory_limit_override %}(Overridden){% endif %}
+                            </p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ effective_limits.inventory_limit }}</p>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Storage</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                Plan default: {{ subscription.plan.storage_limit_gb }} GB
+                                {% if subscription.storage_limit_gb_override %}(Overridden){% endif %}
+                            </p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ effective_limits.storage_limit_gb }} GB</p>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">API Calls/Month</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                Plan default: {{ subscription.plan.api_calls_per_month }}
+                                {% if subscription.api_calls_per_month_override %}(Overridden){% endif %}
+                            </p>
+                        </div>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ effective_limits.api_calls_per_month }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Features</h2>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Multi-Branch Management</span>
+                        {% if effective_features.multi_branch %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Advanced Reporting</span>
+                        {% if effective_features.advanced_reporting %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">API Access</span>
+                        {% if effective_features.api_access %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Custom Branding</span>
+                        {% if effective_features.custom_branding %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Priority Support</span>
+                        {% if effective_features.priority_support %}
+                        <span class="text-green-600 dark:text-green-400">✓ Enabled</span>
+                        {% else %}
+                        <span class="text-gray-400">✗ Disabled</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Quick Actions -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+                <div class="space-y-3">
+                    <!-- Activate/Deactivate -->
+                    {% if subscription.is_active or subscription.is_trial %}
+                    <form method="post" action="{% url 'core:admin_tenant_subscription_deactivate' subscription.pk %}" onsubmit="return confirm('Are you sure you want to deactivate this subscription?');">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            Deactivate Subscription
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{% url 'core:admin_tenant_subscription_activate' subscription.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            Activate Subscription
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Edit Limits -->
+                    <a href="{% url 'core:admin_tenant_subscription_limit_override' subscription.pk %}" class="block w-full px-4 py-2 bg-blue-600 text-white text-center rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Edit Limit Overrides
+                    </a>
+
+                    <!-- Clear Overrides -->
+                    {% if subscription.user_limit_override or subscription.branch_limit_override or subscription.inventory_limit_override or subscription.storage_limit_gb_override or subscription.api_calls_per_month_override %}
+                    <form method="post" action="{% url 'core:admin_tenant_subscription_clear_overrides' subscription.pk %}" onsubmit="return confirm('Are you sure you want to clear all overrides and use plan defaults?');">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Clear All Overrides
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <!-- View Tenant -->
+                    <a href="{% url 'core:admin_tenant_detail' subscription.tenant.pk %}" class="block w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-center rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
+                        View Tenant Details
+                    </a>
+                </div>
+            </div>
+
+            <!-- Change Plan -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Change Plan</h2>
+                <form method="post" action="{% url 'core:admin_tenant_subscription_change_plan' subscription.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label for="plan_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select New Plan</label>
+                        <select id="plan_id" name="plan_id" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                            <option value="">-- Select Plan --</option>
+                            {% for plan in available_plans %}
+                            <option value="{{ plan.id }}">{{ plan.name }} - ${{ plan.price }}/{{ plan.billing_cycle }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Change Plan
+                    </button>
+                </form>
+            </div>
+
+            <!-- Notes -->
+            {% if subscription.notes %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notes</h2>
+                <p class="text-sm text-gray-700 dark:text-gray-300">{{ subscription.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

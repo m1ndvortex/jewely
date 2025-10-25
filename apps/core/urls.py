@@ -2,7 +2,15 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import admin_views, branch_views, dashboard_views, settings_views, subscription_views, views
+from . import (
+    admin_views,
+    branch_views,
+    dashboard_views,
+    settings_views,
+    subscription_views,
+    tenant_subscription_views,
+    views,
+)
 
 app_name = "core"
 
@@ -105,6 +113,42 @@ urlpatterns = [
         "platform/subscription-plans/<uuid:pk>/activate/",
         subscription_views.SubscriptionPlanActivateView.as_view(),
         name="admin_subscription_plan_activate",
+    ),
+    # Tenant Subscription Management
+    path(
+        "platform/tenant-subscriptions/",
+        tenant_subscription_views.TenantSubscriptionListView.as_view(),
+        name="admin_tenant_subscription_list",
+    ),
+    path(
+        "platform/tenant-subscriptions/<uuid:pk>/",
+        tenant_subscription_views.TenantSubscriptionDetailView.as_view(),
+        name="admin_tenant_subscription_detail",
+    ),
+    path(
+        "platform/tenant-subscriptions/<uuid:pk>/change-plan/",
+        tenant_subscription_views.TenantSubscriptionChangePlanView.as_view(),
+        name="admin_tenant_subscription_change_plan",
+    ),
+    path(
+        "platform/tenant-subscriptions/<uuid:pk>/limit-override/",
+        tenant_subscription_views.TenantSubscriptionLimitOverrideView.as_view(),
+        name="admin_tenant_subscription_limit_override",
+    ),
+    path(
+        "platform/tenant-subscriptions/<uuid:pk>/activate/",
+        tenant_subscription_views.TenantSubscriptionActivateView.as_view(),
+        name="admin_tenant_subscription_activate",
+    ),
+    path(
+        "platform/tenant-subscriptions/<uuid:pk>/deactivate/",
+        tenant_subscription_views.TenantSubscriptionDeactivateView.as_view(),
+        name="admin_tenant_subscription_deactivate",
+    ),
+    path(
+        "platform/tenant-subscriptions/<uuid:pk>/clear-overrides/",
+        tenant_subscription_views.TenantSubscriptionClearOverridesView.as_view(),
+        name="admin_tenant_subscription_clear_overrides",
     ),
     # Dashboard
     path("dashboard/", dashboard_views.TenantDashboardView.as_view(), name="tenant_dashboard"),

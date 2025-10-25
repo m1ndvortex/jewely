@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Limit Overrides - {{ subscription.tenant.company_name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Edit Limit Overrides</h1>
+                <p class="text-gray-600 dark:text-gray-400">{{ subscription.tenant.company_name }} - {{ subscription.plan.name }}</p>
+            </div>
+            <a href="{% url 'core:admin_tenant_subscription_detail' subscription.pk %}" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600">
+                Cancel
+            </a>
+        </div>
+    </div>
+
+    <!-- Info Box -->
+    <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-blue-700 dark:text-blue-200">
+                    Leave fields empty to use plan defaults. Override values will take precedence over plan limits.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Resource Limits Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Resource Limits</h2>
+            
+            <div class="space-y-6">
+                <!-- User Limit -->
+                <div>
+                    <label for="id_user_limit_override" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        User Limit
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="number" name="user_limit_override" id="id_user_limit_override" 
+                               value="{% if form.user_limit_override.value %}{{ form.user_limit_override.value }}{% endif %}"
+                               min="0"
+                               class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               placeholder="Leave empty for plan default">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Plan default: {{ plan_defaults.user_limit }}</span>
+                    </div>
+                    {% if form.user_limit_override.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.user_limit_override.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Branch Limit -->
+                <div>
+                    <label for="id_branch_limit_override" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Branch Limit
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="number" name="branch_limit_override" id="id_branch_limit_override" 
+                               value="{% if form.branch_limit_override.value %}{{ form.branch_limit_override.value }}{% endif %}"
+                               min="0"
+                               class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               placeholder="Leave empty for plan default">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Plan default: {{ plan_defaults.branch_limit }}</span>
+                    </div>
+                    {% if form.branch_limit_override.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.branch_limit_override.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Inventory Limit -->
+                <div>
+                    <label for="id_inventory_limit_override" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Inventory Limit
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="number" name="inventory_limit_override" id="id_inventory_limit_override" 
+                               value="{% if form.inventory_limit_override.value %}{{ form.inventory_limit_override.value }}{% endif %}"
+                               min="0"
+                               class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               placeholder="Leave empty for plan default">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Plan default: {{ plan_defaults.inventory_limit }}</span>
+                    </div>
+                    {% if form.inventory_limit_override.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.inventory_limit_override.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Storage Limit -->
+                <div>
+                    <label for="id_storage_limit_gb_override" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Storage Limit (GB)
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="number" name="storage_limit_gb_override" id="id_storage_limit_gb_override" 
+                               value="{% if form.storage_limit_gb_override.value %}{{ form.storage_limit_gb_override.value }}{% endif %}"
+                               min="0"
+                               class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               placeholder="Leave empty for plan default">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Plan default: {{ plan_defaults.storage_limit_gb }} GB</span>
+                    </div>
+                    {% if form.storage_limit_gb_override.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.storage_limit_gb_override.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- API Calls Limit -->
+                <div>
+                    <label for="id_api_calls_per_month_override" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        API Calls per Month
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="number" name="api_calls_per_month_override" id="id_api_calls_per_month_override" 
+                               value="{% if form.api_calls_per_month_override.value %}{{ form.api_calls_per_month_override.value }}{% endif %}"
+                               min="0"
+                               class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               placeholder="Leave empty for plan default">
+                        <span class="text-sm text-gray-500 dark:text-gray-400">Plan default: {{ plan_defaults.api_calls_per_month }}</span>
+                    </div>
+                    {% if form.api_calls_per_month_override.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.api_calls_per_month_override.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Overrides Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Feature Overrides</h2>
+            
+            <div class="space-y-4">
+                <!-- Multi-Branch -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label for="id_enable_multi_branch_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Multi-Branch Management
+                        </label>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Plan default: {% if plan_defaults.enable_multi_branch %}Enabled{% else %}Disabled{% endif %}</p>
+                    </div>
+                    <select name="enable_multi_branch_override" id="id_enable_multi_branch_override" 
+                            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">Use Plan Default</option>
+                        <option value="True" {% if form.enable_multi_branch_override.value == True %}selected{% endif %}>Enable</option>
+                        <option value="False" {% if form.enable_multi_branch_override.value == False %}selected{% endif %}>Disable</option>
+                    </select>
+                </div>
+
+                <!-- Advanced Reporting -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label for="id_enable_advanced_reporting_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Advanced Reporting
+                        </label>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Plan default: {% if plan_defaults.enable_advanced_reporting %}Enabled{% else %}Disabled{% endif %}</p>
+                    </div>
+                    <select name="enable_advanced_reporting_override" id="id_enable_advanced_reporting_override" 
+                            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">Use Plan Default</option>
+                        <option value="True" {% if form.enable_advanced_reporting_override.value == True %}selected{% endif %}>Enable</option>
+                        <option value="False" {% if form.enable_advanced_reporting_override.value == False %}selected{% endif %}>Disable</option>
+                    </select>
+                </div>
+
+                <!-- API Access -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label for="id_enable_api_access_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            API Access
+                        </label>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Plan default: {% if plan_defaults.enable_api_access %}Enabled{% else %}Disabled{% endif %}</p>
+                    </div>
+                    <select name="enable_api_access_override" id="id_enable_api_access_override" 
+                            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">Use Plan Default</option>
+                        <option value="True" {% if form.enable_api_access_override.value == True %}selected{% endif %}>Enable</option>
+                        <option value="False" {% if form.enable_api_access_override.value == False %}selected{% endif %}>Disable</option>
+                    </select>
+                </div>
+
+                <!-- Custom Branding -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label for="id_enable_custom_branding_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Custom Branding
+                        </label>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Plan default: {% if plan_defaults.enable_custom_branding %}Enabled{% else %}Disabled{% endif %}</p>
+                    </div>
+                    <select name="enable_custom_branding_override" id="id_enable_custom_branding_override" 
+                            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">Use Plan Default</option>
+                        <option value="True" {% if form.enable_custom_branding_override.value == True %}selected{% endif %}>Enable</option>
+                        <option value="False" {% if form.enable_custom_branding_override.value == False %}selected{% endif %}>Disable</option>
+                    </select>
+                </div>
+
+                <!-- Priority Support -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label for="id_enable_priority_support_override" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Priority Support
+                        </label>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Plan default: {% if plan_defaults.enable_priority_support %}Enabled{% else %}Disabled{% endif %}</p>
+                    </div>
+                    <select name="enable_priority_support_override" id="id_enable_priority_support_override" 
+                            class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">Use Plan Default</option>
+                        <option value="True" {% if form.enable_priority_support_override.value == True %}selected{% endif %}>Enable</option>
+                        <option value="False" {% if form.enable_priority_support_override.value == False %}selected{% endif %}>Disable</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex gap-4">
+            <button type="submit" class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                Save Overrides
+            </button>
+            <a href="{% url 'core:admin_tenant_subscription_detail' subscription.pk %}" class="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-center rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
