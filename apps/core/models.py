@@ -1203,3 +1203,19 @@ class IntegrationSettings(models.Model):
     def get_email_api_key(self):
         """Get decrypted email API key."""
         return self.decrypt_field(self.email_api_key)
+
+    def set_sms_api_secret(self, value):
+        """Set encrypted SMS API secret."""
+        self.sms_api_secret = self.encrypt_field(value)
+
+    def get_sms_api_secret(self):
+        """Get decrypted SMS API secret."""
+        return self.decrypt_field(self.sms_api_secret)
+
+    def set_smtp_password(self, value):
+        """Set encrypted SMTP password."""
+        self.smtp_password = self.encrypt_field(value)
+
+    def get_smtp_password(self):
+        """Get decrypted SMTP password."""
+        return self.decrypt_field(self.smtp_password)

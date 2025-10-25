@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Settings - {{ tenant_settings.business_name|default:user.tenant.company_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Configure your shop settings, branding, and integrations
+            </p>
+        </div>
+
+        <!-- Settings Navigation -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8 px-6" aria-label="Settings">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="{% if active_tab == 'overview' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Overview
+                    </a>
+                    <a href="{% url 'core:settings_shop_profile' %}" 
+                       class="{% if active_tab == 'shop_profile' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Shop Profile
+                    </a>
+                    <a href="{% url 'core:settings_branding' %}" 
+                       class="{% if active_tab == 'branding' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Branding
+                    </a>
+                    <a href="{% url 'core:settings_business_hours' %}" 
+                       class="{% if active_tab == 'business_hours' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Business Hours
+                    </a>
+                    <a href="{% url 'core:settings_holiday_calendar' %}" 
+                       class="{% if active_tab == 'holiday_calendar' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Holiday Calendar
+                    </a>
+                    <a href="{% url 'core:settings_integration' %}" 
+                       class="{% if active_tab == 'integration' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Integrations
+                    </a>
+                    <a href="{% url 'core:settings_invoice_customization' %}" 
+                       class="{% if active_tab == 'invoice_customization' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Invoice Settings
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Settings Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Shop Profile Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Shop Profile</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Business information and contact details</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                            <p><strong>Business Name:</strong> {{ tenant_settings.business_name|default:"Not set" }}</p>
+                            <p><strong>Phone:</strong> {{ tenant_settings.phone|default:"Not set" }}</p>
+                            <p><strong>Email:</strong> {{ tenant_settings.email|default:"Not set" }}</p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'core:settings_shop_profile' %}" 
+                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Branding Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Branding</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Logo, colors, and visual identity</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-center space-x-3">
+                            {% if tenant_settings.logo %}
+                                <img src="{{ tenant_settings.logo.url }}" alt="Logo" class="h-8 w-8 rounded object-cover">
+                                <span class="text-sm text-green-600 dark:text-green-400">Logo uploaded</span>
+                            {% else %}
+                                <div class="h-8 w-8 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center">
+                                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">No logo</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex items-center space-x-2 mt-2">
+                            <div class="w-4 h-4 rounded" style="background-color: {{ tenant_settings.primary_color }}"></div>
+                            <div class="w-4 h-4 rounded" style="background-color: {{ tenant_settings.secondary_color }}"></div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Brand colors</span>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'core:settings_branding' %}" 
+                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Business Hours Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Business Hours</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Operating hours and schedules</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                            {% if tenant_settings.business_hours %}
+                                <p><strong>Today:</strong> 
+                                {% with today=tenant_settings.business_hours|default_if_none:"{}" %}
+                                    {% if today.closed %}
+                                        Closed
+                                    {% else %}
+                                        {{ today.open|default:"9:00" }} - {{ today.close|default:"18:00" }}
+                                    {% endif %}
+                                {% endwith %}
+                                </p>
+                            {% else %}
+                                <p>Business hours not configured</p>
+                            {% endif %}
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'core:settings_business_hours' %}" 
+                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holiday Calendar Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Holiday Calendar</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Holidays and special closures</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                            <p><strong>Holidays configured:</strong> {{ tenant_settings.holidays|length }}</p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'core:settings_holiday_calendar' %}" 
+                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Settings Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Invoice Settings</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Invoice templates and numbering</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                            <p><strong>Template:</strong> {{ invoice_settings.invoice_template|title }}</p>
+                            <p><strong>Next Invoice:</strong> {{ invoice_settings.invoice_number_prefix }}-{{ invoice_settings.next_invoice_number|stringformat:"06d" }}</p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'core:settings_invoice_customization' %}" 
+                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integration Settings Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-8 w-8 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Integrations</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Payment, SMS, and email providers</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full {% if integration_settings.payment_gateway_enabled %}bg-green-400{% else %}bg-gray-400{% endif %} mr-2"></div>
+                                    <span>Payment</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full {% if integration_settings.sms_provider_enabled %}bg-green-400{% else %}bg-gray-400{% endif %} mr-2"></div>
+                                    <span>SMS</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-2 h-2 rounded-full {% if integration_settings.email_provider_enabled %}bg-green-400{% else %}bg-gray-400{% endif %} mr-2"></div>
+                                    <span>Email</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="#" 
+                               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                                Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

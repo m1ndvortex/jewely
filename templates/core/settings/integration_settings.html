@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Integration Settings - Settings{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Integration Settings</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Configure payment gateways, SMS providers, and email services
+            </p>
+        </div>
+
+        <!-- Settings Navigation -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8 px-6" aria-label="Settings">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="{% if active_tab == 'overview' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Overview
+                    </a>
+                    <a href="{% url 'core:settings_shop_profile' %}" 
+                       class="{% if active_tab == 'shop_profile' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Shop Profile
+                    </a>
+                    <a href="{% url 'core:settings_branding' %}" 
+                       class="{% if active_tab == 'branding' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Branding
+                    </a>
+                    <a href="{% url 'core:settings_business_hours' %}" 
+                       class="{% if active_tab == 'business_hours' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Business Hours
+                    </a>
+                    <a href="{% url 'core:settings_holiday_calendar' %}" 
+                       class="{% if active_tab == 'holiday_calendar' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Holiday Calendar
+                    </a>
+                    <a href="{% url 'core:settings_invoice_customization' %}" 
+                       class="{% if active_tab == 'invoice_customization' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Invoice Settings
+                    </a>
+                    <a href="{% url 'core:settings_integration' %}" 
+                       class="{% if active_tab == 'integration' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Integrations
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <div class="space-y-8">
+            <!-- Payment Gateway Settings -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Payment Gateway</h3>
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="section" value="payment">
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" 
+                               id="payment_gateway_enabled" 
+                               name="payment_gateway_enabled"
+                               {% if integration_settings.payment_gateway_enabled %}checked{% endif %}
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                        <label for="payment_gateway_enabled" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            Enable payment gateway integration
+                        </label>
+                    </div>
+
+                    <div id="payment_settings" class="{% if not integration_settings.payment_gateway_enabled %}opacity-50{% endif %}">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="payment_gateway_provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Provider
+                                </label>
+                                <select id="payment_gateway_provider" 
+                                        name="payment_gateway_provider"
+                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                    <option value="">Select Provider</option>
+                                    <option value="stripe" {% if integration_settings.payment_gateway_provider == 'stripe' %}selected{% endif %}>Stripe</option>
+                                    <option value="paypal" {% if integration_settings.payment_gateway_provider == 'paypal' %}selected{% endif %}>PayPal</option>
+                                    <option value="square" {% if integration_settings.payment_gateway_provider == 'square' %}selected{% endif %}>Square</option>
+                                    <option value="razorpay" {% if integration_settings.payment_gateway_provider == 'razorpay' %}selected{% endif %}>Razorpay</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="payment_gateway_test_mode" 
+                                       name="payment_gateway_test_mode"
+                                       {% if integration_settings.payment_gateway_test_mode %}checked{% endif %}
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="payment_gateway_test_mode" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Test mode (sandbox)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-6">
+                            <div>
+                                <label for="payment_gateway_api_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    API Key
+                                </label>
+                                <input type="password" 
+                                       id="payment_gateway_api_key" 
+                                       name="payment_gateway_api_key"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="Enter API key">
+                            </div>
+
+                            <div>
+                                <label for="payment_gateway_secret_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Secret Key
+                                </label>
+                                <input type="password" 
+                                       id="payment_gateway_secret_key" 
+                                       name="payment_gateway_secret_key"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="Enter secret key">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Payment Settings
+                    </button>
+                </form>
+            </div>
+
+            <!-- SMS Provider Settings -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">SMS Provider</h3>
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="section" value="sms">
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" 
+                               id="sms_provider_enabled" 
+                               name="sms_provider_enabled"
+                               {% if integration_settings.sms_provider_enabled %}checked{% endif %}
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                        <label for="sms_provider_enabled" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            Enable SMS notifications
+                        </label>
+                    </div>
+
+                    <div id="sms_settings" class="{% if not integration_settings.sms_provider_enabled %}opacity-50{% endif %}">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="sms_provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Provider
+                                </label>
+                                <select id="sms_provider" 
+                                        name="sms_provider"
+                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                    <option value="">Select Provider</option>
+                                    <option value="twilio" {% if integration_settings.sms_provider == 'twilio' %}selected{% endif %}>Twilio</option>
+                                    <option value="nexmo" {% if integration_settings.sms_provider == 'nexmo' %}selected{% endif %}>Vonage (Nexmo)</option>
+                                    <option value="aws_sns" {% if integration_settings.sms_provider == 'aws_sns' %}selected{% endif %}>AWS SNS</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="sms_sender_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Sender ID / Phone Number
+                                </label>
+                                <input type="text" 
+                                       id="sms_sender_id" 
+                                       name="sms_sender_id"
+                                       value="{{ integration_settings.sms_sender_id }}"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="+1234567890">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="sms_api_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    API Key / Account SID
+                                </label>
+                                <input type="password" 
+                                       id="sms_api_key" 
+                                       name="sms_api_key"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="Enter API key">
+                            </div>
+
+                            <div>
+                                <label for="sms_api_secret" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    API Secret / Auth Token
+                                </label>
+                                <input type="password" 
+                                       id="sms_api_secret" 
+                                       name="sms_api_secret"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="Enter API secret">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save SMS Settings
+                    </button>
+                </form>
+            </div>
+
+            <!-- Email Provider Settings -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Email Provider</h3>
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="section" value="email">
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" 
+                               id="email_provider_enabled" 
+                               name="email_provider_enabled"
+                               {% if integration_settings.email_provider_enabled %}checked{% endif %}
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                        <label for="email_provider_enabled" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            Enable custom email provider (uses Django default if disabled)
+                        </label>
+                    </div>
+
+                    <div id="email_settings" class="{% if not integration_settings.email_provider_enabled %}opacity-50{% endif %}">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="email_provider" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Provider
+                                </label>
+                                <select id="email_provider" 
+                                        name="email_provider"
+                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                        onchange="toggleEmailProvider()">
+                                    <option value="">Select Provider</option>
+                                    <option value="sendgrid" {% if integration_settings.email_provider == 'sendgrid' %}selected{% endif %}>SendGrid</option>
+                                    <option value="mailgun" {% if integration_settings.email_provider == 'mailgun' %}selected{% endif %}>Mailgun</option>
+                                    <option value="aws_ses" {% if integration_settings.email_provider == 'aws_ses' %}selected{% endif %}>AWS SES</option>
+                                    <option value="smtp" {% if integration_settings.email_provider == 'smtp' %}selected{% endif %}>SMTP</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="email_from_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    From Email Address
+                                </label>
+                                <input type="email" 
+                                       id="email_from_address" 
+                                       name="email_from_address"
+                                       value="{{ integration_settings.email_from_address }}"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="noreply@yourshop.com">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="email_from_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    From Name
+                                </label>
+                                <input type="text" 
+                                       id="email_from_name" 
+                                       name="email_from_name"
+                                       value="{{ integration_settings.email_from_name }}"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="Your Jewelry Shop">
+                            </div>
+
+                            <div id="email_api_key_div">
+                                <label for="email_api_key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    API Key
+                                </label>
+                                <input type="password" 
+                                       id="email_api_key" 
+                                       name="email_api_key"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                       placeholder="Enter API key">
+                            </div>
+                        </div>
+
+                        <!-- SMTP Settings (shown only when SMTP is selected) -->
+                        <div id="smtp_settings" style="display: none;" class="space-y-6">
+                            <h4 class="text-md font-medium text-gray-900 dark:text-white">SMTP Configuration</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="smtp_host" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        SMTP Host
+                                    </label>
+                                    <input type="text" 
+                                           id="smtp_host" 
+                                           name="smtp_host"
+                                           value="{{ integration_settings.smtp_host }}"
+                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                           placeholder="smtp.gmail.com">
+                                </div>
+
+                                <div>
+                                    <label for="smtp_port" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        SMTP Port
+                                    </label>
+                                    <input type="number" 
+                                           id="smtp_port" 
+                                           name="smtp_port"
+                                           value="{{ integration_settings.smtp_port }}"
+                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                           placeholder="587">
+                                </div>
+
+                                <div>
+                                    <label for="smtp_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        SMTP Username
+                                    </label>
+                                    <input type="text" 
+                                           id="smtp_username" 
+                                           name="smtp_username"
+                                           value="{{ integration_settings.smtp_username }}"
+                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                           placeholder="your-email@gmail.com">
+                                </div>
+
+                                <div>
+                                    <label for="smtp_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        SMTP Password
+                                    </label>
+                                    <input type="password" 
+                                           id="smtp_password" 
+                                           name="smtp_password"
+                                           class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                           placeholder="Enter SMTP password">
+                                </div>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="smtp_use_tls" 
+                                       name="smtp_use_tls"
+                                       {% if integration_settings.smtp_use_tls %}checked{% endif %}
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="smtp_use_tls" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Use TLS encryption
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Email Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleEmailProvider() {
+    const provider = document.getElementById('email_provider').value;
+    const smtpSettings = document.getElementById('smtp_settings');
+    const apiKeyDiv = document.getElementById('email_api_key_div');
+    
+    if (provider === 'smtp') {
+        smtpSettings.style.display = 'block';
+        apiKeyDiv.style.display = 'none';
+    } else {
+        smtpSettings.style.display = 'none';
+        apiKeyDiv.style.display = 'block';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleEmailProvider();
+});
+</script>
+{% endblock %}

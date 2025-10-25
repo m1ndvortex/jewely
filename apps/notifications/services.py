@@ -888,14 +888,14 @@ def _get_twilio_client():
     """
     try:
         from twilio.rest import Client
-        
-        account_sid = getattr(settings, 'TWILIO_ACCOUNT_SID', None)
-        auth_token = getattr(settings, 'TWILIO_AUTH_TOKEN', None)
-        
+
+        account_sid = getattr(settings, "TWILIO_ACCOUNT_SID", None)
+        auth_token = getattr(settings, "TWILIO_AUTH_TOKEN", None)
+
         if not account_sid or not auth_token:
             logger.error("Twilio credentials not configured")
             return None
-            
+
         return Client(account_sid, auth_token)
     except ImportError:
         logger.error("Twilio library not installed")
@@ -908,30 +908,30 @@ def _get_twilio_client():
 def _normalize_phone_number(phone_number: str) -> str:
     """
     Normalize phone number to E.164 format.
-    
+
     Args:
         phone_number: Phone number to normalize
-        
+
     Returns:
         Normalized phone number in E.164 format
     """
     import re
-    
+
     # If it already starts with +, return as is (already normalized)
-    if phone_number.startswith('+'):
+    if phone_number.startswith("+"):
         return phone_number
-    
+
     # Remove all non-digit characters
-    digits_only = re.sub(r'\D', '', phone_number)
-    
+    digits_only = re.sub(r"\D", "", phone_number)
+
     # If it starts with 1 and has 11 digits, it's likely US/Canada
-    if len(digits_only) == 11 and digits_only.startswith('1'):
+    if len(digits_only) == 11 and digits_only.startswith("1"):
         return f"+{digits_only}"
-    
+
     # If it has 10 digits, assume US/Canada and add +1
     elif len(digits_only) == 10:
         return f"+1{digits_only}"
-    
+
     # Otherwise, add + and return
     else:
         return f"+{digits_only}"
@@ -940,11 +940,11 @@ def _normalize_phone_number(phone_number: str) -> str:
 def is_user_opted_out_sms(user: User, sms_type: str = "MARKETING") -> bool:
     """
     Check if user has opted out of SMS notifications.
-    
+
     Args:
         user: User to check
         sms_type: Type of SMS to check (TRANSACTIONAL, MARKETING, SYSTEM, ALERT)
-        
+
     Returns:
         True if user is opted out, False otherwise
     """
@@ -956,23 +956,22 @@ def is_user_opted_out_sms(user: User, sms_type: str = "MARKETING") -> bool:
         return sms_type == "MARKETING"
 
 
-def opt_out_user_sms(user: User, sms_type: str = "MARKETING", reason: Optional[str] = None) -> SMSOptOut:
+def opt_out_user_sms(
+    user: User, sms_type: str = "MARKETING", reason: Optional[str] = None
+) -> SMSOptOut:
     """
     Opt user out of SMS notifications.
-    
+
     Args:
         user: User to opt out
         sms_type: Type of SMS to opt out of
         reason: Optional reason for opting out
-        
+
     Returns:
         SMSOptOut instance
     """
-    opt_out, created = SMSOptOut.objects.get_or_create(
-        user=user,
-        defaults={'reason': reason}
-    )
-    
+    opt_out, created = SMSOptOut.objects.get_or_create(user=user, defaults={"reason": reason})
+
     # Set the appropriate opt-out flag
     if sms_type == "TRANSACTIONAL":
         opt_out.transactional_opt_out = True
@@ -982,28 +981,28 @@ def opt_out_user_sms(user: User, sms_type: str = "MARKETING", reason: Optional[s
         opt_out.system_opt_out = True
     elif sms_type == "ALERT":
         opt_out.alert_opt_out = True
-    
+
     opt_out.save()
-    
+
     logger.info(f"User {user.username} opted out of {sms_type} SMS")
-    
+
     return opt_out
 
 
 def opt_in_user_sms(user: User, sms_type: str = "MARKETING") -> Optional[SMSOptOut]:
     """
     Opt user back in to SMS notifications.
-    
+
     Args:
         user: User to opt in
         sms_type: Type of SMS to opt in to
-        
+
     Returns:
         SMSOptOut instance or None if no opt-out record exists
     """
     try:
         opt_out = SMSOptOut.objects.get(user=user)
-        
+
         # Clear the appropriate opt-out flag
         if sms_type == "TRANSACTIONAL":
             opt_out.transactional_opt_out = False
@@ -1013,13 +1012,13 @@ def opt_in_user_sms(user: User, sms_type: str = "MARKETING") -> Optional[SMSOptO
             opt_out.system_opt_out = False
         elif sms_type == "ALERT":
             opt_out.alert_opt_out = False
-        
+
         opt_out.save()
-        
+
         logger.info(f"User {user.username} opted in to {sms_type} SMS")
-        
+
         return opt_out
-        
+
     except SMSOptOut.DoesNotExist:
         logger.info(f"User {user.username} was not opted out of {sms_type} SMS")
         return None
@@ -1036,7 +1035,7 @@ def send_sms_notification(
 ) -> Optional[SMSNotification]:
     """
     Send an SMS notification to a user.
-    
+
     Args:
         user: User to send SMS to
         message: SMS message content
@@ -1045,7 +1044,7 @@ def send_sms_notification(
         campaign_id: Optional campaign ID for tracking
         scheduled_at: Optional datetime to schedule SMS
         create_in_app_notification: Whether to create corresponding in-app notification
-        
+
     Returns:
         SMSNotification instance or None if failed
     """
@@ -1053,24 +1052,24 @@ def send_sms_notification(
     if not user.phone:
         logger.warning(f"User {user.username} has no phone number for SMS")
         return None
-    
+
     # Check if user is opted out
     if is_user_opted_out_sms(user, sms_type):
         logger.info(f"SMS skipped for user {user.username} - opted out of {sms_type}")
         return None
-    
+
     # Check user preferences
     if not should_send_notification(user, sms_type, "SMS"):
         logger.info(f"SMS skipped for user {user.username} due to preferences")
         return None
-    
+
     # Normalize phone number
     try:
         normalized_phone = _normalize_phone_number(user.phone)
     except Exception as e:
         logger.error(f"Failed to normalize phone number {user.phone}: {str(e)}")
         return None
-    
+
     # Create in-app notification if requested
     in_app_notification = None
     if create_in_app_notification:
@@ -1080,26 +1079,26 @@ def send_sms_notification(
             message=message[:200] + "..." if len(message) > 200 else message,
             notification_type="INFO",
         )
-    
+
     # Create SMS notification record
     sms_notification = SMSNotification.objects.create(
         user=user,
         notification=in_app_notification,
         message=message,
         to_phone=normalized_phone,
-        from_phone=getattr(settings, 'TWILIO_PHONE_NUMBER', None),
+        from_phone=getattr(settings, "TWILIO_PHONE_NUMBER", None),
         template_name=template_name,
         sms_type=sms_type,
         campaign_id=campaign_id,
         scheduled_at=scheduled_at,
     )
-    
+
     # Send immediately if not scheduled
     if scheduled_at is None:
         _send_sms_now(sms_notification)
     else:
         logger.info(f"SMS scheduled for {scheduled_at} for user {user.username}")
-    
+
     return sms_notification
 
 
@@ -1111,25 +1110,25 @@ def _send_sms_now(sms_notification: SMSNotification):
     if not client:
         sms_notification.update_status("FAILED", error_message="Twilio client not available")
         return
-    
+
     try:
         # Send SMS via Twilio
         message = client.messages.create(
             body=sms_notification.message,
-            from_=sms_notification.from_phone or getattr(settings, 'TWILIO_PHONE_NUMBER'),
-            to=sms_notification.to_phone
+            from_=sms_notification.from_phone or getattr(settings, "TWILIO_PHONE_NUMBER"),
+            to=sms_notification.to_phone,
         )
-        
+
         # Update SMS notification with Twilio response
         sms_notification.message_sid = message.sid
         sms_notification.update_status(
-            "SENT" if message.status in ['queued', 'sent'] else "FAILED",
+            "SENT" if message.status in ["queued", "sent"] else "FAILED",
             price=float(message.price) if message.price else None,
-            price_unit=message.price_unit
+            price_unit=message.price_unit,
         )
-        
+
         logger.info(f"SMS sent successfully to {sms_notification.to_phone}, SID: {message.sid}")
-        
+
     except Exception as e:
         # Update status with error
         sms_notification.update_status("FAILED", error_message=str(e))
@@ -1146,7 +1145,7 @@ def send_sms_from_template(
 ) -> Optional[SMSNotification]:
     """
     Send an SMS using a template.
-    
+
     Args:
         user: User to send SMS to
         template_name: Name of the SMS template
@@ -1154,7 +1153,7 @@ def send_sms_from_template(
         sms_type: Type of SMS
         campaign_id: Optional campaign ID for tracking
         scheduled_at: Optional datetime to schedule SMS
-        
+
     Returns:
         SMSNotification instance or None if failed
     """
@@ -1163,16 +1162,16 @@ def send_sms_from_template(
     except SMSTemplate.DoesNotExist:
         logger.error(f"SMS template '{template_name}' not found or inactive")
         return None
-    
+
     # Render template
     rendered = template.render(context)
     message = rendered["message"]
-    
+
     # Ensure message is within SMS length limits
     if len(message) > 1600:
         logger.warning(f"SMS message truncated from {len(message)} to 1600 characters")
         message = message[:1597] + "..."
-    
+
     return send_sms_notification(
         user=user,
         message=message,
@@ -1188,12 +1187,12 @@ def send_transactional_sms(
 ) -> Optional[SMSNotification]:
     """
     Send a transactional SMS (order confirmations, appointments, etc.).
-    
+
     Args:
         user: User to send SMS to
         template_name: Name of the SMS template
         context: Context variables for template rendering
-        
+
     Returns:
         SMSNotification instance or None if failed
     """
@@ -1205,17 +1204,15 @@ def send_transactional_sms(
     )
 
 
-def send_alert_sms(
-    user: User, template_name: str, context: Dict
-) -> Optional[SMSNotification]:
+def send_alert_sms(user: User, template_name: str, context: Dict) -> Optional[SMSNotification]:
     """
     Send an alert SMS (low stock, payment reminders, etc.).
-    
+
     Args:
         user: User to send SMS to
         template_name: Name of the SMS template
         context: Context variables for template rendering
-        
+
     Returns:
         SMSNotification instance or None if failed
     """
@@ -1232,13 +1229,13 @@ def send_marketing_sms(
 ) -> Optional[SMSNotification]:
     """
     Send a marketing SMS.
-    
+
     Args:
         user: User to send SMS to
         template_name: Name of the SMS template
         context: Context variables for template rendering
         campaign_id: Campaign ID for tracking
-        
+
     Returns:
         SMSNotification instance or None if failed
     """
@@ -1260,14 +1257,14 @@ def schedule_sms(
 ) -> Optional[SMSNotification]:
     """
     Schedule an SMS to be sent later.
-    
+
     Args:
         user: User to send SMS to
         template_name: Name of the SMS template
         context: Context variables for template rendering
         scheduled_at: When to send the SMS
         sms_type: Type of SMS
-        
+
     Returns:
         SMSNotification instance or None if failed
     """
@@ -1289,19 +1286,19 @@ def send_bulk_sms(
 ) -> List[SMSNotification]:
     """
     Send bulk SMS to multiple users.
-    
+
     Args:
         users: List of users to send SMS to
         template_name: Name of the SMS template
         context: Context variables for template rendering
         sms_type: Type of SMS
         campaign_id: Optional campaign ID for tracking
-        
+
     Returns:
         List of SMSNotification instances
     """
     sms_notifications = []
-    
+
     for user in users:
         if user.phone:  # Only send to users with phone numbers
             sms_notification = send_sms_from_template(
@@ -1313,9 +1310,9 @@ def send_bulk_sms(
             )
             if sms_notification:
                 sms_notifications.append(sms_notification)
-    
+
     logger.info(f"Sent {len(sms_notifications)} bulk SMS using template '{template_name}'")
-    
+
     return sms_notifications
 
 
@@ -1330,7 +1327,7 @@ def create_sms_campaign(
 ) -> SMSCampaign:
     """
     Create an SMS marketing campaign.
-    
+
     Args:
         name: Campaign name
         template_name: Name of the SMS template
@@ -1339,7 +1336,7 @@ def create_sms_campaign(
         target_roles: User roles to target
         target_tenant_status: Tenant statuses to target
         scheduled_at: When to send the campaign
-        
+
     Returns:
         SMSCampaign instance
     """
@@ -1347,7 +1344,7 @@ def create_sms_campaign(
         template = SMSTemplate.objects.get(name=template_name, is_active=True)
     except SMSTemplate.DoesNotExist:
         raise ValueError(f"SMS template '{template_name}' not found or inactive")
-    
+
     campaign = SMSCampaign.objects.create(
         name=name,
         template=template,
@@ -1356,40 +1353,42 @@ def create_sms_campaign(
         target_roles=target_roles or [],
         target_tenant_status=target_tenant_status or [],
     )
-    
+
     if target_users:
         campaign.target_users.set(target_users)
-    
+
     # Update total recipients count
-    campaign.total_recipients = campaign.get_target_users().filter(phone__isnull=False).exclude(phone='').count()
+    campaign.total_recipients = (
+        campaign.get_target_users().filter(phone__isnull=False).exclude(phone="").count()
+    )
     campaign.save()
-    
+
     logger.info(f"Created SMS campaign '{name}' targeting {campaign.total_recipients} users")
-    
+
     return campaign
 
 
 def send_sms_campaign(campaign: SMSCampaign, context: Optional[Dict] = None) -> int:
     """
     Send an SMS campaign to all targeted users.
-    
+
     Args:
         campaign: SMSCampaign instance
         context: Optional context variables for template rendering
-        
+
     Returns:
         Number of SMS sent
     """
     if campaign.status != "DRAFT" and campaign.status != "SCHEDULED":
         raise ValueError(f"Campaign '{campaign.name}' cannot be sent (status: {campaign.status})")
-    
+
     campaign.status = "SENDING"
     campaign.save()
-    
-    target_users = campaign.get_target_users().filter(phone__isnull=False).exclude(phone='')
+
+    target_users = campaign.get_target_users().filter(phone__isnull=False).exclude(phone="")
     context = context or {}
     sent_count = 0
-    
+
     for user in target_users:
         sms_notification = send_sms_from_template(
             user=user,
@@ -1400,15 +1399,15 @@ def send_sms_campaign(campaign: SMSCampaign, context: Optional[Dict] = None) -> 
         )
         if sms_notification:
             sent_count += 1
-    
+
     # Update campaign status and statistics
     campaign.status = "SENT"
     campaign.sent_at = timezone.now()
     campaign.sms_sent = sent_count
     campaign.save()
-    
+
     logger.info(f"SMS campaign '{campaign.name}' sent to {sent_count} users")
-    
+
     return sent_count
 
 
@@ -1416,17 +1415,17 @@ def process_scheduled_sms():
     """
     Process scheduled SMS that are ready to be sent.
     This function should be called by a Celery task.
-    
+
     Returns:
         Number of SMS processed
     """
     now = timezone.now()
-    
+
     # Process scheduled individual SMS
     scheduled_sms = SMSNotification.objects.filter(status="PENDING", scheduled_at__lte=now)
-    
+
     processed_count = 0
-    
+
     for sms_notification in scheduled_sms:
         try:
             _send_sms_now(sms_notification)
@@ -1434,10 +1433,10 @@ def process_scheduled_sms():
         except Exception as e:
             sms_notification.update_status("FAILED", error_message=str(e))
             logger.error(f"Failed to send scheduled SMS {sms_notification.id}: {str(e)}")
-    
+
     # Process scheduled campaigns
     scheduled_campaigns = SMSCampaign.objects.filter(status="SCHEDULED", scheduled_at__lte=now)
-    
+
     for campaign in scheduled_campaigns:
         try:
             send_sms_campaign(campaign)
@@ -1445,9 +1444,9 @@ def process_scheduled_sms():
             campaign.status = "CANCELLED"
             campaign.save()
             logger.error(f"Failed to send scheduled SMS campaign {campaign.id}: {str(e)}")
-    
+
     logger.info(f"Processed {processed_count} scheduled SMS")
-    
+
     return processed_count
 
 
@@ -1456,7 +1455,7 @@ def track_sms_event(
 ):
     """
     Track SMS delivery events from Twilio webhook callbacks.
-    
+
     Args:
         message_sid: Twilio message SID
         event_type: Type of event (sent, delivered, failed, undelivered)
@@ -1465,7 +1464,7 @@ def track_sms_event(
     """
     try:
         sms_notification = SMSNotification.objects.get(message_sid=message_sid)
-        
+
         status_mapping = {
             "queued": "QUEUED",
             "sent": "SENT",
@@ -1473,7 +1472,7 @@ def track_sms_event(
             "failed": "FAILED",
             "undelivered": "UNDELIVERED",
         }
-        
+
         status = status_mapping.get(event_type.lower())
         if status:
             sms_notification.update_status(
@@ -1482,7 +1481,7 @@ def track_sms_event(
                 error_message=kwargs.get("error_message"),
                 error_code=kwargs.get("error_code"),
             )
-            
+
             # Update campaign statistics if this is a campaign SMS
             if sms_notification.campaign_id:
                 try:
@@ -1490,9 +1489,9 @@ def track_sms_event(
                     campaign.update_statistics()
                 except SMSCampaign.DoesNotExist:
                     pass
-            
+
             logger.info(f"Updated SMS {message_sid} status to {status}")
-    
+
     except SMSNotification.DoesNotExist:
         logger.warning(f"SMS notification with message_sid {message_sid} not found")
 
@@ -1500,22 +1499,22 @@ def track_sms_event(
 def get_sms_statistics(user: Optional[User] = None, campaign_id: Optional[str] = None) -> Dict:
     """
     Get SMS delivery statistics.
-    
+
     Args:
         user: Optional user to filter statistics for
         campaign_id: Optional campaign ID to filter statistics for
-        
+
     Returns:
         Dictionary with SMS statistics
     """
     queryset = SMSNotification.objects.all()
-    
+
     if user:
         queryset = queryset.filter(user=user)
-    
+
     if campaign_id:
         queryset = queryset.filter(campaign_id=campaign_id)
-    
+
     stats = {
         "total": queryset.count(),
         "sent": queryset.filter(status__in=["SENT", "DELIVERED"]).count(),
@@ -1524,7 +1523,7 @@ def get_sms_statistics(user: Optional[User] = None, campaign_id: Optional[str] =
         "pending": queryset.filter(status="PENDING").count(),
         "queued": queryset.filter(status="QUEUED").count(),
     }
-    
+
     # Calculate rates
     if stats["sent"] > 0:
         stats["delivery_rate"] = round((stats["delivered"] / stats["sent"]) * 100, 2)
@@ -1532,11 +1531,582 @@ def get_sms_statistics(user: Optional[User] = None, campaign_id: Optional[str] =
     else:
         stats["delivery_rate"] = 0
         stats["failure_rate"] = 0
-    
+
     # Calculate total cost
-    total_cost = queryset.aggregate(
-        total=models.Sum('price')
-    )['total'] or 0
+    total_cost = queryset.aggregate(total=models.Sum("price"))["total"] or 0
     stats["total_cost"] = float(total_cost)
-    
+
     return stats
+
+
+# Customer Segmentation Services
+
+
+def create_customer_segment(
+    name: str,
+    description: str = "",
+    segment_type: str = "STATIC",
+    criteria: Optional[Dict] = None,
+    customers: Optional[List] = None,
+    created_by: Optional[User] = None,
+) -> "CustomerSegment":
+    """
+    Create a new customer segment.
+
+    Args:
+        name: Segment name
+        description: Segment description
+        segment_type: Type of segment (STATIC or DYNAMIC)
+        criteria: Segmentation criteria for dynamic segments
+        customers: List of customers for static segments
+        created_by: User creating the segment
+
+    Returns:
+        CustomerSegment instance
+
+    Example:
+        >>> from apps.notifications.services import create_customer_segment
+        >>> segment = create_customer_segment(
+        ...     name="VIP Customers",
+        ...     description="High-value customers",
+        ...     segment_type="DYNAMIC",
+        ...     criteria={
+        ...         "min_total_purchases": 10000,
+        ...         "loyalty_tiers": ["Gold", "Platinum"]
+        ...     }
+        ... )
+    """
+    from .models import CustomerSegment
+
+    segment = CustomerSegment.objects.create(
+        name=name,
+        description=description,
+        segment_type=segment_type,
+        criteria=criteria or {},
+        created_by=created_by,
+    )
+
+    if segment_type == "STATIC" and customers:
+        segment.customers.set(customers)
+
+    # Update customer count
+    segment.update_customer_count()
+
+    logger.info(f"Created customer segment '{name}' with {segment.customer_count} customers")
+
+    return segment
+
+
+def update_dynamic_segments():
+    """
+    Update all dynamic customer segments by recalculating their customer counts.
+    This should be called periodically via a Celery task.
+
+    Returns:
+        Number of segments updated
+    """
+    from .models import CustomerSegment
+
+    dynamic_segments = CustomerSegment.objects.filter(segment_type="DYNAMIC", is_active=True)
+    updated_count = 0
+
+    for segment in dynamic_segments:
+        old_count = segment.customer_count
+        segment.update_customer_count()
+
+        if segment.customer_count != old_count:
+            logger.info(
+                f"Updated segment '{segment.name}': {old_count} -> {segment.customer_count} customers"
+            )
+
+        updated_count += 1
+
+    logger.info(f"Updated {updated_count} dynamic customer segments")
+    return updated_count
+
+
+def get_segment_customers(segment_id: str, limit: Optional[int] = None):
+    """
+    Get customers in a specific segment.
+
+    Args:
+        segment_id: Segment UUID
+        limit: Optional limit on number of customers returned
+
+    Returns:
+        QuerySet of customers in the segment
+    """
+    from .models import CustomerSegment
+
+    try:
+        segment = CustomerSegment.objects.get(id=segment_id)
+        customers = segment.get_customers()
+
+        if limit:
+            customers = customers[:limit]
+
+        return customers
+    except CustomerSegment.DoesNotExist:
+        logger.error(f"Customer segment {segment_id} not found")
+        return None
+
+
+# Campaign Analytics Services
+
+
+def create_campaign_analytics(
+    campaign_id: str,
+    campaign_name: str,
+    campaign_type: str,
+    segment: Optional["CustomerSegment"] = None,
+    campaign_sent_at: Optional[timezone.datetime] = None,
+) -> "CampaignAnalytics":
+    """
+    Create campaign analytics record.
+
+    Args:
+        campaign_id: Campaign identifier
+        campaign_name: Campaign name
+        campaign_type: Type of campaign (EMAIL, SMS, MIXED)
+        segment: Customer segment targeted
+        campaign_sent_at: When campaign was sent
+
+    Returns:
+        CampaignAnalytics instance
+    """
+    from .models import CampaignAnalytics
+
+    analytics = CampaignAnalytics.objects.create(
+        campaign_id=campaign_id,
+        campaign_name=campaign_name,
+        campaign_type=campaign_type,
+        segment=segment,
+        campaign_sent_at=campaign_sent_at or timezone.now(),
+    )
+
+    logger.info(f"Created analytics record for campaign '{campaign_name}'")
+    return analytics
+
+
+def update_campaign_analytics(campaign_id: str) -> Optional["CampaignAnalytics"]:
+    """
+    Update campaign analytics with latest metrics.
+
+    Args:
+        campaign_id: Campaign identifier
+
+    Returns:
+        Updated CampaignAnalytics instance or None if not found
+    """
+    from .models import CampaignAnalytics
+
+    try:
+        analytics = CampaignAnalytics.objects.get(campaign_id=campaign_id)
+
+        # Update email metrics
+        if analytics.campaign_type in ["EMAIL", "MIXED"]:
+            email_stats = get_email_statistics(campaign_id=campaign_id)
+            analytics.total_recipients = email_stats["total"]
+            analytics.messages_sent = email_stats["sent"]
+            analytics.messages_delivered = email_stats["delivered"]
+            analytics.emails_opened = email_stats["opened"]
+            analytics.emails_clicked = email_stats["clicked"]
+            analytics.emails_bounced = email_stats["bounced"]
+            analytics.messages_failed = email_stats["failed"]
+
+        # Update SMS metrics
+        if analytics.campaign_type in ["SMS", "MIXED"]:
+            sms_stats = get_sms_statistics(campaign_id=campaign_id)
+            if analytics.campaign_type == "SMS":
+                analytics.total_recipients = sms_stats["total"]
+                analytics.messages_sent = sms_stats["sent"]
+                analytics.messages_delivered = sms_stats["delivered"]
+                analytics.messages_failed = sms_stats["failed"]
+            analytics.total_cost = sms_stats["total_cost"]
+
+        # Calculate rates
+        analytics.calculate_rates()
+
+        logger.info(f"Updated analytics for campaign '{analytics.campaign_name}'")
+        return analytics
+
+    except CampaignAnalytics.DoesNotExist:
+        logger.error(f"Campaign analytics for {campaign_id} not found")
+        return None
+
+
+def track_campaign_conversion(
+    campaign_id: str,
+    conversion_value: Optional[float] = None,
+    customer_id: Optional[str] = None,
+) -> bool:
+    """
+    Track a conversion for a campaign.
+
+    Args:
+        campaign_id: Campaign identifier
+        conversion_value: Value of the conversion
+        customer_id: Customer who converted
+
+    Returns:
+        True if conversion was tracked, False otherwise
+    """
+    from .models import CampaignAnalytics, CommunicationLog
+
+    try:
+        analytics = CampaignAnalytics.objects.get(campaign_id=campaign_id)
+        analytics.conversions += 1
+
+        if conversion_value:
+            analytics.conversion_value += conversion_value
+
+        # Save the updated conversion data first
+        analytics.save(update_fields=["conversions", "conversion_value"])
+
+        # Then calculate and save the rates
+        analytics.calculate_rates()
+
+        # Update communication log if customer is provided
+        if customer_id:
+            try:
+                from apps.crm.models import Customer
+
+                customer = Customer.objects.get(id=customer_id)
+
+                # Find the communication log entry for this campaign and customer
+                comm_log = CommunicationLog.objects.filter(
+                    customer=customer, campaign_id=campaign_id
+                ).first()
+
+                if comm_log:
+                    comm_log.resulted_in_conversion = True
+                    comm_log.conversion_value = conversion_value
+                    comm_log.save(update_fields=["resulted_in_conversion", "conversion_value"])
+
+            except Customer.DoesNotExist:
+                pass
+
+        logger.info(
+            f"Tracked conversion for campaign '{analytics.campaign_name}': ${conversion_value}"
+        )
+        return True
+
+    except CampaignAnalytics.DoesNotExist:
+        logger.error(f"Campaign analytics for {campaign_id} not found")
+        return False
+
+
+def get_campaign_performance_report(
+    start_date: Optional[timezone.datetime] = None,
+    end_date: Optional[timezone.datetime] = None,
+    campaign_type: Optional[str] = None,
+) -> Dict:
+    """
+    Get campaign performance report.
+
+    Args:
+        start_date: Start date for report
+        end_date: End date for report
+        campaign_type: Filter by campaign type
+
+    Returns:
+        Dictionary with campaign performance metrics
+    """
+    from .models import CampaignAnalytics
+
+    queryset = CampaignAnalytics.objects.all()
+
+    if start_date:
+        queryset = queryset.filter(campaign_sent_at__gte=start_date)
+
+    if end_date:
+        queryset = queryset.filter(campaign_sent_at__lte=end_date)
+
+    if campaign_type:
+        queryset = queryset.filter(campaign_type=campaign_type)
+
+    # Aggregate metrics
+    aggregates = queryset.aggregate(
+        total_campaigns=models.Count("id"),
+        total_recipients=models.Sum("total_recipients"),
+        total_sent=models.Sum("messages_sent"),
+        total_delivered=models.Sum("messages_delivered"),
+        total_opened=models.Sum("emails_opened"),
+        total_clicked=models.Sum("emails_clicked"),
+        total_conversions=models.Sum("conversions"),
+        total_conversion_value=models.Sum("conversion_value"),
+        total_cost=models.Sum("total_cost"),
+    )
+
+    # Calculate overall rates
+    report = {
+        "total_campaigns": aggregates["total_campaigns"] or 0,
+        "total_recipients": aggregates["total_recipients"] or 0,
+        "total_sent": aggregates["total_sent"] or 0,
+        "total_delivered": aggregates["total_delivered"] or 0,
+        "total_opened": aggregates["total_opened"] or 0,
+        "total_clicked": aggregates["total_clicked"] or 0,
+        "total_conversions": aggregates["total_conversions"] or 0,
+        "total_conversion_value": float(aggregates["total_conversion_value"] or 0),
+        "total_cost": float(aggregates["total_cost"] or 0),
+    }
+
+    # Calculate rates
+    if report["total_sent"] > 0:
+        report["overall_delivery_rate"] = round(
+            (report["total_delivered"] / report["total_sent"]) * 100, 2
+        )
+        report["overall_conversion_rate"] = round(
+            (report["total_conversions"] / report["total_sent"]) * 100, 2
+        )
+    else:
+        report["overall_delivery_rate"] = 0
+        report["overall_conversion_rate"] = 0
+
+    if report["total_delivered"] > 0:
+        report["overall_open_rate"] = round(
+            (report["total_opened"] / report["total_delivered"]) * 100, 2
+        )
+    else:
+        report["overall_open_rate"] = 0
+
+    if report["total_opened"] > 0:
+        report["overall_click_rate"] = round(
+            (report["total_clicked"] / report["total_opened"]) * 100, 2
+        )
+    else:
+        report["overall_click_rate"] = 0
+
+    if report["total_cost"] > 0:
+        report["overall_roi"] = round(
+            ((report["total_conversion_value"] - report["total_cost"]) / report["total_cost"])
+            * 100,
+            2,
+        )
+    else:
+        report["overall_roi"] = 0
+
+    return report
+
+
+# Communication Logging Services
+
+
+def log_customer_communication(
+    customer,
+    communication_type: str,
+    direction: str,
+    subject: str = "",
+    content: str = "",
+    campaign_id: str = "",
+    email_notification: Optional[EmailNotification] = None,
+    sms_notification: Optional[SMSNotification] = None,
+    created_by: Optional[User] = None,
+) -> "CommunicationLog":
+    """
+    Log a customer communication.
+
+    Args:
+        customer: Customer instance
+        communication_type: Type of communication (EMAIL, SMS, etc.)
+        direction: Direction (OUTBOUND, INBOUND, INTERNAL)
+        subject: Subject or title
+        content: Content or summary
+        campaign_id: Campaign ID if applicable
+        email_notification: Related email notification
+        sms_notification: Related SMS notification
+        created_by: User who logged this
+
+    Returns:
+        CommunicationLog instance
+    """
+    from .models import CommunicationLog
+
+    comm_log = CommunicationLog.objects.create(
+        customer=customer,
+        communication_type=communication_type,
+        direction=direction,
+        subject=subject,
+        content=content,
+        campaign_id=campaign_id,
+        email_notification=email_notification,
+        sms_notification=sms_notification,
+        created_by=created_by,
+    )
+
+    logger.info(f"Logged {communication_type} communication with {customer.get_full_name()}")
+    return comm_log
+
+
+def get_customer_communication_history(
+    customer,
+    communication_type: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> List["CommunicationLog"]:
+    """
+    Get communication history for a customer.
+
+    Args:
+        customer: Customer instance
+        communication_type: Filter by communication type
+        limit: Limit number of results
+
+    Returns:
+        List of CommunicationLog instances
+    """
+    from .models import CommunicationLog
+
+    queryset = CommunicationLog.objects.filter(customer=customer)
+
+    if communication_type:
+        queryset = queryset.filter(communication_type=communication_type)
+
+    if limit:
+        queryset = queryset[:limit]
+
+    return list(queryset)
+
+
+def send_bulk_campaign_to_segment(
+    segment_id: str,
+    campaign_type: str,
+    template_name: str,
+    subject: str = "",
+    context: Optional[Dict] = None,
+    created_by: Optional[User] = None,
+) -> Dict:
+    """
+    Send a bulk campaign to a customer segment.
+
+    Args:
+        segment_id: Customer segment ID
+        campaign_type: Type of campaign (EMAIL or SMS)
+        template_name: Template to use
+        subject: Email subject (for email campaigns)
+        context: Template context variables
+        created_by: User creating the campaign
+
+    Returns:
+        Dictionary with campaign results
+    """
+    from apps.crm.models import Customer
+
+    from .models import CustomerSegment
+
+    try:
+        segment = CustomerSegment.objects.get(id=segment_id)
+        customers = segment.get_customers()
+
+        # Create campaign analytics
+        campaign_id = str(uuid.uuid4())
+        analytics = create_campaign_analytics(
+            campaign_id=campaign_id,
+            campaign_name=f"{segment.name} - {template_name}",
+            campaign_type=campaign_type,
+            segment=segment,
+        )
+
+        sent_count = 0
+        failed_count = 0
+        context = context or {}
+
+        for customer in customers:
+            try:
+                if campaign_type == "EMAIL" and customer.email:
+                    # Find or create user for this customer
+                    user = None
+                    if customer.email:
+                        user = User.objects.filter(email=customer.email).first()
+
+                    if user:
+                        email_notification = send_marketing_email(
+                            user=user,
+                            template_name=template_name,
+                            context={**context, "customer": customer},
+                            campaign_id=campaign_id,
+                            subject=subject,
+                        )
+
+                        if email_notification:
+                            # Log communication
+                            log_customer_communication(
+                                customer=customer,
+                                communication_type="EMAIL",
+                                direction="OUTBOUND",
+                                subject=subject,
+                                content=f"Marketing email sent using template: {template_name}",
+                                campaign_id=campaign_id,
+                                email_notification=email_notification,
+                                created_by=created_by,
+                            )
+                            sent_count += 1
+                        else:
+                            failed_count += 1
+                    else:
+                        failed_count += 1
+
+                elif campaign_type == "SMS" and customer.phone:
+                    # Find or create user for this customer
+                    user = None
+                    if customer.email:
+                        user = User.objects.filter(email=customer.email).first()
+                    elif customer.phone:
+                        user = User.objects.filter(phone=customer.phone).first()
+
+                    if user:
+                        sms_notification = send_marketing_sms(
+                            user=user,
+                            template_name=template_name,
+                            context={**context, "customer": customer},
+                            campaign_id=campaign_id,
+                        )
+
+                        if sms_notification:
+                            # Log communication
+                            log_customer_communication(
+                                customer=customer,
+                                communication_type="SMS",
+                                direction="OUTBOUND",
+                                subject="Marketing SMS",
+                                content=f"Marketing SMS sent using template: {template_name}",
+                                campaign_id=campaign_id,
+                                sms_notification=sms_notification,
+                                created_by=created_by,
+                            )
+                            sent_count += 1
+                        else:
+                            failed_count += 1
+                    else:
+                        failed_count += 1
+                else:
+                    failed_count += 1
+
+            except Exception as e:
+                logger.error(f"Failed to send {campaign_type} to customer {customer.id}: {str(e)}")
+                failed_count += 1
+
+        # Update analytics
+        analytics.total_recipients = customers.count()
+        analytics.messages_sent = sent_count
+        analytics.messages_failed = failed_count
+        analytics.save(update_fields=["total_recipients", "messages_sent", "messages_failed"])
+
+        result = {
+            "campaign_id": campaign_id,
+            "segment_name": segment.name,
+            "total_customers": customers.count(),
+            "sent_count": sent_count,
+            "failed_count": failed_count,
+            "success_rate": (
+                round((sent_count / customers.count()) * 100, 2) if customers.count() > 0 else 0
+            ),
+        }
+
+        logger.info(
+            f"Bulk campaign sent to segment '{segment.name}': {sent_count} sent, {failed_count} failed"
+        )
+        return result
+
+    except CustomerSegment.DoesNotExist:
+        logger.error(f"Customer segment {segment_id} not found")
+        return {"error": "Segment not found"}

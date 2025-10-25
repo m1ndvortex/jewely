@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Create default SMS templates"""
-        
+
         templates = [
             # Order Status Templates
             {
@@ -35,7 +35,6 @@ class Command(BaseCommand):
                 "message_template": "Your custom jewelry order #{{ order_number }} status: {{ status }}. {{ message }}. Contact us at {{ branch_phone }} for details.",
                 "sms_type": "TRANSACTIONAL",
             },
-            
             # Appointment Templates
             {
                 "name": "appointment_reminder",
@@ -52,7 +51,6 @@ class Command(BaseCommand):
                 "message_template": "Your appointment on {{ appointment_date }} has been cancelled. Please call {{ branch_phone }} to reschedule. We apologize for any inconvenience.",
                 "sms_type": "TRANSACTIONAL",
             },
-            
             # Payment Reminder Templates
             {
                 "name": "payment_reminder",
@@ -69,7 +67,6 @@ class Command(BaseCommand):
                 "message_template": "Thank you! We've received your payment of ${{ amount }} for invoice #{{ invoice_number }}. Your account is now up to date.",
                 "sms_type": "TRANSACTIONAL",
             },
-            
             # Inventory & Stock Alerts
             {
                 "name": "low_stock_alert",
@@ -86,7 +83,6 @@ class Command(BaseCommand):
                 "message_template": "Good news! {{ item_name }} is back in stock at {{ branch_name }}. Visit us or call {{ branch_phone }} to reserve yours.",
                 "sms_type": "TRANSACTIONAL",
             },
-            
             # Loyalty & Marketing Templates
             {
                 "name": "loyalty_points_earned",
@@ -108,7 +104,6 @@ class Command(BaseCommand):
                 "message_template": "Happy Birthday {{ user.first_name }}! 🎉 Enjoy {{ discount }}% off your next purchase. Valid for 30 days. Visit {{ branch_name }} to celebrate!",
                 "sms_type": "MARKETING",
             },
-            
             # Security & System Templates
             {
                 "name": "security_alert",
@@ -125,7 +120,6 @@ class Command(BaseCommand):
                 "message_template": "Your account has been temporarily locked due to multiple failed login attempts. Contact {{ support_phone }} for assistance.",
                 "sms_type": "SYSTEM",
             },
-            
             # General Business Templates
             {
                 "name": "store_hours_change",
@@ -154,19 +148,15 @@ class Command(BaseCommand):
                     "message_template": template_data["message_template"],
                     "sms_type": template_data["sms_type"],
                     "is_active": True,
-                }
+                },
             )
 
             if created:
                 created_count += 1
-                self.stdout.write(
-                    self.style.SUCCESS(f"Created SMS template: {template.name}")
-                )
+                self.stdout.write(self.style.SUCCESS(f"Created SMS template: {template.name}"))
             else:
                 updated_count += 1
-                self.stdout.write(
-                    self.style.WARNING(f"Updated SMS template: {template.name}")
-                )
+                self.stdout.write(self.style.WARNING(f"Updated SMS template: {template.name}"))
 
         self.stdout.write(
             self.style.SUCCESS(

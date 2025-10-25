@@ -353,7 +353,7 @@ class EmailCampaignAdmin(admin.ModelAdmin):
 @admin.register(SMSNotification)
 class SMSNotificationAdmin(admin.ModelAdmin):
     """Admin interface for SMS notifications"""
-    
+
     list_display = [
         "id",
         "user",
@@ -390,7 +390,7 @@ class SMSNotificationAdmin(admin.ModelAdmin):
     raw_id_fields = ["user", "notification"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
-    
+
     fieldsets = [
         (
             _("SMS Details"),
@@ -467,7 +467,7 @@ class SMSNotificationAdmin(admin.ModelAdmin):
 @admin.register(SMSTemplate)
 class SMSTemplateAdmin(admin.ModelAdmin):
     """Admin interface for SMS templates"""
-    
+
     list_display = [
         "name",
         "sms_type",
@@ -490,7 +490,7 @@ class SMSTemplateAdmin(admin.ModelAdmin):
         "updated_at",
     ]
     ordering = ["sms_type", "name"]
-    
+
     fieldsets = [
         (
             _("Template Details"),
@@ -504,11 +504,7 @@ class SMSTemplateAdmin(admin.ModelAdmin):
         ),
         (
             _("Message Content"),
-            {
-                "fields": (
-                    "message_template",
-                )
-            },
+            {"fields": ("message_template",)},
         ),
         (
             _("Timestamps"),
@@ -530,7 +526,7 @@ class SMSTemplateAdmin(admin.ModelAdmin):
             color = "#f59e0b"  # Orange for medium messages
         else:
             color = "#10b981"  # Green for short messages
-        
+
         return format_html(
             '<span style="color: {}; font-weight: bold;">{} chars</span>',
             color,
@@ -554,7 +550,7 @@ class SMSTemplateAdmin(admin.ModelAdmin):
 @admin.register(SMSOptOut)
 class SMSOptOutAdmin(admin.ModelAdmin):
     """Admin interface for SMS opt-outs"""
-    
+
     list_display = [
         "user",
         "transactional_opt_out",
@@ -581,7 +577,7 @@ class SMSOptOutAdmin(admin.ModelAdmin):
     raw_id_fields = ["user"]
     date_hierarchy = "opted_out_at"
     ordering = ["-opted_out_at"]
-    
+
     fieldsets = [
         (
             _("User"),
@@ -613,7 +609,7 @@ class SMSOptOutAdmin(admin.ModelAdmin):
 @admin.register(SMSCampaign)
 class SMSCampaignAdmin(admin.ModelAdmin):
     """Admin interface for SMS campaigns"""
-    
+
     list_display = [
         "name",
         "template",
@@ -651,7 +647,7 @@ class SMSCampaignAdmin(admin.ModelAdmin):
     filter_horizontal = ["target_users"]
     date_hierarchy = "created_at"
     ordering = ["-created_at"]
-    
+
     fieldsets = [
         (
             _("Campaign Details"),
@@ -676,11 +672,7 @@ class SMSCampaignAdmin(admin.ModelAdmin):
         ),
         (
             _("Scheduling"),
-            {
-                "fields": (
-                    "scheduled_at",
-                )
-            },
+            {"fields": ("scheduled_at",)},
         ),
         (
             _("Statistics"),

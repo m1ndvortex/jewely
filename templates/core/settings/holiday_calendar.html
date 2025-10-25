@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Holiday Calendar - Settings{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Holiday Calendar</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Manage holidays and special closures for your business
+            </p>
+        </div>
+
+        <!-- Settings Navigation -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8 px-6" aria-label="Settings">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="{% if active_tab == 'overview' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Overview
+                    </a>
+                    <a href="{% url 'core:settings_shop_profile' %}" 
+                       class="{% if active_tab == 'shop_profile' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Shop Profile
+                    </a>
+                    <a href="{% url 'core:settings_branding' %}" 
+                       class="{% if active_tab == 'branding' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Branding
+                    </a>
+                    <a href="{% url 'core:settings_business_hours' %}" 
+                       class="{% if active_tab == 'business_hours' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Business Hours
+                    </a>
+                    <a href="{% url 'core:settings_holiday_calendar' %}" 
+                       class="{% if active_tab == 'holiday_calendar' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Holiday Calendar
+                    </a>
+                    <a href="{% url 'core:settings_invoice_customization' %}" 
+                       class="{% if active_tab == 'invoice_customization' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Invoice Settings
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Add Holiday Form -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add Holiday</h3>
+                
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_holiday">
+                    
+                    <div>
+                        <label for="holiday_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Date
+                        </label>
+                        <input type="date" 
+                               id="holiday_date" 
+                               name="holiday_date"
+                               required
+                               class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+
+                    <div>
+                        <label for="holiday_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Holiday Name
+                        </label>
+                        <input type="text" 
+                               id="holiday_name" 
+                               name="holiday_name"
+                               required
+                               maxlength="100"
+                               class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                               placeholder="e.g., New Year's Day">
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Holiday
+                    </button>
+                </form>
+
+                <!-- Quick Add Common Holidays -->
+                <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Quick Add Common Holidays</h4>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button type="button" 
+                                class="text-left px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                onclick="quickAddHoliday('2024-01-01', 'New Year\'s Day')">
+                            New Year's Day (Jan 1)
+                        </button>
+                        <button type="button" 
+                                class="text-left px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                onclick="quickAddHoliday('2024-07-04', 'Independence Day')">
+                            Independence Day (Jul 4)
+                        </button>
+                        <button type="button" 
+                                class="text-left px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                onclick="quickAddHoliday('2024-12-25', 'Christmas Day')">
+                            Christmas Day (Dec 25)
+                        </button>
+                        <button type="button" 
+                                class="text-left px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                onclick="quickAddHoliday('2024-11-28', 'Thanksgiving Day')">
+                            Thanksgiving Day (Nov 28)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Holidays List -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Current Holidays</h3>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                        {{ holidays|length }} holiday{{ holidays|length|pluralize }}
+                    </span>
+                </div>
+
+                {% if holidays %}
+                    <div class="space-y-3 max-h-96 overflow-y-auto">
+                        {% for holiday in holidays %}
+                            <div class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="flex-shrink-0">
+                                            <svg class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                                {{ holiday.name }}
+                                            </div>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                {{ holiday.date|date:"F j, Y" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <form method="post" class="inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="remove_holiday">
+                                        <input type="hidden" name="holiday_date" value="{{ holiday.date }}">
+                                        <button type="submit" 
+                                                class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                                onclick="return confirm('Are you sure you want to remove this holiday?')"
+                                                title="Remove holiday">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No holidays configured</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Add holidays when your business will be closed.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Holiday Calendar View -->
+        {% if holidays %}
+            <div class="mt-8 bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Holiday Calendar</h3>
+                
+                <!-- Year Navigation -->
+                <div class="flex items-center justify-between mb-6">
+                    <button type="button" 
+                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            onclick="changeYear(-1)">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        Previous Year
+                    </button>
+                    <h4 id="current-year" class="text-xl font-semibold text-gray-900 dark:text-white">2024</h4>
+                    <button type="button" 
+                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            onclick="changeYear(1)">
+                        Next Year
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Months Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for month_num in "123456789101112"|make_list %}
+                        <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                            <h5 class="font-medium text-gray-900 dark:text-white mb-2">
+                                {% if month_num == "1" %}January{% elif month_num == "2" %}February{% elif month_num == "3" %}March{% elif month_num == "4" %}April{% elif month_num == "5" %}May{% elif month_num == "6" %}June{% elif month_num == "7" %}July{% elif month_num == "8" %}August{% elif month_num == "9" %}September{% elif month_num == "10" %}October{% elif month_num == "11" %}November{% elif month_num == "12" %}December{% endif %}
+                            </h5>
+                            <div class="space-y-1">
+                                {% for holiday in holidays %}
+                                    {% if holiday.date|date:"n" == month_num %}
+                                        <div class="text-xs text-red-600 dark:text-red-400 flex items-center">
+                                            <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                                            {{ holiday.date|date:"j" }} - {{ holiday.name|truncatechars:20 }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function quickAddHoliday(date, name) {
+    document.getElementById('holiday_date').value = date;
+    document.getElementById('holiday_name').value = name;
+}
+
+let currentYear = new Date().getFullYear();
+
+function changeYear(direction) {
+    currentYear += direction;
+    document.getElementById('current-year').textContent = currentYear;
+    
+    // Update quick add buttons with new year
+    const quickButtons = document.querySelectorAll('[onclick*="quickAddHoliday"]');
+    quickButtons.forEach(button => {
+        const onclick = button.getAttribute('onclick');
+        const newOnclick = onclick.replace(/\d{4}-/, currentYear + '-');
+        button.setAttribute('onclick', newOnclick);
+    });
+}
+
+// Set current year on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('current-year').textContent = currentYear;
+});
+</script>
+{% endblock %}

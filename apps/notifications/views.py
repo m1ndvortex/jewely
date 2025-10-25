@@ -9,9 +9,8 @@ This module provides views for managing in-app notifications including:
 """
 
 import json
-from typing import Any, Dict
-
 import logging
+from typing import Any, Dict
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -24,7 +23,12 @@ from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
 
 from .models import Notification, NotificationPreference
-from .services import get_unread_count, get_user_notifications, mark_notifications_as_read, track_sms_event
+from .services import (
+    get_unread_count,
+    get_user_notifications,
+    mark_notifications_as_read,
+    track_sms_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -298,18 +302,18 @@ def sms_webhook(request: HttpRequest) -> HttpResponse:
     """
     try:
         # Verify webhook signature if secret is configured
-        webhook_secret = getattr(settings, 'SMS_WEBHOOK_SECRET', '')
+        webhook_secret = getattr(settings, "SMS_WEBHOOK_SECRET", "")
         if webhook_secret:
             # TODO: Implement Twilio signature verification
             # This would verify the X-Twilio-Signature header
             pass
-        
+
         # Extract Twilio webhook data
-        message_sid = request.POST.get('MessageSid')
-        message_status = request.POST.get('MessageStatus')
-        error_code = request.POST.get('ErrorCode')
-        error_message = request.POST.get('ErrorMessage')
-        
+        message_sid = request.POST.get("MessageSid")
+        message_status = request.POST.get("MessageStatus")
+        error_code = request.POST.get("ErrorCode")
+        error_message = request.POST.get("ErrorMessage")
+
         if message_sid and message_status:
             # Track the SMS event
             track_sms_event(
@@ -318,11 +322,435 @@ def sms_webhook(request: HttpRequest) -> HttpResponse:
                 error_code=error_code,
                 error_message=error_message,
             )
-            
+
             return HttpResponse("OK", status=200)
         else:
             return HttpResponse("Missing required parameters", status=400)
-            
+
     except Exception as e:
         logger.error(f"SMS webhook error: {str(e)}")
         return HttpResponse("Internal Server Error", status=500)
+
+
+# Customer Communication Tools Views
+
+
+class CustomerSegmentListView(LoginRequiredMixin, ListView):
+    """
+    View for listing customer segments.
+    """
+
+    model = None  # Will be set in get_queryset
+    template_name = "notifications/customer_segments.html"
+    context_object_name = "segments"
+    paginate_by = 20
+
+    def get_queryset(self):
+        from .models import CustomerSegment
+
+        self.model = CustomerSegment
+        return CustomerSegment.objects.filter(is_active=True).order_by("-created_at")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Customer Segments"
+        return context
+
+
+class CustomerSegmentCreateView(LoginRequiredMixin, View):
+    """
+    View for creating customer segments.
+    """
+
+    template_name = "notifications/segment_form.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        from apps.crm.models import LoyaltyTier
+
+        context = {
+            "page_title": "Create Customer Segment",
+            "loyalty_tiers": LoyaltyTier.objects.filter(is_active=True),
+            "segment_types": [
+                ("STATIC", "Static Segment"),
+                ("DYNAMIC", "Dynamic Segment"),
+            ],
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        from apps.crm.models import Customer
+
+        from .services import create_customer_segment
+
+        try:
+            name = request.POST.get("name")
+            description = request.POST.get("description", "")
+            segment_type = request.POST.get("segment_type", "STATIC")
+
+            if segment_type == "DYNAMIC":
+                # Build criteria from form data
+                criteria = {}
+
+                if request.POST.get("min_total_purchases"):
+                    criteria["min_total_purchases"] = float(request.POST.get("min_total_purchases"))
+
+                if request.POST.get("max_total_purchases"):
+                    criteria["max_total_purchases"] = float(request.POST.get("max_total_purchases"))
+
+                if request.POST.get("last_purchase_days"):
+                    criteria["last_purchase_days"] = int(request.POST.get("last_purchase_days"))
+
+                loyalty_tiers = request.POST.getlist("loyalty_tiers")
+                if loyalty_tiers:
+                    criteria["loyalty_tiers"] = loyalty_tiers
+
+                tags = request.POST.get("tags")
+                if tags:
+                    criteria["tags"] = [tag.strip() for tag in tags.split(",")]
+
+                if request.POST.get("marketing_opt_in"):
+                    criteria["marketing_opt_in"] = request.POST.get("marketing_opt_in") == "true"
+
+                if request.POST.get("sms_opt_in"):
+                    criteria["sms_opt_in"] = request.POST.get("sms_opt_in") == "true"
+
+                segment = create_customer_segment(
+                    name=name,
+                    description=description,
+                    segment_type=segment_type,
+                    criteria=criteria,
+                    created_by=request.user,
+                )
+            else:
+                # Static segment - get selected customers
+                customer_ids = request.POST.getlist("customers")
+                customers = Customer.objects.filter(id__in=customer_ids) if customer_ids else []
+
+                segment = create_customer_segment(
+                    name=name,
+                    description=description,
+                    segment_type=segment_type,
+                    customers=customers,
+                    created_by=request.user,
+                )
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f"Segment '{name}' created successfully with {segment.customer_count} customers",
+                    "segment_id": str(segment.id),
+                }
+            )
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+class BulkCampaignView(LoginRequiredMixin, View):
+    """
+    View for creating and sending bulk campaigns to customer segments.
+    """
+
+    template_name = "notifications/bulk_campaign.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        from .models import CustomerSegment, EmailTemplate, SMSTemplate
+
+        context = {
+            "page_title": "Bulk Campaign",
+            "segments": CustomerSegment.objects.filter(is_active=True),
+            "email_templates": EmailTemplate.objects.filter(is_active=True, email_type="MARKETING"),
+            "sms_templates": SMSTemplate.objects.filter(is_active=True, sms_type="MARKETING"),
+            "campaign_types": [
+                ("EMAIL", "Email Campaign"),
+                ("SMS", "SMS Campaign"),
+            ],
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        from .services import send_bulk_campaign_to_segment
+
+        try:
+            segment_id = request.POST.get("segment_id")
+            campaign_type = request.POST.get("campaign_type")
+            template_name = request.POST.get("template_name")
+            subject = request.POST.get("subject", "")
+
+            # Build context from form data
+            context = {}
+            for key, value in request.POST.items():
+                if key.startswith("context_"):
+                    context_key = key.replace("context_", "")
+                    context[context_key] = value
+
+            result = send_bulk_campaign_to_segment(
+                segment_id=segment_id,
+                campaign_type=campaign_type,
+                template_name=template_name,
+                subject=subject,
+                context=context,
+                created_by=request.user,
+            )
+
+            if "error" in result:
+                return JsonResponse({"success": False, "error": result["error"]}, status=400)
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f"Campaign sent successfully to {result['sent_count']} customers",
+                    "result": result,
+                }
+            )
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+class CampaignAnalyticsView(LoginRequiredMixin, View):
+    """
+    View for displaying campaign analytics and performance metrics.
+    """
+
+    template_name = "notifications/campaign_analytics.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        from datetime import datetime, timedelta
+
+        from .models import CampaignAnalytics
+        from .services import get_campaign_performance_report
+
+        # Get date range from query parameters
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)  # Default to last 30 days
+
+        if request.GET.get("start_date"):
+            start_date = datetime.strptime(request.GET.get("start_date"), "%Y-%m-%d")
+
+        if request.GET.get("end_date"):
+            end_date = datetime.strptime(request.GET.get("end_date"), "%Y-%m-%d")
+
+        campaign_type = request.GET.get("campaign_type")
+
+        # Get performance report
+        performance_report = get_campaign_performance_report(
+            start_date=start_date,
+            end_date=end_date,
+            campaign_type=campaign_type,
+        )
+
+        # Get recent campaigns
+        recent_campaigns = CampaignAnalytics.objects.filter(
+            campaign_sent_at__gte=start_date,
+            campaign_sent_at__lte=end_date,
+        )
+
+        if campaign_type:
+            recent_campaigns = recent_campaigns.filter(campaign_type=campaign_type)
+
+        recent_campaigns = recent_campaigns.order_by("-campaign_sent_at")[:20]
+
+        context = {
+            "page_title": "Campaign Analytics",
+            "performance_report": performance_report,
+            "recent_campaigns": recent_campaigns,
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "campaign_type": campaign_type,
+            "campaign_types": [
+                ("", "All Types"),
+                ("EMAIL", "Email"),
+                ("SMS", "SMS"),
+                ("MIXED", "Mixed"),
+            ],
+        }
+        return render(request, self.template_name, context)
+
+
+class CommunicationLogView(LoginRequiredMixin, ListView):
+    """
+    View for displaying customer communication logs.
+    """
+
+    model = None  # Will be set in get_queryset
+    template_name = "notifications/communication_log.html"
+    context_object_name = "communications"
+    paginate_by = 50
+
+    def get_queryset(self):
+        from .models import CommunicationLog
+
+        self.model = CommunicationLog
+
+        queryset = CommunicationLog.objects.select_related("customer").order_by(
+            "-communication_date"
+        )
+
+        # Filter by customer if provided
+        customer_id = self.request.GET.get("customer_id")
+        if customer_id:
+            queryset = queryset.filter(customer_id=customer_id)
+
+        # Filter by communication type
+        comm_type = self.request.GET.get("type")
+        if comm_type:
+            queryset = queryset.filter(communication_type=comm_type)
+
+        # Filter by campaign
+        campaign_id = self.request.GET.get("campaign_id")
+        if campaign_id:
+            queryset = queryset.filter(campaign_id=campaign_id)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        from .models import CommunicationLog
+
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "page_title": "Communication Log",
+                "communication_types": CommunicationLog.COMMUNICATION_TYPES,
+                "current_filters": {
+                    "customer_id": self.request.GET.get("customer_id", ""),
+                    "type": self.request.GET.get("type", ""),
+                    "campaign_id": self.request.GET.get("campaign_id", ""),
+                },
+            }
+        )
+        return context
+
+
+@require_http_methods(["POST"])
+@login_required
+def track_conversion(request: HttpRequest) -> JsonResponse:
+    """
+    API endpoint to track campaign conversions.
+    """
+    try:
+        from .services import track_campaign_conversion
+
+        data = json.loads(request.body) if request.body else {}
+        campaign_id = data.get("campaign_id")
+        conversion_value = data.get("conversion_value")
+        customer_id = data.get("customer_id")
+
+        if not campaign_id:
+            return JsonResponse({"success": False, "error": "Campaign ID is required"}, status=400)
+
+        success = track_campaign_conversion(
+            campaign_id=campaign_id,
+            conversion_value=conversion_value,
+            customer_id=customer_id,
+        )
+
+        if success:
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": "Conversion tracked successfully",
+                }
+            )
+        else:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Failed to track conversion",
+                },
+                status=400,
+            )
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@method_decorator(login_required, name="dispatch")
+class SegmentPreviewView(View):
+    """
+    HTMX endpoint for previewing customer segment results.
+    """
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        from apps.crm.models import Customer
+
+        from .services import get_segment_customers
+
+        try:
+            segment_type = request.POST.get("segment_type")
+
+            if segment_type == "DYNAMIC":
+                # Build criteria and preview customers
+                criteria = {}
+
+                if request.POST.get("min_total_purchases"):
+                    criteria["min_total_purchases"] = float(request.POST.get("min_total_purchases"))
+
+                if request.POST.get("max_total_purchases"):
+                    criteria["max_total_purchases"] = float(request.POST.get("max_total_purchases"))
+
+                if request.POST.get("last_purchase_days"):
+                    criteria["last_purchase_days"] = int(request.POST.get("last_purchase_days"))
+
+                loyalty_tiers = request.POST.getlist("loyalty_tiers")
+                if loyalty_tiers:
+                    criteria["loyalty_tiers"] = loyalty_tiers
+
+                tags = request.POST.get("tags")
+                if tags:
+                    criteria["tags"] = [tag.strip() for tag in tags.split(",")]
+
+                # Apply criteria to get preview
+                queryset = Customer.objects.filter(is_active=True)
+
+                if criteria.get("loyalty_tiers"):
+                    queryset = queryset.filter(loyalty_tier__name__in=criteria["loyalty_tiers"])
+
+                if criteria.get("min_total_purchases"):
+                    queryset = queryset.filter(total_purchases__gte=criteria["min_total_purchases"])
+
+                if criteria.get("max_total_purchases"):
+                    queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
+
+                if criteria.get("last_purchase_days"):
+                    from datetime import timedelta
+
+                    from django.utils import timezone
+
+                    cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
+                    queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
+
+                if criteria.get("tags"):
+                    for tag in criteria["tags"]:
+                        queryset = queryset.filter(tags__contains=[tag])
+
+                customers = queryset[:10]  # Preview first 10
+                total_count = queryset.count()
+
+            else:
+                # Static segment preview
+                customer_ids = request.POST.getlist("customers")
+                customers = Customer.objects.filter(id__in=customer_ids)[:10]
+                total_count = len(customer_ids)
+
+            return render(
+                request,
+                "notifications/partials/segment_preview.html",
+                {
+                    "customers": customers,
+                    "total_count": total_count,
+                    "showing_count": len(customers),
+                },
+            )
+
+        except Exception as e:
+            return render(
+                request,
+                "notifications/partials/segment_preview.html",
+                {
+                    "error": str(e),
+                    "customers": [],
+                    "total_count": 0,
+                    "showing_count": 0,
+                },
+            )

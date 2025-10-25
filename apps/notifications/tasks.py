@@ -12,9 +12,9 @@ from celery import shared_task
 
 from .models import EmailCampaign, EmailNotification, SMSCampaign, SMSNotification
 from .services import (
-    _send_email_now, 
+    _send_email_now,
     _send_sms_now,
-    process_scheduled_emails, 
+    process_scheduled_emails,
     process_scheduled_sms,
     send_campaign,
     send_sms_campaign,
@@ -413,10 +413,7 @@ def send_bulk_sms_task(
         campaign_id: Optional campaign ID for tracking
     """
     try:
-        users = User.objects.filter(
-            id__in=user_ids, 
-            phone__isnull=False
-        ).exclude(phone="")
+        users = User.objects.filter(id__in=user_ids, phone__isnull=False).exclude(phone="")
 
         from .services import send_sms_from_template
 
@@ -567,9 +564,7 @@ def update_sms_campaign_statistics_task(campaign_id: str):
 
 
 @shared_task
-def send_transactional_sms_task(
-    user_id: int, template_name: str, context: Dict
-):
+def send_transactional_sms_task(user_id: int, template_name: str, context: Dict):
     """
     Celery task to send a transactional SMS.
 
@@ -591,9 +586,7 @@ def send_transactional_sms_task(
             logger.info(f"Sent transactional SMS '{template_name}' to user {user_id}")
             return {"sms_notification_id": str(sms_notification.id), "status": "sent"}
         else:
-            logger.warning(
-                f"Failed to send transactional SMS '{template_name}' to user {user_id}"
-            )
+            logger.warning(f"Failed to send transactional SMS '{template_name}' to user {user_id}")
             return {"status": "failed", "reason": "SMS notification not created"}
 
     except User.DoesNotExist:
@@ -605,9 +598,7 @@ def send_transactional_sms_task(
 
 
 @shared_task
-def send_alert_sms_task(
-    user_id: int, template_name: str, context: Dict
-):
+def send_alert_sms_task(user_id: int, template_name: str, context: Dict):
     """
     Celery task to send an alert SMS.
 
@@ -621,17 +612,13 @@ def send_alert_sms_task(
 
         from .services import send_alert_sms
 
-        sms_notification = send_alert_sms(
-            user=user, template_name=template_name, context=context
-        )
+        sms_notification = send_alert_sms(user=user, template_name=template_name, context=context)
 
         if sms_notification:
             logger.info(f"Sent alert SMS '{template_name}' to user {user_id}")
             return {"sms_notification_id": str(sms_notification.id), "status": "sent"}
         else:
-            logger.warning(
-                f"Failed to send alert SMS '{template_name}' to user {user_id}"
-            )
+            logger.warning(f"Failed to send alert SMS '{template_name}' to user {user_id}")
             return {"status": "failed", "reason": "SMS notification not created"}
 
     except User.DoesNotExist:
@@ -658,9 +645,7 @@ def generate_sms_report_task(start_date: str, end_date: str, sms_type: Optional[
         start_dt = parse_datetime(start_date)
         end_dt = parse_datetime(end_date)
 
-        queryset = SMSNotification.objects.filter(
-            created_at__gte=start_dt, created_at__lte=end_dt
-        )
+        queryset = SMSNotification.objects.filter(created_at__gte=start_dt, created_at__lte=end_dt)
 
         if sms_type:
             queryset = queryset.filter(sms_type=sms_type)
@@ -694,21 +679,18 @@ def generate_sms_report_task(start_date: str, end_date: str, sms_type: Optional[
         daily_stats = (
             queryset.annotate(date=TruncDate("created_at"))
             .values("date")
-            .annotate(
-                count=Count("id"),
-                cost=Sum("price")
-            )
+            .annotate(count=Count("id"), cost=Sum("price"))
             .order_by("date")
         )
 
         for day_stat in daily_stats:
             stats["by_day"][day_stat["date"].isoformat()] = {
                 "count": day_stat["count"],
-                "cost": float(day_stat["cost"] or 0)
+                "cost": float(day_stat["cost"] or 0),
             }
 
         # Total cost
-        total_cost = queryset.aggregate(total=Sum('price'))['total'] or 0
+        total_cost = queryset.aggregate(total=Sum("price"))["total"] or 0
         stats["total_cost"] = float(total_cost)
 
         logger.info(f"Generated SMS report for period {start_date} to {end_date}")

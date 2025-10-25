@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Data Management - Settings{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Data Management</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Export and import your shop data for backup and migration purposes
+            </p>
+        </div>
+
+        <!-- Settings Navigation -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8 px-6" aria-label="Settings">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="{% if active_tab == 'overview' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Overview
+                    </a>
+                    <a href="{% url 'core:settings_shop_profile' %}" 
+                       class="{% if active_tab == 'shop_profile' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Shop Profile
+                    </a>
+                    <a href="{% url 'core:settings_branding' %}" 
+                       class="{% if active_tab == 'branding' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Branding
+                    </a>
+                    <a href="{% url 'core:settings_business_hours' %}" 
+                       class="{% if active_tab == 'business_hours' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Business Hours
+                    </a>
+                    <a href="{% url 'core:settings_holiday_calendar' %}" 
+                       class="{% if active_tab == 'holiday_calendar' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Holiday Calendar
+                    </a>
+                    <a href="{% url 'core:settings_invoice_customization' %}" 
+                       class="{% if active_tab == 'invoice_customization' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Invoice Settings
+                    </a>
+                    <a href="{% url 'core:settings_integration' %}" 
+                       class="{% if active_tab == 'integration' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Integrations
+                    </a>
+                    <a href="{% url 'core:settings_data_management' %}" 
+                       class="{% if active_tab == 'data_management' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Data Management
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Data Export Section -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Data Export</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Export your shop data for backup or migration purposes. Choose the data types and format you need.
+                </p>
+
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="export">
+
+                    <!-- Data Types Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Select Data to Export
+                        </label>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="export_inventory" 
+                                       name="export_types" 
+                                       value="inventory"
+                                       checked
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="export_inventory" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Inventory Items
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="export_customers" 
+                                       name="export_types" 
+                                       value="customers"
+                                       checked
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="export_customers" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Customers
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="export_sales" 
+                                       name="export_types" 
+                                       value="sales"
+                                       checked
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="export_sales" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Sales Records
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="export_suppliers" 
+                                       name="export_types" 
+                                       value="suppliers"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="export_suppliers" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Suppliers
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="export_settings" 
+                                       name="export_types" 
+                                       value="settings"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="export_settings" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Shop Settings
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Format -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Export Format
+                        </label>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input type="radio" 
+                                       id="format_csv" 
+                                       name="export_format" 
+                                       value="csv"
+                                       checked
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                <label for="format_csv" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    CSV (Comma Separated Values)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="radio" 
+                                       id="format_excel" 
+                                       name="export_format" 
+                                       value="excel"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                <label for="format_excel" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Excel (.xlsx)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="radio" 
+                                       id="format_json" 
+                                       name="export_format" 
+                                       value="json"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
+                                <label for="format_json" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    JSON (JavaScript Object Notation)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date Range (for sales data) -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Date Range (for Sales Data)
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="export_date_from" class="block text-xs text-gray-500 dark:text-gray-400">
+                                    From Date
+                                </label>
+                                <input type="date" 
+                                       id="export_date_from" 
+                                       name="export_date_from"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            </div>
+
+                            <div>
+                                <label for="export_date_to" class="block text-xs text-gray-500 dark:text-gray-400">
+                                    To Date
+                                </label>
+                                <input type="date" 
+                                       id="export_date_to" 
+                                       name="export_date_to"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Export Data
+                    </button>
+                </form>
+            </div>
+
+            <!-- Data Import Section -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Data Import</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Import data from CSV or Excel files. Make sure your files follow the correct format.
+                </p>
+
+                <form method="post" enctype="multipart/form-data" class="space-y-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="import">
+
+                    <!-- Import Type -->
+                    <div>
+                        <label for="import_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Data Type
+                        </label>
+                        <select id="import_type" 
+                                name="import_type"
+                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            <option value="">Select data type to import</option>
+                            <option value="inventory">Inventory Items</option>
+                            <option value="customers">Customers</option>
+                            <option value="suppliers">Suppliers</option>
+                        </select>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div>
+                        <label for="import_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Upload File
+                        </label>
+                        <input type="file" 
+                               id="import_file" 
+                               name="import_file"
+                               accept=".csv,.xlsx,.xls"
+                               class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB
+                        </p>
+                    </div>
+
+                    <!-- Import Options -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                            Import Options
+                        </label>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="update_existing" 
+                                       name="update_existing"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="update_existing" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Update existing records (match by SKU/ID)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="validate_only" 
+                                       name="validate_only"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                <label for="validate_only" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Validate only (don't import, just check for errors)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4"></path>
+                        </svg>
+                        Import Data
+                    </button>
+                </form>
+
+                <!-- Download Templates -->
+                <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Download Templates</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        Download template files to see the correct format for importing data.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{% url 'core:download_template' 'inventory' %}" 
+                           class="inline-flex items-center px-3 py-1 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            Inventory Template
+                        </a>
+                        <a href="{% url 'core:download_template' 'customers' %}" 
+                           class="inline-flex items-center px-3 py-1 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            Customers Template
+                        </a>
+                        <a href="{% url 'core:download_template' 'suppliers' %}" 
+                           class="inline-flex items-center px-3 py-1 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            Suppliers Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Export/Import History -->
+        <div class="mt-8 bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Recent Activity</h3>
+            
+            {% if recent_activities %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Type
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Data Type
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Date
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
+                            {% for activity in recent_activities %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                        {{ activity.type|title }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {{ activity.data_type|title }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                                   {% if activity.status == 'completed' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                   {% elif activity.status == 'failed' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                                   {% else %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% endif %}">
+                                            {{ activity.status|title }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {{ activity.created_at|date:"M j, Y H:i" }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        {% if activity.file_path and activity.status == 'completed' %}
+                                            <a href="{{ activity.file_path }}" 
+                                               class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                                Download
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-sm text-gray-500 dark:text-gray-400">No recent export or import activities.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

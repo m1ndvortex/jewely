@@ -557,7 +557,15 @@ class SMSNotification(models.Model):
     def __str__(self):
         return f"SMS to {self.to_phone} ({self.status})"
 
-    def update_status(self, status, timestamp=None, error_message=None, error_code=None, price=None, price_unit=None):
+    def update_status(
+        self,
+        status,
+        timestamp=None,
+        error_message=None,
+        error_code=None,
+        price=None,
+        price_unit=None,
+    ):
         """Update SMS status with appropriate timestamp"""
         from django.utils import timezone
 
@@ -643,13 +651,11 @@ class SMSOptOut(models.Model):
         related_name="sms_opt_out",
         help_text=_("User who opted out of SMS"),
     )
-    opted_out_at = models.DateTimeField(
-        auto_now_add=True, help_text=_("When the user opted out")
-    )
+    opted_out_at = models.DateTimeField(auto_now_add=True, help_text=_("When the user opted out"))
     reason = models.CharField(
         max_length=255, null=True, blank=True, help_text=_("Reason for opting out")
     )
-    
+
     # Allow opt-out by SMS type
     transactional_opt_out = models.BooleanField(
         default=False, help_text=_("Opted out of transactional SMS")
@@ -657,12 +663,8 @@ class SMSOptOut(models.Model):
     marketing_opt_out = models.BooleanField(
         default=True, help_text=_("Opted out of marketing SMS (default: True)")
     )
-    system_opt_out = models.BooleanField(
-        default=False, help_text=_("Opted out of system SMS")
-    )
-    alert_opt_out = models.BooleanField(
-        default=False, help_text=_("Opted out of alert SMS")
-    )
+    system_opt_out = models.BooleanField(default=False, help_text=_("Opted out of system SMS"))
+    alert_opt_out = models.BooleanField(default=False, help_text=_("Opted out of alert SMS"))
 
     class Meta:
         db_table = "notifications_sms_opt_out"
@@ -702,9 +704,12 @@ class EmailCampaign(models.Model):
         "EmailTemplate", on_delete=models.PROTECT, help_text=_("Email template to use")
     )
 
-    # Targeting
+    # Targeting - Enhanced with customer segments
     target_users = models.ManyToManyField(
         User, blank=True, help_text=_("Specific users to target (leave empty for all users)")
+    )
+    target_segments = models.ManyToManyField(
+        "CustomerSegment", blank=True, help_text=_("Customer segments to target")
     )
     target_roles = models.JSONField(default=list, blank=True, help_text=_("User roles to target"))
     target_tenant_status = models.JSONField(
@@ -760,6 +765,21 @@ class EmailCampaign(models.Model):
         if self.target_tenant_status:
             queryset = queryset.filter(tenant__status__in=self.target_tenant_status)
 
+        # Add customer segment targeting
+        if self.target_segments.exists():
+            from apps.crm.models import Customer
+
+            segment_customers = Customer.objects.none()
+
+            for segment in self.target_segments.all():
+                segment_customers = segment_customers.union(segment.get_customers())
+
+            # Get users associated with these customers (assuming customers have user accounts)
+            customer_emails = segment_customers.values_list("email", flat=True).exclude(
+                email__isnull=True
+            )
+            queryset = queryset.filter(email__in=customer_emails)
+
         return queryset
 
     def update_statistics(self):
@@ -789,6 +809,377 @@ class EmailCampaign(models.Model):
         )
 
 
+class CustomerSegment(models.Model):
+    """
+    Model for customer segmentation to enable targeted messaging campaigns.
+
+    Implements Requirement 19: Notification and Communication System
+    - Provide customer segmentation for targeted marketing campaigns
+    """
+
+    SEGMENT_TYPES = [
+        ("STATIC", _("Static Segment")),
+        ("DYNAMIC", _("Dynamic Segment")),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, help_text=_("Segment name"))
+    description = models.TextField(blank=True, help_text=_("Segment description"))
+    segment_type = models.CharField(
+        max_length=20,
+        choices=SEGMENT_TYPES,
+        default="STATIC",
+        help_text=_("Type of segment (static or dynamic)"),
+    )
+
+    # Segmentation criteria (for dynamic segments)
+    criteria = models.JSONField(
+        default=dict, blank=True, help_text=_("Segmentation criteria for dynamic segments")
+    )
+
+    # Static segment members
+    customers = models.ManyToManyField(
+        "crm.Customer", blank=True, help_text=_("Customers in this segment (for static segments)")
+    )
+
+    # Metadata
+    is_active = models.BooleanField(default=True, help_text=_("Whether this segment is active"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, help_text=_("User who created this segment")
+    )
+
+    # Statistics
+    customer_count = models.IntegerField(default=0, help_text=_("Number of customers in segment"))
+    last_calculated_at = models.DateTimeField(
+        null=True, blank=True, help_text=_("When segment was last calculated")
+    )
+
+    class Meta:
+        db_table = "notifications_customer_segment"
+        ordering = ["-created_at"]
+        verbose_name = _("Customer Segment")
+        verbose_name_plural = _("Customer Segments")
+        indexes = [
+            models.Index(fields=["segment_type", "is_active"], name="segment_type_active_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.customer_count} customers)"
+
+    def get_customers(self):
+        """Get all customers in this segment"""
+        if self.segment_type == "STATIC":
+            return self.customers.all()
+        else:
+            # Dynamic segment - apply criteria
+            return self._apply_dynamic_criteria()
+
+    def _apply_dynamic_criteria(self):
+        """Apply dynamic segmentation criteria to get customers"""
+        from apps.crm.models import Customer
+
+        queryset = Customer.objects.filter(is_active=True)
+
+        # Apply criteria filters
+        criteria = self.criteria or {}
+
+        # Loyalty tier filter
+        if criteria.get("loyalty_tiers"):
+            queryset = queryset.filter(loyalty_tier__name__in=criteria["loyalty_tiers"])
+
+        # Purchase amount filters
+        if criteria.get("min_total_purchases"):
+            queryset = queryset.filter(total_purchases__gte=criteria["min_total_purchases"])
+        if criteria.get("max_total_purchases"):
+            queryset = queryset.filter(total_purchases__lte=criteria["max_total_purchases"])
+
+        # Last purchase date filters
+        if criteria.get("last_purchase_days"):
+            from datetime import timedelta
+
+            from django.utils import timezone
+
+            cutoff_date = timezone.now() - timedelta(days=criteria["last_purchase_days"])
+            queryset = queryset.filter(last_purchase_at__gte=cutoff_date)
+
+        # Tags filter
+        if criteria.get("tags"):
+            for tag in criteria["tags"]:
+                queryset = queryset.filter(tags__contains=[tag])
+
+        # Communication preferences
+        if criteria.get("marketing_opt_in") is not None:
+            queryset = queryset.filter(marketing_opt_in=criteria["marketing_opt_in"])
+        if criteria.get("sms_opt_in") is not None:
+            queryset = queryset.filter(sms_opt_in=criteria["sms_opt_in"])
+
+        # Age range (if date_of_birth is available)
+        if criteria.get("min_age") or criteria.get("max_age"):
+            from datetime import timedelta
+
+            from django.utils import timezone
+
+            if criteria.get("min_age"):
+                max_birth_date = timezone.now().date() - timedelta(days=criteria["min_age"] * 365)
+                queryset = queryset.filter(date_of_birth__lte=max_birth_date)
+
+            if criteria.get("max_age"):
+                min_birth_date = timezone.now().date() - timedelta(days=criteria["max_age"] * 365)
+                queryset = queryset.filter(date_of_birth__gte=min_birth_date)
+
+        return queryset
+
+    def update_customer_count(self):
+        """Update the customer count for this segment"""
+        self.customer_count = self.get_customers().count()
+        self.last_calculated_at = timezone.now()
+        self.save(update_fields=["customer_count", "last_calculated_at"])
+
+
+class CampaignAnalytics(models.Model):
+    """
+    Model for tracking campaign analytics and performance metrics.
+
+    Implements Requirement 19: Notification and Communication System
+    - Implement campaign analytics (open rates, click rates, conversions)
+    """
+
+    CAMPAIGN_TYPES = [
+        ("EMAIL", _("Email Campaign")),
+        ("SMS", _("SMS Campaign")),
+        ("MIXED", _("Mixed Campaign")),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    campaign_id = models.CharField(max_length=100, help_text=_("Campaign identifier"))
+    campaign_name = models.CharField(max_length=255, help_text=_("Campaign name"))
+    campaign_type = models.CharField(
+        max_length=20, choices=CAMPAIGN_TYPES, help_text=_("Type of campaign")
+    )
+
+    # Targeting info
+    segment = models.ForeignKey(
+        "CustomerSegment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text=_("Customer segment targeted"),
+    )
+
+    # Basic metrics
+    total_recipients = models.IntegerField(default=0, help_text=_("Total recipients targeted"))
+    messages_sent = models.IntegerField(default=0, help_text=_("Total messages sent"))
+    messages_delivered = models.IntegerField(default=0, help_text=_("Messages delivered"))
+    messages_failed = models.IntegerField(default=0, help_text=_("Messages failed"))
+
+    # Email-specific metrics
+    emails_opened = models.IntegerField(default=0, help_text=_("Emails opened"))
+    emails_clicked = models.IntegerField(default=0, help_text=_("Emails clicked"))
+    emails_bounced = models.IntegerField(default=0, help_text=_("Emails bounced"))
+    emails_unsubscribed = models.IntegerField(default=0, help_text=_("Unsubscribes from campaign"))
+
+    # Conversion tracking
+    conversions = models.IntegerField(default=0, help_text=_("Number of conversions"))
+    conversion_value = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0, help_text=_("Total value of conversions")
+    )
+
+    # Cost tracking
+    total_cost = models.DecimalField(
+        max_digits=10, decimal_places=4, default=0, help_text=_("Total cost of campaign")
+    )
+
+    # Calculated rates (updated automatically)
+    delivery_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text=_("Delivery rate percentage")
+    )
+    open_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text=_("Open rate percentage (email only)")
+    )
+    click_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text=_("Click rate percentage (email only)")
+    )
+    conversion_rate = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text=_("Conversion rate percentage")
+    )
+    roi = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0, help_text=_("Return on investment percentage")
+    )
+
+    # Timestamps
+    campaign_sent_at = models.DateTimeField(help_text=_("When campaign was sent"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "notifications_campaign_analytics"
+        ordering = ["-campaign_sent_at"]
+        verbose_name = _("Campaign Analytics")
+        verbose_name_plural = _("Campaign Analytics")
+        indexes = [
+            models.Index(fields=["campaign_id"], name="analytics_campaign_id_idx"),
+            models.Index(
+                fields=["campaign_type", "-campaign_sent_at"], name="analytics_type_date_idx"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.campaign_name} Analytics"
+
+    def calculate_rates(self):
+        """Calculate and update all rate metrics"""
+        # Delivery rate
+        if self.messages_sent > 0:
+            self.delivery_rate = (self.messages_delivered / self.messages_sent) * 100
+        else:
+            self.delivery_rate = 0
+
+        # Open rate (email only)
+        if self.campaign_type in ["EMAIL", "MIXED"] and self.messages_delivered > 0:
+            self.open_rate = (self.emails_opened / self.messages_delivered) * 100
+        else:
+            self.open_rate = 0
+
+        # Click rate (email only)
+        if self.campaign_type in ["EMAIL", "MIXED"] and self.emails_opened > 0:
+            self.click_rate = (self.emails_clicked / self.emails_opened) * 100
+        else:
+            self.click_rate = 0
+
+        # Conversion rate
+        if self.messages_delivered > 0:
+            self.conversion_rate = (self.conversions / self.messages_delivered) * 100
+        else:
+            self.conversion_rate = 0
+
+        # ROI
+        if self.total_cost > 0:
+            self.roi = ((self.conversion_value - self.total_cost) / self.total_cost) * 100
+        else:
+            self.roi = 0
+
+        self.save(
+            update_fields=["delivery_rate", "open_rate", "click_rate", "conversion_rate", "roi"]
+        )
+
+
+class CommunicationLog(models.Model):
+    """
+    Model for logging all customer communications across all channels.
+
+    Implements Requirement 19: Notification and Communication System
+    - Log all customer communications for reference
+    """
+
+    COMMUNICATION_TYPES = [
+        ("EMAIL", _("Email")),
+        ("SMS", _("SMS")),
+        ("IN_APP", _("In-App Notification")),
+        ("PHONE", _("Phone Call")),
+        ("MEETING", _("In-Person Meeting")),
+        ("NOTE", _("Internal Note")),
+    ]
+
+    DIRECTIONS = [
+        ("OUTBOUND", _("Outbound")),
+        ("INBOUND", _("Inbound")),
+        ("INTERNAL", _("Internal")),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Customer relationship
+    customer = models.ForeignKey(
+        "crm.Customer",
+        on_delete=models.CASCADE,
+        related_name="communication_logs",
+        help_text=_("Customer this communication is with"),
+    )
+
+    # Communication details
+    communication_type = models.CharField(
+        max_length=20, choices=COMMUNICATION_TYPES, help_text=_("Type of communication")
+    )
+    direction = models.CharField(
+        max_length=20, choices=DIRECTIONS, help_text=_("Direction of communication")
+    )
+    subject = models.CharField(
+        max_length=255, blank=True, help_text=_("Subject or title of communication")
+    )
+    content = models.TextField(help_text=_("Content or summary of communication"))
+
+    # Campaign tracking
+    campaign_id = models.CharField(
+        max_length=100, blank=True, help_text=_("Campaign ID if this is part of a campaign")
+    )
+
+    # Related objects
+    email_notification = models.ForeignKey(
+        EmailNotification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text=_("Related email notification"),
+    )
+    sms_notification = models.ForeignKey(
+        SMSNotification,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text=_("Related SMS notification"),
+    )
+
+    # Engagement tracking
+    was_opened = models.BooleanField(default=False, help_text=_("Whether message was opened"))
+    was_clicked = models.BooleanField(default=False, help_text=_("Whether links were clicked"))
+    resulted_in_conversion = models.BooleanField(
+        default=False, help_text=_("Whether this led to a conversion")
+    )
+    conversion_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Value of conversion if applicable"),
+    )
+
+    # Metadata
+    metadata = models.JSONField(
+        default=dict, blank=True, help_text=_("Additional communication metadata")
+    )
+
+    # Timestamps
+    communication_date = models.DateTimeField(
+        default=timezone.now, help_text=_("When the communication occurred")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text=_("User who logged this communication"),
+    )
+
+    class Meta:
+        db_table = "notifications_communication_log"
+        ordering = ["-communication_date"]
+        verbose_name = _("Communication Log")
+        verbose_name_plural = _("Communication Logs")
+        indexes = [
+            models.Index(fields=["customer", "-communication_date"], name="comm_log_cust_date_idx"),
+            models.Index(fields=["campaign_id"], name="comm_log_campaign_idx"),
+            models.Index(
+                fields=["communication_type", "-communication_date"], name="comm_log_type_date_idx"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.customer.get_full_name()} - {self.communication_type} ({self.communication_date.date()})"
+
+
 class SMSCampaign(models.Model):
     """
     Model to manage SMS marketing campaigns.
@@ -807,9 +1198,12 @@ class SMSCampaign(models.Model):
         "SMSTemplate", on_delete=models.PROTECT, help_text=_("SMS template to use")
     )
 
-    # Targeting
+    # Targeting - Enhanced with customer segments
     target_users = models.ManyToManyField(
         User, blank=True, help_text=_("Specific users to target (leave empty for all users)")
+    )
+    target_segments = models.ManyToManyField(
+        "CustomerSegment", blank=True, help_text=_("Customer segments to target")
     )
     target_roles = models.JSONField(default=list, blank=True, help_text=_("User roles to target"))
     target_tenant_status = models.JSONField(
@@ -865,6 +1259,21 @@ class SMSCampaign(models.Model):
         if self.target_tenant_status:
             queryset = queryset.filter(tenant__status__in=self.target_tenant_status)
 
+        # Add customer segment targeting
+        if self.target_segments.exists():
+            from apps.crm.models import Customer
+
+            segment_customers = Customer.objects.none()
+
+            for segment in self.target_segments.all():
+                segment_customers = segment_customers.union(segment.get_customers())
+
+            # Get users associated with these customers (assuming customers have user accounts)
+            customer_emails = segment_customers.values_list("email", flat=True).exclude(
+                email__isnull=True
+            )
+            queryset = queryset.filter(email__in=customer_emails)
+
         return queryset
 
     def update_statistics(self):
@@ -872,16 +1281,12 @@ class SMSCampaign(models.Model):
         sms_messages = SMSNotification.objects.filter(campaign_id=str(self.id))
 
         self.total_recipients = sms_messages.count()
-        self.sms_sent = sms_messages.filter(
-            status__in=["SENT", "DELIVERED"]
-        ).count()
+        self.sms_sent = sms_messages.filter(status__in=["SENT", "DELIVERED"]).count()
         self.sms_delivered = sms_messages.filter(status="DELIVERED").count()
         self.sms_failed = sms_messages.filter(status__in=["FAILED", "UNDELIVERED"]).count()
-        
+
         # Calculate total cost
-        total_cost = sms_messages.aggregate(
-            total=models.Sum('price')
-        )['total'] or 0
+        total_cost = sms_messages.aggregate(total=models.Sum("price"))["total"] or 0
         self.total_cost = total_cost
 
         self.save(

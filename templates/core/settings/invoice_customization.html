@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Invoice Settings - Settings{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Invoice Settings</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Customize invoice templates, numbering schemes, and display options
+            </p>
+        </div>
+
+        <!-- Settings Navigation -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8 px-6" aria-label="Settings">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="{% if active_tab == 'overview' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Overview
+                    </a>
+                    <a href="{% url 'core:settings_shop_profile' %}" 
+                       class="{% if active_tab == 'shop_profile' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Shop Profile
+                    </a>
+                    <a href="{% url 'core:settings_branding' %}" 
+                       class="{% if active_tab == 'branding' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Branding
+                    </a>
+                    <a href="{% url 'core:settings_business_hours' %}" 
+                       class="{% if active_tab == 'business_hours' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Business Hours
+                    </a>
+                    <a href="{% url 'core:settings_holiday_calendar' %}" 
+                       class="{% if active_tab == 'holiday_calendar' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Holiday Calendar
+                    </a>
+                    <a href="{% url 'core:settings_invoice_customization' %}" 
+                       class="{% if active_tab == 'invoice_customization' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Invoice Settings
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Invoice Settings Form -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <form method="post" class="space-y-8 p-6">
+                {% csrf_token %}
+                
+                <!-- Display form errors -->
+                {% if form.non_field_errors %}
+                    <div class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-md p-4">
+                        {% for error in form.non_field_errors %}
+                            <p class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Template Selection Section -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Template Selection</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="{{ form.invoice_template.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Invoice Template
+                            </label>
+                            {{ form.invoice_template }}
+                            {% if form.invoice_template.errors %}
+                                {% for error in form.invoice_template.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose the layout for your invoices</p>
+                        </div>
+
+                        <div>
+                            <label for="{{ form.receipt_template.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Receipt Template
+                            </label>
+                            {{ form.receipt_template }}
+                            {% if form.receipt_template.errors %}
+                                {% for error in form.receipt_template.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Choose the layout for your receipts</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice Numbering Section -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Invoice Numbering</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label for="{{ form.invoice_numbering_scheme.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Numbering Scheme
+                            </label>
+                            {{ form.invoice_numbering_scheme }}
+                            {% if form.invoice_numbering_scheme.errors %}
+                                {% for error in form.invoice_numbering_scheme.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label for="{{ form.invoice_number_prefix.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Prefix
+                            </label>
+                            {{ form.invoice_number_prefix }}
+                            {% if form.invoice_number_prefix.errors %}
+                                {% for error in form.invoice_number_prefix.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div id="invoice_custom_format_div" style="display: none;">
+                            <label for="{{ form.invoice_number_format.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Custom Format
+                            </label>
+                            {{ form.invoice_number_format }}
+                            {% if form.invoice_number_format.errors %}
+                                {% for error in form.invoice_number_format.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                Available: {prefix}, {number}, {year}, {month}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            <strong>Preview:</strong> <span id="invoice_preview">{{ invoice_preview }}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Receipt Numbering Section -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Receipt Numbering</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label for="{{ form.receipt_numbering_scheme.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Numbering Scheme
+                            </label>
+                            {{ form.receipt_numbering_scheme }}
+                            {% if form.receipt_numbering_scheme.errors %}
+                                {% for error in form.receipt_numbering_scheme.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label for="{{ form.receipt_number_prefix.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Prefix
+                            </label>
+                            {{ form.receipt_number_prefix }}
+                            {% if form.receipt_number_prefix.errors %}
+                                {% for error in form.receipt_number_prefix.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div id="receipt_custom_format_div" style="display: none;">
+                            <label for="{{ form.receipt_number_format.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Custom Format
+                            </label>
+                            {{ form.receipt_number_format }}
+                            {% if form.receipt_number_format.errors %}
+                                {% for error in form.receipt_number_format.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                Available: {prefix}, {number}, {year}, {month}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            <strong>Preview:</strong> <span id="receipt_preview">{{ receipt_preview }}</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Display Options Section -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Display Options</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div class="flex items-center">
+                                {{ form.show_item_codes }}
+                                <label for="{{ form.show_item_codes.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Show item codes (SKU)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                {{ form.show_item_descriptions }}
+                                <label for="{{ form.show_item_descriptions.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Show detailed item descriptions
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                {{ form.show_item_weights }}
+                                <label for="{{ form.show_item_weights.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Show item weights (grams)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="flex items-center">
+                                {{ form.show_karat_purity }}
+                                <label for="{{ form.show_karat_purity.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Show gold karat purity
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                {{ form.show_tax_breakdown }}
+                                <label for="{{ form.show_tax_breakdown.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Show detailed tax breakdown
+                                </label>
+                            </div>
+
+                            <div class="flex items-center">
+                                {{ form.show_payment_terms }}
+                                <label for="{{ form.show_payment_terms.id_for_label }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Show payment terms and conditions
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Fields Section -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Custom Fields</h3>
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="{{ form.custom_field_1_label.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Custom Field 1 Label
+                                </label>
+                                {{ form.custom_field_1_label }}
+                                {% if form.custom_field_1_label.errors %}
+                                    {% for error in form.custom_field_1_label.errors %}
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <label for="{{ form.custom_field_1_value.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Custom Field 1 Default Value
+                                </label>
+                                {{ form.custom_field_1_value }}
+                                {% if form.custom_field_1_value.errors %}
+                                    {% for error in form.custom_field_1_value.errors %}
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="{{ form.custom_field_2_label.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Custom Field 2 Label
+                                </label>
+                                {{ form.custom_field_2_label }}
+                                {% if form.custom_field_2_label.errors %}
+                                    {% for error in form.custom_field_2_label.errors %}
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <label for="{{ form.custom_field_2_value.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Custom Field 2 Default Value
+                                </label>
+                                {{ form.custom_field_2_value }}
+                                {% if form.custom_field_2_value.errors %}
+                                    {% for error in form.custom_field_2_value.errors %}
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Text Section -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Footer Text</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="{{ form.invoice_footer_text.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Invoice Footer Text
+                            </label>
+                            {{ form.invoice_footer_text }}
+                            {% if form.invoice_footer_text.errors %}
+                                {% for error in form.invoice_footer_text.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label for="{{ form.receipt_footer_text.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Receipt Footer Text
+                            </label>
+                            {{ form.receipt_footer_text }}
+                            {% if form.receipt_footer_text.errors %}
+                                {% for error in form.receipt_footer_text.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terms and Policies Section -->
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Terms and Policies</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="{{ form.payment_terms.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Payment Terms
+                            </label>
+                            {{ form.payment_terms }}
+                            {% if form.payment_terms.errors %}
+                                {% for error in form.payment_terms.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label for="{{ form.return_policy.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Return Policy
+                            </label>
+                            {{ form.return_policy }}
+                            {% if form.return_policy.errors %}
+                                {% for error in form.return_policy.errors %}
+                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleCustomFormat(type) {
+    const schemeSelect = document.getElementById(`id_${type}_numbering_scheme`);
+    const customFormatDiv = document.getElementById(`${type}_custom_format_div`);
+    
+    if (schemeSelect.value === 'custom') {
+        customFormatDiv.style.display = 'block';
+    } else {
+        customFormatDiv.style.display = 'none';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCustomFormat('invoice');
+    toggleCustomFormat('receipt');
+});
+</script>
+{% endblock %}

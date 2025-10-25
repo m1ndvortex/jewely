@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import branch_views, dashboard_views, views
+from . import branch_views, dashboard_views, settings_views, views
 
 app_name = "core"
 
@@ -103,4 +103,69 @@ urlpatterns = [
     ),
     # Staff Assignment - API Views
     path("api/staff/assign/", branch_views.assign_staff_to_branch, name="api_assign_staff"),
+    # Settings - Web Views
+    path("settings/", settings_views.SettingsOverviewView.as_view(), name="settings_overview"),
+    path(
+        "settings/shop-profile/",
+        settings_views.ShopProfileView.as_view(),
+        name="settings_shop_profile",
+    ),
+    path(
+        "settings/branding/",
+        settings_views.BrandingCustomizationView.as_view(),
+        name="settings_branding",
+    ),
+    path(
+        "settings/business-hours/",
+        settings_views.BusinessHoursView.as_view(),
+        name="settings_business_hours",
+    ),
+    path(
+        "settings/holiday-calendar/",
+        settings_views.HolidayCalendarView.as_view(),
+        name="settings_holiday_calendar",
+    ),
+    path(
+        "settings/invoice-customization/",
+        settings_views.InvoiceCustomizationView.as_view(),
+        name="settings_invoice_customization",
+    ),
+    path(
+        "settings/integration/",
+        settings_views.IntegrationSettingsView.as_view(),
+        name="settings_integration",
+    ),
+    path(
+        "settings/data-management/",
+        settings_views.DataManagementView.as_view(),
+        name="settings_data_management",
+    ),
+    path(
+        "settings/security/",
+        settings_views.SecuritySettingsView.as_view(),
+        name="settings_security",
+    ),
+    path(
+        "settings/download-template/<str:template_type>/",
+        settings_views.download_template,
+        name="download_template",
+    ),
+    # Settings - API Views
+    path(
+        "api/settings/tenant/",
+        settings_views.TenantSettingsAPIView.as_view(),
+        name="api_tenant_settings",
+    ),
+    path(
+        "api/settings/invoice/",
+        settings_views.InvoiceSettingsAPIView.as_view(),
+        name="api_invoice_settings",
+    ),
+    path(
+        "api/settings/integration/",
+        settings_views.IntegrationSettingsAPIView.as_view(),
+        name="api_integration_settings",
+    ),
+    path("api/settings/upload-logo/", settings_views.upload_logo_api, name="api_upload_logo"),
+    path("api/settings/update-colors/", settings_views.update_colors_api, name="api_update_colors"),
 ]

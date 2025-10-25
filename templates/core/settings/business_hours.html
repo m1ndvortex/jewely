@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Business Hours - Settings{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Business Hours</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">
+                Configure your operating hours and weekly schedule
+            </p>
+        </div>
+
+        <!-- Settings Navigation -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <nav class="-mb-px flex space-x-8 px-6" aria-label="Settings">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="{% if active_tab == 'overview' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Overview
+                    </a>
+                    <a href="{% url 'core:settings_shop_profile' %}" 
+                       class="{% if active_tab == 'shop_profile' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Shop Profile
+                    </a>
+                    <a href="{% url 'core:settings_branding' %}" 
+                       class="{% if active_tab == 'branding' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Branding
+                    </a>
+                    <a href="{% url 'core:settings_business_hours' %}" 
+                       class="{% if active_tab == 'business_hours' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Business Hours
+                    </a>
+                    <a href="{% url 'core:settings_holiday_calendar' %}" 
+                       class="{% if active_tab == 'holiday_calendar' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Holiday Calendar
+                    </a>
+                    <a href="{% url 'core:settings_invoice_customization' %}" 
+                       class="{% if active_tab == 'invoice_customization' %}border-blue-500 text-blue-600 dark:text-blue-400{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300{% endif %} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        Invoice Settings
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Business Hours Form -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <form method="post" class="p-6">
+                {% csrf_token %}
+                
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Weekly Schedule</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Set your operating hours for each day of the week. These hours will be displayed to customers and used for scheduling.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    {% for day, hours in business_hours.items %}
+                        <div class="flex items-center space-x-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
+                            <!-- Day Name -->
+                            <div class="w-24 flex-shrink-0">
+                                <label class="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                                    {{ day }}
+                                </label>
+                            </div>
+
+                            <!-- Closed Checkbox -->
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       id="{{ day }}_closed" 
+                                       name="{{ day }}_closed"
+                                       {% if hours.closed %}checked{% endif %}
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
+                                       onchange="toggleDayHours('{{ day }}')">
+                                <label for="{{ day }}_closed" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    Closed
+                                </label>
+                            </div>
+
+                            <!-- Time Inputs -->
+                            <div id="{{ day }}_hours" class="flex items-center space-x-2 {% if hours.closed %}opacity-50{% endif %}">
+                                <div>
+                                    <label for="{{ day }}_open" class="sr-only">Opening time for {{ day }}</label>
+                                    <input type="time" 
+                                           id="{{ day }}_open" 
+                                           name="{{ day }}_open"
+                                           value="{{ hours.open }}"
+                                           {% if hours.closed %}disabled{% endif %}
+                                           class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                </div>
+                                <span class="text-gray-500 dark:text-gray-400">to</span>
+                                <div>
+                                    <label for="{{ day }}_close" class="sr-only">Closing time for {{ day }}</label>
+                                    <input type="time" 
+                                           id="{{ day }}_close" 
+                                           name="{{ day }}_close"
+                                           value="{{ hours.close }}"
+                                           {% if hours.closed %}disabled{% endif %}
+                                           class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="flex space-x-2">
+                                <button type="button" 
+                                        class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                                        onclick="setHours('{{ day }}', '09:00', '17:00')">
+                                    9-5
+                                </button>
+                                <button type="button" 
+                                        class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800"
+                                        onclick="setHours('{{ day }}', '10:00', '18:00')">
+                                    10-6
+                                </button>
+                                <button type="button" 
+                                        class="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800"
+                                        onclick="setHours('{{ day }}', '11:00', '19:00')">
+                                    11-7
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Quick Setup Options -->
+                <div class="mt-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Quick Setup</h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" 
+                                class="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onclick="setWeekdayHours('09:00', '17:00')">
+                            Weekdays 9-5
+                        </button>
+                        <button type="button" 
+                                class="px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                onclick="setWeekdayHours('10:00', '18:00')">
+                            Weekdays 10-6
+                        </button>
+                        <button type="button" 
+                                class="px-3 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                onclick="setAllHours('09:00', '17:00')">
+                            All Days 9-5
+                        </button>
+                        <button type="button" 
+                                class="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                onclick="closeWeekends()">
+                            Close Weekends
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-8">
+                    <a href="{% url 'core:settings_overview' %}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Business Hours
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Current Schedule Preview -->
+        <div class="mt-8 bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Current Schedule</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for day, hours in business_hours.items %}
+                    <div class="text-center p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+                        <div class="font-medium text-gray-900 dark:text-white capitalize mb-1">{{ day }}</div>
+                        {% if hours.closed %}
+                            <div class="text-sm text-red-600 dark:text-red-400">Closed</div>
+                        {% else %}
+                            <div class="text-sm text-gray-600 dark:text-gray-400">{{ hours.open }} - {{ hours.close }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleDayHours(day) {
+    const checkbox = document.getElementById(day + '_closed');
+    const hoursDiv = document.getElementById(day + '_hours');
+    const openInput = document.getElementById(day + '_open');
+    const closeInput = document.getElementById(day + '_close');
+    
+    if (checkbox.checked) {
+        hoursDiv.classList.add('opacity-50');
+        openInput.disabled = true;
+        closeInput.disabled = true;
+    } else {
+        hoursDiv.classList.remove('opacity-50');
+        openInput.disabled = false;
+        closeInput.disabled = false;
+    }
+}
+
+function setHours(day, openTime, closeTime) {
+    const checkbox = document.getElementById(day + '_closed');
+    const openInput = document.getElementById(day + '_open');
+    const closeInput = document.getElementById(day + '_close');
+    
+    checkbox.checked = false;
+    openInput.disabled = false;
+    closeInput.disabled = false;
+    openInput.value = openTime;
+    closeInput.value = closeTime;
+    
+    const hoursDiv = document.getElementById(day + '_hours');
+    hoursDiv.classList.remove('opacity-50');
+}
+
+function setWeekdayHours(openTime, closeTime) {
+    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    weekdays.forEach(day => {
+        setHours(day, openTime, closeTime);
+    });
+}
+
+function setAllHours(openTime, closeTime) {
+    const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    allDays.forEach(day => {
+        setHours(day, openTime, closeTime);
+    });
+}
+
+function closeWeekends() {
+    const weekends = ['saturday', 'sunday'];
+    weekends.forEach(day => {
+        const checkbox = document.getElementById(day + '_closed');
+        const hoursDiv = document.getElementById(day + '_hours');
+        const openInput = document.getElementById(day + '_open');
+        const closeInput = document.getElementById(day + '_close');
+        
+        checkbox.checked = true;
+        hoursDiv.classList.add('opacity-50');
+        openInput.disabled = true;
+        closeInput.disabled = true;
+    });
+}
+
+// Initialize the form state on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    days.forEach(day => {
+        toggleDayHours(day);
+    });
+});
+</script>
+{% endblock %}

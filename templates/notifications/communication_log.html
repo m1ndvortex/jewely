@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Communication Log" %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {{ page_title }}
+        </h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-2">
+            {% trans "View all customer communications across all channels." %}
+        </p>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-6">
+        <div class="p-6">
+            <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="customer_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Customer ID" %}
+                    </label>
+                    <input type="text" id="customer_id" name="customer_id" value="{{ current_filters.customer_id }}"
+                           placeholder="{% trans 'Enter customer ID...' %}"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
+                
+                <div>
+                    <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Communication Type" %}
+                    </label>
+                    <select id="type" name="type"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">{% trans "All Types" %}</option>
+                        {% for value, label in communication_types %}
+                        <option value="{{ value }}" {% if value == current_filters.type %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="campaign_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Campaign ID" %}
+                    </label>
+                    <input type="text" id="campaign_id" name="campaign_id" value="{{ current_filters.campaign_id }}"
+                           placeholder="{% trans 'Enter campaign ID...' %}"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                </div>
+                
+                <div class="flex items-end">
+                    <button type="submit" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        {% trans "Apply Filters" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Communication Log -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+                {% trans "Communication History" %}
+            </h2>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Date" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Customer" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Type" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Direction" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Subject" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Engagement" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Campaign" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for comm in communications %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ comm.communication_date|date:"M d, Y H:i" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                {{ comm.customer.get_full_name }}
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                {{ comm.customer.email|default:"—" }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                {% if comm.communication_type == 'EMAIL' %}
+                                    bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100
+                                {% elif comm.communication_type == 'SMS' %}
+                                    bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100
+                                {% elif comm.communication_type == 'PHONE' %}
+                                    bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100
+                                {% else %}
+                                    bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100
+                                {% endif %}">
+                                {{ comm.get_communication_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                {% if comm.direction == 'OUTBOUND' %}
+                                    bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100
+                                {% elif comm.direction == 'INBOUND' %}
+                                    bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100
+                                {% else %}
+                                    bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100
+                                {% endif %}">
+                                {{ comm.get_direction_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900 dark:text-white">
+                                {{ comm.subject|default:"—" }}
+                            </div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+                                {{ comm.content|truncatechars:50 }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <div class="flex space-x-2">
+                                {% if comm.was_opened %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                                    {% trans "Opened" %}
+                                </span>
+                                {% endif %}
+                                {% if comm.was_clicked %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                                    {% trans "Clicked" %}
+                                </span>
+                                {% endif %}
+                                {% if comm.resulted_in_conversion %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100">
+                                    {% trans "Converted" %}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if comm.conversion_value %}
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                ${{ comm.conversion_value|floatformat:2 }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {% if comm.campaign_id %}
+                            <a href="{% url 'notifications:campaign_analytics' %}?campaign_id={{ comm.campaign_id }}" 
+                               class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                {{ comm.campaign_id|truncatechars:8 }}...
+                            </a>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            {% trans "No communications found." %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-700 dark:text-gray-300">
+                    {% blocktrans with start=page_obj.start_index end=page_obj.end_index total=paginator.count %}
+                        Showing {{ start }} to {{ end }} of {{ total }} communications
+                    {% endblocktrans %}
+                </div>
+                <div class="flex space-x-2">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}{% if current_filters.customer_id %}&customer_id={{ current_filters.customer_id }}{% endif %}{% if current_filters.type %}&type={{ current_filters.type }}{% endif %}{% if current_filters.campaign_id %}&campaign_id={{ current_filters.campaign_id }}{% endif %}" 
+                           class="px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500">
+                            {% trans "Previous" %}
+                        </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if current_filters.customer_id %}&customer_id={{ current_filters.customer_id }}{% endif %}{% if current_filters.type %}&type={{ current_filters.type }}{% endif %}{% if current_filters.campaign_id %}&campaign_id={{ current_filters.campaign_id }}{% endif %}" 
+                           class="px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500">
+                            {% trans "Next" %}
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

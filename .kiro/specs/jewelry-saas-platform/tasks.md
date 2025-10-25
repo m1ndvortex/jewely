@@ -466,14 +466,14 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Create IntegrationSettings model for API credentials
     - _Requirements: 20_
   
-  - [ ] 14.2 Implement settings interface
+  - [x] 14.2 Implement settings interface
     - Create shop profile configuration page
     - Implement branding customization (logo upload, colors)
     - Create business hours configuration
     - Implement holiday calendar
     - _Requirements: 20_
   
-  - [ ] 14.3 Implement invoice customization
+  - [x] 14.3 Implement invoice customization
     - Create invoice template selector
     - Implement custom field configuration
     - Create invoice numbering scheme configuration
