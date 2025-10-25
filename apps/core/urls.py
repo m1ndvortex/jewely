@@ -7,6 +7,7 @@ from . import (
     branch_views,
     dashboard_views,
     settings_views,
+    stripe_webhooks,
     subscription_views,
     tenant_subscription_views,
     views,
@@ -18,6 +19,8 @@ urlpatterns = [
     # Basic views
     path("", views.home, name="home"),
     path("health/", views.health_check, name="health_check"),
+    # Stripe webhook
+    path("webhooks/stripe/", stripe_webhooks.stripe_webhook, name="stripe_webhook"),
     # Platform Admin Panel
     path("platform/dashboard/", admin_views.AdminDashboardView.as_view(), name="admin_dashboard"),
     path(

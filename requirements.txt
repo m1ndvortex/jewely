@@ -66,3 +66,7 @@ psutil==5.9.8
 
 # Admin Impersonation
 django-hijack==3.4.5
+
+# Payment Gateway
+# Using stripe 4.x for compatibility with dj-stripe
+stripe==4.2.0
