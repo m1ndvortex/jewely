@@ -8,7 +8,7 @@ by platform administrators per Requirement 4.5 and Requirement 8.1.
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
-from apps.core.models import PermissionAuditLog, Tenant
+from apps.core.models import Tenant
 from apps.core.permissions import can_hijack_user
 from apps.core.tenant_context import bypass_rls
 

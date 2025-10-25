@@ -8,6 +8,8 @@ by platform administrators per Requirement 4.5 and Requirement 8.1.
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
+import pytest
+
 from apps.core.models import PermissionAuditLog, Tenant
 from apps.core.permissions import can_hijack_user
 
@@ -210,9 +212,7 @@ class TestImpersonationFlow(TestCase):
 class TestImpersonationUI:
     """Test impersonation UI elements."""
 
-    def test_impersonate_button_visible_for_active_tenant(
-        self, platform_admin, tenant_with_users
-    ):
+    def test_impersonate_button_visible_for_active_tenant(self, platform_admin, tenant_with_users):
         """Impersonate button should be visible for active tenants with users."""
         client = Client()
         tenant = tenant_with_users["tenant"]
@@ -302,7 +302,6 @@ class TestImpersonationBanner:
     def test_banner_not_displayed_for_normal_users(self, tenant_with_users):
         """Impersonation banner should not be displayed for normal users."""
         client = Client()
-        tenant_user = tenant_with_users["owner"]
 
         # Login as normal tenant user
         client.login(username="test_shop_owner", password="owner123")

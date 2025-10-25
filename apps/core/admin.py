@@ -5,7 +5,16 @@ Django admin configuration for core models.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import Branch, IntegrationSettings, InvoiceSettings, Tenant, TenantSettings, User
+from .models import (
+    Branch,
+    IntegrationSettings,
+    InvoiceSettings,
+    SubscriptionPlan,
+    Tenant,
+    TenantSettings,
+    TenantSubscription,
+    User,
+)
 
 
 @admin.register(Tenant)
@@ -602,3 +611,288 @@ class IntegrationSettingsAdmin(admin.ModelAdmin):
                 form.base_fields[field_name].widget.attrs["type"] = "password"
 
         return form
+
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    """Admin interface for SubscriptionPlan model."""
+
+    list_display = [
+        "name",
+        "price",
+        "billing_cycle",
+        "status",
+        "user_limit",
+        "branch_limit",
+        "inventory_limit",
+        "display_order",
+        "created_at",
+    ]
+
+    list_filter = [
+        "status",
+        "billing_cycle",
+        "enable_multi_branch",
+        "enable_advanced_reporting",
+        "enable_api_access",
+        "enable_custom_branding",
+        "enable_priority_support",
+        "created_at",
+    ]
+
+    search_fields = [
+        "name",
+        "description",
+    ]
+
+    readonly_fields = [
+        "id",
+        "created_at",
+        "updated_at",
+        "archived_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "name",
+                    "description",
+                    "status",
+                    "display_order",
+                )
+            },
+        ),
+        (
+            "Pricing",
+            {
+                "fields": (
+                    "price",
+                    "billing_cycle",
+                )
+            },
+        ),
+        (
+            "Resource Limits",
+            {
+                "fields": (
+                    "user_limit",
+                    "branch_limit",
+                    "inventory_limit",
+                    "storage_limit_gb",
+                    "api_calls_per_month",
+                )
+            },
+        ),
+        (
+            "Feature Flags",
+            {
+                "fields": (
+                    "enable_multi_branch",
+                    "enable_advanced_reporting",
+                    "enable_api_access",
+                    "enable_custom_branding",
+                    "enable_priority_support",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at", "archived_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["display_order", "name"]
+
+    actions = ["archive_plans", "activate_plans"]
+
+    def archive_plans(self, request, queryset):
+        """Archive selected plans."""
+        count = 0
+        for plan in queryset:
+            if plan.is_active():
+                plan.archive()
+                count += 1
+        self.message_user(request, f"Successfully archived {count} plan(s).")
+
+    archive_plans.short_description = "Archive selected plans"
+
+    def activate_plans(self, request, queryset):
+        """Activate selected plans."""
+        count = 0
+        for plan in queryset:
+            if plan.is_archived():
+                plan.activate()
+                count += 1
+        self.message_user(request, f"Successfully activated {count} plan(s).")
+
+    activate_plans.short_description = "Activate selected plans"
+
+
+@admin.register(TenantSubscription)
+class TenantSubscriptionAdmin(admin.ModelAdmin):
+    """Admin interface for TenantSubscription model."""
+
+    list_display = [
+        "tenant",
+        "plan",
+        "status",
+        "current_period_start",
+        "current_period_end",
+        "next_billing_date",
+        "created_at",
+    ]
+
+    list_filter = [
+        "status",
+        "plan",
+        "current_period_start",
+        "next_billing_date",
+        "created_at",
+    ]
+
+    search_fields = [
+        "tenant__company_name",
+        "plan__name",
+        "stripe_customer_id",
+        "stripe_subscription_id",
+        "notes",
+    ]
+
+    readonly_fields = [
+        "id",
+        "created_at",
+        "updated_at",
+        "cancelled_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "tenant",
+                    "plan",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Billing Information",
+            {
+                "fields": (
+                    "current_period_start",
+                    "current_period_end",
+                    "next_billing_date",
+                )
+            },
+        ),
+        (
+            "Trial Period",
+            {
+                "fields": (
+                    "trial_start",
+                    "trial_end",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Resource Limit Overrides",
+            {
+                "fields": (
+                    "user_limit_override",
+                    "branch_limit_override",
+                    "inventory_limit_override",
+                    "storage_limit_gb_override",
+                    "api_calls_per_month_override",
+                ),
+                "classes": ("collapse",),
+                "description": "Leave blank to use plan defaults. Set a value to override for this specific tenant.",
+            },
+        ),
+        (
+            "Feature Flag Overrides",
+            {
+                "fields": (
+                    "enable_multi_branch_override",
+                    "enable_advanced_reporting_override",
+                    "enable_api_access_override",
+                    "enable_custom_branding_override",
+                    "enable_priority_support_override",
+                ),
+                "classes": ("collapse",),
+                "description": "Leave blank to use plan defaults. Set a value to override for this specific tenant.",
+            },
+        ),
+        (
+            "Payment Gateway Integration",
+            {
+                "fields": (
+                    "stripe_customer_id",
+                    "stripe_subscription_id",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Cancellation",
+            {
+                "fields": (
+                    "cancelled_at",
+                    "cancellation_reason",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Notes",
+            {
+                "fields": ("notes",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-created_at"]
+
+    actions = ["activate_subscriptions", "deactivate_subscriptions"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("tenant", "plan")
+
+    def activate_subscriptions(self, request, queryset):
+        """Activate selected subscriptions."""
+        count = 0
+        for subscription in queryset:
+            if not subscription.is_active():
+                subscription.activate()
+                count += 1
+        self.message_user(request, f"Successfully activated {count} subscription(s).")
+
+    activate_subscriptions.short_description = "Activate selected subscriptions"
+
+    def deactivate_subscriptions(self, request, queryset):
+        """Deactivate selected subscriptions."""
+        count = 0
+        for subscription in queryset:
+            if subscription.is_active():
+                subscription.deactivate()
+                count += 1
+        self.message_user(request, f"Successfully deactivated {count} subscription(s).")
+
+    deactivate_subscriptions.short_description = "Deactivate selected subscriptions"

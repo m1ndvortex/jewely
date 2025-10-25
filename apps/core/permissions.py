@@ -69,31 +69,30 @@ class TenantManagerPermissionMixin(TenantPermissionMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
-
 def can_hijack_user(hijacker, hijacked):
     """
     Permission check for django-hijack.
-    
+
     Only platform administrators can hijack users.
     Platform admins cannot hijack other platform admins.
-    
+
     Args:
         hijacker: The user attempting to hijack (platform admin)
         hijacked: The user being hijacked (tenant user)
-        
+
     Returns:
         bool: True if hijacking is allowed, False otherwise
     """
     # Only platform admins can hijack
     if not hijacker.is_platform_admin():
         return False
-    
+
     # Cannot hijack other platform admins
     if hijacked.is_platform_admin():
         return False
-    
+
     # Cannot hijack yourself
     if hijacker.id == hijacked.id:
         return False
-    
+
     return True

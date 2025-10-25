@@ -544,7 +544,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Prevent viewing/setting passwords directly
     - _Requirements: 4_
   
-  - [ ] 16.5 Write tenant management tests
+  - [x] 16.5 Write tenant management tests
     - Test tenant CRUD operations
     - Test status changes
     - Test impersonation
@@ -552,7 +552,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 4, 28_
 
 - [ ] 17. Subscription & Billing Management
-  - [ ] 17.1 Create subscription models
+  - [x] 17.1 Create subscription models
     - Create SubscriptionPlan model with name, price, billing_cycle, resource limits
     - Create TenantSubscription model with tenant FK, plan FK, status, limit overrides
     - Add indexes for efficient querying

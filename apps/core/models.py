@@ -1310,3 +1310,604 @@ class IntegrationSettings(models.Model):
     def get_smtp_password(self):
         """Get decrypted SMTP password."""
         return self.decrypt_field(self.smtp_password)
+
+
+class SubscriptionPlan(models.Model):
+    """
+    Subscription plan model defining pricing and resource limits.
+
+    Platform administrators create and manage subscription plans that tenants
+    can subscribe to. Each plan defines pricing, billing cycle, and resource limits
+    per Requirement 5.2.
+    """
+
+    # Billing cycle choices
+    BILLING_MONTHLY = "monthly"
+    BILLING_QUARTERLY = "quarterly"
+    BILLING_YEARLY = "yearly"
+    BILLING_LIFETIME = "lifetime"
+
+    BILLING_CYCLE_CHOICES = [
+        (BILLING_MONTHLY, "Monthly"),
+        (BILLING_QUARTERLY, "Quarterly"),
+        (BILLING_YEARLY, "Yearly"),
+        (BILLING_LIFETIME, "Lifetime"),
+    ]
+
+    # Status choices
+    STATUS_ACTIVE = "active"
+    STATUS_ARCHIVED = "archived"
+
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_ARCHIVED, "Archived"),
+    ]
+
+    # Primary key
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the subscription plan",
+    )
+
+    # Plan details
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Plan name (e.g., 'Starter', 'Professional', 'Enterprise')",
+    )
+
+    description = models.TextField(
+        blank=True,
+        help_text="Detailed description of the plan features",
+    )
+
+    # Pricing
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Plan price in USD",
+    )
+
+    billing_cycle = models.CharField(
+        max_length=20,
+        choices=BILLING_CYCLE_CHOICES,
+        default=BILLING_MONTHLY,
+        help_text="Billing frequency for this plan",
+    )
+
+    # Resource limits (Requirement 5.2)
+    user_limit = models.IntegerField(
+        default=5,
+        help_text="Maximum number of users allowed",
+    )
+
+    branch_limit = models.IntegerField(
+        default=1,
+        help_text="Maximum number of branches allowed",
+    )
+
+    inventory_limit = models.IntegerField(
+        default=1000,
+        help_text="Maximum number of inventory items allowed",
+    )
+
+    storage_limit_gb = models.IntegerField(
+        default=10,
+        help_text="Maximum storage space in GB for media files",
+    )
+
+    api_calls_per_month = models.IntegerField(
+        default=10000,
+        help_text="Maximum API calls per month",
+    )
+
+    # Feature flags
+    enable_multi_branch = models.BooleanField(
+        default=False,
+        help_text="Enable multi-branch management features",
+    )
+
+    enable_advanced_reporting = models.BooleanField(
+        default=False,
+        help_text="Enable advanced reporting and analytics",
+    )
+
+    enable_api_access = models.BooleanField(
+        default=False,
+        help_text="Enable API access for integrations",
+    )
+
+    enable_custom_branding = models.BooleanField(
+        default=False,
+        help_text="Enable custom branding and white-labeling",
+    )
+
+    enable_priority_support = models.BooleanField(
+        default=False,
+        help_text="Enable priority customer support",
+    )
+
+    # Plan status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_ACTIVE,
+        help_text="Plan status (active plans can be assigned to tenants)",
+    )
+
+    # Display order
+    display_order = models.IntegerField(
+        default=0,
+        help_text="Order in which plans are displayed (lower numbers first)",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp when the plan was created",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Timestamp when the plan was last updated",
+    )
+
+    archived_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the plan was archived",
+    )
+
+    class Meta:
+        db_table = "subscription_plans"
+        ordering = ["display_order", "name"]
+        verbose_name = "Subscription Plan"
+        verbose_name_plural = "Subscription Plans"
+        indexes = [
+            models.Index(fields=["status"], name="plan_status_idx"),
+            models.Index(fields=["display_order"], name="plan_display_order_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} (${self.price}/{self.billing_cycle})"
+
+    def archive(self):
+        """
+        Archive the plan.
+
+        Archived plans cannot be assigned to new tenants but existing
+        subscriptions remain active per Requirement 5.2.
+        """
+        from django.utils import timezone
+
+        self.status = self.STATUS_ARCHIVED
+        self.archived_at = timezone.now()
+        self.save(update_fields=["status", "archived_at", "updated_at"])
+
+    def activate(self):
+        """Activate an archived plan."""
+        self.status = self.STATUS_ACTIVE
+        self.archived_at = None
+        self.save(update_fields=["status", "archived_at", "updated_at"])
+
+    def is_active(self):
+        """Check if plan is active."""
+        return self.status == self.STATUS_ACTIVE
+
+    def is_archived(self):
+        """Check if plan is archived."""
+        return self.status == self.STATUS_ARCHIVED
+
+    def get_monthly_price(self):
+        """
+        Calculate equivalent monthly price for comparison.
+
+        Returns the price normalized to a monthly basis for easy comparison
+        across different billing cycles.
+        """
+        if self.billing_cycle == self.BILLING_MONTHLY:
+            return self.price
+        elif self.billing_cycle == self.BILLING_QUARTERLY:
+            return self.price / 3
+        elif self.billing_cycle == self.BILLING_YEARLY:
+            return self.price / 12
+        else:  # BILLING_LIFETIME
+            return 0  # Lifetime plans have no recurring cost
+
+    def get_annual_price(self):
+        """Calculate equivalent annual price."""
+        if self.billing_cycle == self.BILLING_MONTHLY:
+            return self.price * 12
+        elif self.billing_cycle == self.BILLING_QUARTERLY:
+            return self.price * 4
+        elif self.billing_cycle == self.BILLING_YEARLY:
+            return self.price
+        else:  # BILLING_LIFETIME
+            return self.price  # One-time payment
+
+
+class TenantSubscription(models.Model):
+    """
+    Tenant subscription model linking tenants to subscription plans.
+
+    Tracks the current subscription status, billing information, and allows
+    for plan-specific limit overrides per Requirement 5.3, 5.4, and 5.5.
+    """
+
+    # Subscription status choices
+    STATUS_ACTIVE = "active"
+    STATUS_TRIAL = "trial"
+    STATUS_PAST_DUE = "past_due"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_EXPIRED = "expired"
+
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_TRIAL, "Trial"),
+        (STATUS_PAST_DUE, "Past Due"),
+        (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_EXPIRED, "Expired"),
+    ]
+
+    # Primary key
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the subscription",
+    )
+
+    # Relationships
+    tenant = models.OneToOneField(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="subscription",
+        help_text="Tenant that owns this subscription",
+    )
+
+    plan = models.ForeignKey(
+        SubscriptionPlan,
+        on_delete=models.PROTECT,
+        related_name="subscriptions",
+        help_text="Subscription plan for this tenant",
+    )
+
+    # Subscription status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_TRIAL,
+        help_text="Current subscription status",
+    )
+
+    # Billing information
+    current_period_start = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Start date of the current billing period",
+    )
+
+    current_period_end = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="End date of the current billing period",
+    )
+
+    next_billing_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date of the next billing charge",
+    )
+
+    trial_start = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Start date of trial period",
+    )
+
+    trial_end = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="End date of trial period",
+    )
+
+    # Resource limit overrides (Requirement 5.4)
+    # These override the plan defaults for this specific tenant
+    user_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for user limit (null = use plan default)",
+    )
+
+    branch_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for branch limit (null = use plan default)",
+    )
+
+    inventory_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for inventory limit (null = use plan default)",
+    )
+
+    storage_limit_gb_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for storage limit in GB (null = use plan default)",
+    )
+
+    api_calls_per_month_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for API calls per month (null = use plan default)",
+    )
+
+    # Feature flag overrides
+    enable_multi_branch_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for multi-branch feature (null = use plan default)",
+    )
+
+    enable_advanced_reporting_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for advanced reporting (null = use plan default)",
+    )
+
+    enable_api_access_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for API access (null = use plan default)",
+    )
+
+    enable_custom_branding_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for custom branding (null = use plan default)",
+    )
+
+    enable_priority_support_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for priority support (null = use plan default)",
+    )
+
+    # Payment gateway integration
+    stripe_customer_id = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Stripe customer ID for payment processing",
+    )
+
+    stripe_subscription_id = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Stripe subscription ID",
+    )
+
+    # Cancellation tracking
+    cancelled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when subscription was cancelled",
+    )
+
+    cancellation_reason = models.TextField(
+        blank=True,
+        help_text="Reason for cancellation",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        help_text="Internal notes about this subscription",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp when the subscription was created",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Timestamp when the subscription was last updated",
+    )
+
+    class Meta:
+        db_table = "tenant_subscriptions"
+        ordering = ["-created_at"]
+        verbose_name = "Tenant Subscription"
+        verbose_name_plural = "Tenant Subscriptions"
+        indexes = [
+            models.Index(fields=["status"], name="subscription_status_idx"),
+            models.Index(fields=["next_billing_date"], name="subscription_billing_date_idx"),
+            models.Index(fields=["plan", "status"], name="subscription_plan_status_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.tenant.company_name} - {self.plan.name} ({self.status})"
+
+    def get_user_limit(self):
+        """Get effective user limit (override or plan default)."""
+        return (
+            self.user_limit_override
+            if self.user_limit_override is not None
+            else self.plan.user_limit
+        )
+
+    def get_branch_limit(self):
+        """Get effective branch limit (override or plan default)."""
+        return (
+            self.branch_limit_override
+            if self.branch_limit_override is not None
+            else self.plan.branch_limit
+        )
+
+    def get_inventory_limit(self):
+        """Get effective inventory limit (override or plan default)."""
+        return (
+            self.inventory_limit_override
+            if self.inventory_limit_override is not None
+            else self.plan.inventory_limit
+        )
+
+    def get_storage_limit_gb(self):
+        """Get effective storage limit (override or plan default)."""
+        return (
+            self.storage_limit_gb_override
+            if self.storage_limit_gb_override is not None
+            else self.plan.storage_limit_gb
+        )
+
+    def get_api_calls_per_month(self):
+        """Get effective API calls limit (override or plan default)."""
+        return (
+            self.api_calls_per_month_override
+            if self.api_calls_per_month_override is not None
+            else self.plan.api_calls_per_month
+        )
+
+    def has_multi_branch_enabled(self):
+        """Check if multi-branch feature is enabled (override or plan default)."""
+        return (
+            self.enable_multi_branch_override
+            if self.enable_multi_branch_override is not None
+            else self.plan.enable_multi_branch
+        )
+
+    def has_advanced_reporting_enabled(self):
+        """Check if advanced reporting is enabled (override or plan default)."""
+        return (
+            self.enable_advanced_reporting_override
+            if self.enable_advanced_reporting_override is not None
+            else self.plan.enable_advanced_reporting
+        )
+
+    def has_api_access_enabled(self):
+        """Check if API access is enabled (override or plan default)."""
+        return (
+            self.enable_api_access_override
+            if self.enable_api_access_override is not None
+            else self.plan.enable_api_access
+        )
+
+    def has_custom_branding_enabled(self):
+        """Check if custom branding is enabled (override or plan default)."""
+        return (
+            self.enable_custom_branding_override
+            if self.enable_custom_branding_override is not None
+            else self.plan.enable_custom_branding
+        )
+
+    def has_priority_support_enabled(self):
+        """Check if priority support is enabled (override or plan default)."""
+        return (
+            self.enable_priority_support_override
+            if self.enable_priority_support_override is not None
+            else self.plan.enable_priority_support
+        )
+
+    def is_active(self):
+        """Check if subscription is active."""
+        return self.status == self.STATUS_ACTIVE
+
+    def is_trial(self):
+        """Check if subscription is in trial period."""
+        return self.status == self.STATUS_TRIAL
+
+    def is_past_due(self):
+        """Check if subscription payment is past due."""
+        return self.status == self.STATUS_PAST_DUE
+
+    def is_cancelled(self):
+        """Check if subscription is cancelled."""
+        return self.status == self.STATUS_CANCELLED
+
+    def is_expired(self):
+        """Check if subscription is expired."""
+        return self.status == self.STATUS_EXPIRED
+
+    def activate(self):
+        """
+        Activate the subscription (Requirement 5.5).
+
+        This manually activates a subscription, typically used by admins
+        for manual subscription management.
+        """
+        self.status = self.STATUS_ACTIVE
+        self.cancelled_at = None
+        self.save(update_fields=["status", "cancelled_at", "updated_at"])
+
+    def deactivate(self):
+        """
+        Deactivate the subscription (Requirement 5.5).
+
+        This manually deactivates a subscription, typically used by admins
+        for manual subscription management.
+        """
+        from django.utils import timezone
+
+        self.status = self.STATUS_CANCELLED
+        self.cancelled_at = timezone.now()
+        self.save(update_fields=["status", "cancelled_at", "updated_at"])
+
+    def cancel(self, reason=""):
+        """
+        Cancel the subscription.
+
+        Args:
+            reason: Optional reason for cancellation
+        """
+        from django.utils import timezone
+
+        self.status = self.STATUS_CANCELLED
+        self.cancelled_at = timezone.now()
+        self.cancellation_reason = reason
+        self.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
+
+    def change_plan(self, new_plan):
+        """
+        Change the subscription plan (Requirement 5.3).
+
+        Args:
+            new_plan: The new SubscriptionPlan to switch to
+        """
+        self.plan = new_plan
+        self.save(update_fields=["plan", "updated_at"])
+
+        # Note: Plan changes should be logged in the admin/API layer
+        # where we have access to the actor (user making the change)
+
+    def days_until_renewal(self):
+        """Get the number of days until the next billing date."""
+        from django.utils import timezone
+
+        if not self.next_billing_date:
+            return None
+
+        delta = self.next_billing_date - timezone.now()
+        return max(0, delta.days)
+
+    def is_trial_expired(self):
+        """Check if trial period has expired."""
+        from django.utils import timezone
+
+        if not self.trial_end:
+            return False
+
+        return timezone.now() > self.trial_end
+
+    def days_remaining_in_trial(self):
+        """Get the number of days remaining in trial period."""
+        from django.utils import timezone
+
+        if not self.trial_end:
+            return None
+
+        delta = self.trial_end - timezone.now()
+        return max(0, delta.days)

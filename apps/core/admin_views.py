@@ -644,7 +644,7 @@ class TenantDeleteView(PlatformAdminRequiredMixin, DeleteView):
 class TenantUserPasswordResetView(PlatformAdminRequiredMixin, View):
     """
     View to initiate password reset for a tenant user.
-    
+
     Platform administrators can trigger a password reset email for tenant users
     without viewing or setting passwords directly.
     """
@@ -656,7 +656,9 @@ class TenantUserPasswordResetView(PlatformAdminRequiredMixin, View):
         # Prevent resetting platform admin passwords
         if user.is_platform_admin():
             messages.error(request, "Cannot reset password for platform administrators.")
-            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+            return redirect(
+                reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+            )
 
         try:
             # Generate password reset token
@@ -704,13 +706,15 @@ class TenantUserPasswordResetView(PlatformAdminRequiredMixin, View):
                 exc_info=True,
             )
 
-        return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+        return redirect(
+            reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+        )
 
 
 class TenantUserRoleChangeView(PlatformAdminRequiredMixin, View):
     """
     View to change a tenant user's role.
-    
+
     Platform administrators can change user roles within a tenant.
     Prevents changing platform admin roles.
     """
@@ -724,7 +728,9 @@ class TenantUserRoleChangeView(PlatformAdminRequiredMixin, View):
         valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
         if new_role not in valid_roles:
             messages.error(request, "Invalid role selected.")
-            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+            return redirect(
+                reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+            )
 
         # Prevent changing platform admin roles
         if user.is_platform_admin() or new_role == User.PLATFORM_ADMIN:
@@ -733,12 +739,16 @@ class TenantUserRoleChangeView(PlatformAdminRequiredMixin, View):
                 "Cannot change platform administrator roles. "
                 "Platform admin roles must be managed separately.",
             )
-            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+            return redirect(
+                reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+            )
 
         # Prevent changing own role if impersonating
         if request.user == user:
             messages.error(request, "Cannot change your own role.")
-            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+            return redirect(
+                reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+            )
 
         old_role = user.role
 
@@ -776,13 +786,15 @@ class TenantUserRoleChangeView(PlatformAdminRequiredMixin, View):
                 exc_info=True,
             )
 
-        return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+        return redirect(
+            reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+        )
 
 
 class TenantUserToggleActiveView(PlatformAdminRequiredMixin, View):
     """
     View to activate or deactivate a tenant user.
-    
+
     Platform administrators can enable/disable user accounts.
     """
 
@@ -793,12 +805,16 @@ class TenantUserToggleActiveView(PlatformAdminRequiredMixin, View):
         # Prevent deactivating platform admins
         if user.is_platform_admin():
             messages.error(request, "Cannot deactivate platform administrators.")
-            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+            return redirect(
+                reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+            )
 
         # Prevent deactivating self
         if request.user == user:
             messages.error(request, "Cannot deactivate your own account.")
-            return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+            return redirect(
+                reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+            )
 
         try:
             # Toggle active status
@@ -830,4 +846,6 @@ class TenantUserToggleActiveView(PlatformAdminRequiredMixin, View):
                 exc_info=True,
             )
 
-        return redirect(reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users")
+        return redirect(
+            reverse("core:admin_tenant_detail", kwargs={"pk": tenant_pk}) + "?tab=users"
+        )
