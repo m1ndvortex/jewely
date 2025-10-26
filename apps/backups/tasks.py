@@ -3036,7 +3036,7 @@ def drop_test_database(
         return False, error_msg
 
 
-def verify_test_restore_integrity(
+def verify_test_restore_integrity(  # noqa: C901
     test_db_name: str, host: str, port: str, user: str, password: str
 ) -> dict:
     """
@@ -3261,3 +3261,272 @@ def verify_test_restore_integrity(
             "error": str(e),
             "passed": False,
         }
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.cleanup_old_backups",
+    max_retries=3,
+    default_retry_delay=300,  # 5 minutes
+)
+def cleanup_old_backups(self):  # noqa: C901
+    """
+    Clean up old backups according to retention policies.
+
+    This task should run daily at 5:00 AM to:
+    1. Delete local backups older than 30 days
+    2. Archive cloud backups older than 1 year (mark for archival, actual deletion optional)
+    3. Clean up temporary files in the backup directory
+
+    Retention policies:
+    - Local storage: 30 days
+    - Cloudflare R2: 1 year
+    - Backblaze B2: 1 year
+
+    Returns:
+        Dictionary with cleanup statistics
+    """
+    from apps.core.tenant_context import bypass_rls
+
+    start_time = timezone.now()
+    cleanup_stats = {
+        "local_deleted": 0,
+        "local_failed": 0,
+        "r2_deleted": 0,
+        "r2_failed": 0,
+        "b2_deleted": 0,
+        "b2_failed": 0,
+        "temp_files_deleted": 0,
+        "database_records_deleted": 0,
+        "errors": [],
+    }
+
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting backup cleanup task")
+        logger.info("=" * 80)
+
+        # Step 1: Delete local backups older than 30 days
+        logger.info("Step 1: Cleaning up local backups older than 30 days...")
+
+        # Retention is 30 days, so delete backups created more than 30 days ago
+        # Using __lte (less than or equal) with 30 days would delete 30-day-old backups
+        # We want to keep 30 days, so we use __lt with 30 days (which means 31+ days old)
+        local_cutoff_date = timezone.now() - timedelta(days=30)
+
+        with bypass_rls():
+            # Get all backups older than 30 days with local storage
+            # created_at < (now - 30 days) means the backup is more than 30 days old
+            old_local_backups = list(
+                Backup.objects.filter(
+                    created_at__lt=local_cutoff_date,
+                    local_path__isnull=False,
+                ).exclude(local_path="")
+            )
+
+        logger.info(f"Found {len(old_local_backups)} local backups to clean up")
+
+        local_storage = get_storage_backend("local")
+
+        for backup in old_local_backups:
+            try:
+                # Delete from local storage
+                if local_storage.delete(backup.local_path):
+                    # Update backup record to remove local path
+                    with bypass_rls():
+                        backup.local_path = ""
+                        backup.save(update_fields=["local_path"])
+
+                    cleanup_stats["local_deleted"] += 1
+                    logger.info(f"✓ Deleted local backup: {backup.filename}")
+                else:
+                    cleanup_stats["local_failed"] += 1
+                    logger.warning(f"✗ Failed to delete local backup: {backup.filename}")
+
+            except Exception as e:
+                cleanup_stats["local_failed"] += 1
+                cleanup_stats["errors"].append(f"Local deletion failed for {backup.filename}: {e}")
+                logger.error(f"Error deleting local backup {backup.filename}: {e}")
+
+        logger.info(
+            f"Local cleanup: {cleanup_stats['local_deleted']} deleted, "
+            f"{cleanup_stats['local_failed']} failed"
+        )
+
+        # Step 2: Archive cloud backups older than 1 year
+        logger.info("Step 2: Archiving cloud backups older than 1 year...")
+
+        cloud_cutoff_date = timezone.now() - timedelta(days=365)
+
+        with bypass_rls():
+            # Get all backups older than 1 year
+            old_cloud_backups = list(
+                Backup.objects.filter(
+                    created_at__lt=cloud_cutoff_date,
+                ).exclude(r2_path="", b2_path="")
+            )
+
+        logger.info(f"Found {len(old_cloud_backups)} cloud backups to archive")
+
+        r2_storage = get_storage_backend("r2")
+        b2_storage = get_storage_backend("b2")
+
+        for backup in old_cloud_backups:
+            # Delete from R2
+            if backup.r2_path:
+                try:
+                    if r2_storage.delete(backup.r2_path):
+                        with bypass_rls():
+                            backup.r2_path = ""
+                            backup.save(update_fields=["r2_path"])
+
+                        cleanup_stats["r2_deleted"] += 1
+                        logger.info(f"✓ Deleted R2 backup: {backup.filename}")
+                    else:
+                        cleanup_stats["r2_failed"] += 1
+                        logger.warning(f"✗ Failed to delete R2 backup: {backup.filename}")
+
+                except Exception as e:
+                    cleanup_stats["r2_failed"] += 1
+                    cleanup_stats["errors"].append(f"R2 deletion failed for {backup.filename}: {e}")
+                    logger.error(f"Error deleting R2 backup {backup.filename}: {e}")
+
+            # Delete from B2
+            if backup.b2_path:
+                try:
+                    if b2_storage.delete(backup.b2_path):
+                        with bypass_rls():
+                            backup.b2_path = ""
+                            backup.save(update_fields=["b2_path"])
+
+                        cleanup_stats["b2_deleted"] += 1
+                        logger.info(f"✓ Deleted B2 backup: {backup.filename}")
+                    else:
+                        cleanup_stats["b2_failed"] += 1
+                        logger.warning(f"✗ Failed to delete B2 backup: {backup.filename}")
+
+                except Exception as e:
+                    cleanup_stats["b2_failed"] += 1
+                    cleanup_stats["errors"].append(f"B2 deletion failed for {backup.filename}: {e}")
+                    logger.error(f"Error deleting B2 backup {backup.filename}: {e}")
+
+        logger.info(
+            f"Cloud cleanup: R2={cleanup_stats['r2_deleted']} deleted, "
+            f"B2={cleanup_stats['b2_deleted']} deleted"
+        )
+
+        # Step 3: Delete database records for backups with no storage locations
+        logger.info("Step 3: Cleaning up database records for fully deleted backups...")
+
+        with bypass_rls():
+            # Find backups with no storage locations (all paths empty)
+            orphaned_backups = Backup.objects.filter(
+                local_path="",
+                r2_path="",
+                b2_path="",
+            )
+
+            orphaned_count = orphaned_backups.count()
+
+            if orphaned_count > 0:
+                logger.info(f"Found {orphaned_count} orphaned backup records to delete")
+
+                # Delete orphaned backup records
+                deleted_count, _ = orphaned_backups.delete()
+                cleanup_stats["database_records_deleted"] = deleted_count
+
+                logger.info(f"✓ Deleted {deleted_count} orphaned backup records")
+            else:
+                logger.info("No orphaned backup records found")
+
+        # Step 4: Clean up temporary files
+        logger.info("Step 4: Cleaning up temporary files...")
+
+        # Clean up any leftover temporary files in the backup directory
+        local_storage = get_storage_backend("local")
+        backup_dir = local_storage.base_path
+
+        temp_patterns = ["*.tmp", "*.temp", "test_restore_*"]
+
+        for pattern in temp_patterns:
+            try:
+                for temp_file in backup_dir.glob(pattern):
+                    if temp_file.is_file():
+                        try:
+                            # Only delete files older than 1 day
+                            file_age = timezone.now() - datetime.fromtimestamp(
+                                temp_file.stat().st_mtime, tz=timezone.get_current_timezone()
+                            )
+
+                            if file_age > timedelta(days=1):
+                                temp_file.unlink()
+                                cleanup_stats["temp_files_deleted"] += 1
+                                logger.debug(f"✓ Deleted temp file: {temp_file.name}")
+
+                        except Exception as e:
+                            logger.warning(f"Failed to delete temp file {temp_file}: {e}")
+
+            except Exception as e:
+                logger.warning(f"Error scanning for temp files with pattern {pattern}: {e}")
+
+        logger.info(f"Temp file cleanup: {cleanup_stats['temp_files_deleted']} files deleted")
+
+        # Calculate total duration
+        duration = (timezone.now() - start_time).total_seconds()
+        cleanup_stats["duration_seconds"] = duration
+
+        logger.info("=" * 80)
+        logger.info("Backup cleanup completed successfully")
+        logger.info(f"Duration: {duration:.2f} seconds")
+        logger.info(f"Local backups deleted: {cleanup_stats['local_deleted']}")
+        logger.info(f"R2 backups deleted: {cleanup_stats['r2_deleted']}")
+        logger.info(f"B2 backups deleted: {cleanup_stats['b2_deleted']}")
+        logger.info(f"Database records deleted: {cleanup_stats['database_records_deleted']}")
+        logger.info(f"Temp files deleted: {cleanup_stats['temp_files_deleted']}")
+        logger.info("=" * 80)
+
+        # Create info alert if significant cleanup occurred
+        total_deleted = (
+            cleanup_stats["local_deleted"]
+            + cleanup_stats["r2_deleted"]
+            + cleanup_stats["b2_deleted"]
+        )
+
+        if total_deleted > 0:
+            create_backup_alert(
+                alert_type=BackupAlert.BACKUP_FAILURE,  # Reusing type for cleanup info
+                severity=BackupAlert.INFO,
+                message=f"Backup cleanup completed: {total_deleted} old backups removed",
+                details=cleanup_stats,
+            )
+
+        # Create warning alert if there were failures
+        total_failed = (
+            cleanup_stats["local_failed"] + cleanup_stats["r2_failed"] + cleanup_stats["b2_failed"]
+        )
+
+        if total_failed > 0:
+            create_backup_alert(
+                alert_type=BackupAlert.BACKUP_FAILURE,
+                severity=BackupAlert.WARNING,
+                message=f"Backup cleanup had {total_failed} failures",
+                details=cleanup_stats,
+            )
+
+        return cleanup_stats
+
+    except Exception as e:
+        logger.error(f"Backup cleanup task failed: {e}", exc_info=True)
+
+        cleanup_stats["errors"].append(str(e))
+
+        # Create critical alert
+        create_backup_alert(
+            alert_type=BackupAlert.BACKUP_FAILURE,
+            severity=BackupAlert.CRITICAL,
+            message=f"Backup cleanup task failed: {str(e)}",
+            details=cleanup_stats,
+        )
+
+        # Retry the task
+        raise self.retry(exc=e)

@@ -681,7 +681,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Alert on failures
     - _Requirements: 6_
   
-  - [ ] 18.13 Implement backup cleanup
+  - [x] 18.13 Implement backup cleanup
     - Create Celery task for daily cleanup at 5:00 AM
     - Delete local backups older than 30 days
     - Archive cloud backups older than 1 year

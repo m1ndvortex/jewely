@@ -243,7 +243,7 @@ class TestAutomatedTestRestoreIntegration(TransactionTestCase):
         # Run the automated test restore task
         result = automated_test_restore()
 
-        print(f"\n=== Test Restore Result ===")
+        print("\n=== Test Restore Result ===")
         print(f"Success: {result['success']}")
         print(f"Backup ID: {result.get('backup_id')}")
         print(f"Test Database: {result.get('test_database')}")
