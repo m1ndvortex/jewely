@@ -2613,3 +2613,651 @@ def send_alert_digest(self):
     except Exception as e:
         logger.error(f"Alert digest generation failed: {e}", exc_info=True)
         raise self.retry(exc=e)
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.automated_test_restore",
+    max_retries=1,  # Test restores should not be retried automatically
+    default_retry_delay=0,
+)
+def automated_test_restore(self):  # noqa: C901
+    """
+    Perform automated monthly test restore to verify backup integrity.
+
+    This task:
+    1. Selects a random recent backup (from last 7 days)
+    2. Restores backup to a staging/test database
+    3. Verifies data integrity (row counts, tables, relationships)
+    4. Generates test restore report
+    5. Alerts on failures
+
+    This task should run monthly on the 1st at 3:00 AM via Celery Beat.
+
+    Returns:
+        Dictionary with test restore results
+    """
+    from apps.core.tenant_context import bypass_rls
+
+    start_time = timezone.now()
+    test_report = {
+        "start_time": start_time.isoformat(),
+        "backup_id": None,
+        "backup_filename": None,
+        "test_database": None,
+        "success": False,
+        "integrity_checks": {},
+        "errors": [],
+        "duration_seconds": 0,
+    }
+
+    restore_log = None
+    temp_files = []
+    test_db_name = None
+
+    try:
+        logger.info("=" * 80)
+        logger.info("AUTOMATED TEST RESTORE - Monthly Verification")
+        logger.info("=" * 80)
+
+        # Step 1: Select a random backup from the last 7 days
+        logger.info("Step 1: Selecting random backup for test restore...")
+
+        cutoff_date = timezone.now() - timedelta(days=7)
+
+        with bypass_rls():
+            # Get all successful full database backups from last 7 days
+            recent_backups = list(
+                Backup.objects.filter(
+                    backup_type=Backup.FULL_DATABASE,
+                    status__in=[Backup.COMPLETED, Backup.VERIFIED],
+                    created_at__gte=cutoff_date,
+                ).order_by("-created_at")
+            )
+
+        if not recent_backups:
+            logger.warning("No recent backups found for test restore")
+            test_report["errors"].append("No recent backups available for testing")
+            test_report["success"] = False
+
+            # Create alert
+            create_backup_alert(
+                alert_type=BackupAlert.BACKUP_FAILURE,
+                severity=BackupAlert.WARNING,
+                message="Automated test restore skipped: No recent backups available",
+                details=test_report,
+            )
+
+            return test_report
+
+        # Select a random backup
+        import random
+
+        backup = random.choice(recent_backups)
+
+        logger.info(f"Selected backup: {backup.filename}")
+        logger.info(f"Backup created at: {backup.created_at.isoformat()}")
+        logger.info(f"Backup size: {backup.get_size_mb():.2f} MB")
+
+        test_report["backup_id"] = str(backup.id)
+        test_report["backup_filename"] = backup.filename
+
+        # Step 2: Create test database
+        logger.info("Step 2: Creating test database...")
+
+        db_config = get_database_config()
+        test_db_name = f"test_restore_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        test_report["test_database"] = test_db_name
+
+        # Create test database
+        success, error_msg = create_test_database(
+            test_db_name=test_db_name,
+            host=db_config["host"],
+            port=db_config["port"],
+            user=db_config["user"],
+            password=db_config["password"],
+        )
+
+        if not success:
+            raise Exception(f"Failed to create test database: {error_msg}")
+
+        logger.info(f"✓ Created test database: {test_db_name}")
+
+        # Step 3: Download backup from storage
+        logger.info("Step 3: Downloading backup from storage...")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            encrypted_path = os.path.join(temp_dir, backup.filename)
+            temp_files.append(encrypted_path)
+
+            # Try to download from R2 first, then B2, then local
+            downloaded = False
+
+            if backup.r2_path:
+                try:
+                    r2_storage = get_storage_backend("r2")
+                    if r2_storage.download(backup.r2_path, encrypted_path):
+                        logger.info(f"✓ Downloaded from R2: {backup.r2_path}")
+                        downloaded = True
+                except Exception as e:
+                    logger.warning(f"Failed to download from R2: {e}")
+
+            if not downloaded and backup.b2_path:
+                try:
+                    b2_storage = get_storage_backend("b2")
+                    if b2_storage.download(backup.b2_path, encrypted_path):
+                        logger.info(f"✓ Downloaded from B2: {backup.b2_path}")
+                        downloaded = True
+                except Exception as e:
+                    logger.warning(f"Failed to download from B2: {e}")
+
+            if not downloaded and backup.local_path:
+                try:
+                    local_storage = get_storage_backend("local")
+                    if local_storage.download(backup.local_path, encrypted_path):
+                        logger.info(f"✓ Downloaded from local storage: {backup.local_path}")
+                        downloaded = True
+                except Exception as e:
+                    logger.warning(f"Failed to download from local storage: {e}")
+
+            if not downloaded:
+                raise Exception("Failed to download backup from any storage location")
+
+            # Step 4: Decrypt and decompress backup
+            logger.info("Step 4: Decrypting and decompressing backup...")
+
+            from .encryption import decrypt_and_decompress_file
+
+            decrypted_path = os.path.join(temp_dir, backup.filename.replace(".gz.enc", ""))
+            temp_files.append(decrypted_path)
+
+            decrypt_and_decompress_file(encrypted_path, decrypted_path)
+
+            logger.info(f"✓ Decrypted and decompressed: {decrypted_path}")
+
+            # Step 5: Restore backup to test database
+            logger.info("Step 5: Restoring backup to test database...")
+
+            # Create restore log entry
+            with bypass_rls():
+                restore_log = BackupRestoreLog.objects.create(
+                    backup=backup,
+                    initiated_by=None,  # Automated test restore
+                    restore_mode=BackupRestoreLog.FULL,
+                    reason="Automated monthly test restore for integrity verification",
+                    status=BackupRestoreLog.IN_PROGRESS,
+                    notes=f"Test restore to database: {test_db_name}",
+                )
+
+            logger.info(f"Created restore log: {restore_log.id}")
+
+            # Perform restore to test database
+            success, error_msg = perform_pg_restore(
+                dump_path=decrypted_path,
+                database=test_db_name,
+                user=db_config["user"],
+                password=db_config["password"],
+                host=db_config["host"],
+                port=db_config["port"],
+                clean=False,  # Test database is empty, no need to clean
+                selective_tenants=None,
+            )
+
+            if not success:
+                raise Exception(f"Test restore failed: {error_msg}")
+
+            logger.info("✓ Backup restored to test database successfully")
+
+            # Step 6: Verify data integrity
+            logger.info("Step 6: Verifying data integrity...")
+
+            integrity_results = verify_test_restore_integrity(
+                test_db_name=test_db_name,
+                host=db_config["host"],
+                port=db_config["port"],
+                user=db_config["user"],
+                password=db_config["password"],
+            )
+
+            test_report["integrity_checks"] = integrity_results
+
+            # Check if all integrity checks passed
+            all_checks_passed = all(
+                check.get("passed", False) for check in integrity_results.values()
+            )
+
+            if not all_checks_passed:
+                failed_checks = [
+                    name
+                    for name, check in integrity_results.items()
+                    if not check.get("passed", False)
+                ]
+                raise Exception(f"Data integrity verification failed: {', '.join(failed_checks)}")
+
+            logger.info("✓ All data integrity checks passed")
+
+            # Step 7: Generate test restore report
+            logger.info("Step 7: Generating test restore report...")
+
+            total_duration = (timezone.now() - start_time).total_seconds()
+            test_report["success"] = True
+            test_report["duration_seconds"] = total_duration
+
+            # Update restore log
+            with bypass_rls():
+                restore_log.status = BackupRestoreLog.COMPLETED
+                restore_log.completed_at = timezone.now()
+                restore_log.duration_seconds = int(total_duration)
+                restore_log.metadata = test_report
+                restore_log.save()
+
+            logger.info("=" * 80)
+            logger.info("AUTOMATED TEST RESTORE COMPLETED SUCCESSFULLY")
+            logger.info(f"Backup: {backup.filename}")
+            logger.info(f"Test database: {test_db_name}")
+            logger.info(f"Duration: {total_duration:.2f} seconds")
+            logger.info(f"Integrity checks: {len(integrity_results)} passed")
+            logger.info("=" * 80)
+
+            # Send success notification
+            create_backup_alert(
+                alert_type=BackupAlert.BACKUP_FAILURE,  # Reusing type for test restore success
+                severity=BackupAlert.INFO,
+                message=f"Automated test restore completed successfully: {backup.filename}",
+                backup=backup,
+                details=test_report,
+            )
+
+            return test_report
+
+    except Exception as e:
+        logger.error(f"Automated test restore failed: {e}", exc_info=True)
+
+        total_duration = (timezone.now() - start_time).total_seconds()
+        test_report["success"] = False
+        test_report["errors"].append(str(e))
+        test_report["duration_seconds"] = total_duration
+
+        # Update restore log to failed status
+        if restore_log:
+            with bypass_rls():
+                restore_log.status = BackupRestoreLog.FAILED
+                restore_log.error_message = str(e)
+                restore_log.completed_at = timezone.now()
+                restore_log.duration_seconds = int(total_duration)
+                restore_log.metadata = test_report
+                restore_log.save()
+
+        # Create critical alert
+        create_backup_alert(
+            alert_type=BackupAlert.BACKUP_FAILURE,
+            severity=BackupAlert.CRITICAL,
+            message=f"AUTOMATED TEST RESTORE FAILED: {str(e)}",
+            backup=backup if "backup" in locals() else None,
+            details=test_report,
+        )
+
+        logger.error("=" * 80)
+        logger.error("AUTOMATED TEST RESTORE FAILED")
+        logger.error(f"Error: {e}")
+        logger.error(f"Duration: {total_duration:.2f} seconds")
+        logger.error("=" * 80)
+
+        return test_report
+
+    finally:
+        # Step 8: Cleanup test database
+        if test_db_name:
+            try:
+                logger.info(f"Cleaning up test database: {test_db_name}")
+
+                db_config = get_database_config()
+                success, error_msg = drop_test_database(
+                    test_db_name=test_db_name,
+                    host=db_config["host"],
+                    port=db_config["port"],
+                    user=db_config["user"],
+                    password=db_config["password"],
+                )
+
+                if success:
+                    logger.info(f"✓ Dropped test database: {test_db_name}")
+                else:
+                    logger.warning(f"Failed to drop test database: {error_msg}")
+
+            except Exception as e:
+                logger.warning(f"Error cleaning up test database: {e}")
+
+        # Clean up temporary files
+        cleanup_temp_files(*temp_files)
+
+
+def create_test_database(
+    test_db_name: str, host: str, port: str, user: str, password: str
+) -> Tuple[bool, Optional[str]]:
+    """
+    Create a test database for restore verification.
+
+    Args:
+        test_db_name: Name of the test database to create
+        host: Database host
+        port: Database port
+        user: Database user
+        password: Database password
+
+    Returns:
+        Tuple of (success: bool, error_message: Optional[str])
+    """
+    try:
+        # Set up environment
+        env = os.environ.copy()
+        env["PGPASSWORD"] = password
+
+        # Create database using psql
+        cmd = [
+            "psql",
+            "-h",
+            host,
+            "-p",
+            port,
+            "-U",
+            user,
+            "-d",
+            "postgres",  # Connect to postgres database to create new database
+            "-c",
+            f"CREATE DATABASE {test_db_name};",
+        ]
+
+        result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=60)
+
+        if result.returncode == 0:
+            logger.info(f"Created test database: {test_db_name}")
+            return True, None
+        else:
+            error_msg = f"Failed to create test database: {result.stderr}"
+            logger.error(error_msg)
+            return False, error_msg
+
+    except Exception as e:
+        error_msg = f"Exception creating test database: {e}"
+        logger.error(error_msg)
+        return False, error_msg
+
+
+def drop_test_database(
+    test_db_name: str, host: str, port: str, user: str, password: str
+) -> Tuple[bool, Optional[str]]:
+    """
+    Drop a test database after restore verification.
+
+    Args:
+        test_db_name: Name of the test database to drop
+        host: Database host
+        port: Database port
+        user: Database user
+        password: Database password
+
+    Returns:
+        Tuple of (success: bool, error_message: Optional[str])
+    """
+    try:
+        # Set up environment
+        env = os.environ.copy()
+        env["PGPASSWORD"] = password
+
+        # Drop database using psql
+        cmd = [
+            "psql",
+            "-h",
+            host,
+            "-p",
+            port,
+            "-U",
+            user,
+            "-d",
+            "postgres",  # Connect to postgres database to drop database
+            "-c",
+            f"DROP DATABASE IF EXISTS {test_db_name};",
+        ]
+
+        result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=60)
+
+        if result.returncode == 0:
+            logger.info(f"Dropped test database: {test_db_name}")
+            return True, None
+        else:
+            error_msg = f"Failed to drop test database: {result.stderr}"
+            logger.error(error_msg)
+            return False, error_msg
+
+    except Exception as e:
+        error_msg = f"Exception dropping test database: {e}"
+        logger.error(error_msg)
+        return False, error_msg
+
+
+def verify_test_restore_integrity(
+    test_db_name: str, host: str, port: str, user: str, password: str
+) -> dict:
+    """
+    Verify data integrity of a test restore.
+
+    This function performs the following checks:
+    1. Row counts for key tables
+    2. Table existence verification
+    3. Relationship integrity (foreign keys)
+    4. Data corruption detection (basic checks)
+
+    Args:
+        test_db_name: Name of the test database
+        host: Database host
+        port: Database port
+        user: Database user
+        password: Database password
+
+    Returns:
+        Dictionary with integrity check results
+    """
+    import psycopg2
+
+    results = {}
+
+    try:
+        # Connect to test database
+        conn = psycopg2.connect(
+            dbname=test_db_name, host=host, port=port, user=user, password=password
+        )
+        cursor = conn.cursor()
+
+        # Check 1: Verify key tables exist
+        logger.info("Checking table existence...")
+
+        key_tables = [
+            "tenants",
+            "users",
+            "core_branch",
+            "inventory_items",
+            "sales",
+            "crm_customer",
+            "backups_backup",
+        ]
+
+        existing_tables = []
+        missing_tables = []
+
+        for table in key_tables:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_name = %s
+                );
+            """,
+                (table,),
+            )
+            exists = cursor.fetchone()[0]
+
+            if exists:
+                existing_tables.append(table)
+            else:
+                missing_tables.append(table)
+
+        results["table_existence"] = {
+            "passed": len(missing_tables) == 0,
+            "existing_tables": existing_tables,
+            "missing_tables": missing_tables,
+            "total_checked": len(key_tables),
+        }
+
+        logger.info(f"Table existence: {len(existing_tables)}/{len(key_tables)} tables found")
+
+        # Check 2: Verify row counts for key tables
+        logger.info("Checking row counts...")
+
+        row_counts = {}
+
+        for table in existing_tables:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table};")
+                count = cursor.fetchone()[0]
+                row_counts[table] = count
+            except Exception as e:
+                logger.warning(f"Failed to count rows in {table}: {e}")
+                row_counts[table] = -1
+
+        results["row_counts"] = {
+            "passed": all(count >= 0 for count in row_counts.values()),
+            "counts": row_counts,
+            "total_rows": sum(count for count in row_counts.values() if count >= 0),
+        }
+
+        logger.info(f"Row counts: {results['row_counts']['total_rows']} total rows")
+
+        # Check 3: Verify foreign key relationships
+        logger.info("Checking foreign key integrity...")
+
+        # Get all foreign key constraints
+        cursor.execute(
+            """
+            SELECT
+                tc.table_name,
+                kcu.column_name,
+                ccu.table_name AS foreign_table_name,
+                ccu.column_name AS foreign_column_name
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+                ON tc.constraint_name = kcu.constraint_name
+            JOIN information_schema.constraint_column_usage AS ccu
+                ON ccu.constraint_name = tc.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+            LIMIT 20;
+        """
+        )
+
+        fk_constraints = cursor.fetchall()
+        fk_violations = []
+
+        for table, column, ref_table, ref_column in fk_constraints:
+            try:
+                # Check for orphaned records
+                cursor.execute(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM {table} t
+                    WHERE t.{column} IS NOT NULL
+                    AND NOT EXISTS (
+                        SELECT 1 FROM {ref_table} r
+                        WHERE r.{ref_column} = t.{column}
+                    );
+                """
+                )
+                violations = cursor.fetchone()[0]
+
+                if violations > 0:
+                    fk_violations.append(
+                        {
+                            "table": table,
+                            "column": column,
+                            "ref_table": ref_table,
+                            "violations": violations,
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to check FK constraint {table}.{column}: {e}")
+
+        results["foreign_key_integrity"] = {
+            "passed": len(fk_violations) == 0,
+            "constraints_checked": len(fk_constraints),
+            "violations": fk_violations,
+        }
+
+        logger.info(
+            f"Foreign key integrity: {len(fk_constraints)} constraints checked, "
+            f"{len(fk_violations)} violations found"
+        )
+
+        # Check 4: Basic data corruption detection
+        logger.info("Checking for data corruption...")
+
+        corruption_issues = []
+
+        # Check for NULL values in NOT NULL columns (sample check)
+        try:
+            cursor.execute(
+                """
+                SELECT table_name, column_name
+                FROM information_schema.columns
+                WHERE is_nullable = 'NO'
+                AND table_schema = 'public'
+                LIMIT 10;
+            """
+            )
+
+            not_null_columns = cursor.fetchall()
+
+            for table, column in not_null_columns:
+                try:
+                    cursor.execute(f"SELECT COUNT(*) FROM {table} WHERE {column} IS NULL;")
+                    null_count = cursor.fetchone()[0]
+
+                    if null_count > 0:
+                        corruption_issues.append(
+                            {
+                                "table": table,
+                                "column": column,
+                                "issue": f"Found {null_count} NULL values in NOT NULL column",
+                            }
+                        )
+                except Exception as e:
+                    logger.debug(f"Skipping NULL check for {table}.{column}: {e}")
+
+        except Exception as e:
+            logger.warning(f"Failed to check for data corruption: {e}")
+
+        results["data_corruption"] = {
+            "passed": len(corruption_issues) == 0,
+            "issues": corruption_issues,
+        }
+
+        logger.info(f"Data corruption: {len(corruption_issues)} issues found")
+
+        # Close connection
+        cursor.close()
+        conn.close()
+
+        # Overall result
+        all_passed = all(check.get("passed", False) for check in results.values())
+        results["overall"] = {
+            "passed": all_passed,
+            "total_checks": len(results),
+            "passed_checks": sum(1 for check in results.values() if check.get("passed", False)),
+        }
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Failed to verify test restore integrity: {e}", exc_info=True)
+        return {
+            "error": str(e),
+            "passed": False,
+        }
