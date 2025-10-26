@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Manual Backup Trigger{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Manual Backup Trigger</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Configure and trigger a manual backup operation</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <form method="post" id="backup-form">
+            {% csrf_token %}
+
+            <!-- Backup Scope -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Backup Scope
+                </label>
+                <div class="space-y-2">
+                    {% for value, label in form.backup_scope.field.choices %}
+                    <div class="flex items-center">
+                        <input type="radio" name="backup_scope" value="{{ value }}" 
+                               id="id_backup_scope_{{ forloop.counter }}"
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                               {% if form.backup_scope.value == value %}checked{% endif %}
+                               onchange="toggleTenantSelection()">
+                        <label for="id_backup_scope_{{ forloop.counter }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            {{ label }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if form.backup_scope.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.backup_scope.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Tenant Selection -->
+            <div id="tenant-selection" class="mb-6" style="display: none;">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Tenants
+                </label>
+                <div class="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-4 space-y-2">
+                    {% for tenant in form.tenants.field.queryset %}
+                    <div class="flex items-center">
+                        <input type="checkbox" name="tenants" value="{{ tenant.id }}" 
+                               id="id_tenants_{{ tenant.id }}"
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                        <label for="id_tenants_{{ tenant.id }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            {{ tenant.company_name }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if form.tenants.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.tenants.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Execution Timing -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Execution Timing
+                </label>
+                <div class="space-y-2">
+                    {% for value, label in form.execution_timing.field.choices %}
+                    <div class="flex items-center">
+                        <input type="radio" name="execution_timing" value="{{ value }}" 
+                               id="id_execution_timing_{{ forloop.counter }}"
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                               {% if form.execution_timing.value == value %}checked{% endif %}
+                               onchange="toggleScheduledTime()">
+                        <label for="id_execution_timing_{{ forloop.counter }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            {{ label }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if form.execution_timing.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.execution_timing.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Scheduled Time -->
+            <div id="scheduled-time" class="mb-6" style="display: none;">
+                <label for="id_scheduled_time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Scheduled Time
+                </label>
+                {{ form.scheduled_time }}
+                <p class="mt-1 text-xs text-gray-500">{{ form.scheduled_time.help_text }}</p>
+                {% if form.scheduled_time.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.scheduled_time.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Include Configuration -->
+            <div class="mb-6">
+                <div class="flex items-center">
+                    {{ form.include_configuration }}
+                    <label for="id_include_configuration" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        {{ form.include_configuration.label }}
+                    </label>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">{{ form.include_configuration.help_text }}</p>
+                {% if form.include_configuration.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.include_configuration.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Notes -->
+            <div class="mb-6">
+                <label for="id_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Notes (Optional)
+                </label>
+                {{ form.notes }}
+                <p class="mt-1 text-xs text-gray-500">{{ form.notes.help_text }}</p>
+                {% if form.notes.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Form Errors -->
+            {% if form.non_field_errors %}
+            <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded">
+                {% for error in form.non_field_errors %}
+                <p class="text-sm text-red-600">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end space-x-4">
+                <a href="{% url 'backups:dashboard' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                    Cancel
+                </a>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                    Trigger Backup
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleTenantSelection() {
+    const backupScope = document.querySelector('input[name="backup_scope"]:checked').value;
+    const tenantSelection = document.getElementById('tenant-selection');
+    
+    if (backupScope === 'specific' || backupScope === 'multiple') {
+        tenantSelection.style.display = 'block';
+    } else {
+        tenantSelection.style.display = 'none';
+    }
+}
+
+function toggleScheduledTime() {
+    const executionTiming = document.querySelector('input[name="execution_timing"]:checked').value;
+    const scheduledTime = document.getElementById('scheduled-time');
+    
+    if (executionTiming === 'scheduled') {
+        scheduledTime.style.display = 'block';
+    } else {
+        scheduledTime.style.display = 'none';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleTenantSelection();
+    toggleScheduledTime();
+});
+</script>
+
+<style>
+#id_scheduled_time {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+}
+
+#id_notes {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+}
+
+.dark #id_scheduled_time,
+.dark #id_notes {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f3f4f6;
+}
+</style>
+{% endblock %}

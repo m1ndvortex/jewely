@@ -624,7 +624,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Upload to all three storage locations
     - _Requirements: 6_
   
-  - [ ] 18.6 Implement continuous WAL archiving
+  - [x] 18.6 Implement continuous WAL archiving
     - Create Celery task for WAL archiving every 5 minutes
     - Implement WAL file compression
     - Upload WAL files to R2 and B2 (skip local)
@@ -639,7 +639,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Encrypt and upload to all storage locations
     - _Requirements: 6_
   
-  - [ ] 18.8 Implement flexible tenant backup
+  - [x] 18.8 Implement flexible tenant backup
     - Create interface for manual backup trigger
     - Support specific tenant(s), multiple tenants, or all tenants
     - Support immediate or scheduled execution

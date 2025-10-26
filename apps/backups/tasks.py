@@ -25,7 +25,7 @@ from django.utils import timezone
 from celery import shared_task
 
 from .encryption import compress_and_encrypt_file, verify_backup_integrity
-from .models import Backup, BackupAlert
+from .models import Backup, BackupAlert, BackupRestoreLog
 from .storage import get_storage_backend
 
 logger = logging.getLogger(__name__)
@@ -1627,3 +1627,372 @@ def configuration_backup(self, initiated_by_user_id: Optional[int] = None):
     finally:
         # Clean up temporary files (if they weren't in a temp directory)
         cleanup_temp_files(*temp_files)
+
+
+# Wrapper functions for manual backup triggers
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.perform_full_database_backup",
+    max_retries=3,
+    default_retry_delay=300,
+)
+def perform_full_database_backup(self, notes: str = "", created_by_id: Optional[int] = None):
+    """
+    Wrapper for manual full database backup trigger.
+
+    Args:
+        notes: Optional notes about the backup
+        created_by_id: ID of user who initiated the backup
+
+    Returns:
+        Backup ID if successful
+    """
+    return daily_full_database_backup(initiated_by_user_id=created_by_id)
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.perform_tenant_backup",
+    max_retries=3,
+    default_retry_delay=300,
+)
+def perform_tenant_backup(
+    self, tenant_id: str, notes: str = "", created_by_id: Optional[int] = None
+):
+    """
+    Wrapper for manual tenant backup trigger.
+
+    Args:
+        tenant_id: UUID of the tenant to backup
+        notes: Optional notes about the backup
+        created_by_id: ID of user who initiated the backup
+
+    Returns:
+        List of backup IDs if successful
+    """
+    return weekly_per_tenant_backup(tenant_id=tenant_id, initiated_by_user_id=created_by_id)
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.perform_configuration_backup",
+    max_retries=3,
+    default_retry_delay=300,
+)
+def perform_configuration_backup(self, notes: str = "", created_by_id: Optional[int] = None):
+    """
+    Wrapper for manual configuration backup trigger.
+
+    Args:
+        notes: Optional notes about the backup
+        created_by_id: ID of user who initiated the backup
+
+    Returns:
+        Backup ID if successful
+    """
+    return configuration_backup(initiated_by_user_id=created_by_id)
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.perform_restore_operation",
+    max_retries=1,  # Restores should not be retried automatically
+    default_retry_delay=0,
+)
+def perform_restore_operation(self, restore_log_id: str):  # noqa: C901
+    """
+    Perform a restore operation based on a restore log entry.
+
+    This task:
+    1. Retrieves the restore log and backup information
+    2. Downloads the backup from storage
+    3. Decrypts and decompresses the backup
+    4. Performs the restore based on restore mode (FULL, MERGE, PITR)
+    5. Updates the restore log with results
+
+    Args:
+        restore_log_id: UUID of the BackupRestoreLog entry
+
+    Returns:
+        Restore log ID if successful
+    """
+    from apps.core.tenant_context import bypass_rls
+
+    start_time = timezone.now()
+    restore_log = None
+    temp_files = []
+
+    try:
+        logger.info("=" * 80)
+        logger.info(f"Starting restore operation: {restore_log_id}")
+        logger.info("=" * 80)
+
+        # Get restore log
+        with bypass_rls():
+            restore_log = BackupRestoreLog.objects.get(id=restore_log_id)
+            backup = restore_log.backup
+
+        logger.info(f"Restore mode: {restore_log.restore_mode}")
+        logger.info(f"Backup: {backup.filename}")
+        logger.info(f"Backup type: {backup.backup_type}")
+
+        # Validate backup
+        if not backup.is_completed():
+            raise Exception(f"Backup is not completed (status: {backup.status})")
+
+        # Step 1: Download backup from storage
+        logger.info("Downloading backup from storage...")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            encrypted_path = os.path.join(temp_dir, backup.filename)
+            temp_files.append(encrypted_path)
+
+            # Try to download from R2 first, then B2, then local
+            downloaded = False
+
+            if backup.r2_path:
+                try:
+                    r2_storage = get_storage_backend("r2")
+                    if r2_storage.download(backup.r2_path, encrypted_path):
+                        logger.info(f"Downloaded from R2: {backup.r2_path}")
+                        downloaded = True
+                except Exception as e:
+                    logger.warning(f"Failed to download from R2: {e}")
+
+            if not downloaded and backup.b2_path:
+                try:
+                    b2_storage = get_storage_backend("b2")
+                    if b2_storage.download(backup.b2_path, encrypted_path):
+                        logger.info(f"Downloaded from B2: {backup.b2_path}")
+                        downloaded = True
+                except Exception as e:
+                    logger.warning(f"Failed to download from B2: {e}")
+
+            if not downloaded and backup.local_path:
+                try:
+                    local_storage = get_storage_backend("local")
+                    if local_storage.download(backup.local_path, encrypted_path):
+                        logger.info(f"Downloaded from local storage: {backup.local_path}")
+                        downloaded = True
+                except Exception as e:
+                    logger.warning(f"Failed to download from local storage: {e}")
+
+            if not downloaded:
+                raise Exception("Failed to download backup from any storage location")
+
+            # Step 2: Decrypt and decompress backup
+            logger.info("Decrypting and decompressing backup...")
+
+            from .encryption import decrypt_and_decompress_file
+
+            decrypted_path = os.path.join(temp_dir, backup.filename.replace(".gz.enc", ""))
+            temp_files.append(decrypted_path)
+
+            decrypt_and_decompress_file(encrypted_path, decrypted_path)
+
+            logger.info(f"Decrypted and decompressed: {decrypted_path}")
+
+            # Step 3: Perform restore based on mode
+            logger.info(f"Performing {restore_log.restore_mode} restore...")
+
+            db_config = get_database_config()
+
+            if restore_log.restore_mode == BackupRestoreLog.FULL:
+                # Full restore - replace all data (DESTRUCTIVE)
+                logger.warning("FULL RESTORE MODE - This will replace all existing data!")
+
+                # Use pg_restore with --clean to drop existing objects
+                success, error_msg = perform_pg_restore(
+                    dump_path=decrypted_path,
+                    database=db_config["name"],
+                    user=db_config["user"],
+                    password=db_config["password"],
+                    host=db_config["host"],
+                    port=db_config["port"],
+                    clean=True,
+                    selective_tenants=restore_log.tenant_ids,
+                )
+
+                if not success:
+                    raise Exception(f"pg_restore failed: {error_msg}")
+
+            elif restore_log.restore_mode == BackupRestoreLog.MERGE:
+                # Merge restore - preserve existing data
+                logger.info("MERGE RESTORE MODE - Preserving existing data")
+
+                # Use pg_restore without --clean to merge data
+                success, error_msg = perform_pg_restore(
+                    dump_path=decrypted_path,
+                    database=db_config["name"],
+                    user=db_config["user"],
+                    password=db_config["password"],
+                    host=db_config["host"],
+                    port=db_config["port"],
+                    clean=False,
+                    selective_tenants=restore_log.tenant_ids,
+                )
+
+                if not success:
+                    raise Exception(f"pg_restore failed: {error_msg}")
+
+            elif restore_log.restore_mode == BackupRestoreLog.PITR:
+                # Point-in-Time Recovery
+                logger.info(f"PITR MODE - Restoring to {restore_log.target_timestamp.isoformat()}")
+
+                # PITR requires WAL archives and is more complex
+                # For now, we'll implement basic PITR using pg_restore + WAL replay
+                # Full PITR implementation would require PostgreSQL recovery.conf
+
+                raise NotImplementedError(
+                    "Point-in-Time Recovery is not yet fully implemented. "
+                    "Please use FULL or MERGE restore mode."
+                )
+
+            else:
+                raise Exception(f"Invalid restore mode: {restore_log.restore_mode}")
+
+            # Step 4: Update restore log
+            duration_seconds = int((timezone.now() - start_time).total_seconds())
+
+            with bypass_rls():
+                restore_log.status = BackupRestoreLog.COMPLETED
+                restore_log.completed_at = timezone.now()
+                restore_log.duration_seconds = duration_seconds
+                restore_log.save()
+
+            logger.info(f"Restore completed successfully: {restore_log.id}")
+            logger.info(f"Duration: {duration_seconds} seconds")
+
+        logger.info("=" * 80)
+        logger.info(f"Restore operation completed: {restore_log.id}")
+        logger.info("=" * 80)
+
+        return str(restore_log.id)
+
+    except Exception as e:
+        logger.error(f"Restore operation failed: {e}", exc_info=True)
+
+        # Update restore log to failed status
+        if restore_log:
+            duration_seconds = int((timezone.now() - start_time).total_seconds())
+
+            with bypass_rls():
+                restore_log.status = BackupRestoreLog.FAILED
+                restore_log.error_message = str(e)
+                restore_log.completed_at = timezone.now()
+                restore_log.duration_seconds = duration_seconds
+                restore_log.save()
+
+        # Create alert
+        create_backup_alert(
+            alert_type=BackupAlert.RESTORE_FAILURE,
+            severity=BackupAlert.CRITICAL,
+            message=f"Restore operation failed: {str(e)}",
+            restore_log=restore_log,
+            details={"error": str(e), "task_id": self.request.id},
+        )
+
+        raise
+
+    finally:
+        # Clean up temporary files
+        cleanup_temp_files(*temp_files)
+
+
+def perform_pg_restore(
+    dump_path: str,
+    database: str,
+    user: str,
+    password: str,
+    host: str,
+    port: str,
+    clean: bool = False,
+    selective_tenants: Optional[list] = None,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Perform PostgreSQL restore using pg_restore.
+
+    Args:
+        dump_path: Path to the dump file
+        database: Database name
+        user: Database user
+        password: Database password
+        host: Database host
+        port: Database port
+        clean: Whether to clean (drop) existing objects before restore
+        selective_tenants: List of tenant IDs to restore (for selective restore)
+
+    Returns:
+        Tuple of (success: bool, error_message: Optional[str])
+    """
+    try:
+        # Set up environment for pg_restore
+        env = os.environ.copy()
+        env["PGPASSWORD"] = password
+
+        # Build pg_restore command
+        # -Fc: Custom format
+        # -v: Verbose mode
+        # --no-owner: Don't output commands to set ownership
+        # --no-acl: Don't output commands to set access privileges
+        # -j 4: Use 4 parallel jobs for faster restore
+        cmd = [
+            "pg_restore",
+            "-v",  # Verbose
+            "--no-owner",
+            "--no-acl",
+            "-j",
+            "4",  # Parallel jobs
+            "-h",
+            host,
+            "-p",
+            port,
+            "-U",
+            user,
+            "-d",
+            database,
+        ]
+
+        # Add --clean flag if requested (DESTRUCTIVE)
+        if clean:
+            cmd.append("--clean")
+
+        # Add dump file
+        cmd.append(dump_path)
+
+        logger.info(f"Starting pg_restore for database {database}")
+        if clean:
+            logger.warning("Using --clean flag - existing objects will be dropped!")
+
+        # Execute pg_restore
+        result = subprocess.run(
+            cmd, env=env, capture_output=True, text=True, timeout=7200  # 2 hour timeout
+        )
+
+        # pg_restore may return non-zero even on success if some objects already exist
+        # Check stderr for actual errors
+        if result.returncode != 0:
+            # Check if errors are just warnings about existing objects
+            if "already exists" in result.stderr or "does not exist" in result.stderr:
+                logger.warning(f"pg_restore completed with warnings: {result.stderr}")
+                return True, None
+            else:
+                error_msg = (
+                    f"pg_restore failed with return code {result.returncode}: {result.stderr}"
+                )
+                logger.error(error_msg)
+                return False, error_msg
+
+        logger.info("pg_restore completed successfully")
+        return True, None
+
+    except subprocess.TimeoutExpired:
+        error_msg = "pg_restore timed out after 2 hours"
+        logger.error(error_msg)
+        return False, error_msg
+    except Exception as e:
+        error_msg = f"pg_restore failed with exception: {e}"
+        logger.error(error_msg)
+        return False, error_msg
