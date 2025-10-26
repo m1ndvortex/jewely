@@ -86,6 +86,15 @@ class StorageBackend:
         """
         raise NotImplementedError
 
+    def get_storage_usage(self) -> Optional[dict]:
+        """
+        Get storage usage information.
+
+        Returns:
+            Dictionary with 'total_bytes' and 'used_bytes', or None if not available
+        """
+        raise NotImplementedError
+
 
 class LocalStorage(StorageBackend):
     """
@@ -234,6 +243,30 @@ class LocalStorage(StorageBackend):
             return None
         except Exception as e:
             logger.error(f"LocalStorage: Failed to get size of {remote_path}: {e}")
+            return None
+
+    def get_storage_usage(self) -> Optional[dict]:
+        """
+        Get storage usage information for local filesystem.
+
+        Returns:
+            Dictionary with 'total_bytes' and 'used_bytes'
+        """
+        try:
+            import shutil
+
+            stat = shutil.disk_usage(self.base_path)
+
+            # Calculate used space by all backups in the directory
+            used_bytes = sum(f.stat().st_size for f in self.base_path.rglob("*") if f.is_file())
+
+            return {
+                "total_bytes": stat.total,
+                "used_bytes": used_bytes,
+                "available_bytes": stat.free,
+            }
+        except Exception as e:
+            logger.error(f"LocalStorage: Failed to get storage usage: {e}")
             return None
 
 
@@ -423,6 +456,36 @@ class CloudflareR2Storage(StorageBackend):
             )
             return None
 
+    def get_storage_usage(self) -> Optional[dict]:
+        """
+        Get storage usage information for R2 bucket.
+
+        Returns:
+            Dictionary with 'total_bytes' and 'used_bytes'
+        """
+        try:
+            # List all objects in the bucket and sum their sizes
+            paginator = self.client.get_paginator("list_objects_v2")
+            used_bytes = 0
+
+            for page in paginator.paginate(Bucket=self.bucket_name):
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        used_bytes += obj["Size"]
+
+            # R2 doesn't have a hard limit, use a large number as "total"
+            # In practice, you'd set this based on your plan or quota
+            total_bytes = 1024 * 1024 * 1024 * 1024  # 1 TB default
+
+            return {
+                "total_bytes": total_bytes,
+                "used_bytes": used_bytes,
+                "available_bytes": total_bytes - used_bytes,
+            }
+        except Exception as e:
+            logger.error(f"CloudflareR2Storage: Failed to get storage usage: {e}")
+            return None
+
 
 class BackblazeB2Storage(StorageBackend):
     """
@@ -605,6 +668,36 @@ class BackblazeB2Storage(StorageBackend):
             return None
         except Exception as e:
             logger.error(f"BackblazeB2Storage: Unexpected error getting size of {remote_path}: {e}")
+            return None
+
+    def get_storage_usage(self) -> Optional[dict]:
+        """
+        Get storage usage information for B2 bucket.
+
+        Returns:
+            Dictionary with 'total_bytes' and 'used_bytes'
+        """
+        try:
+            # List all objects in the bucket and sum their sizes
+            paginator = self.client.get_paginator("list_objects_v2")
+            used_bytes = 0
+
+            for page in paginator.paginate(Bucket=self.bucket_name):
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        used_bytes += obj["Size"]
+
+            # B2 doesn't have a hard limit, use a large number as "total"
+            # In practice, you'd set this based on your plan or quota
+            total_bytes = 1024 * 1024 * 1024 * 1024  # 1 TB default
+
+            return {
+                "total_bytes": total_bytes,
+                "used_bytes": used_bytes,
+                "available_bytes": total_bytes - used_bytes,
+            }
+        except Exception as e:
+            logger.error(f"BackblazeB2Storage: Failed to get storage usage: {e}")
             return None
 
 

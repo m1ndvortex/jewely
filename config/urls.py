@@ -21,6 +21,7 @@ urlpatterns = [
     path("pricing/", include("apps.pricing.urls")),
     path("reports/", include("apps.reporting.urls")),
     path("notifications/", include("apps.notifications.urls")),
+    path("admin/backups/", include("apps.backups.urls")),  # Backup management
 ]
 
 # Serve media files in development

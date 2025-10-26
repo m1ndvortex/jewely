@@ -203,6 +203,12 @@ class Backup(models.Model):
         """Get backup size in gigabytes."""
         return round(self.size_bytes / (1024 * 1024 * 1024), 2)
 
+    def get_average_speed_mbps(self):
+        """Calculate average backup speed in MB/s."""
+        if self.backup_duration_seconds and self.backup_duration_seconds > 0:
+            return round(self.get_size_mb() / self.backup_duration_seconds, 2)
+        return 0
+
 
 class BackupRestoreLog(models.Model):
     """
@@ -560,15 +566,19 @@ class BackupAlert(models.Model):
 
     def acknowledge(self, user):
         """Acknowledge the alert."""
+        from django.utils import timezone
+
         self.status = self.ACKNOWLEDGED
-        self.acknowledged_at = models.functions.Now()
+        self.acknowledged_at = timezone.now()
         self.acknowledged_by = user
         self.save(update_fields=["status", "acknowledged_at", "acknowledged_by"])
 
     def resolve(self, user, notes=""):
         """Resolve the alert."""
+        from django.utils import timezone
+
         self.status = self.RESOLVED
-        self.resolved_at = models.functions.Now()
+        self.resolved_at = timezone.now()
         self.resolved_by = user
         self.resolution_notes = notes
         self.save(update_fields=["status", "resolved_at", "resolved_by", "resolution_notes"])

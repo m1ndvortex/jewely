@@ -15,11 +15,12 @@ import logging
 import os
 import subprocess
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from celery import shared_task
@@ -27,6 +28,8 @@ from celery import shared_task
 from .encryption import compress_and_encrypt_file, verify_backup_integrity
 from .models import Backup, BackupAlert, BackupRestoreLog
 from .storage import get_storage_backend
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -256,6 +259,9 @@ def create_backup_alert(
     """
     Create a backup alert.
 
+    This is a legacy function that creates an alert without sending notifications.
+    For new code, use create_backup_alert_with_notifications from monitoring module.
+
     Args:
         alert_type: Type of alert (BACKUP_FAILURE, SIZE_DEVIATION, etc.)
         severity: Severity level (INFO, WARNING, ERROR, CRITICAL)
@@ -266,20 +272,16 @@ def create_backup_alert(
     Returns:
         Created BackupAlert instance
     """
-    alert = BackupAlert.objects.create(
+    from .monitoring import create_backup_alert_with_notifications
+
+    # Use the new monitoring function that includes notifications
+    return create_backup_alert_with_notifications(
         alert_type=alert_type,
         severity=severity,
         message=message,
         backup=backup,
-        details=details or {},
+        details=details,
     )
-
-    logger.info(f"Created backup alert: {alert_type} - {severity} - {message}")
-
-    # TODO: Send notifications via email, SMS, in-app, webhooks
-    # This will be implemented in task 18.11
-
-    return alert
 
 
 @shared_task(
@@ -440,6 +442,11 @@ def daily_full_database_backup(self, initiated_by_user_id: Optional[int] = None)
         logger.info("=" * 80)
         logger.info(f"Daily full database backup completed: {backup.id}")
         logger.info("=" * 80)
+
+        # Monitor backup completion and create alerts if needed
+        from .monitoring import monitor_backup_completion
+
+        monitor_backup_completion(backup)
 
         return str(backup.id)
 
@@ -2452,3 +2459,157 @@ def execute_disaster_recovery_runbook(  # noqa: C901
                     logger.debug(f"Cleaned up temporary file: {temp_file}")
             except Exception as e:
                 logger.warning(f"Failed to clean up temporary file {temp_file}: {e}")
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.monitor_storage_capacity",
+    max_retries=3,
+    default_retry_delay=300,  # 5 minutes
+)
+def monitor_storage_capacity(self):
+    """
+    Monitor storage capacity across all storage backends.
+
+    This task should run hourly to check storage usage and create alerts
+    if capacity exceeds 80%.
+
+    Returns:
+        Number of alerts created
+    """
+    from .monitoring import check_storage_capacity
+
+    try:
+        logger.info("Starting storage capacity monitoring")
+
+        alerts = check_storage_capacity()
+
+        logger.info(f"Storage capacity monitoring completed: {len(alerts)} alerts created")
+
+        return len(alerts)
+
+    except Exception as e:
+        logger.error(f"Storage capacity monitoring failed: {e}", exc_info=True)
+        raise self.retry(exc=e)
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.cleanup_resolved_alerts",
+    max_retries=3,
+    default_retry_delay=300,  # 5 minutes
+)
+def cleanup_resolved_alerts(self, days_to_keep: int = 30):
+    """
+    Clean up old resolved backup alerts.
+
+    This task should run daily to remove resolved alerts older than the specified days.
+
+    Args:
+        days_to_keep: Number of days to keep resolved alerts (default: 30)
+
+    Returns:
+        Number of alerts deleted
+    """
+    try:
+        logger.info(f"Starting cleanup of resolved alerts older than {days_to_keep} days")
+
+        cutoff_date = timezone.now() - timedelta(days=days_to_keep)
+
+        deleted_count, _ = BackupAlert.objects.filter(
+            status=BackupAlert.RESOLVED, resolved_at__lt=cutoff_date
+        ).delete()
+
+        logger.info(f"Cleaned up {deleted_count} resolved alerts")
+
+        return deleted_count
+
+    except Exception as e:
+        logger.error(f"Alert cleanup failed: {e}", exc_info=True)
+        raise self.retry(exc=e)
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.send_alert_digest",
+    max_retries=3,
+    default_retry_delay=300,  # 5 minutes
+)
+def send_alert_digest(self):
+    """
+    Send daily digest of active backup alerts to platform admins.
+
+    This task should run daily to provide a summary of all active alerts.
+
+    Returns:
+        Number of recipients notified
+    """
+    from .monitoring import get_active_alerts, get_alert_summary
+
+    try:
+        logger.info("Starting alert digest generation")
+
+        # Get alert summary
+        summary = get_alert_summary()
+
+        # Only send digest if there are active alerts
+        if summary["active_alerts"] == 0:
+            logger.info("No active alerts, skipping digest")
+            return 0
+
+        # Get platform admins
+        recipients = list(User.objects.filter(role="PLATFORM_ADMIN", is_active=True))
+
+        if not recipients:
+            logger.warning("No platform admins found for alert digest")
+            return 0
+
+        # Get active alerts grouped by severity
+        critical_alerts = get_active_alerts(severity=BackupAlert.CRITICAL)
+        error_alerts = get_active_alerts(severity=BackupAlert.ERROR)
+        warning_alerts = get_active_alerts(severity=BackupAlert.WARNING)
+
+        # Prepare context for email
+        context = {
+            "summary": summary,
+            "critical_alerts": critical_alerts,
+            "error_alerts": error_alerts,
+            "warning_alerts": warning_alerts,
+            "total_active": summary["active_alerts"],
+        }
+
+        # Send digest to each admin
+        from apps.notifications.services import create_notification, send_system_email
+
+        for user in recipients:
+            # Create in-app notification
+            create_notification(
+                user=user,
+                title=f"Backup Alert Digest: {summary['active_alerts']} Active Alerts",
+                message=f"Critical: {summary['critical_alerts']}, "
+                f"Active: {summary['active_alerts']}, "
+                f"Recent (24h): {summary['recent_alerts_24h']}",
+                notification_type="SYSTEM",
+                action_url="/admin/backups/alerts/",
+                action_text="View Alerts",
+            )
+
+            # Send email digest
+            if user.email:
+                try:
+                    send_system_email(
+                        user=user,
+                        template_name="backup_alert_digest",
+                        context=context,
+                        subject=f"Backup Alert Digest: {summary['active_alerts']} Active Alerts",
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send alert digest email to {user.email}: {e}")
+
+        logger.info(f"Alert digest sent to {len(recipients)} platform admins")
+
+        return len(recipients)
+
+    except Exception as e:
+        logger.error(f"Alert digest generation failed: {e}", exc_info=True)
+        raise self.retry(exc=e)

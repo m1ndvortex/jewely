@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Restore Operation Details{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Restore Operation Details</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{{ restore_log.get_restore_mode_display }}</p>
+        </div>
+        <a href="{% url 'backups:restore_list' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">
+            ← Back to List
+        </a>
+    </div>
+
+    <!-- Status Badge -->
+    <div class="mb-6">
+        <span class="px-4 py-2 text-sm font-semibold rounded-lg {% if restore_log.status == 'COMPLETED' %}bg-green-100 text-green-800{% elif restore_log.status == 'FAILED' %}bg-red-100 text-red-800{% elif restore_log.status == 'CANCELLED' %}bg-gray-100 text-gray-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ restore_log.get_status_display }}
+        </span>
+    </div>
+
+    <!-- Main Information -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Basic Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Basic Information</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Restore ID</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono">{{ restore_log.id }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Restore Mode</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.get_restore_mode_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Initiated By</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                        {% if restore_log.initiated_by %}
+                            {{ restore_log.initiated_by.username }}
+                        {% else %}
+                            <span class="text-gray-500 italic">Automated (Disaster Recovery)</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Started At</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.started_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                {% if restore_log.completed_at %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed At</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.completed_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                {% endif %}
+                {% if restore_log.duration_seconds %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.duration_seconds }} seconds</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Backup Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Source Backup</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Backup Type</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.backup.get_backup_type_display }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Filename</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ restore_log.backup.filename }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Backup Size</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.backup.get_size_mb }} MB</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Backup Created</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.backup.created_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                <div class="pt-2">
+                    <a href="{% url 'backups:backup_detail' restore_log.backup.id %}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                        View Backup Details →
+                    </a>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Restore Configuration -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Restore Configuration</h2>
+        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% if restore_log.tenant_ids %}
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Tenant IDs</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono">
+                    {% for tenant_id in restore_log.tenant_ids %}
+                        {{ tenant_id }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </dd>
+            </div>
+            {% endif %}
+            {% if restore_log.target_timestamp %}
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Target Timestamp (PITR)</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.target_timestamp|date:"Y-m-d H:i:s" }}</dd>
+            </div>
+            {% endif %}
+            {% if restore_log.rows_restored %}
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Rows Restored</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ restore_log.rows_restored|intcomma }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+
+    <!-- Reason -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Reason for Restore</h2>
+        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ restore_log.reason }}</p>
+    </div>
+
+    <!-- Error Message (if failed) -->
+    {% if restore_log.status == 'FAILED' and restore_log.error_message %}
+    <div class="bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold text-red-800 dark:text-red-200 mb-4">Error Details</h2>
+        <pre class="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap font-mono">{{ restore_log.error_message }}</pre>
+    </div>
+    {% endif %}
+
+    <!-- Notes -->
+    {% if restore_log.notes %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Additional Notes</h2>
+        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ restore_log.notes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Related Alerts -->
+    {% if alerts %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold mb-4">Related Alerts ({{ alerts|length }})</h2>
+        <div class="space-y-3">
+            {% for alert in alerts %}
+            <div class="border-l-4 {% if alert.severity == 'CRITICAL' %}border-red-600{% elif alert.severity == 'ERROR' %}border-orange-600{% elif alert.severity == 'WARNING' %}border-yellow-600{% else %}border-blue-600{% endif %} bg-gray-50 dark:bg-gray-700 p-4">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center">
+                            <span class="px-2 py-1 text-xs font-semibold rounded {% if alert.severity == 'CRITICAL' %}bg-red-600 text-white{% elif alert.severity == 'ERROR' %}bg-orange-600 text-white{% elif alert.severity == 'WARNING' %}bg-yellow-600 text-white{% else %}bg-blue-600 text-white{% endif %}">
+                                {{ alert.get_severity_display }}
+                            </span>
+                            <span class="ml-2 text-sm font-medium">{{ alert.get_alert_type_display }}</span>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ alert.message }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ alert.created_at|date:"Y-m-d H:i:s" }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Restore Wizard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-5xl">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Restore Wizard</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">4-step process to restore from backup</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex-1 flex items-center">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-bold step-indicator" data-step="1">
+                    1
+                </div>
+                <div class="flex-1 h-1 bg-gray-300 dark:bg-gray-600 mx-2 step-line" data-step="1"></div>
+            </div>
+            <div class="flex-1 flex items-center">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 font-bold step-indicator" data-step="2">
+                    2
+                </div>
+                <div class="flex-1 h-1 bg-gray-300 dark:bg-gray-600 mx-2 step-line" data-step="2"></div>
+            </div>
+            <div class="flex-1 flex items-center">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 font-bold step-indicator" data-step="3">
+                    3
+                </div>
+                <div class="flex-1 h-1 bg-gray-300 dark:bg-gray-600 mx-2 step-line" data-step="3"></div>
+            </div>
+            <div class="flex items-center">
+                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 font-bold step-indicator" data-step="4">
+                    4
+                </div>
+            </div>
+        </div>
+        <div class="flex justify-between mt-2 text-xs text-gray-600 dark:text-gray-400">
+            <span class="flex-1 text-center">Select Backup</span>
+            <span class="flex-1 text-center">Choose Type</span>
+            <span class="flex-1 text-center">Configure Options</span>
+            <span class="flex-1 text-center">Confirm</span>
+        </div>
+    </div>
+
+    <!-- Wizard Form -->
+    <form method="post" id="restore-wizard-form">
+        {% csrf_token %}
+
+        <!-- Step 1: Select Backup -->
+        <div class="wizard-step bg-white dark:bg-gray-800 rounded-lg shadow p-6" data-step="1">
+            <h2 class="text-2xl font-semibold mb-4">Step 1: Select Backup</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Choose the backup you want to restore from</p>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Backup to Restore
+                </label>
+                {{ form.backup }}
+                {% if form.backup.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.backup.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-2 text-xs text-gray-500">{{ form.backup.help_text }}</p>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="button" onclick="nextStep()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg">
+                    Next →
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Choose Restore Type -->
+        <div class="wizard-step bg-white dark:bg-gray-800 rounded-lg shadow p-6 hidden" data-step="2">
+            <h2 class="text-2xl font-semibold mb-4">Step 2: Choose Restore Type</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Select how you want to restore the data</p>
+
+            <div class="space-y-4 mb-6">
+                {% for value, label in form.restore_mode.field.choices %}
+                <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:border-blue-500 cursor-pointer restore-mode-option">
+                    <label class="flex items-start cursor-pointer">
+                        <input type="radio" name="restore_mode" value="{{ value }}" 
+                               class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500"
+                               {% if form.restore_mode.value == value %}checked{% endif %}
+                               onchange="updateRestoreMode()">
+                        <div class="ml-3">
+                            <div class="font-medium text-gray-900 dark:text-white">{{ label }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                {% if value == 'FULL' %}
+                                    Complete database replacement. All existing data will be replaced with backup data. Use for disaster recovery.
+                                {% elif value == 'MERGE' %}
+                                    Merge backup data with existing data. Existing data is preserved. Use for selective data recovery.
+                                {% elif value == 'PITR' %}
+                                    Point-in-time recovery. Restore database to a specific moment using WAL archives. Requires target timestamp.
+                                {% endif %}
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            {% if form.restore_mode.errors %}
+            <p class="mb-4 text-sm text-red-600">{{ form.restore_mode.errors.0 }}</p>
+            {% endif %}
+
+            <div class="flex justify-between">
+                <button type="button" onclick="prevStep()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg">
+                    ← Previous
+                </button>
+                <button type="button" onclick="nextStep()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg">
+                    Next →
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Configure Options -->
+        <div class="wizard-step bg-white dark:bg-gray-800 rounded-lg shadow p-6 hidden" data-step="3">
+            <h2 class="text-2xl font-semibold mb-4">Step 3: Configure Options</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Customize restore settings</p>
+
+            <!-- Selective Restore -->
+            <div class="mb-6">
+                <div class="flex items-center mb-2">
+                    {{ form.selective_restore }}
+                    <label for="id_selective_restore" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{ form.selective_restore.label }}
+                    </label>
+                </div>
+                <p class="text-xs text-gray-500">{{ form.selective_restore.help_text }}</p>
+                {% if form.selective_restore.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.selective_restore.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Tenant Selection (shown if selective restore is enabled) -->
+            <div id="tenant-selection" class="mb-6 hidden">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Tenants to Restore
+                </label>
+                <div class="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded p-4 space-y-2">
+                    {% for tenant in form.tenant_ids.field.queryset %}
+                    <div class="flex items-center">
+                        <input type="checkbox" name="tenant_ids" value="{{ tenant.id }}" 
+                               id="id_tenant_ids_{{ tenant.id }}"
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500">
+                        <label for="id_tenant_ids_{{ tenant.id }}" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                            {{ tenant.company_name }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if form.tenant_ids.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.tenant_ids.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Target Timestamp (shown if PITR mode is selected) -->
+            <div id="pitr-timestamp" class="mb-6 hidden">
+                <label for="id_target_timestamp" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Target Timestamp for Point-in-Time Recovery
+                </label>
+                {{ form.target_timestamp }}
+                <p class="mt-1 text-xs text-gray-500">{{ form.target_timestamp.help_text }}</p>
+                {% if form.target_timestamp.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.target_timestamp.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Reason -->
+            <div class="mb-6">
+                <label for="id_reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Reason for Restore *
+                </label>
+                {{ form.reason }}
+                <p class="mt-1 text-xs text-gray-500">{{ form.reason.help_text }}</p>
+                {% if form.reason.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.reason.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="flex justify-between">
+                <button type="button" onclick="prevStep()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg">
+                    ← Previous
+                </button>
+                <button type="button" onclick="nextStep()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg">
+                    Next →
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Confirm -->
+        <div class="wizard-step bg-white dark:bg-gray-800 rounded-lg shadow p-6 hidden" data-step="4">
+            <h2 class="text-2xl font-semibold mb-4">Step 4: Confirm Restore</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Review your restore configuration before proceeding</p>
+
+            <!-- Warning Banner -->
+            <div class="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700 dark:text-yellow-200">
+                            <strong>Warning:</strong> This operation will modify your database. Make sure you have reviewed all settings carefully.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4">Restore Summary</h3>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Backup</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white" id="summary-backup">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Restore Mode</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white" id="summary-mode">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Selective Restore</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white" id="summary-selective">-</dd>
+                    </div>
+                    <div id="summary-tenants-container" class="hidden">
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Selected Tenants</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white" id="summary-tenants">-</dd>
+                    </div>
+                    <div id="summary-timestamp-container" class="hidden">
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Target Timestamp</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white" id="summary-timestamp">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Reason</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white" id="summary-reason">-</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Confirmation Checkbox -->
+            <div class="mb-6">
+                <div class="flex items-center">
+                    <input type="checkbox" id="confirm-restore" class="h-4 w-4 text-blue-600 focus:ring-blue-500 rounded">
+                    <label for="confirm-restore" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        I understand the risks and want to proceed with this restore operation
+                    </label>
+                </div>
+            </div>
+
+            <!-- Form Errors -->
+            {% if form.non_field_errors %}
+            <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded">
+                {% for error in form.non_field_errors %}
+                <p class="text-sm text-red-600">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="flex justify-between">
+                <button type="button" onclick="prevStep()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg">
+                    ← Previous
+                </button>
+                <button type="submit" id="submit-button" disabled class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    Confirm & Restore
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+let currentStep = 1;
+
+function updateStepIndicators() {
+    // Update step indicators
+    document.querySelectorAll('.step-indicator').forEach(indicator => {
+        const step = parseInt(indicator.dataset.step);
+        if (step < currentStep) {
+            indicator.classList.remove('bg-gray-300', 'dark:bg-gray-600', 'text-gray-600', 'dark:text-gray-400');
+            indicator.classList.add('bg-green-600', 'text-white');
+        } else if (step === currentStep) {
+            indicator.classList.remove('bg-gray-300', 'dark:bg-gray-600', 'text-gray-600', 'dark:text-gray-400', 'bg-green-600');
+            indicator.classList.add('bg-blue-600', 'text-white');
+        } else {
+            indicator.classList.remove('bg-blue-600', 'bg-green-600', 'text-white');
+            indicator.classList.add('bg-gray-300', 'dark:bg-gray-600', 'text-gray-600', 'dark:text-gray-400');
+        }
+    });
+
+    // Update step lines
+    document.querySelectorAll('.step-line').forEach(line => {
+        const step = parseInt(line.dataset.step);
+        if (step < currentStep) {
+            line.classList.remove('bg-gray-300', 'dark:bg-gray-600');
+            line.classList.add('bg-green-600');
+        } else {
+            line.classList.remove('bg-green-600');
+            line.classList.add('bg-gray-300', 'dark:bg-gray-600');
+        }
+    });
+
+    // Show/hide wizard steps
+    document.querySelectorAll('.wizard-step').forEach(step => {
+        const stepNum = parseInt(step.dataset.step);
+        if (stepNum === currentStep) {
+            step.classList.remove('hidden');
+        } else {
+            step.classList.add('hidden');
+        }
+    });
+}
+
+function nextStep() {
+    if (currentStep < 4) {
+        currentStep++;
+        updateStepIndicators();
+        if (currentStep === 4) {
+            updateSummary();
+        }
+    }
+}
+
+function prevStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStepIndicators();
+    }
+}
+
+function updateRestoreMode() {
+    const mode = document.querySelector('input[name="restore_mode"]:checked')?.value;
+    const pitrTimestamp = document.getElementById('pitr-timestamp');
+    
+    if (mode === 'PITR') {
+        pitrTimestamp.classList.remove('hidden');
+    } else {
+        pitrTimestamp.classList.add('hidden');
+    }
+}
+
+function toggleTenantSelection() {
+    const selectiveRestore = document.getElementById('id_selective_restore').checked;
+    const tenantSelection = document.getElementById('tenant-selection');
+    
+    if (selectiveRestore) {
+        tenantSelection.classList.remove('hidden');
+    } else {
+        tenantSelection.classList.add('hidden');
+    }
+}
+
+function updateSummary() {
+    // Backup
+    const backupSelect = document.querySelector('select[name="backup"]');
+    document.getElementById('summary-backup').textContent = backupSelect.options[backupSelect.selectedIndex]?.text || '-';
+    
+    // Restore Mode
+    const modeRadio = document.querySelector('input[name="restore_mode"]:checked');
+    const modeLabel = modeRadio?.parentElement.querySelector('.font-medium')?.textContent || '-';
+    document.getElementById('summary-mode').textContent = modeLabel;
+    
+    // Selective Restore
+    const selective = document.getElementById('id_selective_restore').checked;
+    document.getElementById('summary-selective').textContent = selective ? 'Yes' : 'No';
+    
+    // Tenants
+    if (selective) {
+        const selectedTenants = Array.from(document.querySelectorAll('input[name="tenant_ids"]:checked'))
+            .map(cb => cb.parentElement.querySelector('label').textContent.trim());
+        document.getElementById('summary-tenants-container').classList.remove('hidden');
+        document.getElementById('summary-tenants').textContent = selectedTenants.length > 0 ? selectedTenants.join(', ') : 'None selected';
+    } else {
+        document.getElementById('summary-tenants-container').classList.add('hidden');
+    }
+    
+    // PITR Timestamp
+    if (modeRadio?.value === 'PITR') {
+        const timestamp = document.querySelector('input[name="target_timestamp"]')?.value;
+        document.getElementById('summary-timestamp-container').classList.remove('hidden');
+        document.getElementById('summary-timestamp').textContent = timestamp || '-';
+    } else {
+        document.getElementById('summary-timestamp-container').classList.add('hidden');
+    }
+    
+    // Reason
+    const reason = document.querySelector('textarea[name="reason"]')?.value;
+    document.getElementById('summary-reason').textContent = reason || '-';
+}
+
+// Enable submit button when confirmation checkbox is checked
+document.getElementById('confirm-restore')?.addEventListener('change', function() {
+    document.getElementById('submit-button').disabled = !this.checked;
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateStepIndicators();
+    updateRestoreMode();
+    toggleTenantSelection();
+    
+    // Add event listeners
+    document.getElementById('id_selective_restore')?.addEventListener('change', toggleTenantSelection);
+    document.querySelectorAll('input[name="restore_mode"]').forEach(radio => {
+        radio.addEventListener('change', updateRestoreMode);
+    });
+});
+</script>
+
+<style>
+select, textarea, input[type="datetime-local"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: white;
+}
+
+.dark select,
+.dark textarea,
+.dark input[type="datetime-local"] {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f3f4f6;
+}
+
+.restore-mode-option:has(input:checked) {
+    border-color: #2563eb;
+    background-color: #eff6ff;
+}
+
+.dark .restore-mode-option:has(input:checked) {
+    background-color: #1e3a8a;
+}
+</style>
+{% endblock %}

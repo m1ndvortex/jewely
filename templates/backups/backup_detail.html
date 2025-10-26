@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Backup Details{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Backup Details</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">{{ backup.get_backup_type_display }}</p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="{% url 'backups:backup_list' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                ← Back to List
+            </a>
+            {% if backup.is_completed %}
+            <a href="{% url 'backups:restore_backup_with_id' backup.id %}" class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">
+                Restore This Backup
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Badge -->
+    <div class="mb-6">
+        <span class="px-4 py-2 text-sm font-semibold rounded-lg {% if backup.status == 'COMPLETED' or backup.status == 'VERIFIED' %}bg-green-100 text-green-800{% elif backup.status == 'FAILED' %}bg-red-100 text-red-800{% elif backup.status == 'IN_PROGRESS' %}bg-blue-100 text-blue-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+            {{ backup.get_status_display }}
+        </span>
+    </div>
+
+    <!-- Main Information -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Basic Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Basic Information</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Backup ID</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono">{{ backup.id }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Type</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ backup.get_backup_type_display }}</dd>
+                </div>
+                {% if backup.tenant %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Tenant</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ backup.tenant.company_name }}</dd>
+                </div>
+                {% endif %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Filename</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ backup.filename }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created At</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ backup.created_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                {% if backup.verified_at %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Verified At</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ backup.verified_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                {% endif %}
+                {% if backup.created_by %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created By</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ backup.created_by.username }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Storage Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Storage Information</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Size</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ backup.get_size_mb }} MB ({{ backup.size_bytes|filesizeformat }})</dd>
+                </div>
+                {% if backup.compression_ratio %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Compression Ratio</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ backup.compression_ratio|floatformat:2 }}%</dd>
+                </div>
+                {% endif %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Checksum (SHA-256)</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ backup.checksum }}</dd>
+                </div>
+                {% if backup.local_path %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Local Path</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ backup.local_path }}</dd>
+                </div>
+                {% endif %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Cloudflare R2 Path</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ backup.r2_path }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Backblaze B2 Path</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ backup.b2_path }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    {% if backup.backup_duration_seconds %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Performance Metrics</h2>
+        <dl class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</dt>
+                <dd class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ backup.backup_duration_seconds }} seconds</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Average Speed</dt>
+                <dd class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ backup.get_average_speed_mbps|floatformat:2 }} MB/s</dd>
+            </div>
+            {% if backup.compression_ratio %}
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Space Saved</dt>
+                <dd class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ backup.compression_ratio|floatformat:0 }}%</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+    {% endif %}
+
+    <!-- Notes -->
+    {% if backup.notes %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Notes</h2>
+        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ backup.notes }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Restore Operations -->
+    {% if restore_logs %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Restore Operations ({{ restore_logs|length }})</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Initiated By</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for log in restore_logs %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">{{ log.get_restore_mode_display }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if log.initiated_by %}{{ log.initiated_by.username }}{% else %}Automated{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-semibold rounded {% if log.status == 'COMPLETED' %}bg-green-100 text-green-800{% elif log.status == 'FAILED' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {{ log.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">{{ log.started_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="{% url 'backups:restore_detail' log.id %}" class="text-blue-600 hover:text-blue-700">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Related Alerts -->
+    {% if alerts %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold mb-4">Related Alerts ({{ alerts|length }})</h2>
+        <div class="space-y-3">
+            {% for alert in alerts %}
+            <div class="border-l-4 {% if alert.severity == 'CRITICAL' %}border-red-600{% elif alert.severity == 'ERROR' %}border-orange-600{% elif alert.severity == 'WARNING' %}border-yellow-600{% else %}border-blue-600{% endif %} bg-gray-50 dark:bg-gray-700 p-4">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center">
+                            <span class="px-2 py-1 text-xs font-semibold rounded {% if alert.severity == 'CRITICAL' %}bg-red-600 text-white{% elif alert.severity == 'ERROR' %}bg-orange-600 text-white{% elif alert.severity == 'WARNING' %}bg-yellow-600 text-white{% else %}bg-blue-600 text-white{% endif %}">
+                                {{ alert.get_severity_display }}
+                            </span>
+                            <span class="ml-2 text-sm font-medium">{{ alert.get_alert_type_display }}</span>
+                            <span class="ml-2 px-2 py-1 text-xs rounded {% if alert.status == 'ACTIVE' %}bg-red-100 text-red-800{% elif alert.status == 'ACKNOWLEDGED' %}bg-yellow-100 text-yellow-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ alert.get_status_display }}
+                            </span>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ alert.message }}</p>
+                        <p class="mt-1 text-xs text-gray-500">{{ alert.created_at|date:"Y-m-d H:i:s" }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
