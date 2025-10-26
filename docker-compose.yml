@@ -10,9 +10,14 @@ services:
       POSTGRES_USER: ${DB_SUPERUSER:-postgres}
       POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD:-postgres}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:-app_password_change_in_production}
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      - postgres_wal_archive:/var/lib/postgresql/wal_archive
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
+      - ./docker/init-wal-archive.sh:/docker-entrypoint-initdb.d/02-init-wal-archive.sh:ro
+      - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     ports:
       - "5432:5432"
     healthcheck:
@@ -67,6 +72,7 @@ services:
     command: celery -A config worker --loglevel=info
     volumes:
       - .:/app
+      - postgres_wal_archive:/var/lib/postgresql/wal_archive
     env_file:
       - .env
     depends_on:
@@ -106,4 +112,5 @@ services:
 
 volumes:
   postgres_data:
+  postgres_wal_archive:
   redis_data:

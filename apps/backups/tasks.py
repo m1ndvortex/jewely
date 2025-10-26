@@ -852,3 +852,778 @@ def weekly_per_tenant_backup(  # noqa: C901
 
         # Retry the task
         raise self.retry(exc=e)
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.continuous_wal_archiving",
+    max_retries=3,
+    default_retry_delay=60,  # 1 minute
+)
+def continuous_wal_archiving(self):  # noqa: C901
+    """
+    Perform continuous WAL (Write-Ahead Log) archiving for Point-in-Time Recovery.
+
+    This task:
+    1. Identifies new WAL files in PostgreSQL's pg_wal directory
+    2. Compresses WAL files with gzip level 9
+    3. Calculates SHA-256 checksum
+    4. Uploads to R2 and B2 (skips local storage for WAL files)
+    5. Marks WAL files as archived in PostgreSQL
+    6. Implements 7-day local and 30-day cloud retention
+
+    WAL archiving enables Point-in-Time Recovery (PITR) with 5-minute granularity.
+    This task should run every 5 minutes via Celery Beat.
+
+    Returns:
+        Number of WAL files archived if successful, None otherwise
+    """
+    start_time = timezone.now()
+    archived_count = 0
+    temp_files = []
+
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting continuous WAL archiving")
+        logger.info("=" * 80)
+
+        # Get PostgreSQL WAL archive directory
+        # PostgreSQL's archive_command copies WAL files to this directory
+        pg_wal_archive_dir = os.environ.get("PG_WAL_ARCHIVE_DIR", "/var/lib/postgresql/wal_archive")
+
+        # Check if WAL archive directory exists
+        if not Path(pg_wal_archive_dir).exists():
+            logger.warning(f"PostgreSQL WAL archive directory not found: {pg_wal_archive_dir}")
+            logger.info(
+                "WAL archiving may not be configured. "
+                "Ensure PostgreSQL archive_mode is 'on' and archive_command is set."
+            )
+            return 0
+
+        # Get list of WAL files ready for archiving
+        # WAL files follow the naming pattern: 000000010000000000000001
+        # PostgreSQL's archive_command copies completed WAL files to this directory
+        wal_files = []
+        try:
+            for file_path in Path(pg_wal_archive_dir).iterdir():
+                if file_path.is_file() and len(file_path.name) == 24 and file_path.name.isalnum():
+                    # Check if this WAL file has already been archived
+                    # by checking if it exists in our backup records
+                    wal_filename = file_path.name
+                    remote_filename = f"{wal_filename}.gz"
+
+                    # Check if already archived
+                    from apps.core.tenant_context import bypass_rls
+
+                    with bypass_rls():
+                        already_archived = Backup.objects.filter(
+                            backup_type=Backup.WAL_ARCHIVE, filename=remote_filename
+                        ).exists()
+
+                    if not already_archived:
+                        wal_files.append(file_path)
+
+        except Exception as e:
+            logger.error(f"Error scanning WAL directory: {e}")
+            return 0
+
+        if not wal_files:
+            logger.info("No new WAL files to archive")
+            return 0
+
+        logger.info(f"Found {len(wal_files)} WAL file(s) to archive")
+
+        # Process each WAL file
+        for wal_file_path in wal_files:
+            backup = None
+            wal_filename = wal_file_path.name
+
+            try:
+                logger.info(f"Processing WAL file: {wal_filename}")
+
+                # Generate remote filename
+                remote_filename = f"{wal_filename}.gz"
+
+                # Create backup record
+                from apps.core.tenant_context import bypass_rls
+
+                with bypass_rls():
+                    backup = Backup.objects.create(
+                        backup_type=Backup.WAL_ARCHIVE,
+                        tenant=None,  # WAL archives are not tenant-specific
+                        filename=remote_filename,
+                        size_bytes=0,  # Will be updated later
+                        checksum="",  # Will be updated later
+                        local_path="",  # WAL files skip local storage
+                        r2_path="",
+                        b2_path="",
+                        status=Backup.IN_PROGRESS,
+                        backup_job_id=self.request.id,
+                    )
+
+                logger.info(f"Created backup record: {backup.id}")
+
+                # Get original WAL file size
+                original_size = wal_file_path.stat().st_size
+                logger.info(f"WAL file size: {original_size / (1024**2):.2f} MB")
+
+                # Step 1: Compress WAL file in a temporary directory
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    compressed_path = os.path.join(temp_dir, remote_filename)
+                    temp_files.append(compressed_path)
+
+                    logger.info("Compressing WAL file...")
+
+                    # Import compression function
+                    from .encryption import compress_file
+
+                    compressed_path, checksum, final_size = compress_file(
+                        input_path=str(wal_file_path), output_path=compressed_path
+                    )
+
+                    # Calculate compression ratio
+                    compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
+
+                    logger.info(f"Compressed size: {final_size / (1024**2):.2f} MB")
+                    logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
+                    logger.info(f"Checksum: {checksum}")
+
+                    # Step 2: Upload to R2 and B2 (skip local storage for WAL files)
+                    logger.info("Uploading to cloud storage (R2 and B2)...")
+
+                    storage_paths = {"local": "", "r2": None, "b2": None}
+
+                    # Upload to Cloudflare R2
+                    try:
+                        r2_storage = get_storage_backend("r2")
+                        # Use a subdirectory for WAL files
+                        r2_remote_path = f"wal/{remote_filename}"
+                        if r2_storage.upload(compressed_path, r2_remote_path):
+                            storage_paths["r2"] = r2_remote_path
+                            logger.info(f"Uploaded to Cloudflare R2: {r2_remote_path}")
+                        else:
+                            logger.error(f"Failed to upload to Cloudflare R2: {r2_remote_path}")
+                    except Exception as e:
+                        logger.error(f"Error uploading to Cloudflare R2: {e}")
+
+                    # Upload to Backblaze B2
+                    try:
+                        b2_storage = get_storage_backend("b2")
+                        # Use a subdirectory for WAL files
+                        b2_remote_path = f"wal/{remote_filename}"
+                        if b2_storage.upload(compressed_path, b2_remote_path):
+                            storage_paths["b2"] = b2_remote_path
+                            logger.info(f"Uploaded to Backblaze B2: {b2_remote_path}")
+                        else:
+                            logger.error(f"Failed to upload to Backblaze B2: {b2_remote_path}")
+                    except Exception as e:
+                        logger.error(f"Error uploading to Backblaze B2: {e}")
+
+                    # Require at least one cloud storage location
+                    if not storage_paths["r2"] and not storage_paths["b2"]:
+                        raise Exception("Failed to upload to any cloud storage location")
+
+                    # Step 3: Update backup record
+                    with bypass_rls():
+                        backup.size_bytes = final_size
+                        backup.checksum = checksum
+                        backup.local_path = ""  # WAL files skip local storage
+                        backup.r2_path = storage_paths["r2"] or ""
+                        backup.b2_path = storage_paths["b2"] or ""
+                        backup.status = Backup.COMPLETED
+                        backup.compression_ratio = compression_ratio
+                        backup.backup_duration_seconds = int(
+                            (timezone.now() - start_time).total_seconds()
+                        )
+                        backup.metadata = {
+                            "wal_filename": wal_filename,
+                            "original_size_bytes": original_size,
+                            "compressed_size_bytes": final_size,
+                            "pg_wal_archive_dir": pg_wal_archive_dir,
+                        }
+                        backup.save()
+
+                    logger.info(f"WAL file archived successfully: {backup.id}")
+
+                    # Step 4: Mark WAL file as archived by removing it from pg_wal
+                    # PostgreSQL will automatically clean up archived WAL files
+                    # We can safely remove the file after successful upload
+                    try:
+                        wal_file_path.unlink()
+                        logger.info(f"Removed archived WAL file: {wal_filename}")
+                    except Exception as e:
+                        logger.warning(f"Failed to remove WAL file {wal_filename}: {e}")
+                        # This is not critical - PostgreSQL will handle cleanup
+
+                    # Mark as verified
+                    with bypass_rls():
+                        backup.status = Backup.VERIFIED
+                        backup.verified_at = timezone.now()
+                        backup.save()
+
+                    archived_count += 1
+
+            except Exception as e:
+                logger.error(f"WAL archiving failed for {wal_filename}: {e}", exc_info=True)
+
+                # Update backup record to failed status
+                if backup:
+                    from apps.core.tenant_context import bypass_rls
+
+                    with bypass_rls():
+                        backup.status = Backup.FAILED
+                        backup.notes = f"Error: {str(e)}"
+                        backup.backup_duration_seconds = int(
+                            (timezone.now() - start_time).total_seconds()
+                        )
+                        backup.save()
+
+                # Create alert
+                create_backup_alert(
+                    alert_type=BackupAlert.BACKUP_FAILURE,
+                    severity=BackupAlert.ERROR,
+                    message=f"WAL archiving failed for {wal_filename}: {str(e)}",
+                    backup=backup,
+                    details={
+                        "error": str(e),
+                        "wal_filename": wal_filename,
+                        "task_id": self.request.id,
+                    },
+                )
+
+                # Continue with next WAL file instead of failing entire task
+                continue
+
+            finally:
+                # Clean up temporary files
+                cleanup_temp_files(*temp_files)
+                temp_files = []
+
+        logger.info("=" * 80)
+        logger.info(f"Continuous WAL archiving completed: {archived_count} file(s) archived")
+        logger.info("=" * 80)
+
+        # Step 5: Cleanup old WAL archives (7-day local, 30-day cloud retention)
+        cleanup_old_wal_archives()
+
+        return archived_count
+
+    except Exception as e:
+        logger.error(f"Continuous WAL archiving task failed: {e}", exc_info=True)
+
+        # Create alert for overall task failure
+        create_backup_alert(
+            alert_type=BackupAlert.BACKUP_FAILURE,
+            severity=BackupAlert.ERROR,
+            message=f"Continuous WAL archiving task failed: {str(e)}",
+            details={"error": str(e), "task_id": self.request.id},
+        )
+
+        # Retry the task
+        raise self.retry(exc=e)
+
+    finally:
+        # Clean up any remaining temporary files
+        cleanup_temp_files(*temp_files)
+
+
+def cleanup_old_wal_archives():  # noqa: C901
+    """
+    Clean up old WAL archives according to retention policies.
+
+    Retention policies:
+    - Local storage: 7 days (WAL files skip local storage, so nothing to clean)
+    - Cloud storage (R2 and B2): 30 days
+
+    This function is called automatically after each WAL archiving run.
+    """
+    try:
+        logger.info("Starting WAL archive cleanup...")
+
+        from datetime import timedelta
+
+        from apps.core.tenant_context import bypass_rls
+
+        # Calculate cutoff date for cloud storage (30 days)
+        cloud_cutoff = timezone.now() - timedelta(days=30)
+
+        # Find old WAL archives
+        with bypass_rls():
+            old_wal_archives = list(
+                Backup.objects.filter(backup_type=Backup.WAL_ARCHIVE, created_at__lt=cloud_cutoff)
+            )
+
+        old_count = len(old_wal_archives)
+
+        if old_count == 0:
+            logger.info("No old WAL archives to clean up")
+            return
+
+        logger.info(f"Found {old_count} old WAL archive(s) to clean up")
+
+        # Delete old WAL archives from cloud storage
+        for backup in old_wal_archives:
+            try:
+                # Delete from R2
+                if backup.r2_path:
+                    try:
+                        r2_storage = get_storage_backend("r2")
+                        if r2_storage.delete(backup.r2_path):
+                            logger.info(f"Deleted from R2: {backup.r2_path}")
+                        else:
+                            logger.warning(f"Failed to delete from R2: {backup.r2_path}")
+                    except Exception as e:
+                        logger.error(f"Error deleting from R2: {e}")
+
+                # Delete from B2
+                if backup.b2_path:
+                    try:
+                        b2_storage = get_storage_backend("b2")
+                        if b2_storage.delete(backup.b2_path):
+                            logger.info(f"Deleted from B2: {backup.b2_path}")
+                        else:
+                            logger.warning(f"Failed to delete from B2: {backup.b2_path}")
+                    except Exception as e:
+                        logger.error(f"Error deleting from B2: {e}")
+
+                # Delete backup record (need bypass_rls for deletion)
+                with bypass_rls():
+                    backup.delete()
+                logger.info(f"Deleted backup record: {backup.id}")
+
+            except Exception as e:
+                logger.error(f"Error cleaning up WAL archive {backup.id}: {e}")
+                continue
+
+        logger.info(f"WAL archive cleanup completed: {old_count} archive(s) removed")
+
+    except Exception as e:
+        logger.error(f"WAL archive cleanup failed: {e}", exc_info=True)
+
+
+def collect_configuration_files(temp_dir: str) -> Tuple[list, dict]:  # noqa: C901
+    """
+    Collect all configuration files for backup.
+
+    This function collects:
+    - Docker configuration files (docker-compose.yml, Dockerfile)
+    - Environment files (.env, .env.example)
+    - Nginx configuration files (if they exist)
+    - SSL certificates (if they exist)
+    - Kubernetes manifests (if they exist)
+    - PostgreSQL configuration files
+
+    Args:
+        temp_dir: Temporary directory to copy files to
+
+    Returns:
+        Tuple of (list of collected file paths, metadata dict)
+    """
+    collected_files = []
+    metadata = {
+        "docker_files": [],
+        "env_files": [],
+        "nginx_files": [],
+        "ssl_files": [],
+        "k8s_files": [],
+        "postgres_files": [],
+        "other_files": [],
+    }
+
+    # Get project root directory (where manage.py is located)
+    project_root = Path(settings.BASE_DIR)
+
+    # Create subdirectories in temp directory to preserve structure
+    config_backup_dir = Path(temp_dir) / "config_backup"
+    config_backup_dir.mkdir(parents=True, exist_ok=True)
+
+    # Helper function to copy file and track it
+    def copy_file(source_path: Path, category: str, relative_path: str = None):
+        """Copy a file to the backup directory and track it."""
+        if not source_path.exists():
+            logger.debug(f"File not found, skipping: {source_path}")
+            return
+
+        # Determine destination path
+        if relative_path:
+            dest_path = config_backup_dir / relative_path
+        else:
+            # Use relative path from project root
+            try:
+                rel_path = source_path.relative_to(project_root)
+                dest_path = config_backup_dir / rel_path
+            except ValueError:
+                # File is outside project root, use just the filename
+                dest_path = config_backup_dir / source_path.name
+
+        # Create parent directories
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Copy file
+        import shutil
+
+        shutil.copy2(source_path, dest_path)
+        collected_files.append(str(dest_path))
+        metadata[category].append(str(source_path.relative_to(project_root)))
+        logger.debug(f"Collected {category}: {source_path.name}")
+
+    # 1. Docker configuration files
+    logger.info("Collecting Docker configuration files...")
+    docker_files = [
+        "docker-compose.yml",
+        "docker-compose.dev.yml",
+        "docker-compose.prod.yml",
+        "Dockerfile",
+        ".dockerignore",
+    ]
+    for filename in docker_files:
+        copy_file(project_root / filename, "docker_files")
+
+    # Docker directory files
+    docker_dir = project_root / "docker"
+    if docker_dir.exists():
+        for file_path in docker_dir.rglob("*"):
+            if file_path.is_file():
+                copy_file(file_path, "docker_files")
+
+    # 2. Environment files
+    logger.info("Collecting environment files...")
+    env_files = [".env.example"]  # Don't include .env directly for security
+    for filename in env_files:
+        copy_file(project_root / filename, "env_files")
+
+    # Create a sanitized version of .env (remove sensitive values)
+    env_file = project_root / ".env"
+    if env_file.exists():
+        sanitized_env_path = config_backup_dir / ".env.sanitized"
+        try:
+            with open(env_file, "r") as f_in:
+                with open(sanitized_env_path, "w") as f_out:
+                    for line in f_in:
+                        # Keep structure but mask sensitive values
+                        if "=" in line and not line.strip().startswith("#"):
+                            key, _ = line.split("=", 1)
+                            f_out.write(f"{key}=***REDACTED***\n")
+                        else:
+                            f_out.write(line)
+            collected_files.append(str(sanitized_env_path))
+            metadata["env_files"].append(".env.sanitized")
+            logger.info("Created sanitized .env file")
+        except Exception as e:
+            logger.warning(f"Failed to create sanitized .env: {e}")
+
+    # 3. Nginx configuration files
+    logger.info("Collecting Nginx configuration files...")
+    nginx_locations = [
+        project_root / "nginx",
+        project_root / "config" / "nginx",
+        Path("/etc/nginx"),  # System nginx config (if accessible)
+    ]
+    for nginx_dir in nginx_locations:
+        if nginx_dir.exists() and nginx_dir.is_dir():
+            for file_path in nginx_dir.rglob("*.conf"):
+                if file_path.is_file():
+                    copy_file(file_path, "nginx_files")
+
+    # 4. SSL certificates (if they exist)
+    logger.info("Collecting SSL certificates...")
+    ssl_locations = [
+        project_root / "ssl",
+        project_root / "certs",
+        Path("/etc/letsencrypt"),  # Let's Encrypt certs (if accessible)
+    ]
+    for ssl_dir in ssl_locations:
+        if ssl_dir.exists() and ssl_dir.is_dir():
+            for file_path in ssl_dir.rglob("*"):
+                if file_path.is_file() and file_path.suffix in [".pem", ".crt", ".key", ".cert"]:
+                    copy_file(file_path, "ssl_files")
+
+    # 5. Kubernetes manifests
+    logger.info("Collecting Kubernetes manifests...")
+    k8s_locations = [
+        project_root / "k8s",
+        project_root / "kubernetes",
+        project_root / "manifests",
+    ]
+    for k8s_dir in k8s_locations:
+        if k8s_dir.exists() and k8s_dir.is_dir():
+            for file_path in k8s_dir.rglob("*"):
+                if file_path.is_file() and file_path.suffix in [".yaml", ".yml"]:
+                    copy_file(file_path, "k8s_files")
+
+    # 6. PostgreSQL configuration files
+    logger.info("Collecting PostgreSQL configuration files...")
+    postgres_files = [
+        project_root / "docker" / "postgresql.conf",
+        project_root / "docker" / "init-db.sh",
+        project_root / "docker" / "init-wal-archive.sh",
+    ]
+    for file_path in postgres_files:
+        if file_path.exists():
+            copy_file(file_path, "postgres_files")
+
+    postgres_dir = project_root / "docker" / "postgres"
+    if postgres_dir.exists():
+        for file_path in postgres_dir.rglob("*"):
+            if file_path.is_file():
+                copy_file(file_path, "postgres_files")
+
+    # 7. Other important configuration files
+    logger.info("Collecting other configuration files...")
+    other_files = [
+        "requirements.txt",
+        "pyproject.toml",
+        "setup.cfg",
+        "pytest.ini",
+        ".pre-commit-config.yaml",
+        "Makefile",
+    ]
+    for filename in other_files:
+        copy_file(project_root / filename, "other_files")
+
+    # Django settings
+    settings_dir = project_root / "config"
+    if settings_dir.exists():
+        for file_path in settings_dir.glob("*.py"):
+            if file_path.is_file():
+                copy_file(file_path, "other_files")
+
+    # Count collected files
+    total_files = len(collected_files)
+    logger.info(f"Collected {total_files} configuration file(s)")
+    logger.info(f"  - Docker files: {len(metadata['docker_files'])}")
+    logger.info(f"  - Environment files: {len(metadata['env_files'])}")
+    logger.info(f"  - Nginx files: {len(metadata['nginx_files'])}")
+    logger.info(f"  - SSL files: {len(metadata['ssl_files'])}")
+    logger.info(f"  - Kubernetes files: {len(metadata['k8s_files'])}")
+    logger.info(f"  - PostgreSQL files: {len(metadata['postgres_files'])}")
+    logger.info(f"  - Other files: {len(metadata['other_files'])}")
+
+    return collected_files, metadata
+
+
+def create_tar_archive(source_dir: str, output_path: str) -> Tuple[bool, Optional[str], int]:
+    """
+    Create a tar.gz archive from a directory.
+
+    Args:
+        source_dir: Directory to archive
+        output_path: Path for the output tar.gz file
+
+    Returns:
+        Tuple of (success: bool, error_message: Optional[str], archive_size: int)
+    """
+    import tarfile
+
+    try:
+        logger.info(f"Creating tar.gz archive: {output_path}")
+
+        # Create tar.gz archive with maximum compression
+        with tarfile.open(output_path, "w:gz", compresslevel=9) as tar:
+            # Add all files from source directory
+            tar.add(source_dir, arcname=Path(source_dir).name)
+
+        # Get archive size
+        archive_size = Path(output_path).stat().st_size
+
+        logger.info(f"Created tar.gz archive: {archive_size / (1024**2):.2f} MB")
+
+        return True, None, archive_size
+
+    except Exception as e:
+        error_msg = f"Failed to create tar.gz archive: {e}"
+        logger.error(error_msg)
+        return False, error_msg, 0
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.configuration_backup",
+    max_retries=3,
+    default_retry_delay=300,  # 5 minutes
+)
+def configuration_backup(self, initiated_by_user_id: Optional[int] = None):
+    """
+    Perform configuration backup.
+
+    This task:
+    1. Collects all configuration files (docker-compose, .env, nginx, SSL, k8s)
+    2. Creates a tar.gz archive preserving directory structure
+    3. Encrypts the archive with AES-256
+    4. Calculates SHA-256 checksum
+    5. Uploads to all three storage locations (local, R2, B2)
+    6. Records metadata in the database
+
+    Configuration files include:
+    - Docker: docker-compose.yml, Dockerfile, docker directory
+    - Environment: .env.example, .env (sanitized)
+    - Nginx: nginx.conf and related files
+    - SSL: certificates and keys
+    - Kubernetes: k8s manifests
+    - PostgreSQL: postgresql.conf, init scripts
+    - Other: requirements.txt, settings.py, etc.
+
+    Args:
+        initiated_by_user_id: ID of user who initiated the backup (None for automated)
+
+    Returns:
+        Backup ID if successful, None otherwise
+    """
+    start_time = timezone.now()
+    backup = None
+    temp_files = []
+
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting configuration backup")
+        logger.info("=" * 80)
+
+        # Generate filename
+        filename = generate_backup_filename("CONFIGURATION")
+        tar_filename = f"{filename}.tar.gz"
+        remote_filename = f"{tar_filename}.enc"
+
+        # Create backup record
+        backup = Backup.objects.create(
+            backup_type=Backup.CONFIGURATION,
+            tenant=None,  # Configuration backup is not tenant-specific
+            filename=remote_filename,
+            size_bytes=0,  # Will be updated later
+            checksum="",  # Will be updated later
+            local_path="",
+            r2_path="",
+            b2_path="",
+            status=Backup.IN_PROGRESS,
+            backup_job_id=self.request.id,
+            created_by_id=initiated_by_user_id,
+        )
+
+        logger.info(f"Created backup record: {backup.id}")
+
+        # Step 1: Collect configuration files in a temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            logger.info("Collecting configuration files...")
+
+            collected_files, metadata = collect_configuration_files(temp_dir)
+
+            if not collected_files:
+                raise Exception("No configuration files found to backup")
+
+            # Step 2: Create tar.gz archive
+            tar_path = os.path.join(temp_dir, tar_filename)
+            temp_files.append(tar_path)
+
+            logger.info("Creating tar.gz archive...")
+
+            config_backup_dir = Path(temp_dir) / "config_backup"
+            success, error_msg, original_size = create_tar_archive(str(config_backup_dir), tar_path)
+
+            if not success:
+                raise Exception(f"Failed to create tar.gz archive: {error_msg}")
+
+            logger.info(f"Archive size: {original_size / (1024**2):.2f} MB")
+
+            # Step 3: Encrypt the archive
+            logger.info("Encrypting configuration archive...")
+
+            encrypted_path, checksum, _, final_size = compress_and_encrypt_file(
+                input_path=tar_path, output_path=os.path.join(temp_dir, remote_filename)
+            )
+            temp_files.append(encrypted_path)
+
+            # Note: compress_and_encrypt_file compresses again, but tar.gz is already compressed
+            # The additional compression won't reduce size much, but encryption is applied
+
+            logger.info(f"Encrypted size: {final_size / (1024**2):.2f} MB")
+            logger.info(f"Checksum: {checksum}")
+
+            # Step 4: Upload to all storage locations
+            logger.info("Uploading to all storage locations...")
+
+            all_succeeded, storage_paths = upload_to_all_storages(encrypted_path, remote_filename)
+
+            # For production, we require all three storage locations
+            # For testing/development, we require at least local storage
+            if not storage_paths["local"]:
+                raise Exception("Failed to upload to local storage (minimum requirement)")
+
+            if not all_succeeded:
+                logger.warning(
+                    "Not all storage locations succeeded, but local storage is available"
+                )
+
+            # Step 5: Update backup record
+            backup.size_bytes = final_size
+            backup.checksum = checksum
+            backup.local_path = storage_paths["local"] or ""
+            backup.r2_path = storage_paths["r2"] or ""
+            backup.b2_path = storage_paths["b2"] or ""
+            backup.status = Backup.COMPLETED
+            backup.backup_duration_seconds = int((timezone.now() - start_time).total_seconds())
+            backup.metadata = {
+                "original_size_bytes": original_size,
+                "compressed_size_bytes": final_size,
+                "archive_format": "tar.gz",
+                "files_collected": len(collected_files),
+                "file_categories": metadata,
+            }
+            backup.save()
+
+            logger.info(f"Configuration backup completed successfully: {backup.id}")
+            logger.info(f"Duration: {backup.backup_duration_seconds} seconds")
+
+            # Step 6: Verify backup integrity
+            logger.info("Verifying backup integrity across all storage locations...")
+
+            verification_result = verify_backup_integrity(
+                file_path=remote_filename, expected_checksum=checksum
+            )
+
+            if verification_result["valid"]:
+                backup.status = Backup.VERIFIED
+                backup.verified_at = timezone.now()
+                backup.save()
+                logger.info("Backup integrity verified successfully")
+            else:
+                logger.warning(
+                    f"Backup integrity verification failed: {verification_result['errors']}"
+                )
+                create_backup_alert(
+                    alert_type=BackupAlert.INTEGRITY_FAILURE,
+                    severity=BackupAlert.WARNING,
+                    message=f"Configuration backup integrity verification failed for {remote_filename}",
+                    backup=backup,
+                    details=verification_result,
+                )
+
+        logger.info("=" * 80)
+        logger.info(f"Configuration backup completed: {backup.id}")
+        logger.info("=" * 80)
+
+        return str(backup.id)
+
+    except Exception as e:
+        logger.error(f"Configuration backup failed: {e}", exc_info=True)
+
+        # Update backup record to failed status
+        if backup:
+            backup.status = Backup.FAILED
+            backup.notes = f"Error: {str(e)}"
+            backup.backup_duration_seconds = int((timezone.now() - start_time).total_seconds())
+            backup.save()
+
+        # Create alert
+        create_backup_alert(
+            alert_type=BackupAlert.BACKUP_FAILURE,
+            severity=BackupAlert.CRITICAL,
+            message=f"Configuration backup failed: {str(e)}",
+            backup=backup,
+            details={"error": str(e), "task_id": self.request.id},
+        )
+
+        # Retry the task
+        raise self.retry(exc=e)
+
+    finally:
+        # Clean up temporary files (if they weren't in a temp directory)
+        cleanup_temp_files(*temp_files)

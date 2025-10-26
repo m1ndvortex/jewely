@@ -169,7 +169,7 @@ class TestWeeklyTenantBackupIntegration(TransactionTestCase):
 
         # Verify backup record was created
         with bypass_rls():
-            backup = Backup.objects.select_related('tenant').get(id=result[0])
+            backup = Backup.objects.select_related("tenant").get(id=result[0])
 
         self.assertEqual(backup.backup_type, Backup.TENANT_BACKUP)
         self.assertEqual(backup.tenant.id, self.active_tenant.id)
@@ -290,7 +290,7 @@ class TestWeeklyTenantBackupIntegration(TransactionTestCase):
 
         # Get backup record
         with bypass_rls():
-            backup = Backup.objects.select_related('tenant').get(id=result[0])
+            backup = Backup.objects.select_related("tenant").get(id=result[0])
 
         # Verify all required metadata fields
         required_fields = [
