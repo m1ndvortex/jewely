@@ -688,7 +688,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Clean up temporary files
     - _Requirements: 6_
   
-  - [x] 18.14 Implement storage integrity verification
+  - [-] 18.14 Implement storage integrity verification
     - Create Celery task for hourly integrity check
     - Verify checksums across all storage locations
     - Alert on mismatches
