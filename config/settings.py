@@ -24,6 +24,7 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split("
 
 # Application definition
 INSTALLED_APPS = [
+    "django_prometheus",  # Must be first for proper metrics collection
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -64,6 +65,7 @@ INSTALLED_APPS = [
 SITE_ID = 1
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",  # Must be first
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -77,6 +79,7 @@ MIDDLEWARE = [
     "hijack.middleware.HijackUserMiddleware",
     # Tenant context middleware - must be after AuthenticationMiddleware
     "apps.core.middleware.TenantContextMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",  # Must be last
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -100,10 +103,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Database
+# Database with Prometheus monitoring
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django_prometheus.db.backends.postgresql",  # Prometheus-wrapped PostgreSQL
         "NAME": os.getenv("POSTGRES_DB", "jewelry_shop"),
         "USER": os.getenv("POSTGRES_USER", "postgres"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
@@ -194,10 +197,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Redis Cache Configuration
+# Redis Cache Configuration with Prometheus monitoring
 CACHES = {
     "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
+        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",  # Prometheus-wrapped Redis
         "LOCATION": f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/{os.getenv('REDIS_DB', '0')}",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
@@ -494,3 +497,30 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_LIVE_MODE = os.getenv("STRIPE_LIVE_MODE", "False") == "True"
+
+# Prometheus Monitoring Configuration
+# Per Requirements 7 and 24 - System Monitoring and Observability
+PROMETHEUS_EXPORT_MIGRATIONS = True  # Export migration status
+PROMETHEUS_LATENCY_BUCKETS = (
+    0.01,
+    0.025,
+    0.05,
+    0.075,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    1.0,
+    2.5,
+    5.0,
+    7.5,
+    10.0,
+    25.0,
+    50.0,
+    75.0,
+    float("inf"),
+)  # Request latency buckets in seconds
+
+# Use URL-based exporter only (not separate port) to avoid conflicts with Django autoreloader
+# Metrics will be available at /metrics endpoint
+# PROMETHEUS_METRICS_EXPORT_PORT is intentionally not set to use URL exporter only

@@ -1,0 +1,97 @@
+# Prometheus Configuration for Jewelry SaaS Platform
+# Per Requirements 7 and 24 - System Monitoring and Observability
+
+global:
+  scrape_interval: 15s  # Scrape targets every 15 seconds
+  evaluation_interval: 15s  # Evaluate rules every 15 seconds
+  external_labels:
+    cluster: 'jewelry-saas-platform'
+    environment: 'production'
+
+# Alertmanager configuration (optional, configure when implementing alerting)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+# rule_files:
+#   - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Django application metrics
+  - job_name: 'django'
+    static_configs:
+      - targets: ['web:8000']  # Django application
+        labels:
+          service: 'django-app'
+          component: 'backend'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # PostgreSQL metrics (requires postgres_exporter)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          component: 'database'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Redis metrics (requires redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          component: 'cache'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Nginx metrics (requires nginx-prometheus-exporter)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+        labels:
+          service: 'nginx'
+          component: 'proxy'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Celery metrics (requires custom exporter or flower)
+  - job_name: 'celery'
+    static_configs:
+      - targets: ['celery-exporter:9808']
+        labels:
+          service: 'celery'
+          component: 'worker'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          component: 'monitoring'
+    scrape_interval: 30s
+
+  # Node exporter for system metrics (CPU, memory, disk, network)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+          component: 'system'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+# Note: Storage configuration is set via command-line flags in docker-compose.yml
+# --storage.tsdb.path=/prometheus
+# --storage.tsdb.retention.time=30d
+# --storage.tsdb.retention.size=10GB

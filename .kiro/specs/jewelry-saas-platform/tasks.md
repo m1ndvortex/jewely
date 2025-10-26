@@ -694,7 +694,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Alert on mismatches
     - _Requirements: 6_
   
-  - [-] 18.15 Write backup system tests
+  - [x] 18.15 Write backup system tests
     - Test backup creation and encryption
     - Test storage uploads and downloads
     - Test restore operations
@@ -703,7 +703,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 6, 28_
 
 - [ ] 19. System Monitoring & Health Dashboard
-  - [ ] 19.1 Integrate Prometheus
+  - [x] 19.1 Integrate Prometheus
     - Install and configure django-prometheus
     - Expose metrics endpoint (/metrics)
     - Configure Prometheus scraping

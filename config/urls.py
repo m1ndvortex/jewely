@@ -22,6 +22,7 @@ urlpatterns = [
     path("reports/", include("apps.reporting.urls")),
     path("notifications/", include("apps.notifications.urls")),
     path("admin/backups/", include("apps.backups.urls")),  # Backup management
+    path("", include("django_prometheus.urls")),  # Prometheus metrics endpoint at /metrics
 ]
 
 # Serve media files in development
