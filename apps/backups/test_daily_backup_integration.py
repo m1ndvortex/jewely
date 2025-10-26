@@ -17,10 +17,12 @@ import tempfile
 import time
 from pathlib import Path
 
-import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TransactionTestCase, override_settings
+
+import pytest
 
 from apps.backups.encryption import decrypt_and_decompress_file, verify_checksum
 from apps.backups.models import Backup, BackupAlert
@@ -31,25 +33,46 @@ from apps.core.models import Tenant
 User = get_user_model()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_database_for_backups(django_db_setup, django_db_blocker):
+    """
+    Grant BYPASSRLS privilege to postgres user for test database.
+
+    This is required for pg_dump to work with RLS-enabled tables.
+    """
+    with django_db_blocker.unblock():
+        # Grant BYPASSRLS to postgres user in test database
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("ALTER USER postgres WITH BYPASSRLS;")
+            print("✓ Granted BYPASSRLS privilege to postgres user for test database")
+        except Exception as e:
+            print(f"Warning: Could not grant BYPASSRLS: {e}")
+            print("Tests may fail if RLS policies are enforced during pg_dump")
+
+
 @pytest.mark.django_db(transaction=True)
 class TestRealPgDump(TransactionTestCase):
     """Test real pg_dump execution with actual database."""
 
     def setUp(self):
         """Set up test data in the database."""
-        # Create some real data to backup
-        self.tenant = Tenant.objects.create(
-            company_name="Test Jewelry Shop",
-            slug="testshop",
-            status=Tenant.ACTIVE,
-        )
+        from apps.core.tenant_context import bypass_rls
 
-        self.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123",
-            tenant=self.tenant,
-        )
+        # Create some real data to backup - bypass RLS for test setup
+        with bypass_rls():
+            self.tenant = Tenant.objects.create(
+                company_name="Test Jewelry Shop",
+                slug="testshop",
+                status=Tenant.ACTIVE,
+            )
+
+            self.user = User.objects.create_user(
+                username="testuser",
+                email="test@example.com",
+                password="testpass123",
+                tenant=self.tenant,
+            )
 
     def test_real_pg_dump_execution(self):
         """Test that pg_dump actually creates a valid database dump."""
@@ -87,13 +110,16 @@ class TestRealPgDump(TransactionTestCase):
 
     def test_pg_dump_with_real_data(self):
         """Test pg_dump captures real data from the database."""
-        # Create more test data
-        for i in range(10):
-            Tenant.objects.create(
-                company_name=f"Shop {i}",
-                slug=f"shop{i}",
-                status=Tenant.ACTIVE,
-            )
+        from apps.core.tenant_context import bypass_rls
+
+        # Create more test data - bypass RLS for test setup
+        with bypass_rls():
+            for i in range(10):
+                Tenant.objects.create(
+                    company_name=f"Shop {i}",
+                    slug=f"shop{i}",
+                    status=Tenant.ACTIVE,
+                )
 
         db_config = get_database_config()
 
@@ -118,6 +144,7 @@ class TestRealPgDump(TransactionTestCase):
 
 
 @pytest.mark.django_db(transaction=True)
+@override_settings(BACKUP_LOCAL_PATH="/tmp/test_backups")
 class TestRealStorageBackends(TransactionTestCase):
     """Test real storage backend operations."""
 
@@ -278,7 +305,10 @@ class TestRealStorageBackends(TransactionTestCase):
 
 
 @pytest.mark.django_db(transaction=True)
-@override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+@override_settings(
+    CELERY_TASK_ALWAYS_EAGER=True,
+    BACKUP_LOCAL_PATH="/tmp/test_backups",
+)
 class TestDailyBackupIntegration(TransactionTestCase):
     """
     Real integration test for daily full database backup.
@@ -293,37 +323,41 @@ class TestDailyBackupIntegration(TransactionTestCase):
 
     def setUp(self):
         """Set up test data."""
-        # Create test tenants
-        self.tenant1 = Tenant.objects.create(
-            company_name="Gold Shop 1",
-            slug="goldshop1",
-            status=Tenant.ACTIVE,
-        )
+        from apps.core.tenant_context import bypass_rls
 
-        self.tenant2 = Tenant.objects.create(
-            company_name="Jewelry Store 2",
-            slug="jewelrystore2",
-            status=Tenant.ACTIVE,
-        )
+        # Create test tenants - bypass RLS for test setup
+        with bypass_rls():
+            self.tenant1 = Tenant.objects.create(
+                company_name="Gold Shop 1",
+                slug="goldshop1",
+                status=Tenant.ACTIVE,
+            )
 
-        # Create test users
-        self.user1 = User.objects.create_user(
-            username="user1",
-            email="user1@goldshop1.com",
-            password="testpass123",
-            tenant=self.tenant1,
-        )
+            self.tenant2 = Tenant.objects.create(
+                company_name="Jewelry Store 2",
+                slug="jewelrystore2",
+                status=Tenant.ACTIVE,
+            )
 
-        self.user2 = User.objects.create_user(
-            username="user2",
-            email="user2@jewelrystore2.com",
-            password="testpass123",
-            tenant=self.tenant2,
-        )
+            # Create test users
+            self.user1 = User.objects.create_user(
+                username="user1",
+                email="user1@goldshop1.com",
+                password="testpass123",
+                tenant=self.tenant1,
+            )
+
+            self.user2 = User.objects.create_user(
+                username="user2",
+                email="user2@jewelrystore2.com",
+                password="testpass123",
+                tenant=self.tenant2,
+            )
 
         # Store counts for verification
-        self.initial_tenant_count = Tenant.objects.count()
-        self.initial_user_count = User.objects.count()
+        with bypass_rls():
+            self.initial_tenant_count = Tenant.objects.count()
+            self.initial_user_count = User.objects.count()
 
     def test_complete_backup_and_restore_cycle(self):
         """
@@ -460,28 +494,31 @@ class TestDailyBackupIntegration(TransactionTestCase):
 
     def test_backup_with_large_dataset(self):
         """Test backup with a larger dataset to verify performance."""
+        from apps.core.tenant_context import bypass_rls
+
         print("\n" + "=" * 80)
         print("Testing backup with larger dataset...")
         print("=" * 80)
 
-        # Create more test data
-        tenants = []
-        for i in range(50):
-            tenant = Tenant.objects.create(
-                company_name=f"Shop {i}",
-                slug=f"shop{i}",
-                status=Tenant.ACTIVE,
-            )
-            tenants.append(tenant)
+        # Create more test data - bypass RLS for test setup
+        with bypass_rls():
+            tenants = []
+            for i in range(50):
+                tenant = Tenant.objects.create(
+                    company_name=f"Shop {i}",
+                    slug=f"shop{i}",
+                    status=Tenant.ACTIVE,
+                )
+                tenants.append(tenant)
 
-        # Create users for each tenant
-        for i, tenant in enumerate(tenants):
-            User.objects.create_user(
-                username=f"user{i}",
-                email=f"user{i}@shop{i}.com",
-                password="testpass123",
-                tenant=tenant,
-            )
+            # Create users for each tenant
+            for i, tenant in enumerate(tenants):
+                User.objects.create_user(
+                    username=f"user{i}",
+                    email=f"user{i}@shop{i}.com",
+                    password="testpass123",
+                    tenant=tenant,
+                )
 
         print(f"✓ Created {len(tenants)} tenants and users")
 
@@ -527,6 +564,7 @@ class TestDailyBackupIntegration(TransactionTestCase):
 
 
 @pytest.mark.django_db(transaction=True)
+@override_settings(BACKUP_LOCAL_PATH="/tmp/test_backups")
 class TestBackupRequirementCompliance(TransactionTestCase):
     """
     Test compliance with all Requirement 6 acceptance criteria.

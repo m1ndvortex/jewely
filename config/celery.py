@@ -29,6 +29,12 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=2, minute=0),
         "options": {"queue": "backups", "priority": 10},
     },
+    # Weekly per-tenant backup every Sunday at 3:00 AM
+    "weekly-per-tenant-backup": {
+        "task": "apps.backups.tasks.weekly_per_tenant_backup",
+        "schedule": crontab(hour=3, minute=0, day_of_week=0),  # Sunday = 0
+        "options": {"queue": "backups", "priority": 9},
+    },
     # Fetch gold rates every 5 minutes
     "fetch-gold-rates": {
         "task": "apps.pricing.tasks.fetch_gold_rates",

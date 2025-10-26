@@ -447,6 +447,22 @@ if not DEBUG:
 ANONYMOUS_USER_NAME = None  # Disable anonymous user
 GUARDIAN_RAISE_403 = True  # Raise PermissionDenied exception for DRF compatibility
 
+# Backup System Configuration
+BACKUP_ENCRYPTION_KEY = os.getenv("BACKUP_ENCRYPTION_KEY", "")
+BACKUP_LOCAL_PATH = os.getenv("BACKUP_LOCAL_PATH", "/var/backups/jewelry-shop")
+
+# Cloudflare R2 Configuration
+R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "b7900eeee7c415345d86ea859c9dad47")
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "securesyntax")
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
+
+# Backblaze B2 Configuration
+B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME", "securesyntax")
+B2_REGION = os.getenv("B2_REGION", "us-east-005")
+B2_ACCESS_KEY_ID = os.getenv("B2_ACCESS_KEY_ID", "")
+B2_SECRET_ACCESS_KEY = os.getenv("B2_SECRET_ACCESS_KEY", "")
+
 # Gold Rate API Configuration
 # Get API keys from environment variables
 # GoldAPI: https://www.goldapi.io/ (requires API key)
