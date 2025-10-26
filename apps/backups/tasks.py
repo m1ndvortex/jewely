@@ -73,6 +73,9 @@ def create_pg_dump(
     """
     Create a PostgreSQL dump using pg_dump with custom format.
 
+    This function temporarily disables FORCE ROW LEVEL SECURITY on tables
+    to allow pg_dump to export all data, then re-enables it after the backup.
+
     Args:
         output_path: Path where the dump file will be created
         database: Database name
@@ -84,7 +87,15 @@ def create_pg_dump(
     Returns:
         Tuple of (success: bool, error_message: Optional[str])
     """
+    from django.db import connection
+
     try:
+        # Temporarily disable FORCE RLS on tenants table for backup
+        logger.info("Temporarily disabling FORCE RLS for backup...")
+        with connection.cursor() as cursor:
+            cursor.execute("ALTER TABLE tenants NO FORCE ROW LEVEL SECURITY;")
+        logger.info("FORCE RLS disabled on tenants table")
+
         # Set up environment for pg_dump
         env = os.environ.copy()
         env["PGPASSWORD"] = password
@@ -135,6 +146,15 @@ def create_pg_dump(
         error_msg = f"pg_dump failed with exception: {e}"
         logger.error(error_msg)
         return False, error_msg
+    finally:
+        # Re-enable FORCE RLS on tenants table
+        try:
+            logger.info("Re-enabling FORCE RLS...")
+            with connection.cursor() as cursor:
+                cursor.execute("ALTER TABLE tenants FORCE ROW LEVEL SECURITY;")
+            logger.info("FORCE RLS re-enabled on tenants table")
+        except Exception as e:
+            logger.error(f"Failed to re-enable FORCE RLS: {e}")
 
 
 def upload_to_all_storages(

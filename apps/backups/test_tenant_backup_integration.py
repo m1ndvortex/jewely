@@ -169,10 +169,10 @@ class TestWeeklyTenantBackupIntegration(TransactionTestCase):
 
         # Verify backup record was created
         with bypass_rls():
-            backup = Backup.objects.get(id=result[0])
+            backup = Backup.objects.select_related('tenant').get(id=result[0])
 
         self.assertEqual(backup.backup_type, Backup.TENANT_BACKUP)
-        self.assertEqual(backup.tenant, self.active_tenant)
+        self.assertEqual(backup.tenant.id, self.active_tenant.id)
         self.assertIn(backup.status, [Backup.COMPLETED, Backup.VERIFIED])
         self.assertGreater(backup.size_bytes, 0)
         self.assertNotEqual(backup.checksum, "")
@@ -226,13 +226,13 @@ class TestWeeklyTenantBackupIntegration(TransactionTestCase):
         self.assertGreaterEqual(backups.count(), 1)
 
         # Verify active tenant was backed up
-        active_backup = backups.filter(tenant=self.active_tenant).first()
+        active_backup = backups.filter(tenant_id=self.active_tenant.id).first()
         self.assertIsNotNone(active_backup, "Active tenant should have a backup")
         self.assertIn(active_backup.status, [Backup.COMPLETED, Backup.VERIFIED])
 
         # Verify suspended tenant was NOT backed up in this run
         suspended_backup = backups.filter(
-            tenant=self.suspended_tenant, backup_job_id=active_backup.backup_job_id
+            tenant_id=self.suspended_tenant.id, backup_job_id=active_backup.backup_job_id
         ).first()
         self.assertIsNone(suspended_backup, "Suspended tenant should not be backed up")
 
@@ -290,7 +290,7 @@ class TestWeeklyTenantBackupIntegration(TransactionTestCase):
 
         # Get backup record
         with bypass_rls():
-            backup = Backup.objects.get(id=result[0])
+            backup = Backup.objects.select_related('tenant').get(id=result[0])
 
         # Verify all required metadata fields
         required_fields = [
