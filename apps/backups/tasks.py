@@ -91,10 +91,17 @@ def create_pg_dump(
 
     try:
         # Temporarily disable FORCE RLS on tenants table for backup
+        # We need to commit this outside of any atomic block
         logger.info("Temporarily disabling FORCE RLS for backup...")
+
+        # Exit any atomic blocks and commit immediately
+        if connection.in_atomic_block:
+            # Force commit by using set_autocommit
+            connection.set_autocommit(True)
+
         with connection.cursor() as cursor:
             cursor.execute("ALTER TABLE tenants NO FORCE ROW LEVEL SECURITY;")
-        connection.commit()  # Commit the transaction immediately
+
         logger.info("FORCE RLS disabled on tenants table")
 
         # Set up environment for pg_dump
@@ -151,9 +158,14 @@ def create_pg_dump(
         # Re-enable FORCE RLS on tenants table
         try:
             logger.info("Re-enabling FORCE RLS...")
+
+            # Ensure we're in autocommit mode
+            if connection.in_atomic_block:
+                connection.set_autocommit(True)
+
             with connection.cursor() as cursor:
                 cursor.execute("ALTER TABLE tenants FORCE ROW LEVEL SECURITY;")
-            connection.commit()  # Commit the transaction immediately
+
             logger.info("FORCE RLS re-enabled on tenants table")
         except Exception as e:
             logger.error(f"Failed to re-enable FORCE RLS: {e}")
