@@ -616,7 +616,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement cleanup of temporary files
     - _Requirements: 6_
   
-  - [-] 18.5 Implement weekly per-tenant backup
+  - [x] 18.5 Implement weekly per-tenant backup
     - Create Celery task for weekly tenant backup on Sunday at 3:00 AM
     - Implement RLS-filtered export for each tenant
     - Export tenant-specific tables (inventory, sales, CRM, accounting)
