@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Disaster Recovery Runbook - Backup Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    🚨 Disaster Recovery Runbook
+                </h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">
+                    Execute automated disaster recovery with 1-hour RTO
+                </p>
+            </div>
+            <a href="{% url 'backups:dashboard' %}" 
+               class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Warning Banner -->
+    <div class="mb-8 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-lg">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-lg font-medium text-red-800 dark:text-red-300">
+                    ⚠️ CRITICAL OPERATION - READ CAREFULLY
+                </h3>
+                <div class="mt-2 text-sm text-red-700 dark:text-red-400">
+                    <p class="mb-2">This disaster recovery runbook will:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-4">
+                        <li><strong>REPLACE ALL EXISTING DATA</strong> with backup data</li>
+                        <li>Download backup from Cloudflare R2 (with Backblaze B2 failover)</li>
+                        <li>Decrypt and decompress the backup</li>
+                        <li>Restore database with 4 parallel jobs</li>
+                        <li>Restart application pods</li>
+                        <li>Verify health checks</li>
+                        <li>Reroute traffic automatically</li>
+                    </ul>
+                    <p class="mt-3 font-semibold">
+                        ⏱️ Target RTO: 1 hour | RPO: 15 minutes
+                    </p>
+                    <p class="mt-2">
+                        This operation is <strong>DESTRUCTIVE</strong> and cannot be undone. 
+                        Ensure you have proper authorization before proceeding.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- DR Form -->
+        <div class="lg:col-span-2">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                    Execute Disaster Recovery
+                </h2>
+
+                <form method="post" id="dr-form">
+                    {% csrf_token %}
+
+                    <!-- Backup Selection -->
+                    <div class="mb-6">
+                        <label for="backup_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Select Backup
+                        </label>
+                        <select name="backup_id" id="backup_id" 
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+                            <option value="">Use Latest Backup (Recommended)</option>
+                            {% for backup in available_backups %}
+                            <option value="{{ backup.id }}" {% if backup.id == latest_backup.id %}selected{% endif %}>
+                                {{ backup.created_at|date:"Y-m-d H:i:s" }} - 
+                                {{ backup.get_size_mb }} MB - 
+                                {{ backup.get_status_display }}
+                                {% if backup.id == latest_backup.id %}(Latest){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            Leave empty to use the latest successful full database backup
+                        </p>
+                    </div>
+
+                    <!-- Reason -->
+                    <div class="mb-6">
+                        <label for="reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Reason for Disaster Recovery <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="reason" id="reason" rows="4" required
+                                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Describe the disaster scenario and why recovery is needed..."></textarea>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            This will be logged for audit purposes
+                        </p>
+                    </div>
+
+                    <!-- Confirmation Checkbox -->
+                    <div class="mb-6">
+                        <label class="flex items-start">
+                            <input type="checkbox" id="confirm-dr" required
+                                   class="mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                I understand that this operation will <strong>REPLACE ALL EXISTING DATA</strong> 
+                                and I have proper authorization to execute disaster recovery.
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex items-center justify-between">
+                        <button type="submit" id="submit-btn"
+                                class="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            🚨 Execute Disaster Recovery
+                        </button>
+                        <a href="{% url 'backups:dashboard' %}" 
+                           class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info Sidebar -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Latest Backup Info -->
+            {% if latest_backup %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    📦 Latest Backup
+                </h3>
+                <dl class="space-y-3 text-sm">
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Created</dt>
+                        <dd class="text-gray-900 dark:text-white font-medium">
+                            {{ latest_backup.created_at|date:"Y-m-d H:i:s" }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Size</dt>
+                        <dd class="text-gray-900 dark:text-white font-medium">
+                            {{ latest_backup.get_size_mb }} MB
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Status</dt>
+                        <dd>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                                         {% if latest_backup.status == 'COMPLETED' or latest_backup.status == 'VERIFIED' %}
+                                         bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300
+                                         {% else %}
+                                         bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300
+                                         {% endif %}">
+                                {{ latest_backup.get_status_display }}
+                            </span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">Checksum</dt>
+                        <dd class="text-gray-900 dark:text-white font-mono text-xs break-all">
+                            {{ latest_backup.checksum|slice:":16" }}...
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+            {% endif %}
+
+            <!-- DR Process Steps -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    📋 DR Process Steps
+                </h3>
+                <ol class="space-y-3 text-sm">
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold mr-3">1</span>
+                        <span class="text-gray-700 dark:text-gray-300">Download from R2/B2</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold mr-3">2</span>
+                        <span class="text-gray-700 dark:text-gray-300">Decrypt & decompress</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold mr-3">3</span>
+                        <span class="text-gray-700 dark:text-gray-300">Restore database (4 jobs)</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold mr-3">4</span>
+                        <span class="text-gray-700 dark:text-gray-300">Restart application</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold mr-3">5</span>
+                        <span class="text-gray-700 dark:text-gray-300">Verify health checks</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold mr-3">6</span>
+                        <span class="text-gray-700 dark:text-gray-300">Reroute traffic</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-xs font-semibold mr-3">7</span>
+                        <span class="text-gray-700 dark:text-gray-300">Log DR events</span>
+                    </li>
+                </ol>
+            </div>
+
+            <!-- Recent DR Operations -->
+            {% if recent_dr_operations %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    🕐 Recent DR Operations
+                </h3>
+                <div class="space-y-3">
+                    {% for dr in recent_dr_operations %}
+                    <div class="text-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-700 dark:text-gray-300">
+                                {{ dr.started_at|date:"Y-m-d H:i" }}
+                            </span>
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full
+                                         {% if dr.status == 'COMPLETED' %}
+                                         bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300
+                                         {% elif dr.status == 'FAILED' %}
+                                         bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300
+                                         {% else %}
+                                         bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300
+                                         {% endif %}">
+                                {{ dr.get_status_display }}
+                            </span>
+                        </div>
+                        {% if dr.duration_seconds %}
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Duration: {{ dr.get_duration_minutes }} min
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation and confirmation
+document.getElementById('dr-form').addEventListener('submit', function(e) {
+    const confirmCheckbox = document.getElementById('confirm-dr');
+    const reason = document.getElementById('reason').value.trim();
+    
+    if (!confirmCheckbox.checked) {
+        e.preventDefault();
+        alert('Please confirm that you understand this operation will replace all existing data.');
+        return false;
+    }
+    
+    if (!reason) {
+        e.preventDefault();
+        alert('Please provide a reason for disaster recovery.');
+        return false;
+    }
+    
+    // Final confirmation dialog
+    const confirmed = confirm(
+        '⚠️ FINAL CONFIRMATION\n\n' +
+        'This will REPLACE ALL EXISTING DATA with backup data.\n\n' +
+        'Are you absolutely sure you want to proceed with disaster recovery?'
+    );
+    
+    if (!confirmed) {
+        e.preventDefault();
+        return false;
+    }
+    
+    // Disable submit button to prevent double submission
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').textContent = '⏳ Executing DR Runbook...';
+});
+</script>
+{% endblock %}

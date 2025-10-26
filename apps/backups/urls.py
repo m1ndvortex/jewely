@@ -20,6 +20,8 @@ urlpatterns = [
     path("restore/<uuid:backup_id>/", views.restore_backup, name="restore_backup_with_id"),
     path("restores/", views.restore_list, name="restore_list"),
     path("restores/<uuid:restore_log_id>/", views.restore_detail, name="restore_detail"),
+    # Disaster recovery
+    path("disaster-recovery/", views.disaster_recovery_runbook, name="disaster_recovery_runbook"),
     # Alert management
     path("alerts/", views.alert_list, name="alert_list"),
     path("alerts/<uuid:alert_id>/acknowledge/", views.acknowledge_alert, name="acknowledge_alert"),

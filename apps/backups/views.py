@@ -417,3 +417,105 @@ def resolve_alert(request, alert_id):
 
     # Redirect back to the referring page or alert list
     return redirect(request.META.get("HTTP_REFERER", "backups:alert_list"))
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+@require_http_methods(["GET", "POST"])
+def disaster_recovery_runbook(request):
+    """
+    Execute disaster recovery runbook.
+
+    This view allows administrators to:
+    - Trigger automated disaster recovery
+    - Select specific backup or use latest
+    - Provide justification for DR
+    - Monitor DR progress
+
+    The DR runbook implements:
+    1. Download backup from R2 (with B2 failover)
+    2. Decrypt and decompress
+    3. Restore database with 4 parallel jobs
+    4. Restart application pods
+    5. Verify health checks
+    6. Reroute traffic
+    7. Log all DR events
+    """
+    if request.method == "POST":
+        backup_id = request.POST.get("backup_id")
+        reason = request.POST.get("reason", "Disaster recovery initiated")
+
+        if not reason:
+            messages.error(request, "Please provide a reason for disaster recovery")
+            return redirect("backups:disaster_recovery_runbook")
+
+        # Validate backup if specified
+        backup = None
+        if backup_id:
+            try:
+                backup = Backup.objects.get(id=backup_id)
+                if not backup.is_completed():
+                    messages.error(
+                        request,
+                        f"Selected backup is not completed (status: {backup.status})",
+                    )
+                    return redirect("backups:disaster_recovery_runbook")
+            except Backup.DoesNotExist:
+                messages.error(request, f"Backup not found: {backup_id}")
+                return redirect("backups:disaster_recovery_runbook")
+
+        # Trigger DR runbook
+        result = BackupService.execute_disaster_recovery(
+            backup_id=backup.id if backup else None,
+            reason=reason,
+            user=request.user,
+        )
+
+        if result["success"]:
+            messages.success(
+                request,
+                f"Disaster recovery runbook initiated successfully. "
+                f"Task ID: {result['task_id']}. "
+                f"Target RTO: 1 hour. Monitor progress in restore logs.",
+            )
+
+            logger.info(
+                f"Disaster recovery initiated by {request.user.username}: "
+                f"backup={backup_id}, reason={reason}"
+            )
+
+            return redirect("backups:restore_list")
+        else:
+            messages.error(request, f"Failed to initiate disaster recovery: {result['error']}")
+            logger.error(f"Disaster recovery failed: {result['error']}")
+
+    # GET request - show DR form
+    # Get latest successful full database backup
+    latest_backup = (
+        Backup.objects.filter(
+            backup_type=Backup.FULL_DATABASE,
+            status__in=[Backup.COMPLETED, Backup.VERIFIED],
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    # Get all successful full database backups for selection
+    available_backups = Backup.objects.filter(
+        backup_type=Backup.FULL_DATABASE,
+        status__in=[Backup.COMPLETED, Backup.VERIFIED],
+    ).order_by("-created_at")[:20]
+
+    # Get recent DR operations
+    recent_dr_operations = BackupRestoreLog.objects.filter(
+        restore_mode=BackupRestoreLog.FULL,
+        initiated_by__isnull=True,  # Automated DR has no user
+    ).order_by("-started_at")[:5]
+
+    context = {
+        "latest_backup": latest_backup,
+        "available_backups": available_backups,
+        "recent_dr_operations": recent_dr_operations,
+    }
+
+    return render(request, "backups/disaster_recovery_runbook.html", context)

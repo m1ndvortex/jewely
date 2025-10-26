@@ -19,7 +19,12 @@ from django.db import models
 from apps.core.models import Tenant
 
 from .models import Backup, BackupRestoreLog
-from .tasks import perform_configuration_backup, perform_restore_operation, perform_tenant_backup
+from .tasks import (
+    execute_disaster_recovery_runbook,
+    perform_configuration_backup,
+    perform_restore_operation,
+    perform_tenant_backup,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -298,6 +303,60 @@ class BackupService:
 
         except Exception as e:
             logger.error(f"Failed to trigger restore: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
+    @staticmethod
+    def execute_disaster_recovery(
+        backup_id: Optional[UUID] = None,
+        reason: str = "Disaster recovery initiated",
+        user: Optional[User] = None,
+    ) -> dict:
+        """
+        Execute automated disaster recovery runbook.
+
+        This triggers the complete DR procedure with 1-hour RTO:
+        1. Download latest backup from R2 (with B2 failover)
+        2. Decrypt and decompress
+        3. Restore database with 4 parallel jobs
+        4. Restart application pods
+        5. Verify health checks
+        6. Reroute traffic
+        7. Log all DR events
+
+        Args:
+            backup_id: Optional specific backup ID to restore (defaults to latest)
+            reason: Reason for disaster recovery
+            user: User who initiated DR (None for automated)
+
+        Returns:
+            Dictionary with DR job information
+        """
+        logger.info(
+            f"Disaster recovery initiated by {user.username if user else 'system'}: "
+            f"backup={backup_id}, reason={reason}"
+        )
+
+        try:
+            # Trigger DR runbook task
+            task = execute_disaster_recovery_runbook.delay(
+                backup_id=str(backup_id) if backup_id else None,
+                reason=reason,
+            )
+
+            logger.info(f"Queued disaster recovery runbook (task: {task.id})")
+
+            return {
+                "success": True,
+                "task_id": task.id,
+                "status": "queued",
+                "message": "Disaster recovery runbook initiated",
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to initiate disaster recovery: {e}")
             return {
                 "success": False,
                 "error": str(e),

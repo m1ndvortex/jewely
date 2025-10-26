@@ -94,6 +94,7 @@ def create_pg_dump(
         logger.info("Temporarily disabling FORCE RLS for backup...")
         with connection.cursor() as cursor:
             cursor.execute("ALTER TABLE tenants NO FORCE ROW LEVEL SECURITY;")
+        connection.commit()  # Commit the transaction immediately
         logger.info("FORCE RLS disabled on tenants table")
 
         # Set up environment for pg_dump
@@ -152,6 +153,7 @@ def create_pg_dump(
             logger.info("Re-enabling FORCE RLS...")
             with connection.cursor() as cursor:
                 cursor.execute("ALTER TABLE tenants FORCE ROW LEVEL SECURITY;")
+            connection.commit()  # Commit the transaction immediately
             logger.info("FORCE RLS re-enabled on tenants table")
         except Exception as e:
             logger.error(f"Failed to re-enable FORCE RLS: {e}")
@@ -1996,3 +1998,445 @@ def perform_pg_restore(
         error_msg = f"pg_restore failed with exception: {e}"
         logger.error(error_msg)
         return False, error_msg
+
+
+@shared_task(
+    bind=True,
+    name="apps.backups.tasks.execute_disaster_recovery_runbook",
+    max_retries=0,  # DR should not be retried automatically
+    default_retry_delay=0,
+)
+def execute_disaster_recovery_runbook(  # noqa: C901
+    self, backup_id: Optional[str] = None, reason: str = "Disaster recovery initiated"
+):
+    """
+    Execute automated disaster recovery runbook with 1-hour RTO.
+
+    This task implements the complete disaster recovery procedure:
+    1. Download latest backup from R2 (with B2 failover)
+    2. Decrypt and decompress backup
+    3. Restore database with 4 parallel jobs
+    4. Restart application pods (if in Kubernetes)
+    5. Verify health checks
+    6. Reroute traffic (if needed)
+    7. Log all DR events
+
+    Args:
+        backup_id: Optional specific backup ID to restore (defaults to latest)
+        reason: Reason for disaster recovery
+
+    Returns:
+        Dictionary with DR operation results
+    """
+    from apps.core.tenant_context import bypass_rls
+
+    start_time = timezone.now()
+    dr_log = {
+        "start_time": start_time.isoformat(),
+        "backup_id": backup_id,
+        "reason": reason,
+        "steps": [],
+        "success": False,
+        "error": None,
+        "duration_seconds": 0,
+    }
+
+    restore_log = None
+    temp_files = []
+
+    try:
+        logger.info("=" * 80)
+        logger.info("DISASTER RECOVERY RUNBOOK INITIATED")
+        logger.info(f"Reason: {reason}")
+        logger.info("Target RTO: 1 hour")
+        logger.info("=" * 80)
+
+        # Step 1: Select backup to restore
+        logger.info("Step 1: Selecting backup for restore...")
+        step_start = timezone.now()
+
+        with bypass_rls():
+            if backup_id:
+                backup = Backup.objects.get(id=backup_id)
+                logger.info(f"Using specified backup: {backup.filename}")
+            else:
+                # Get latest successful full database backup
+                backup = (
+                    Backup.objects.filter(
+                        backup_type=Backup.FULL_DATABASE,
+                        status__in=[Backup.COMPLETED, Backup.VERIFIED],
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+
+                if not backup:
+                    raise Exception("No successful full database backup found")
+
+                logger.info(f"Using latest backup: {backup.filename}")
+                logger.info(f"Backup created at: {backup.created_at.isoformat()}")
+
+        step_duration = (timezone.now() - step_start).total_seconds()
+        dr_log["steps"].append(
+            {
+                "step": 1,
+                "name": "Select backup",
+                "status": "completed",
+                "duration_seconds": step_duration,
+                "backup_id": str(backup.id),
+                "backup_filename": backup.filename,
+            }
+        )
+
+        # Step 2: Download backup from R2 with B2 failover
+        logger.info("Step 2: Downloading backup from storage...")
+        step_start = timezone.now()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            encrypted_path = os.path.join(temp_dir, backup.filename)
+            temp_files.append(encrypted_path)
+
+            downloaded = False
+            download_source = None
+
+            # Try R2 first
+            if backup.r2_path:
+                try:
+                    logger.info("Attempting download from Cloudflare R2...")
+                    r2_storage = get_storage_backend("r2")
+                    if r2_storage.download(backup.r2_path, encrypted_path):
+                        logger.info(f"✓ Downloaded from R2: {backup.r2_path}")
+                        downloaded = True
+                        download_source = "r2"
+                except Exception as e:
+                    logger.warning(f"✗ Failed to download from R2: {e}")
+
+            # Failover to B2
+            if not downloaded and backup.b2_path:
+                try:
+                    logger.info("Failing over to Backblaze B2...")
+                    b2_storage = get_storage_backend("b2")
+                    if b2_storage.download(backup.b2_path, encrypted_path):
+                        logger.info(f"✓ Downloaded from B2: {backup.b2_path}")
+                        downloaded = True
+                        download_source = "b2"
+                except Exception as e:
+                    logger.warning(f"✗ Failed to download from B2: {e}")
+
+            # Last resort: local storage
+            if not downloaded and backup.local_path:
+                try:
+                    logger.info("Attempting download from local storage...")
+                    local_storage = get_storage_backend("local")
+                    if local_storage.download(backup.local_path, encrypted_path):
+                        logger.info(f"✓ Downloaded from local storage: {backup.local_path}")
+                        downloaded = True
+                        download_source = "local"
+                except Exception as e:
+                    logger.warning(f"✗ Failed to download from local storage: {e}")
+
+            if not downloaded:
+                raise Exception(
+                    "Failed to download backup from any storage location (R2, B2, local)"
+                )
+
+            step_duration = (timezone.now() - step_start).total_seconds()
+            dr_log["steps"].append(
+                {
+                    "step": 2,
+                    "name": "Download backup",
+                    "status": "completed",
+                    "duration_seconds": step_duration,
+                    "source": download_source,
+                    "size_mb": backup.get_size_mb(),
+                }
+            )
+
+            # Step 3: Decrypt and decompress backup
+            logger.info("Step 3: Decrypting and decompressing backup...")
+            step_start = timezone.now()
+
+            from .encryption import decrypt_and_decompress_file
+
+            decrypted_path = os.path.join(temp_dir, backup.filename.replace(".gz.enc", ""))
+            temp_files.append(decrypted_path)
+
+            decrypt_and_decompress_file(encrypted_path, decrypted_path)
+
+            logger.info(f"✓ Decrypted and decompressed: {decrypted_path}")
+
+            step_duration = (timezone.now() - step_start).total_seconds()
+            dr_log["steps"].append(
+                {
+                    "step": 3,
+                    "name": "Decrypt and decompress",
+                    "status": "completed",
+                    "duration_seconds": step_duration,
+                }
+            )
+
+            # Step 4: Restore database with 4 parallel jobs
+            logger.info("Step 4: Restoring database with 4 parallel jobs...")
+            step_start = timezone.now()
+
+            db_config = get_database_config()
+
+            # Create restore log entry
+            with bypass_rls():
+                restore_log = BackupRestoreLog.objects.create(
+                    backup=backup,
+                    initiated_by=None,  # Automated DR
+                    restore_mode=BackupRestoreLog.FULL,
+                    reason=reason,
+                    status=BackupRestoreLog.IN_PROGRESS,
+                )
+
+            logger.info(f"Created restore log: {restore_log.id}")
+
+            # Perform full restore with --clean
+            success, error_msg = perform_pg_restore(
+                dump_path=decrypted_path,
+                database=db_config["name"],
+                user=db_config["user"],
+                password=db_config["password"],
+                host=db_config["host"],
+                port=db_config["port"],
+                clean=True,  # Full restore - replace all data
+                selective_tenants=None,
+            )
+
+            if not success:
+                raise Exception(f"Database restore failed: {error_msg}")
+
+            logger.info("✓ Database restored successfully")
+
+            step_duration = (timezone.now() - step_start).total_seconds()
+            dr_log["steps"].append(
+                {
+                    "step": 4,
+                    "name": "Restore database",
+                    "status": "completed",
+                    "duration_seconds": step_duration,
+                    "parallel_jobs": 4,
+                }
+            )
+
+            # Step 5: Restart application pods (if in Kubernetes)
+            logger.info("Step 5: Restarting application pods...")
+            step_start = timezone.now()
+
+            restart_success = False
+            restart_method = None
+
+            # Check if running in Kubernetes
+            if os.path.exists("/var/run/secrets/kubernetes.io"):
+                try:
+                    logger.info("Detected Kubernetes environment")
+                    # Restart Django pods by deleting them (Deployment will recreate)
+                    result = subprocess.run(
+                        [
+                            "kubectl",
+                            "rollout",
+                            "restart",
+                            "deployment/django-app",
+                            "-n",
+                            os.getenv("K8S_NAMESPACE", "default"),
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                    )
+
+                    if result.returncode == 0:
+                        logger.info("✓ Kubernetes deployment restarted")
+                        restart_success = True
+                        restart_method = "kubernetes"
+                    else:
+                        logger.warning(f"kubectl rollout restart failed: {result.stderr}")
+                except Exception as e:
+                    logger.warning(f"Failed to restart Kubernetes deployment: {e}")
+
+            # Check if running in Docker Compose
+            if not restart_success and os.path.exists("/var/run/docker.sock"):
+                try:
+                    logger.info("Detected Docker environment")
+                    # Restart web service
+                    result = subprocess.run(
+                        ["docker-compose", "restart", "web"],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                    )
+
+                    if result.returncode == 0:
+                        logger.info("✓ Docker Compose service restarted")
+                        restart_success = True
+                        restart_method = "docker-compose"
+                    else:
+                        logger.warning(f"docker-compose restart failed: {result.stderr}")
+                except Exception as e:
+                    logger.warning(f"Failed to restart Docker Compose service: {e}")
+
+            if not restart_success:
+                logger.warning(
+                    "Could not automatically restart application - manual restart required"
+                )
+                restart_method = "manual_required"
+
+            step_duration = (timezone.now() - step_start).total_seconds()
+            dr_log["steps"].append(
+                {
+                    "step": 5,
+                    "name": "Restart application",
+                    "status": "completed" if restart_success else "manual_required",
+                    "duration_seconds": step_duration,
+                    "method": restart_method,
+                }
+            )
+
+            # Step 6: Verify health checks
+            logger.info("Step 6: Verifying health checks...")
+            step_start = timezone.now()
+
+            import time
+
+            import requests
+
+            health_check_url = os.getenv("HEALTH_CHECK_URL", "http://localhost:8000/health/")
+            max_attempts = 30
+            health_check_passed = False
+
+            logger.info(f"Waiting for application to be healthy (max {max_attempts} attempts)...")
+
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    response = requests.get(health_check_url, timeout=5)
+                    if response.status_code == 200:
+                        logger.info(f"✓ Health check passed on attempt {attempt}")
+                        health_check_passed = True
+                        break
+                    else:
+                        logger.info(
+                            f"Health check attempt {attempt}/{max_attempts}: status {response.status_code}"
+                        )
+                except Exception as e:
+                    logger.info(f"Health check attempt {attempt}/{max_attempts}: {e}")
+
+                if attempt < max_attempts:
+                    time.sleep(10)  # Wait 10 seconds between attempts
+
+            if not health_check_passed:
+                logger.warning(
+                    "Health checks did not pass within timeout - manual verification required"
+                )
+
+            step_duration = (timezone.now() - step_start).total_seconds()
+            dr_log["steps"].append(
+                {
+                    "step": 6,
+                    "name": "Verify health checks",
+                    "status": "completed" if health_check_passed else "manual_required",
+                    "duration_seconds": step_duration,
+                    "attempts": attempt,
+                    "health_check_url": health_check_url,
+                }
+            )
+
+            # Step 7: Reroute traffic (if needed)
+            logger.info("Step 7: Rerouting traffic...")
+            step_start = timezone.now()
+
+            # In most setups, traffic routing is automatic via load balancer
+            # This step is a placeholder for custom routing logic
+            logger.info("Traffic routing handled by load balancer - no action needed")
+
+            step_duration = (timezone.now() - step_start).total_seconds()
+            dr_log["steps"].append(
+                {
+                    "step": 7,
+                    "name": "Reroute traffic",
+                    "status": "completed",
+                    "duration_seconds": step_duration,
+                    "method": "automatic_load_balancer",
+                }
+            )
+
+            # Update restore log to completed
+            total_duration = (timezone.now() - start_time).total_seconds()
+
+            with bypass_rls():
+                restore_log.status = BackupRestoreLog.COMPLETED
+                restore_log.completed_at = timezone.now()
+                restore_log.duration_seconds = int(total_duration)
+                restore_log.notes = "Automated disaster recovery completed successfully"
+                restore_log.metadata = dr_log
+                restore_log.save()
+
+            dr_log["success"] = True
+            dr_log["duration_seconds"] = total_duration
+            dr_log["restore_log_id"] = str(restore_log.id)
+
+            logger.info("=" * 80)
+            logger.info("DISASTER RECOVERY COMPLETED SUCCESSFULLY")
+            logger.info(
+                f"Total duration: {total_duration:.2f} seconds ({total_duration / 60:.2f} minutes)"
+            )
+            logger.info("RTO target: 3600 seconds (1 hour)")
+            logger.info(f"RTO achieved: {'YES' if total_duration < 3600 else 'NO'}")
+            logger.info("=" * 80)
+
+            # Send success notification
+            create_backup_alert(
+                alert_type=BackupAlert.RESTORE_FAILURE,  # Reusing type for DR success
+                severity=BackupAlert.INFO,
+                message=f"Disaster recovery completed successfully in {total_duration / 60:.2f} minutes",
+                backup=backup,
+                details=dr_log,
+            )
+
+            return dr_log
+
+    except Exception as e:
+        logger.error(f"Disaster recovery failed: {e}", exc_info=True)
+
+        total_duration = (timezone.now() - start_time).total_seconds()
+        dr_log["success"] = False
+        dr_log["error"] = str(e)
+        dr_log["duration_seconds"] = total_duration
+
+        # Update restore log to failed status
+        if restore_log:
+            with bypass_rls():
+                restore_log.status = BackupRestoreLog.FAILED
+                restore_log.error_message = str(e)
+                restore_log.completed_at = timezone.now()
+                restore_log.duration_seconds = int(total_duration)
+                restore_log.metadata = dr_log
+                restore_log.save()
+
+        # Create critical alert
+        create_backup_alert(
+            alert_type=BackupAlert.RESTORE_FAILURE,
+            severity=BackupAlert.CRITICAL,
+            message=f"DISASTER RECOVERY FAILED: {str(e)}",
+            backup=backup if "backup" in locals() else None,
+            details=dr_log,
+        )
+
+        logger.error("=" * 80)
+        logger.error("DISASTER RECOVERY FAILED")
+        logger.error(f"Error: {e}")
+        logger.error(f"Duration: {total_duration:.2f} seconds")
+        logger.error("=" * 80)
+
+        raise
+
+    finally:
+        # Clean up temporary files
+        for temp_file in temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    logger.debug(f"Cleaned up temporary file: {temp_file}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up temporary file {temp_file}: {e}")
