@@ -1,0 +1,17 @@
+# Grafana Dashboard Provisioning
+# Automatically loads dashboards from the dashboards directory
+# Per Requirement 24.6 - Comprehensive Grafana dashboards
+
+apiVersion: 1
+
+providers:
+  - name: 'Jewelry SaaS Platform'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: true
