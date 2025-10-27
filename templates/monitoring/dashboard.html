@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}System Monitoring Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0.5rem 0;
+    }
+    
+    .metric-label {
+        color: #6b7280;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+    
+    .status-up { background-color: #10b981; }
+    .status-down { background-color: #ef4444; }
+    .status-degraded { background-color: #f59e0b; }
+    .status-unknown { background-color: #6b7280; }
+    
+    .status-ok { color: #10b981; }
+    .status-warning { color: #f59e0b; }
+    .status-critical { color: #ef4444; }
+    
+    .progress-bar {
+        height: 8px;
+        background-color: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-ok { background-color: #10b981; }
+    .progress-warning { background-color: #f59e0b; }
+    .progress-critical { background-color: #ef4444; }
+    
+    .refresh-indicator {
+        display: inline-block;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .tab-button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        font-weight: 500;
+        color: #6b7280;
+    }
+    
+    .tab-button.active {
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">System Monitoring</h1>
+            <p class="text-gray-600 mt-2">Real-time platform health and performance metrics</p>
+        </div>
+        <div class="text-right">
+            <div class="text-sm text-gray-600">
+                Last updated: <span id="last-update">--</span>
+            </div>
+            <div class="text-sm text-gray-600 mt-1">
+                Auto-refresh: <span id="refresh-countdown">30</span>s
+                <span id="refresh-indicator" class="refresh-indicator" style="display:none;">⟳</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Service Status Overview -->
+    <div class="metric-card mb-8">
+        <h2 class="text-xl font-semibold mb-4">Service Status</h2>
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {% for key, service in services.items %}
+            <div class="text-center p-4 border rounded-lg" id="service-{{ key }}">
+                <div class="mb-2">
+                    <span class="status-indicator status-{{ service.status }}"></span>
+                    <span class="font-semibold">{{ service.name }}</span>
+                </div>
+                <div class="text-sm text-gray-600">{{ service.message }}</div>
+                {% if service.version %}
+                <div class="text-xs text-gray-500 mt-1">{{ service.version }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="border-b mb-6">
+        <div class="flex space-x-4">
+            <button class="tab-button active" data-tab="system">System Overview</button>
+            <button class="tab-button" data-tab="database">Database</button>
+            <button class="tab-button" data-tab="cache">Cache</button>
+            <button class="tab-button" data-tab="celery">Celery</button>
+        </div>
+    </div>
+    
+    <!-- System Overview Tab -->
+    <div id="tab-system" class="tab-content active">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- CPU -->
+            <div class="metric-card">
+                <div class="metric-label">CPU Usage</div>
+                <div class="metric-value" id="cpu-usage">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="cpu-progress" style="width: 0%"></div>
+                </div>
+                <div class="text-sm text-gray-600 mt-2">
+                    <span id="cpu-cores">--</span> cores
+                </div>
+            </div>
+            
+            <!-- Memory -->
+            <div class="metric-card">
+                <div class="metric-label">Memory Usage</div>
+                <div class="metric-value" id="memory-usage">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="memory-progress" style="width: 0%"></div>
+                </div>
+                <div class="text-sm text-gray-600 mt-2">
+                    <span id="memory-used">--</span> / <span id="memory-total">--</span> GB
+                </div>
+            </div>
+            
+            <!-- Disk -->
+            <div class="metric-card">
+                <div class="metric-label">Disk Usage</div>
+                <div class="metric-value" id="disk-usage">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="disk-progress" style="width: 0%"></div>
+                </div>
+                <div class="text-sm text-gray-600 mt-2">
+                    <span id="disk-used">--</span> / <span id="disk-total">--</span> GB
+                </div>
+            </div>
+            
+            <!-- Network -->
+            <div class="metric-card">
+                <div class="metric-label">Network I/O</div>
+                <div class="text-sm mt-2">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-gray-600">Sent:</span>
+                        <span id="network-sent">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Received:</span>
+                        <span id="network-recv">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Database Tab -->
+    <div id="tab-database" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Connections -->
+            <div class="metric-card">
+                <div class="metric-label">Database Connections</div>
+                <div class="metric-value" id="db-connections">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="db-connections-progress" style="width: 0%"></div>
+                </div>
+                <div class="text-sm text-gray-600 mt-2">
+                    <div>Active: <span id="db-active">--</span></div>
+                    <div>Idle: <span id="db-idle">--</span></div>
+                    <div>Max: <span id="db-max">--</span></div>
+                </div>
+            </div>
+            
+            <!-- Cache Hit Ratio -->
+            <div class="metric-card">
+                <div class="metric-label">Cache Hit Ratio</div>
+                <div class="metric-value" id="db-cache-hit">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-ok" id="db-cache-progress" style="width: 0%"></div>
+                </div>
+                <div class="text-sm text-gray-600 mt-2">
+                    Higher is better (target: >95%)
+                </div>
+            </div>
+            
+            <!-- Database Size -->
+            <div class="metric-card">
+                <div class="metric-label">Database Size</div>
+                <div class="metric-value" id="db-size">--</div>
+                <div class="text-sm text-gray-600 mt-2">
+                    <div>Tables: <span id="db-tables">--</span></div>
+                    <div>Slow Queries: <span id="db-slow">--</span></div>
+                </div>
+            </div>
+            
+            <!-- Activity -->
+            <div class="metric-card">
+                <div class="metric-label">Transaction Activity</div>
+                <div class="text-sm mt-2">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-gray-600">Commits:</span>
+                        <span id="db-commits">--</span>
+                    </div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-gray-600">Rollbacks:</span>
+                        <span id="db-rollbacks">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Tuples Fetched:</span>
+                        <span id="db-tuples">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cache Tab -->
+    <div id="tab-cache" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Hit Rate -->
+            <div class="metric-card">
+                <div class="metric-label">Cache Hit Rate</div>
+                <div class="metric-value" id="cache-hit-rate">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-ok" id="cache-hit-progress" style="width: 0%"></div>
+                </div>
+                <div class="text-sm text-gray-600 mt-2">
+                    Hits: <span id="cache-hits">--</span><br>
+                    Misses: <span id="cache-misses">--</span>
+                </div>
+            </div>
+            
+            <!-- Memory Usage -->
+            <div class="metric-card">
+                <div class="metric-label">Memory Usage</div>
+                <div class="metric-value" id="cache-memory">--</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="cache-memory-progress" style="width: 0%"></div>
+                </div>
+                <div class="text-sm text-gray-600 mt-2">
+                    <span id="cache-used-mb">--</span> / <span id="cache-max-mb">--</span> MB
+                </div>
+            </div>
+            
+            <!-- Keys -->
+            <div class="metric-card">
+                <div class="metric-label">Total Keys</div>
+                <div class="metric-value" id="cache-keys">--</div>
+                <div class="text-sm text-gray-600 mt-2">
+                    Evicted: <span id="cache-evicted">--</span><br>
+                    Expired: <span id="cache-expired">--</span>
+                </div>
+            </div>
+            
+            <!-- Operations -->
+            <div class="metric-card">
+                <div class="metric-label">Operations/sec</div>
+                <div class="metric-value" id="cache-ops">--</div>
+                <div class="text-sm text-gray-600 mt-2">
+                    Clients: <span id="cache-clients">--</span><br>
+                    Uptime: <span id="cache-uptime">--</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Celery Tab -->
+    <div id="tab-celery" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Workers -->
+            <div class="metric-card">
+                <div class="metric-label">Active Workers</div>
+                <div class="metric-value" id="celery-workers">--</div>
+                <div class="text-sm text-gray-600 mt-2" id="celery-worker-status">
+                    Checking...
+                </div>
+            </div>
+            
+            <!-- Queue -->
+            <div class="metric-card">
+                <div class="metric-label">Pending Tasks</div>
+                <div class="metric-value" id="celery-pending">--</div>
+                <div class="text-sm text-gray-600 mt-2">
+                    Reserved: <span id="celery-reserved">--</span><br>
+                    Scheduled: <span id="celery-scheduled">--</span>
+                </div>
+            </div>
+            
+            <!-- Status -->
+            <div class="metric-card">
+                <div class="metric-label">System Status</div>
+                <div class="metric-value" id="celery-status-text">--</div>
+                <div class="text-sm text-gray-600 mt-2">
+                    Overall health indicator
+                </div>
+            </div>
+        </div>
+        
+        <!-- Worker Details -->
+        <div class="metric-card">
+            <h3 class="text-lg font-semibold mb-4">Worker Details</h3>
+            <div id="celery-worker-list" class="space-y-2">
+                <div class="text-gray-600">Loading worker information...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Tab switching
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons and contents
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding content
+            button.classList.add('active');
+            const tabId = 'tab-' + button.dataset.tab;
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+    
+    // Auto-refresh functionality
+    let refreshInterval = 30; // seconds
+    let countdown = refreshInterval;
+    
+    function updateCountdown() {
+        countdown--;
+        document.getElementById('refresh-countdown').textContent = countdown;
+        if (countdown <= 0) {
+            countdown = refreshInterval;
+            refreshAllMetrics();
+        }
+    }
+    
+    setInterval(updateCountdown, 1000);
+    
+    // Fetch and update metrics
+    async function refreshAllMetrics() {
+        document.getElementById('refresh-indicator').style.display = 'inline-block';
+        
+        try {
+            await Promise.all([
+                updateSystemMetrics(),
+                updateDatabaseMetrics(),
+                updateCacheMetrics(),
+                updateCeleryMetrics(),
+                updateServiceStatus()
+            ]);
+            
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+        } catch (error) {
+            console.error('Error refreshing metrics:', error);
+        } finally {
+            document.getElementById('refresh-indicator').style.display = 'none';
+        }
+    }
+    
+    async function updateSystemMetrics() {
+        const response = await fetch('{% url "core:monitoring_system_metrics" %}');
+        const data = await response.json();
+        
+        // CPU
+        document.getElementById('cpu-usage').textContent = data.cpu.usage_percent + '%';
+        document.getElementById('cpu-cores').textContent = data.cpu.count;
+        updateProgress('cpu-progress', data.cpu.usage_percent, data.cpu.status);
+        
+        // Memory
+        document.getElementById('memory-usage').textContent = data.memory.usage_percent + '%';
+        document.getElementById('memory-used').textContent = data.memory.used_gb;
+        document.getElementById('memory-total').textContent = data.memory.total_gb;
+        updateProgress('memory-progress', data.memory.usage_percent, data.memory.status);
+        
+        // Disk
+        document.getElementById('disk-usage').textContent = data.disk.usage_percent + '%';
+        document.getElementById('disk-used').textContent = data.disk.used_gb;
+        document.getElementById('disk-total').textContent = data.disk.total_gb;
+        updateProgress('disk-progress', data.disk.usage_percent, data.disk.status);
+        
+        // Network
+        document.getElementById('network-sent').textContent = data.network.bytes_sent_mb + ' MB';
+        document.getElementById('network-recv').textContent = data.network.bytes_recv_mb + ' MB';
+    }
+    
+    async function updateDatabaseMetrics() {
+        const response = await fetch('{% url "core:monitoring_database_metrics" %}');
+        const data = await response.json();
+        
+        if (data.connections && !data.connections.error) {
+            document.getElementById('db-connections').textContent = data.connections.total;
+            document.getElementById('db-active').textContent = data.connections.active;
+            document.getElementById('db-idle').textContent = data.connections.idle;
+            document.getElementById('db-max').textContent = data.connections.max_connections;
+            updateProgress('db-connections-progress', data.connections.usage_percent, data.connections.status);
+        }
+        
+        if (data.activity && !data.activity.error) {
+            document.getElementById('db-cache-hit').textContent = data.activity.cache_hit_ratio + '%';
+            document.getElementById('db-cache-progress').style.width = data.activity.cache_hit_ratio + '%';
+            document.getElementById('db-commits').textContent = data.activity.commits.toLocaleString();
+            document.getElementById('db-rollbacks').textContent = data.activity.rollbacks.toLocaleString();
+            document.getElementById('db-tuples').textContent = data.activity.tuples_fetched.toLocaleString();
+        }
+        
+        if (data.size && !data.size.error) {
+            document.getElementById('db-size').textContent = data.size.size_gb + ' GB';
+        }
+        
+        if (data.performance && !data.performance.error) {
+            document.getElementById('db-tables').textContent = data.performance.table_count;
+            document.getElementById('db-slow').textContent = data.performance.slow_queries;
+        }
+    }
+    
+    async function updateCacheMetrics() {
+        const response = await fetch('{% url "core:monitoring_cache_metrics" %}');
+        const data = await response.json();
+        
+        if (data.redis && !data.redis.error) {
+            const redis = data.redis;
+            document.getElementById('cache-hit-rate').textContent = redis.hit_rate_percent + '%';
+            document.getElementById('cache-hit-progress').style.width = redis.hit_rate_percent + '%';
+            document.getElementById('cache-hits').textContent = redis.keyspace_hits.toLocaleString();
+            document.getElementById('cache-misses').textContent = redis.keyspace_misses.toLocaleString();
+            
+            document.getElementById('cache-memory').textContent = redis.memory_usage_percent + '%';
+            document.getElementById('cache-used-mb').textContent = redis.used_memory_mb;
+            document.getElementById('cache-max-mb').textContent = redis.max_memory_mb || 'unlimited';
+            updateProgress('cache-memory-progress', redis.memory_usage_percent, redis.status);
+            
+            document.getElementById('cache-keys').textContent = redis.total_keys.toLocaleString();
+            document.getElementById('cache-evicted').textContent = redis.evicted_keys.toLocaleString();
+            document.getElementById('cache-expired').textContent = redis.expired_keys.toLocaleString();
+            
+            document.getElementById('cache-ops').textContent = redis.ops_per_sec;
+            document.getElementById('cache-clients').textContent = redis.connected_clients;
+            document.getElementById('cache-uptime').textContent = formatUptime(redis.uptime_seconds);
+        }
+    }
+    
+    async function updateCeleryMetrics() {
+        const response = await fetch('{% url "core:monitoring_celery_metrics" %}');
+        const data = await response.json();
+        
+        if (data.workers && !data.workers.error) {
+            document.getElementById('celery-workers').textContent = data.workers.total_workers;
+            document.getElementById('celery-worker-status').textContent = data.workers.status === 'ok' ? 'All workers online' : 'No workers found';
+            
+            // Update worker list
+            const workerList = document.getElementById('celery-worker-list');
+            if (data.workers.workers && data.workers.workers.length > 0) {
+                workerList.innerHTML = data.workers.workers.map(worker => `
+                    <div class="border rounded p-3">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="status-indicator status-${worker.status}"></span>
+                                <span class="font-semibold">${worker.name}</span>
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                ${worker.active_tasks} active / ${worker.max_concurrency} max
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            Pool: ${worker.pool}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                workerList.innerHTML = '<div class="text-gray-600">No workers found</div>';
+            }
+        }
+        
+        if (data.queues && !data.queues.error) {
+            document.getElementById('celery-pending').textContent = data.queues.total_pending;
+            document.getElementById('celery-reserved').textContent = data.queues.reserved_tasks;
+            document.getElementById('celery-scheduled').textContent = data.queues.scheduled_tasks;
+        }
+        
+        // Overall status
+        const workersOk = data.workers && data.workers.status === 'ok';
+        const queuesOk = data.queues && data.queues.status !== 'warning';
+        const statusText = workersOk && queuesOk ? 'Healthy' : workersOk ? 'Degraded' : 'Critical';
+        const statusClass = workersOk && queuesOk ? 'status-ok' : workersOk ? 'status-warning' : 'status-critical';
+        
+        const statusEl = document.getElementById('celery-status-text');
+        statusEl.textContent = statusText;
+        statusEl.className = 'metric-value ' + statusClass;
+    }
+    
+    async function updateServiceStatus() {
+        const response = await fetch('{% url "core:monitoring_service_status" %}');
+        const data = await response.json();
+        
+        for (const [key, service] of Object.entries(data)) {
+            if (key === 'timestamp') continue;
+            
+            const serviceEl = document.getElementById('service-' + key);
+            if (serviceEl) {
+                const indicator = serviceEl.querySelector('.status-indicator');
+                indicator.className = 'status-indicator status-' + service.status;
+                
+                const message = serviceEl.querySelector('.text-sm');
+                message.textContent = service.message;
+            }
+        }
+    }
+    
+    function updateProgress(elementId, percent, status) {
+        const element = document.getElementById(elementId);
+        element.style.width = percent + '%';
+        element.className = 'progress-fill progress-' + status;
+    }
+    
+    function formatUptime(seconds) {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        if (days > 0) {
+            return `${days}d ${hours}h`;
+        }
+        return `${hours}h`;
+    }
+    
+    // Initial load
+    refreshAllMetrics();
+</script>
+{% endblock %}

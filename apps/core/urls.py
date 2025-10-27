@@ -6,6 +6,7 @@ from . import (
     admin_views,
     branch_views,
     dashboard_views,
+    monitoring_views,
     settings_views,
     stripe_webhooks,
     subscription_views,
@@ -42,6 +43,37 @@ urlpatterns = [
         "platform/api/error-feed/",
         admin_views.ErrorFeedAPIView.as_view(),
         name="admin_api_error_feed",
+    ),
+    # Monitoring Dashboard
+    path(
+        "platform/monitoring/",
+        monitoring_views.MonitoringDashboardView.as_view(),
+        name="monitoring_dashboard",
+    ),
+    path(
+        "platform/monitoring/api/system-metrics/",
+        monitoring_views.SystemMetricsAPIView.as_view(),
+        name="monitoring_system_metrics",
+    ),
+    path(
+        "platform/monitoring/api/database-metrics/",
+        monitoring_views.DatabaseMetricsAPIView.as_view(),
+        name="monitoring_database_metrics",
+    ),
+    path(
+        "platform/monitoring/api/cache-metrics/",
+        monitoring_views.CacheMetricsAPIView.as_view(),
+        name="monitoring_cache_metrics",
+    ),
+    path(
+        "platform/monitoring/api/celery-metrics/",
+        monitoring_views.CeleryMetricsAPIView.as_view(),
+        name="monitoring_celery_metrics",
+    ),
+    path(
+        "platform/monitoring/api/service-status/",
+        monitoring_views.ServiceStatusAPIView.as_view(),
+        name="monitoring_service_status",
     ),
     # Tenant Management
     path("platform/tenants/", admin_views.TenantListView.as_view(), name="admin_tenant_list"),
