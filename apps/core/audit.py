@@ -388,6 +388,26 @@ def log_login_attempt(username, user=None, success=True, failure_reason=None, re
         ),
     )
 
+    # Track login attempt for security monitoring (only if failed)
+    if not success and ip_address:
+        try:
+            from apps.core.security_monitoring import IPTracker
+
+            IPTracker.track_login_attempt(ip_address, username, success=False)
+        except Exception as e:
+            # Don't let security monitoring break the login flow
+            logger.debug(f"Error tracking login attempt for security monitoring: {e}")
+
+    # Detect new location login (only if successful and user exists)
+    if success and user and ip_address:
+        try:
+            from apps.core.security_monitoring import SuspiciousActivityDetector
+
+            SuspiciousActivityDetector.detect_new_location_login(user, ip_address)
+        except Exception as e:
+            # Don't let security monitoring break the login flow
+            logger.debug(f"Error detecting new location login: {e}")
+
 
 def log_logout(user, request=None):
     """

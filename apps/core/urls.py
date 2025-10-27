@@ -9,6 +9,7 @@ from . import (
     branch_views,
     dashboard_views,
     monitoring_views,
+    security_views,
     settings_views,
     stripe_webhooks,
     subscription_views,
@@ -257,6 +258,78 @@ urlpatterns = [
         "platform/api/audit-logs/stats/",
         audit_views.AuditLogStatsAPIView.as_view(),
         name="audit_log_stats_api",
+    ),
+    # Security Monitoring
+    path(
+        "platform/security/dashboard/",
+        security_views.security_dashboard,
+        name="security_dashboard",
+    ),
+    path(
+        "platform/security/flagged-ips/",
+        security_views.flagged_ips_list,
+        name="flagged_ips_list",
+    ),
+    path(
+        "platform/security/flag-ip/",
+        security_views.flag_ip,
+        name="flag_ip",
+    ),
+    path(
+        "platform/security/unflag-ip/",
+        security_views.unflag_ip,
+        name="unflag_ip",
+    ),
+    path(
+        "platform/security/users/<int:user_id>/sessions/",
+        security_views.user_sessions,
+        name="user_sessions",
+    ),
+    path(
+        "platform/security/users/<int:user_id>/force-logout/",
+        security_views.force_logout_user,
+        name="force_logout_user",
+    ),
+    path(
+        "platform/security/brute-force-status/",
+        security_views.brute_force_status,
+        name="brute_force_status",
+    ),
+    path(
+        "platform/security/users/<int:user_id>/unlock/",
+        security_views.unlock_account,
+        name="unlock_account",
+    ),
+    path(
+        "platform/security/users/<int:user_id>/lock/",
+        security_views.lock_account,
+        name="lock_account",
+    ),
+    path(
+        "platform/security/suspicious-activity/",
+        security_views.suspicious_activity_report,
+        name="suspicious_activity_report",
+    ),
+    # Security Monitoring API
+    path(
+        "platform/api/security/stats/",
+        security_views.api_security_stats,
+        name="api_security_stats",
+    ),
+    path(
+        "platform/api/security/check-ip/<str:ip_address>/",
+        security_views.api_check_ip,
+        name="api_check_ip",
+    ),
+    path(
+        "platform/api/security/users/<int:user_id>/sessions/",
+        security_views.api_user_sessions,
+        name="api_user_sessions",
+    ),
+    path(
+        "platform/api/security/users/<int:user_id>/detect-suspicious/",
+        security_views.api_detect_suspicious_activity,
+        name="api_detect_suspicious_activity",
     ),
     # Tenant Subscription Management
     path(
