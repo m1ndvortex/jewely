@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from . import (
     admin_views,
+    alert_views,
     branch_views,
     dashboard_views,
     monitoring_views,
@@ -74,6 +75,67 @@ urlpatterns = [
         "platform/monitoring/api/service-status/",
         monitoring_views.ServiceStatusAPIView.as_view(),
         name="monitoring_service_status",
+    ),
+    # Alert Management
+    path(
+        "platform/monitoring/alerts/",
+        alert_views.AlertDashboardView.as_view(),
+        name="alert_dashboard",
+    ),
+    path(
+        "platform/monitoring/alerts/rules/",
+        alert_views.AlertRuleListView.as_view(),
+        name="alert_rule_list",
+    ),
+    path(
+        "platform/monitoring/alerts/rules/create/",
+        alert_views.AlertRuleCreateView.as_view(),
+        name="alert_rule_create",
+    ),
+    path(
+        "platform/monitoring/alerts/rules/<uuid:pk>/",
+        alert_views.AlertRuleUpdateView.as_view(),
+        name="alert_rule_update",
+    ),
+    path(
+        "platform/monitoring/alerts/rules/<uuid:pk>/delete/",
+        alert_views.AlertRuleDeleteView.as_view(),
+        name="alert_rule_delete",
+    ),
+    path(
+        "platform/monitoring/alerts/rules/<uuid:pk>/toggle/",
+        alert_views.AlertRuleToggleView.as_view(),
+        name="alert_rule_toggle",
+    ),
+    path(
+        "platform/monitoring/alerts/history/",
+        alert_views.MonitoringAlertListView.as_view(),
+        name="alert_list",
+    ),
+    path(
+        "platform/monitoring/alerts/history/<uuid:pk>/",
+        alert_views.MonitoringAlertDetailView.as_view(),
+        name="alert_detail",
+    ),
+    path(
+        "platform/monitoring/alerts/history/<uuid:pk>/acknowledge/",
+        alert_views.AlertAcknowledgeView.as_view(),
+        name="alert_acknowledge",
+    ),
+    path(
+        "platform/monitoring/alerts/history/<uuid:pk>/resolve/",
+        alert_views.AlertResolveView.as_view(),
+        name="alert_resolve",
+    ),
+    path(
+        "platform/monitoring/alerts/history/bulk-action/",
+        alert_views.AlertBulkActionView.as_view(),
+        name="alert_bulk_action",
+    ),
+    path(
+        "platform/monitoring/api/alerts/stats/",
+        alert_views.AlertStatsAPIView.as_view(),
+        name="alert_stats_api",
     ),
     # Tenant Management
     path("platform/tenants/", admin_views.TenantListView.as_view(), name="admin_tenant_list"),

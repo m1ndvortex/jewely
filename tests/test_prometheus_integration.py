@@ -7,11 +7,12 @@ Per Requirements 7 and 24:
 - Requirement 24: Monitoring and Observability
 """
 
-import pytest
-import requests
 from django.core.cache import cache
 from django.db import connection
 from django.test import Client, TestCase
+
+import pytest
+import requests
 
 from apps.core.models import Tenant
 

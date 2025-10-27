@@ -8,6 +8,9 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.text import slugify
 
+# Import alert models to register them with Django
+from apps.core.alert_models import AlertDeliveryLog, AlertRule, MonitoringAlert  # noqa: F401
+
 
 class Tenant(models.Model):
     """

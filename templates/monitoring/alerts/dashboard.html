@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Alert Dashboard - Monitoring{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Alert Dashboard</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Monitor and manage system alerts</p>
+    </div>
+
+    <!-- Alert Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Active Alerts</p>
+                    <p class="text-3xl font-bold text-red-600">{{ stats.active_count }}</p>
+                </div>
+                <div class="p-3 bg-red-100 dark:bg-red-900 rounded-full">
+                    <svg class="w-8 h-8 text-red-600 dark:text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Acknowledged</p>
+                    <p class="text-3xl font-bold text-yellow-600">{{ stats.acknowledged_count }}</p>
+                </div>
+                <div class="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-full">
+                    <svg class="w-8 h-8 text-yellow-600 dark:text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Resolved Today</p>
+                    <p class="text-3xl font-bold text-green-600">{{ stats.resolved_today }}</p>
+                </div>
+                <div class="p-3 bg-green-100 dark:bg-green-900 rounded-full">
+                    <svg class="w-8 h-8 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Escalated</p>
+                    <p class="text-3xl font-bold text-purple-600">{{ stats.escalated_count }}</p>
+                </div>
+                <div class="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+                    <svg class="w-8 h-8 text-purple-600 dark:text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+            <div class="flex flex-wrap gap-4">
+                <a href="{% url 'monitoring:alert_rule_create' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-plus mr-2"></i>Create Alert Rule
+                </a>
+                <a href="{% url 'monitoring:alert_rule_list' %}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-list mr-2"></i>View All Rules
+                </a>
+                <a href="{% url 'monitoring:alert_list' %}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-history mr-2"></i>Alert History
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Alerts -->
+    {% if active_alerts %}
+    <div class="mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4 text-red-600">Active Alerts ({{ active_alerts|length }})</h2>
+            <div class="space-y-4">
+                {% for alert in active_alerts %}
+                <div class="border-l-4 {% if alert.alert_rule.severity == 'CRITICAL' %}border-red-600{% elif alert.alert_rule.severity == 'ERROR' %}border-orange-600{% elif alert.alert_rule.severity == 'WARNING' %}border-yellow-600{% else %}border-blue-600{% endif %} bg-gray-50 dark:bg-gray-700 p-4">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center">
+                                <span class="px-2 py-1 text-xs font-semibold rounded {% if alert.alert_rule.severity == 'CRITICAL' %}bg-red-600 text-white{% elif alert.alert_rule.severity == 'ERROR' %}bg-orange-600 text-white{% elif alert.alert_rule.severity == 'WARNING' %}bg-yellow-600 text-white{% else %}bg-blue-600 text-white{% endif %}">
+                                    {{ alert.alert_rule.get_severity_display }}
+                                </span>
+                                <span class="ml-2 text-sm font-medium">{{ alert.alert_rule.name }}</span>
+                            </div>
+                            <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">{{ alert.message }}</p>
+                            <p class="mt-1 text-xs text-gray-500">{{ alert.created_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+                        <div class="ml-4 flex gap-2">
+                            <form method="post" action="{% url 'monitoring:alert_acknowledge' alert.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="px-3 py-1 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                                    Acknowledge
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'monitoring:alert_resolve' alert.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+                                    Resolve
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if active_alerts|length >= 10 %}
+            <div class="mt-4 text-center">
+                <a href="{% url 'monitoring:alert_list' %}?status=ACTIVE" class="text-blue-600 hover:text-blue-800">
+                    View all active alerts →
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-center py-8">
+                <svg class="mx-auto h-12 w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">No Active Alerts</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">All systems are operating normally.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Alert Rules Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Alert Rules</h2>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Total Rules:</span>
+                    <span class="font-semibold">{{ alert_rules|length }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Enabled Rules:</span>
+                    <span class="font-semibold text-green-600">{{ enabled_rules_count }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Critical Alerts:</span>
+                    <span class="font-semibold text-red-600">{{ critical_alerts }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600 dark:text-gray-400">Warning Alerts:</span>
+                    <span class="font-semibold text-yellow-600">{{ warning_alerts }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Recent Rules</h2>
+            <div class="space-y-2">
+                {% for rule in alert_rules %}
+                <div class="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium">{{ rule.name }}</p>
+                        <p class="text-xs text-gray-500">{{ rule.get_metric_type_display }}</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded {% if rule.is_enabled %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {% if rule.is_enabled %}Enabled{% else %}Disabled{% endif %}
+                    </span>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">No alert rules configured yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

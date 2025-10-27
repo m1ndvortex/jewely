@@ -1,0 +1,30 @@
+⚠️ ESCALATED ALERT ⚠️
+
+[{{ rule.get_severity_display }}] {{ rule.name }}
+
+This alert has been escalated because it was not acknowledged within {{ rule.escalate_after_minutes }} minutes.
+IMMEDIATE ATTENTION IS REQUIRED.
+
+Alert Details:
+--------------
+Alert Rule: {{ rule.name }}
+Metric Type: {{ rule.get_metric_type_display }}
+Severity: {{ rule.get_severity_display }}
+Current Value: {{ alert.current_value|floatformat:2 }}
+Threshold: {{ alert.threshold_value|floatformat:2 }}
+Alert Created: {{ alert.created_at|date:"Y-m-d H:i:s" }}
+Escalated At: {{ alert.escalated_at|date:"Y-m-d H:i:s" }}
+
+Message:
+{{ alert.message }}
+
+{% if rule.description %}
+Description:
+{{ rule.description }}
+{% endif %}
+
+View Monitoring Dashboard: {{ dashboard_url }}
+
+---
+This is an escalated alert from your monitoring system.
+Please take immediate action.

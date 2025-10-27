@@ -1,0 +1,26 @@
+[{{ rule.get_severity_display }}] Monitoring Alert: {{ rule.name }}
+
+A monitoring alert has been triggered on your system.
+
+Alert Details:
+--------------
+Alert Rule: {{ rule.name }}
+Metric Type: {{ rule.get_metric_type_display }}
+Severity: {{ rule.get_severity_display }}
+Current Value: {{ alert.current_value|floatformat:2 }}
+Threshold: {{ alert.threshold_value|floatformat:2 }}
+Time: {{ alert.created_at|date:"Y-m-d H:i:s" }}
+
+Message:
+{{ alert.message }}
+
+{% if rule.description %}
+Description:
+{{ rule.description }}
+{% endif %}
+
+View Monitoring Dashboard: {{ dashboard_url }}
+
+---
+This is an automated alert from your monitoring system.
+Please do not reply to this email.

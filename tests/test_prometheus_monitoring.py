@@ -4,8 +4,9 @@ Tests for Prometheus monitoring integration.
 Per Requirements 7 and 24 - System Monitoring and Observability
 """
 
-import pytest
 from django.test import Client, TestCase
+
+import pytest
 
 
 class PrometheusMetricsTestCase(TestCase):

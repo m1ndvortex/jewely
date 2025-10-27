@@ -64,6 +64,9 @@ INSTALLED_APPS = [
 # Site ID for django-allauth
 SITE_ID = 1
 
+# Site URL for email templates and notifications
+SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
+
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",  # Must be first
     "django.middleware.security.SecurityMiddleware",

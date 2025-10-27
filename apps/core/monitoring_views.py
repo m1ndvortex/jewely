@@ -25,6 +25,8 @@ import redis
 from celery.app.control import Inspect
 
 from apps.core.admin_views import PlatformAdminRequiredMixin
+from apps.core.alert_models import AlertRule
+from apps.core.alert_service import AlertService
 
 
 class MonitoringDashboardView(PlatformAdminRequiredMixin, TemplateView):
@@ -152,6 +154,9 @@ class SystemMetricsAPIView(PlatformAdminRequiredMixin, View):
         cpu_percent = psutil.cpu_percent(interval=1, percpu=False)
         cpu_count = psutil.cpu_count()
         cpu_freq = psutil.cpu_freq()
+
+        # Check for alerts
+        AlertService.check_metric(AlertRule.CPU_USAGE, cpu_percent)
 
         return {
             "usage_percent": round(cpu_percent, 2),

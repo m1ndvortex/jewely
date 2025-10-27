@@ -89,6 +89,30 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=6, minute=0, day_of_week=1),
         "options": {"queue": "reports", "priority": 3},
     },
+    # Check system metrics for alerts every 5 minutes
+    "check-system-metrics": {
+        "task": "check_system_metrics",
+        "schedule": 300.0,  # Every 5 minutes (300 seconds)
+        "options": {"queue": "monitoring", "priority": 9},
+    },
+    # Check service health every 5 minutes
+    "check-service-health": {
+        "task": "check_service_health",
+        "schedule": 300.0,  # Every 5 minutes (300 seconds)
+        "options": {"queue": "monitoring", "priority": 9},
+    },
+    # Check for alert escalations every 5 minutes
+    "check-alert-escalations": {
+        "task": "check_alert_escalations",
+        "schedule": 300.0,  # Every 5 minutes (300 seconds)
+        "options": {"queue": "monitoring", "priority": 8},
+    },
+    # Auto-resolve alerts every 10 minutes
+    "auto-resolve-alerts": {
+        "task": "auto_resolve_alerts",
+        "schedule": 600.0,  # Every 10 minutes (600 seconds)
+        "options": {"queue": "monitoring", "priority": 7},
+    },
 }
 
 # Task routing configuration
@@ -97,6 +121,11 @@ app.conf.task_routes = {
     "apps.notifications.tasks.*": {"queue": "notifications", "priority": 5},
     "apps.pricing.tasks.*": {"queue": "pricing", "priority": 8},
     "apps.reporting.tasks.*": {"queue": "reports", "priority": 7},
+    "apps.core.alert_tasks.*": {"queue": "monitoring", "priority": 9},
+    "check_system_metrics": {"queue": "monitoring", "priority": 9},
+    "check_service_health": {"queue": "monitoring", "priority": 9},
+    "check_alert_escalations": {"queue": "monitoring", "priority": 8},
+    "auto_resolve_alerts": {"queue": "monitoring", "priority": 7},
 }
 
 
