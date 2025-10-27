@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Audit Log Detail - Platform Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Audit Log Detail</h1>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Detailed information about this audit log entry
+                </p>
+            </div>
+            <a
+                href="{% url 'core:audit_log_explorer' %}"
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+                Back to Explorer
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Details -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Timestamp -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Timestamp
+                    </label>
+                    <div class="text-lg text-gray-900 dark:text-white">
+                        {{ audit_log.timestamp|date:"Y-m-d H:i:s" }}
+                    </div>
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Category
+                    </label>
+                    <div>
+                        <span class="px-3 py-1 text-sm font-medium rounded-full
+                            {% if audit_log.category == 'ADMIN' %}bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
+                            {% elif audit_log.category == 'SECURITY' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                            {% elif audit_log.category == 'USER' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                            {% elif audit_log.category == 'DATA' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                            {% else %}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">
+                            {{ audit_log.get_category_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Action -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Action
+                    </label>
+                    <div class="text-lg text-gray-900 dark:text-white">
+                        {{ audit_log.get_action_display }}
+                    </div>
+                </div>
+
+                <!-- Severity -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Severity
+                    </label>
+                    <div>
+                        <span class="px-3 py-1 text-sm font-medium rounded-full
+                            {% if audit_log.severity == 'CRITICAL' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                            {% elif audit_log.severity == 'ERROR' %}bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200
+                            {% elif audit_log.severity == 'WARNING' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                            {% else %}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">
+                            {{ audit_log.get_severity_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- User -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        User
+                    </label>
+                    <div class="text-lg text-gray-900 dark:text-white">
+                        {% if audit_log.user %}
+                            {{ audit_log.user.username }} ({{ audit_log.user.email }})
+                        {% else %}
+                            <span class="text-gray-500 dark:text-gray-400">System</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Tenant -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Tenant
+                    </label>
+                    <div class="text-lg text-gray-900 dark:text-white">
+                        {% if audit_log.tenant %}
+                            {{ audit_log.tenant.company_name }}
+                        {% else %}
+                            <span class="text-gray-500 dark:text-gray-400">Platform</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- IP Address -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        IP Address
+                    </label>
+                    <div class="text-lg text-gray-900 dark:text-white">
+                        {{ audit_log.ip_address|default:"-" }}
+                    </div>
+                </div>
+
+                <!-- Affected Object -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Affected Object
+                    </label>
+                    <div class="text-lg text-gray-900 dark:text-white">
+                        {{ audit_log.get_affected_object_display }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mt-6">
+                <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Description
+                </label>
+                <div class="text-gray-900 dark:text-white p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    {{ audit_log.description }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Details -->
+    {% if audit_log.request_method or audit_log.request_path %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Request Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% if audit_log.request_method %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Method
+                    </label>
+                    <div class="text-gray-900 dark:text-white">
+                        {{ audit_log.request_method }}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if audit_log.request_path %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Path
+                    </label>
+                    <div class="text-gray-900 dark:text-white font-mono text-sm">
+                        {{ audit_log.request_path }}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if audit_log.response_status %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Response Status
+                    </label>
+                    <div class="text-gray-900 dark:text-white">
+                        {{ audit_log.response_status }}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if audit_log.user_agent %}
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        User Agent
+                    </label>
+                    <div class="text-gray-900 dark:text-white text-sm break-all">
+                        {{ audit_log.user_agent }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Data Changes -->
+    {% if audit_log.old_values or audit_log.new_values %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Data Changes</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% if audit_log.old_values %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                        Old Values
+                    </label>
+                    <pre class="text-sm text-gray-900 dark:text-white p-4 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-x-auto">{{ audit_log.old_values|pprint }}</pre>
+                </div>
+                {% endif %}
+
+                {% if audit_log.new_values %}
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                        New Values
+                    </label>
+                    <pre class="text-sm text-gray-900 dark:text-white p-4 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-x-auto">{{ audit_log.new_values|pprint }}</pre>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Request Parameters -->
+    {% if audit_log.request_params %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Request Parameters</h2>
+            <pre class="text-sm text-gray-900 dark:text-white p-4 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-x-auto">{{ audit_log.request_params|pprint }}</pre>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Metadata -->
+    {% if audit_log.metadata %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Additional Metadata</h2>
+            <pre class="text-sm text-gray-900 dark:text-white p-4 bg-gray-50 dark:bg-gray-900 rounded-lg overflow-x-auto">{{ audit_log.metadata|pprint }}</pre>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Related Logs -->
+    {% if related_logs %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Related Logs (Same User, Same Day)</h2>
+            <div class="space-y-2">
+                {% for log in related_logs %}
+                <a href="{% url 'core:audit_log_detail' log.pk %}" class="block p-3 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ log.timestamp|date:"H:i:s" }}</span>
+                            <span class="ml-2 text-sm font-medium text-gray-900 dark:text-white">{{ log.get_action_display }}</span>
+                            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">{{ log.description|truncatewords:10 }}</span>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium rounded-full
+                            {% if log.severity == 'CRITICAL' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                            {% elif log.severity == 'ERROR' %}bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200
+                            {% elif log.severity == 'WARNING' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                            {% else %}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">
+                            {{ log.get_severity_display }}
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Related Data Changes -->
+    {% if related_data_changes %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Related Data Changes</h2>
+            <div class="space-y-2">
+                {% for change in related_data_changes %}
+                <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">{{ change.timestamp|date:"Y-m-d H:i:s" }}</span>
+                            <span class="ml-2 text-sm font-medium text-gray-900 dark:text-white">{{ change.get_change_type_display }}</span>
+                            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">by {{ change.user.username|default:"System" }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

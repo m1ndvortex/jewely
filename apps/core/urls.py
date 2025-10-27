@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from . import (
     admin_views,
     alert_views,
+    audit_views,
     branch_views,
     dashboard_views,
     monitoring_views,
@@ -210,6 +211,52 @@ urlpatterns = [
         "platform/subscription-plans/<uuid:pk>/activate/",
         subscription_views.SubscriptionPlanActivateView.as_view(),
         name="admin_subscription_plan_activate",
+    ),
+    # Audit Log Explorer
+    path(
+        "platform/audit-logs/",
+        audit_views.AuditLogExplorerView.as_view(),
+        name="audit_log_explorer",
+    ),
+    path(
+        "platform/audit-logs/<uuid:pk>/",
+        audit_views.AuditLogDetailView.as_view(),
+        name="audit_log_detail",
+    ),
+    path(
+        "platform/audit-logs/export/",
+        audit_views.AuditLogExportView.as_view(),
+        name="audit_log_export",
+    ),
+    path(
+        "platform/audit-logs/login-attempts/",
+        audit_views.LoginAttemptExplorerView.as_view(),
+        name="login_attempt_explorer",
+    ),
+    path(
+        "platform/audit-logs/data-changes/",
+        audit_views.DataChangeLogExplorerView.as_view(),
+        name="data_change_explorer",
+    ),
+    path(
+        "platform/audit-logs/api-requests/",
+        audit_views.APIRequestLogExplorerView.as_view(),
+        name="api_request_explorer",
+    ),
+    path(
+        "platform/audit-logs/retention/",
+        audit_views.AuditLogRetentionView.as_view(),
+        name="audit_log_retention",
+    ),
+    path(
+        "platform/audit-logs/retention/execute/",
+        audit_views.AuditLogRetentionExecuteView.as_view(),
+        name="audit_log_retention_execute",
+    ),
+    path(
+        "platform/api/audit-logs/stats/",
+        audit_views.AuditLogStatsAPIView.as_view(),
+        name="audit_log_stats_api",
     ),
     # Tenant Subscription Management
     path(

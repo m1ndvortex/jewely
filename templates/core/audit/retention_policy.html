@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Audit Log Retention Policy - Platform Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Audit Log Retention Policy</h1>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Manage log retention and cleanup policies
+                </p>
+            </div>
+            <a
+                href="{% url 'core:audit_log_explorer' %}"
+                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+                Back to Explorer
+            </a>
+        </div>
+    </div>
+
+    <!-- Warning Banner -->
+    <div class="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-yellow-700 dark:text-yellow-200">
+                    <strong>Important:</strong> Deleting audit logs is permanent and cannot be undone. Ensure you have proper backups before executing retention policies. Minimum retention period is 30 days for compliance.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Audit Logs -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Audit Logs</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Total:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stats.total|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 30 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stats.last_30_days|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 90 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stats.last_90_days|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last year:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stats.last_year|default:0 }}</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Older than 1 year:</span>
+                    <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ stats.older_than_year|default:0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Attempts -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Login Attempts</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Total:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ login_stats.total|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 30 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ login_stats.last_30_days|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 90 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ login_stats.last_90_days|default:0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Changes -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Data Changes</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Total:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ data_change_stats.total|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 30 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ data_change_stats.last_30_days|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 90 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ data_change_stats.last_90_days|default:0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Requests -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">API Requests</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Total:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ api_stats.total|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 30 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ api_stats.last_30_days|default:0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Last 90 days:</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ api_stats.last_90_days|default:0 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Retention Policy Configuration -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Execute Retention Policy</h2>
+
+            <form id="retentionForm" class="space-y-6">
+                {% csrf_token %}
+
+                <!-- Log Type Selection -->
+                <div>
+                    <label for="log_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Log Type
+                    </label>
+                    <select
+                        id="log_type"
+                        name="log_type"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                        <option value="all">All Log Types</option>
+                        <option value="audit_logs">Audit Logs Only</option>
+                        <option value="login_attempts">Login Attempts Only</option>
+                        <option value="data_changes">Data Changes Only</option>
+                        <option value="api_requests">API Requests Only</option>
+                    </select>
+                </div>
+
+                <!-- Retention Days -->
+                <div>
+                    <label for="retention_days" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Retention Period (Days)
+                    </label>
+                    <input
+                        type="number"
+                        id="retention_days"
+                        name="retention_days"
+                        min="30"
+                        value="365"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    />
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Logs older than this many days will be deleted. Minimum: 30 days.
+                    </p>
+                </div>
+
+                <!-- Quick Presets -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Quick Presets
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="document.getElementById('retention_days').value = 90" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                            90 Days
+                        </button>
+                        <button type="button" onclick="document.getElementById('retention_days').value = 180" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                            180 Days
+                        </button>
+                        <button type="button" onclick="document.getElementById('retention_days').value = 365" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                            1 Year
+                        </button>
+                        <button type="button" onclick="document.getElementById('retention_days').value = 730" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                            2 Years
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Confirmation -->
+                <div class="flex items-start">
+                    <input
+                        type="checkbox"
+                        id="confirm"
+                        required
+                        class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label for="confirm" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                        I understand that this action is permanent and cannot be undone. I have verified the retention period and log type selection.
+                    </label>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex gap-4">
+                    <button
+                        type="submit"
+                        class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 font-medium"
+                    >
+                        Execute Retention Policy
+                    </button>
+                    <button
+                        type="button"
+                        onclick="document.getElementById('retentionForm').reset()"
+                        class="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                    >
+                        Reset
+                    </button>
+                </div>
+            </form>
+
+            <!-- Result Message -->
+            <div id="resultMessage" class="mt-6 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Recommended Retention Policies -->
+    <div class="mt-8 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">Recommended Retention Policies</h3>
+                <div class="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>Security Events:</strong> Keep for at least 1 year for compliance and forensics</li>
+                        <li><strong>Admin Actions:</strong> Keep for at least 1 year for audit trails</li>
+                        <li><strong>Login Attempts:</strong> Keep for 90 days for security monitoring</li>
+                        <li><strong>API Requests:</strong> Keep for 30-90 days for debugging and analytics</li>
+                        <li><strong>Data Changes:</strong> Keep for 1 year for compliance and rollback capability</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('retentionForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const resultDiv = document.getElementById('resultMessage');
+    
+    // Show loading state
+    resultDiv.className = 'mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 rounded';
+    resultDiv.innerHTML = '<p class="text-blue-700 dark:text-blue-300">Executing retention policy...</p>';
+    resultDiv.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('{% url "core:audit_log_retention_execute" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.className = 'mt-6 p-4 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-400 rounded';
+            let message = '<p class="text-green-700 dark:text-green-300 font-medium">' + data.message + '</p>';
+            message += '<div class="mt-2 text-sm text-green-600 dark:text-green-400"><strong>Deleted counts:</strong><ul class="list-disc list-inside mt-1">';
+            for (const [key, value] of Object.entries(data.deleted_counts)) {
+                message += '<li>' + key + ': ' + value + ' records</li>';
+            }
+            message += '</ul></div>';
+            resultDiv.innerHTML = message;
+            
+            // Reload page after 3 seconds to show updated stats
+            setTimeout(() => window.location.reload(), 3000);
+        } else {
+            throw new Error(data.error || 'Unknown error occurred');
+        }
+    } catch (error) {
+        resultDiv.className = 'mt-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 rounded';
+        resultDiv.innerHTML = '<p class="text-red-700 dark:text-red-300"><strong>Error:</strong> ' + error.message + '</p>';
+    }
+});
+</script>
+{% endblock %}

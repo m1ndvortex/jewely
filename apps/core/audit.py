@@ -223,8 +223,8 @@ def log_tenant_action(action, tenant, user=None, old_values=None, new_values=Non
         new_values=new_values,
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -269,8 +269,8 @@ def log_user_action(
         new_values=new_values,
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -315,8 +315,8 @@ def log_subscription_action(
         new_values=new_values,
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -379,8 +379,8 @@ def log_login_attempt(username, user=None, success=True, failure_reason=None, re
         description=description,
         ip_address=ip_address,
         user_agent=user_agent,
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
         metadata=(
             {"username": username, "failure_reason": failure_reason}
             if not success
@@ -408,8 +408,8 @@ def log_logout(user, request=None):
         description=f"User logged out: {user.username}",
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -432,8 +432,8 @@ def log_password_change(user, request=None):
         description=f"Password changed: {user.username}",
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -464,8 +464,8 @@ def log_password_reset(user, action="request", request=None):
         description=description,
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -506,8 +506,8 @@ def log_mfa_action(user, action, success=True, request=None):
         description=description,
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -585,8 +585,8 @@ def log_data_change(instance, change_type, user=None, field_changes=None, reques
         new_values=new_values if new_values else None,
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -730,8 +730,8 @@ def log_security_event(
         description=description,
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
         metadata=metadata,
     )
 
@@ -791,8 +791,8 @@ def log_impersonation_start(hijacker, hijacked, request=None):
         },
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -846,8 +846,8 @@ def log_impersonation_end(hijacker, hijacked, request=None):
         },
         ip_address=get_client_ip(request) if request else None,
         user_agent=request.META.get("HTTP_USER_AGENT", "") if request else "",
-        request_method=request.method if request else "",
-        request_path=request.path if request else "",
+        request_method=request.method if request else "SYSTEM",
+        request_path=request.path if request else "/",
     )
 
 
@@ -856,17 +856,35 @@ def log_impersonation_end(hijacker, hijacked, request=None):
 # ============================================================================
 
 
-def get_model_changes(instance, original_values=None):
+def get_model_changes(instance, original_values=None):  # noqa: C901
     """
     Get field changes for a model instance.
 
     Args:
         instance: Model instance
-        original_values: Dictionary of original field values
+        original_values: Dictionary of original field values (already serialized)
 
     Returns:
         Dictionary of field changes {field: {old: value, new: value}}
     """
+    from datetime import date, datetime
+    from decimal import Decimal
+    from uuid import UUID
+
+    def serialize_value(value):
+        """Convert value to JSON-serializable format."""
+        if value is None:
+            return None
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        if isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, UUID):
+            return str(value)
+        if hasattr(value, "pk"):  # Model instance
+            return str(value.pk)
+        return value
+
     if not original_values:
         return {}
 
@@ -874,8 +892,9 @@ def get_model_changes(instance, original_values=None):
     for field in instance._meta.fields:
         field_name = field.name
         if field_name in original_values:
+            # old_value is already serialized from audit_signals
             old_value = original_values[field_name]
-            new_value = getattr(instance, field_name)
+            new_value = serialize_value(getattr(instance, field_name))
 
             # Convert to string for comparison
             old_str = str(old_value) if old_value is not None else None
@@ -883,8 +902,8 @@ def get_model_changes(instance, original_values=None):
 
             if old_str != new_str:
                 changes[field_name] = {
-                    "old": old_value,
-                    "new": new_value,
+                    "old": old_value,  # Already serialized
+                    "new": new_value,  # Newly serialized
                 }
 
     return changes

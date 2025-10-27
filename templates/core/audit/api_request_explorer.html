@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}API Requests - Platform Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">API Request Log</h1>
+        <p class="text-gray-600 dark:text-gray-400">Monitor API usage and performance</p>
+    </div>
+
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Requests</div>
+            <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_count|default:0 }}</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Errors (4xx/5xx)</div>
+            <div class="text-2xl font-bold text-red-600">{{ error_count|default:0 }}</div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-6">
+        <form method="get" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <select name="method" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                    <option value="">All Methods</option>
+                    {% for method in methods %}
+                    <option value="{{ method }}" {% if current_filters.method == method %}selected{% endif %}>{{ method }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="path" value="{{ current_filters.path }}" placeholder="Path" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white" />
+                <select name="status_range" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                    <option value="">All Status Codes</option>
+                    <option value="2xx" {% if current_filters.status_range == '2xx' %}selected{% endif %}>2xx Success</option>
+                    <option value="4xx" {% if current_filters.status_range == '4xx' %}selected{% endif %}>4xx Client Error</option>
+                    <option value="5xx" {% if current_filters.status_range == '5xx' %}selected{% endif %}>5xx Server Error</option>
+                </select>
+                <label class="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700">
+                    <input type="checkbox" name="slow_only" value="1" {% if current_filters.slow_only %}checked{% endif %} class="mr-2" />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Slow Only (>1s)</span>
+                </label>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Apply Filters</button>
+                <a href="{% url 'core:api_request_explorer' %}" class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Timestamp</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Method</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Path</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Response Time</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {% for request in api_requests %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ request.timestamp|date:"Y-m-d H:i:s" }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                            {{ request.method }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-white font-mono">{{ request.path|truncatechars:50 }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full
+                            {% if request.is_successful %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                            {% elif request.is_client_error %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                            {% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+                            {{ request.status_code }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm {% if request.response_time_ms > 1000 %}text-red-600 dark:text-red-400 font-medium{% else %}text-gray-900 dark:text-white{% endif %}">
+                        {{ request.response_time_ms }}ms
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ request.user.username|default:"Anonymous" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No API requests found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

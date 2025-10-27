@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Audit Log Explorer - Platform Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Audit Log Explorer</h1>
+        <p class="text-gray-600 dark:text-gray-400">
+            Comprehensive audit trail of all system actions and events
+        </p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Logs</div>
+            <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_count|default:0 }}</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Admin Actions</div>
+            <div class="text-2xl font-bold text-blue-600">{{ category_counts.ADMIN|default:0 }}</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Security Events</div>
+            <div class="text-2xl font-bold text-red-600">{{ category_counts.SECURITY|default:0 }}</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Critical</div>
+            <div class="text-2xl font-bold text-orange-600">{{ severity_counts.CRITICAL|default:0 }}</div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+        <div class="p-6">
+            <form method="get" action="{% url 'core:audit_log_explorer' %}" class="space-y-4">
+                <!-- Search Bar -->
+                <div>
+                    <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Search
+                    </label>
+                    <input
+                        type="text"
+                        name="q"
+                        id="search"
+                        value="{{ current_filters.q }}"
+                        placeholder="Search by description, user, IP address..."
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    />
+                </div>
+
+                <!-- Quick Filters -->
+                <div class="flex flex-wrap gap-2">
+                    <button type="submit" name="quick_filter" value="today" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                        Today
+                    </button>
+                    <button type="submit" name="quick_filter" value="yesterday" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                        Yesterday
+                    </button>
+                    <button type="submit" name="quick_filter" value="last_7_days" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                        Last 7 Days
+                    </button>
+                    <button type="submit" name="quick_filter" value="last_30_days" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                        Last 30 Days
+                    </button>
+                    <button type="submit" name="quick_filter" value="last_90_days" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                        Last 90 Days
+                    </button>
+                </div>
+
+                <!-- Advanced Filters -->
+                <details class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                        Advanced Filters
+                    </summary>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Category Filter -->
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Category
+                            </label>
+                            <select
+                                name="category"
+                                id="category"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="">All Categories</option>
+                                {% for value, label in categories %}
+                                <option value="{{ value }}" {% if current_filters.category == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Action Filter -->
+                        <div>
+                            <label for="action" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Action
+                            </label>
+                            <select
+                                name="action"
+                                id="action"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="">All Actions</option>
+                                {% for value, label in actions %}
+                                <option value="{{ value }}" {% if current_filters.action == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Severity Filter -->
+                        <div>
+                            <label for="severity" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Severity
+                            </label>
+                            <select
+                                name="severity"
+                                id="severity"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            >
+                                <option value="">All Severities</option>
+                                {% for value, label in severities %}
+                                <option value="{{ value }}" {% if current_filters.severity == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Date From -->
+                        <div>
+                            <label for="date_from" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Date From
+                            </label>
+                            <input
+                                type="date"
+                                name="date_from"
+                                id="date_from"
+                                value="{{ current_filters.date_from }}"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            />
+                        </div>
+
+                        <!-- Date To -->
+                        <div>
+                            <label for="date_to" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Date To
+                            </label>
+                            <input
+                                type="date"
+                                name="date_to"
+                                id="date_to"
+                                value="{{ current_filters.date_to }}"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            />
+                        </div>
+
+                        <!-- IP Address -->
+                        <div>
+                            <label for="ip" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                IP Address
+                            </label>
+                            <input
+                                type="text"
+                                name="ip"
+                                id="ip"
+                                value="{{ current_filters.ip }}"
+                                placeholder="e.g., 192.168.1.1"
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            />
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <button
+                        type="submit"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
+                    >
+                        Apply Filters
+                    </button>
+                    <a
+                        href="{% url 'core:audit_log_explorer' %}"
+                        class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                    >
+                        Clear Filters
+                    </a>
+                    <a
+                        href="{% url 'core:audit_log_export' %}?{{ request.GET.urlencode }}"
+                        class="ml-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500"
+                    >
+                        Export to CSV
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Audit Logs Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Timestamp
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Category
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Action
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            User
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Description
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            IP Address
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Severity
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for log in audit_logs %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onclick="window.location='{% url 'core:audit_log_detail' log.pk %}'">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ log.timestamp|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full
+                                {% if log.category == 'ADMIN' %}bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
+                                {% elif log.category == 'SECURITY' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                {% elif log.category == 'USER' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                {% elif log.category == 'DATA' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                {% else %}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">
+                                {{ log.get_category_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ log.get_action_display }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {% if log.user %}
+                                {{ log.user.username }}
+                            {% else %}
+                                <span class="text-gray-500 dark:text-gray-400">System</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                            {{ log.description|truncatewords:15 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ log.ip_address|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full
+                                {% if log.severity == 'CRITICAL' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                {% elif log.severity == 'ERROR' %}bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200
+                                {% elif log.severity == 'WARNING' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                {% else %}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">
+                                {{ log.get_severity_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            No audit logs found matching your filters.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Previous
+                </a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                        Showing
+                        <span class="font-medium">{{ page_obj.start_index }}</span>
+                        to
+                        <span class="font-medium">{{ page_obj.end_index }}</span>
+                        of
+                        <span class="font-medium">{{ page_obj.paginator.count }}</span>
+                        results
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            Previous
+                        </a>
+                        {% endif %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                        {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            Next
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Links -->
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <a href="{% url 'core:login_attempt_explorer' %}" class="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-1">Login Attempts</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">View all login attempts and failures</p>
+        </a>
+        <a href="{% url 'core:data_change_explorer' %}" class="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-1">Data Changes</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Track all data modifications</p>
+        </a>
+        <a href="{% url 'core:api_request_explorer' %}" class="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-1">API Requests</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Monitor API usage and performance</p>
+        </a>
+        <a href="{% url 'core:audit_log_retention' %}" class="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-1">Retention Policy</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Manage log retention settings</p>
+        </a>
+    </div>
+</div>
+{% endblock %}
