@@ -11,4 +11,6 @@ class CoreConfig(AppConfig):
         Import signal handlers when the app is ready.
         """
         # Import hijack signal handlers to register them
+        # Import audit signal handlers to register them
+        import apps.core.audit_signals  # noqa: F401
         import apps.core.hijack_signals  # noqa: F401

@@ -82,6 +82,8 @@ MIDDLEWARE = [
     "hijack.middleware.HijackUserMiddleware",
     # Tenant context middleware - must be after AuthenticationMiddleware
     "apps.core.middleware.TenantContextMiddleware",
+    # Audit logging middleware - must be after TenantContextMiddleware
+    "apps.core.audit_middleware.AuditLoggingMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",  # Must be last
 ]
 

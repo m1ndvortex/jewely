@@ -11,6 +11,14 @@ from django.utils.text import slugify
 # Import alert models to register them with Django
 from apps.core.alert_models import AlertDeliveryLog, AlertRule, MonitoringAlert  # noqa: F401
 
+# Import audit models to register them with Django
+from apps.core.audit_models import (  # noqa: F401
+    APIRequestLog,
+    AuditLog,
+    DataChangeLog,
+    LoginAttempt,
+)
+
 
 class Tenant(models.Model):
     """

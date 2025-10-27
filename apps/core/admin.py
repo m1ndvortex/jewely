@@ -5,6 +5,8 @@ Django admin configuration for core models.
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
+from apps.core.audit_models import APIRequestLog, AuditLog, DataChangeLog, LoginAttempt
+
 from .models import (
     Branch,
     IntegrationSettings,
@@ -896,3 +898,446 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
         self.message_user(request, f"Successfully deactivated {count} subscription(s).")
 
     deactivate_subscriptions.short_description = "Deactivate selected subscriptions"
+
+
+# ============================================================================
+# Audit Log Admin Interfaces
+# ============================================================================
+
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    """Admin interface for comprehensive audit logs."""
+
+    list_display = [
+        "timestamp",
+        "category",
+        "action",
+        "severity",
+        "user",
+        "tenant",
+        "ip_address",
+        "description_short",
+    ]
+
+    list_filter = [
+        "category",
+        "action",
+        "severity",
+        "timestamp",
+    ]
+
+    search_fields = [
+        "user__username",
+        "tenant__company_name",
+        "description",
+        "ip_address",
+        "request_path",
+    ]
+
+    readonly_fields = [
+        "id",
+        "tenant",
+        "user",
+        "category",
+        "action",
+        "severity",
+        "description",
+        "content_type",
+        "object_id",
+        "old_values",
+        "new_values",
+        "ip_address",
+        "user_agent",
+        "request_method",
+        "request_path",
+        "request_params",
+        "response_status",
+        "metadata",
+        "timestamp",
+    ]
+
+    fieldsets = (
+        (
+            "Action Details",
+            {
+                "fields": (
+                    "id",
+                    "timestamp",
+                    "category",
+                    "action",
+                    "severity",
+                    "description",
+                )
+            },
+        ),
+        (
+            "User & Tenant",
+            {
+                "fields": (
+                    "user",
+                    "tenant",
+                )
+            },
+        ),
+        (
+            "Affected Object",
+            {
+                "fields": (
+                    "content_type",
+                    "object_id",
+                )
+            },
+        ),
+        (
+            "Data Changes",
+            {
+                "fields": (
+                    "old_values",
+                    "new_values",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Request Metadata",
+            {
+                "fields": (
+                    "ip_address",
+                    "user_agent",
+                    "request_method",
+                    "request_path",
+                    "request_params",
+                    "response_status",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Additional Metadata",
+            {
+                "fields": ("metadata",),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-timestamp"]
+
+    def has_add_permission(self, request):
+        """Audit logs cannot be manually added."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Audit logs cannot be modified."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Audit logs cannot be deleted (except by superusers)."""
+        return request.user.is_superuser
+
+    def description_short(self, obj):
+        """Return truncated description."""
+        if len(obj.description) > 100:
+            return obj.description[:100] + "..."
+        return obj.description
+
+    description_short.short_description = "Description"
+
+
+@admin.register(LoginAttempt)
+class LoginAttemptAdmin(admin.ModelAdmin):
+    """Admin interface for login attempts."""
+
+    list_display = [
+        "timestamp",
+        "username",
+        "result",
+        "user",
+        "ip_address",
+        "country",
+    ]
+
+    list_filter = [
+        "result",
+        "timestamp",
+        "country",
+    ]
+
+    search_fields = [
+        "username",
+        "user__username",
+        "ip_address",
+    ]
+
+    readonly_fields = [
+        "id",
+        "user",
+        "username",
+        "result",
+        "ip_address",
+        "user_agent",
+        "country",
+        "city",
+        "timestamp",
+    ]
+
+    fieldsets = (
+        (
+            "Login Details",
+            {
+                "fields": (
+                    "id",
+                    "timestamp",
+                    "username",
+                    "user",
+                    "result",
+                )
+            },
+        ),
+        (
+            "Location",
+            {
+                "fields": (
+                    "ip_address",
+                    "country",
+                    "city",
+                )
+            },
+        ),
+        (
+            "Request Metadata",
+            {
+                "fields": ("user_agent",),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-timestamp"]
+
+    def has_add_permission(self, request):
+        """Login attempts cannot be manually added."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Login attempts cannot be modified."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Login attempts cannot be deleted (except by superusers)."""
+        return request.user.is_superuser
+
+
+@admin.register(DataChangeLog)
+class DataChangeLogAdmin(admin.ModelAdmin):
+    """Admin interface for data change logs."""
+
+    list_display = [
+        "timestamp",
+        "change_type",
+        "object_repr",
+        "user",
+        "tenant",
+    ]
+
+    list_filter = [
+        "change_type",
+        "content_type",
+        "timestamp",
+    ]
+
+    search_fields = [
+        "user__username",
+        "tenant__company_name",
+        "object_repr",
+        "object_id",
+    ]
+
+    readonly_fields = [
+        "id",
+        "tenant",
+        "user",
+        "change_type",
+        "content_type",
+        "object_id",
+        "object_repr",
+        "field_changes",
+        "ip_address",
+        "user_agent",
+        "timestamp",
+    ]
+
+    fieldsets = (
+        (
+            "Change Details",
+            {
+                "fields": (
+                    "id",
+                    "timestamp",
+                    "change_type",
+                    "object_repr",
+                )
+            },
+        ),
+        (
+            "User & Tenant",
+            {
+                "fields": (
+                    "user",
+                    "tenant",
+                )
+            },
+        ),
+        (
+            "Object Details",
+            {
+                "fields": (
+                    "content_type",
+                    "object_id",
+                )
+            },
+        ),
+        (
+            "Field Changes",
+            {
+                "fields": ("field_changes",),
+            },
+        ),
+        (
+            "Request Metadata",
+            {
+                "fields": (
+                    "ip_address",
+                    "user_agent",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-timestamp"]
+
+    def has_add_permission(self, request):
+        """Data change logs cannot be manually added."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Data change logs cannot be modified."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Data change logs cannot be deleted (except by superusers)."""
+        return request.user.is_superuser
+
+
+@admin.register(APIRequestLog)
+class APIRequestLogAdmin(admin.ModelAdmin):
+    """Admin interface for API request logs."""
+
+    list_display = [
+        "timestamp",
+        "method",
+        "path_short",
+        "status_code",
+        "response_time_ms",
+        "user",
+        "tenant",
+    ]
+
+    list_filter = [
+        "method",
+        "status_code",
+        "timestamp",
+    ]
+
+    search_fields = [
+        "user__username",
+        "tenant__company_name",
+        "path",
+        "ip_address",
+    ]
+
+    readonly_fields = [
+        "id",
+        "tenant",
+        "user",
+        "method",
+        "path",
+        "query_params",
+        "request_body",
+        "status_code",
+        "response_time_ms",
+        "response_size_bytes",
+        "ip_address",
+        "user_agent",
+        "timestamp",
+    ]
+
+    fieldsets = (
+        (
+            "Request Details",
+            {
+                "fields": (
+                    "id",
+                    "timestamp",
+                    "method",
+                    "path",
+                    "status_code",
+                    "response_time_ms",
+                    "response_size_bytes",
+                )
+            },
+        ),
+        (
+            "User & Tenant",
+            {
+                "fields": (
+                    "user",
+                    "tenant",
+                )
+            },
+        ),
+        (
+            "Request Data",
+            {
+                "fields": (
+                    "query_params",
+                    "request_body",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Request Metadata",
+            {
+                "fields": (
+                    "ip_address",
+                    "user_agent",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-timestamp"]
+
+    def has_add_permission(self, request):
+        """API request logs cannot be manually added."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """API request logs cannot be modified."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """API request logs cannot be deleted (except by superusers)."""
+        return request.user.is_superuser
+
+    def path_short(self, obj):
+        """Return truncated path."""
+        if len(obj.path) > 50:
+            return obj.path[:50] + "..."
+        return obj.path
+
+    path_short.short_description = "Path"
