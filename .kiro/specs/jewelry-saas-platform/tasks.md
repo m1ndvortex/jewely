@@ -788,7 +788,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 30, 28_
 
 - [ ] 22. Communication & Announcement System
-  - [ ] 22.1 Create announcement models
+  - [x] 22.1 Create announcement models
     - Create Announcement model with title, message, severity, target_filter, channels, scheduled_at
     - Add indexes for efficient querying
     - _Requirements: 31_

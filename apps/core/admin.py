@@ -10,6 +10,13 @@ from waffle.admin import SampleAdmin as BaseSampleAdmin
 from waffle.admin import SwitchAdmin as BaseSwitchAdmin
 from waffle.models import Flag, Sample, Switch
 
+from apps.core.announcement_models import (
+    Announcement,
+    AnnouncementRead,
+    CommunicationLog,
+    CommunicationTemplate,
+    DirectMessage,
+)
 from apps.core.audit_models import APIRequestLog, AuditLog, DataChangeLog, LoginAttempt
 from apps.core.feature_flags import (
     ABTestVariant,
@@ -2136,3 +2143,488 @@ class EmergencyKillSwitchAdmin(admin.ModelAdmin):
         """Optimize queryset with select_related."""
         qs = super().get_queryset(request)
         return qs.select_related("disabled_by", "re_enabled_by")
+
+
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    """Admin interface for Announcement model."""
+
+    list_display = [
+        "title",
+        "severity",
+        "status",
+        "target_all_tenants",
+        "scheduled_at",
+        "sent_at",
+        "created_by",
+        "created_at",
+    ]
+
+    list_filter = [
+        "severity",
+        "status",
+        "target_all_tenants",
+        "requires_acknowledgment",
+        "is_dismissible",
+        "created_at",
+        "scheduled_at",
+    ]
+
+    search_fields = [
+        "title",
+        "message",
+        "created_by__username",
+    ]
+
+    readonly_fields = [
+        "id",
+        "sent_at",
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "title",
+                    "message",
+                    "severity",
+                )
+            },
+        ),
+        (
+            "Targeting",
+            {
+                "fields": (
+                    "target_all_tenants",
+                    "target_filter",
+                )
+            },
+        ),
+        (
+            "Delivery",
+            {
+                "fields": (
+                    "channels",
+                    "scheduled_at",
+                    "sent_at",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Display Settings",
+            {
+                "fields": (
+                    "requires_acknowledgment",
+                    "is_dismissible",
+                    "display_until",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-created_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("created_by")
+
+    def save_model(self, request, obj, form, change):
+        """Set created_by to current user if creating new announcement."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(AnnouncementRead)
+class AnnouncementReadAdmin(admin.ModelAdmin):
+    """Admin interface for AnnouncementRead model."""
+
+    list_display = [
+        "announcement",
+        "tenant",
+        "user",
+        "read_at",
+        "acknowledged",
+        "acknowledged_at",
+        "dismissed",
+    ]
+
+    list_filter = [
+        "acknowledged",
+        "dismissed",
+        "read_at",
+        "acknowledged_at",
+    ]
+
+    search_fields = [
+        "announcement__title",
+        "tenant__company_name",
+        "user__username",
+    ]
+
+    readonly_fields = [
+        "id",
+        "read_at",
+        "acknowledged_at",
+        "dismissed_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "announcement",
+                    "tenant",
+                    "user",
+                )
+            },
+        ),
+        (
+            "Read Tracking",
+            {"fields": ("read_at",)},
+        ),
+        (
+            "Acknowledgment",
+            {
+                "fields": (
+                    "acknowledged",
+                    "acknowledged_at",
+                    "acknowledged_by",
+                )
+            },
+        ),
+        (
+            "Dismissal",
+            {
+                "fields": (
+                    "dismissed",
+                    "dismissed_at",
+                )
+            },
+        ),
+    )
+
+    ordering = ["-read_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("announcement", "tenant", "user", "acknowledged_by")
+
+
+@admin.register(DirectMessage)
+class DirectMessageAdmin(admin.ModelAdmin):
+    """Admin interface for DirectMessage model."""
+
+    list_display = [
+        "subject",
+        "tenant",
+        "status",
+        "sent_at",
+        "read_at",
+        "created_by",
+        "created_at",
+    ]
+
+    list_filter = [
+        "status",
+        "email_sent",
+        "sms_sent",
+        "in_app_sent",
+        "created_at",
+        "sent_at",
+    ]
+
+    search_fields = [
+        "subject",
+        "message",
+        "tenant__company_name",
+        "created_by__username",
+    ]
+
+    readonly_fields = [
+        "id",
+        "sent_at",
+        "read_at",
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "tenant",
+                    "subject",
+                    "message",
+                )
+            },
+        ),
+        (
+            "Delivery",
+            {
+                "fields": (
+                    "channels",
+                    "status",
+                    "sent_at",
+                )
+            },
+        ),
+        (
+            "Delivery Status",
+            {
+                "fields": (
+                    "email_sent",
+                    "sms_sent",
+                    "in_app_sent",
+                )
+            },
+        ),
+        (
+            "Read Tracking",
+            {"fields": ("read_at",)},
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-created_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("tenant", "created_by")
+
+    def save_model(self, request, obj, form, change):
+        """Set created_by to current user if creating new message."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(CommunicationTemplate)
+class CommunicationTemplateAdmin(admin.ModelAdmin):
+    """Admin interface for CommunicationTemplate model."""
+
+    list_display = [
+        "name",
+        "template_type",
+        "default_severity",
+        "usage_count",
+        "is_active",
+        "created_at",
+    ]
+
+    list_filter = [
+        "template_type",
+        "default_severity",
+        "is_active",
+        "created_at",
+    ]
+
+    search_fields = [
+        "name",
+        "subject",
+        "message",
+    ]
+
+    readonly_fields = [
+        "id",
+        "usage_count",
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "name",
+                    "template_type",
+                )
+            },
+        ),
+        (
+            "Template Content",
+            {
+                "fields": (
+                    "subject",
+                    "message",
+                )
+            },
+        ),
+        (
+            "Default Settings",
+            {
+                "fields": (
+                    "default_severity",
+                    "default_channels",
+                )
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "is_active",
+                    "usage_count",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["name"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("created_by")
+
+    def save_model(self, request, obj, form, change):
+        """Set created_by to current user if creating new template."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(CommunicationLog)
+class CommunicationLogAdmin(admin.ModelAdmin):
+    """Admin interface for CommunicationLog model."""
+
+    list_display = [
+        "communication_type",
+        "subject",
+        "tenant",
+        "sent_at",
+        "sent_by",
+    ]
+
+    list_filter = [
+        "communication_type",
+        "sent_at",
+    ]
+
+    search_fields = [
+        "subject",
+        "message_preview",
+        "tenant__company_name",
+        "sent_by__username",
+    ]
+
+    readonly_fields = [
+        "id",
+        "communication_type",
+        "announcement",
+        "direct_message",
+        "tenant",
+        "subject",
+        "message_preview",
+        "channels_used",
+        "delivery_status",
+        "sent_at",
+        "sent_by",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "communication_type",
+                    "subject",
+                    "message_preview",
+                )
+            },
+        ),
+        (
+            "References",
+            {
+                "fields": (
+                    "announcement",
+                    "direct_message",
+                    "tenant",
+                )
+            },
+        ),
+        (
+            "Delivery Details",
+            {
+                "fields": (
+                    "channels_used",
+                    "delivery_status",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "sent_at",
+                    "sent_by",
+                )
+            },
+        ),
+    )
+
+    ordering = ["-sent_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("announcement", "direct_message", "tenant", "sent_by")
+
+    def has_add_permission(self, request):
+        """Disable manual creation of communication logs."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Make communication logs read-only."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Disable deletion of communication logs."""
+        return False
