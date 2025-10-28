@@ -173,6 +173,7 @@ class WebhookInterfaceIntegrationTest(TestCase):
         Tests Requirement 32.3: Generate HMAC secret
         """
         # Prepare form data
+        # Note: For MultipleChoiceField in forms, we need to send the data correctly
         form_data = {
             "name": "New Test Webhook",
             "url": "https://example.com/webhook",
@@ -181,7 +182,7 @@ class WebhookInterfaceIntegrationTest(TestCase):
                 Webhook.EVENT_SALE_CREATED,
                 Webhook.EVENT_INVENTORY_UPDATED,
             ],
-            "is_active": True,
+            "is_active": "on",  # Checkbox fields expect "on" in POST data
         }
 
         # Submit form
@@ -309,7 +310,7 @@ class WebhookInterfaceIntegrationTest(TestCase):
                 Webhook.EVENT_INVENTORY_UPDATED,
                 Webhook.EVENT_CUSTOMER_CREATED,
             ],
-            "is_active": False,
+            # Note: is_active=False means checkbox is not checked, so we omit it
         }
 
         # Submit update

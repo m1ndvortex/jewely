@@ -113,6 +113,18 @@ app.conf.beat_schedule = {
         "schedule": 600.0,  # Every 10 minutes (600 seconds)
         "options": {"queue": "monitoring", "priority": 7},
     },
+    # Retry failed webhooks every minute
+    "retry-failed-webhooks": {
+        "task": "apps.core.webhook_tasks.retry_failed_webhooks",
+        "schedule": 60.0,  # Every minute (60 seconds)
+        "options": {"queue": "webhooks", "priority": 8},
+    },
+    # Clean up old webhook deliveries weekly on Sunday at 4 AM
+    "cleanup-old-webhook-deliveries": {
+        "task": "apps.core.webhook_tasks.cleanup_old_deliveries",
+        "schedule": crontab(hour=4, minute=0, day_of_week=0),  # Sunday = 0
+        "options": {"queue": "webhooks", "priority": 2},
+    },
 }
 
 # Task routing configuration
@@ -122,6 +134,7 @@ app.conf.task_routes = {
     "apps.pricing.tasks.*": {"queue": "pricing", "priority": 8},
     "apps.reporting.tasks.*": {"queue": "reports", "priority": 7},
     "apps.core.alert_tasks.*": {"queue": "monitoring", "priority": 9},
+    "apps.core.webhook_tasks.*": {"queue": "webhooks", "priority": 8},
     "check_system_metrics": {"queue": "monitoring", "priority": 9},
     "check_service_health": {"queue": "monitoring", "priority": 9},
     "check_alert_escalations": {"queue": "monitoring", "priority": 8},

@@ -10,7 +10,6 @@ import json
 import uuid
 from datetime import datetime
 
-import requests
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
@@ -19,6 +18,8 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+
+import requests
 
 from .mixins import TenantRequiredMixin
 from .webhook_forms import WebhookForm, WebhookTestForm
@@ -100,7 +101,7 @@ class WebhookCreateView(LoginRequiredMixin, TenantRequiredMixin, CreateView):
     model = Webhook
     form_class = WebhookForm
     template_name = "core/webhooks/webhook_form.html"
-    success_url = reverse_lazy("core:webhook_list")
+    success_url = reverse_lazy("core:webhooks:webhook_list")
 
     def form_valid(self, form):
         """
@@ -219,7 +220,7 @@ class WebhookUpdateView(LoginRequiredMixin, TenantRequiredMixin, UpdateView):
         """
         Redirect to webhook detail page.
         """
-        return reverse("core:webhook_detail", kwargs={"pk": self.object.pk})
+        return reverse("core:webhooks:webhook_detail", kwargs={"pk": self.object.pk})
 
     def form_valid(self, form):
         """
@@ -248,7 +249,7 @@ class WebhookDeleteView(LoginRequiredMixin, TenantRequiredMixin, DeleteView):
 
     model = Webhook
     template_name = "core/webhooks/webhook_confirm_delete.html"
-    success_url = reverse_lazy("core:webhook_list")
+    success_url = reverse_lazy("core:webhooks:webhook_list")
 
     def get_queryset(self):
         """
@@ -282,12 +283,12 @@ class WebhookToggleView(LoginRequiredMixin, TenantRequiredMixin, View):
         webhook = get_object_or_404(Webhook, pk=pk, tenant=request.tenant)
 
         webhook.is_active = not webhook.is_active
-        webhook.save(update_fields=["is_active", "updated_at"])
+        webhook.save(update_fields=["is_active"])
 
         status_text = "activated" if webhook.is_active else "deactivated"
         messages.success(request, f"Webhook '{webhook.name}' {status_text} successfully.")
 
-        return redirect("core:webhook_detail", pk=webhook.pk)
+        return redirect("core:webhooks:webhook_detail", pk=webhook.pk)
 
 
 class WebhookRegenerateSecretView(LoginRequiredMixin, TenantRequiredMixin, View):
@@ -307,7 +308,7 @@ class WebhookRegenerateSecretView(LoginRequiredMixin, TenantRequiredMixin, View)
         import secrets
 
         webhook.secret = secrets.token_urlsafe(48)
-        webhook.save(update_fields=["secret", "updated_at"])
+        webhook.save(update_fields=["secret"])
 
         messages.success(
             request,
@@ -315,7 +316,7 @@ class WebhookRegenerateSecretView(LoginRequiredMixin, TenantRequiredMixin, View)
             f"Make sure to update your webhook endpoint with the new secret.",
         )
 
-        return redirect("core:webhook_detail", pk=webhook.pk)
+        return redirect("core:webhooks:webhook_detail", pk=webhook.pk)
 
 
 class WebhookTestView(LoginRequiredMixin, TenantRequiredMixin, View):

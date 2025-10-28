@@ -113,6 +113,11 @@ class WebhookForm(forms.ModelForm):
 
         return webhook
 
+        if commit:
+            webhook.save()
+
+        return webhook
+
 
 class WebhookTestForm(forms.Form):
     """
