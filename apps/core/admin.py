@@ -25,6 +25,7 @@ from apps.core.feature_flags import (
     FeatureFlagMetric,
     TenantFeatureFlag,
 )
+from apps.core.webhook_models import Webhook, WebhookDelivery
 
 from .models import (
     Branch,
@@ -2628,3 +2629,247 @@ class CommunicationLogAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Disable deletion of communication logs."""
         return False
+
+
+@admin.register(Webhook)
+class WebhookAdmin(admin.ModelAdmin):
+    """Admin interface for Webhook model."""
+
+    list_display = [
+        "name",
+        "tenant",
+        "url",
+        "is_active",
+        "consecutive_failures",
+        "last_success_at",
+        "last_failure_at",
+        "created_at",
+    ]
+
+    list_filter = [
+        "is_active",
+        "created_at",
+        "last_success_at",
+        "last_failure_at",
+    ]
+
+    search_fields = [
+        "name",
+        "url",
+        "description",
+        "tenant__company_name",
+    ]
+
+    readonly_fields = [
+        "id",
+        "secret",
+        "consecutive_failures",
+        "last_success_at",
+        "last_failure_at",
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "tenant",
+                    "name",
+                    "description",
+                )
+            },
+        ),
+        (
+            "Configuration",
+            {
+                "fields": (
+                    "url",
+                    "events",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Security",
+            {
+                "fields": ("secret",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Status Tracking",
+            {
+                "fields": (
+                    "consecutive_failures",
+                    "last_success_at",
+                    "last_failure_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-created_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("tenant", "created_by")
+
+    def save_model(self, request, obj, form, change):
+        """Set created_by to current user if creating new webhook."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(WebhookDelivery)
+class WebhookDeliveryAdmin(admin.ModelAdmin):
+    """Admin interface for WebhookDelivery model."""
+
+    list_display = [
+        "webhook",
+        "event_type",
+        "status",
+        "attempt_count",
+        "response_status_code",
+        "duration_ms",
+        "sent_at",
+        "created_at",
+    ]
+
+    list_filter = [
+        "status",
+        "event_type",
+        "created_at",
+        "sent_at",
+        "webhook",
+    ]
+
+    search_fields = [
+        "webhook__name",
+        "event_type",
+        "event_id",
+        "error_message",
+    ]
+
+    readonly_fields = [
+        "id",
+        "webhook",
+        "event_type",
+        "event_id",
+        "payload",
+        "signature",
+        "status",
+        "attempt_count",
+        "max_attempts",
+        "next_retry_at",
+        "response_status_code",
+        "response_body",
+        "response_headers",
+        "error_message",
+        "sent_at",
+        "completed_at",
+        "duration_ms",
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "webhook",
+                    "event_type",
+                    "event_id",
+                )
+            },
+        ),
+        (
+            "Payload",
+            {
+                "fields": (
+                    "payload",
+                    "signature",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "status",
+                    "attempt_count",
+                    "max_attempts",
+                    "next_retry_at",
+                )
+            },
+        ),
+        (
+            "Response",
+            {
+                "fields": (
+                    "response_status_code",
+                    "response_body",
+                    "response_headers",
+                    "duration_ms",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Error",
+            {
+                "fields": ("error_message",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timing",
+            {
+                "fields": (
+                    "sent_at",
+                    "completed_at",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-created_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("webhook", "webhook__tenant")
+
+    def has_add_permission(self, request):
+        """Disable manual creation of webhook deliveries."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Make webhook deliveries read-only."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Allow deletion of old webhook deliveries for cleanup."""
+        return True

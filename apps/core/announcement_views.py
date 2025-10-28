@@ -952,24 +952,30 @@ class BulkMessageCreateView(LoginRequiredMixin, PlatformAdminRequiredMixin, Crea
             plan_name = request.POST.get("target_plan")
             if not plan_name:
                 return None, "Please select a subscription plan."
-            return BulkCommunicationService.send_to_plan(
-                plan_name=plan_name,
-                subject=subject,
-                message=message,
-                channels=channels,
-                created_by=request.user,
-            ), None
+            return (
+                BulkCommunicationService.send_to_plan(
+                    plan_name=plan_name,
+                    subject=subject,
+                    message=message,
+                    channels=channels,
+                    created_by=request.user,
+                ),
+                None,
+            )
         elif target_type == "specific":
             tenant_ids = request.POST.getlist("tenant_ids")
             if not tenant_ids:
                 return None, "Please select at least one tenant."
-            return BulkCommunicationService.send_bulk_message(
-                tenant_ids=tenant_ids,
-                subject=subject,
-                message=message,
-                channels=channels,
-                created_by=request.user,
-            ), None
+            return (
+                BulkCommunicationService.send_bulk_message(
+                    tenant_ids=tenant_ids,
+                    subject=subject,
+                    message=message,
+                    channels=channels,
+                    created_by=request.user,
+                ),
+                None,
+            )
         else:
             return None, "Invalid target type."
 

@@ -815,7 +815,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Log all communications
     - _Requirements: 31_
   
-  - [ ] 22.5 Write communication tests
+  - [x] 22.5 Write communication tests
     - Test announcement creation and delivery
     - Test targeting logic
     - Test direct messaging
@@ -823,7 +823,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
 
 
 - [ ] 23. Webhook & Integration Management
-  - [ ] 23.1 Create webhook models
+  - [x] 23.1 Create webhook models
     - Create Webhook model with tenant FK, url, events, secret, is_active
     - Create WebhookDelivery model for tracking deliveries
     - Add indexes for efficient querying

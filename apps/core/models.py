@@ -28,6 +28,9 @@ from apps.core.feature_flags import (  # noqa: F401
     TenantFeatureFlag,
 )
 
+# Import webhook models to register them with Django
+from apps.core.webhook_models import Webhook, WebhookDelivery  # noqa: F401
+
 
 class Tenant(models.Model):
     """
