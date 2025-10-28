@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Direct Message Details{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Direct Message Details</h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">
+                    Message to {{ message.tenant.company_name }}
+                </p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'core:direct_message_list' %}" 
+                   class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to List
+                </a>
+                {% if message.status == 'DRAFT' %}
+                <a href="{% url 'core:direct_message_send' message.pk %}" 
+                   class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    <i class="fas fa-paper-plane mr-2"></i>Send Message
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Status Banner -->
+        <div class="mb-6">
+            {% if message.status == 'DRAFT' %}
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <div class="flex">
+                    <i class="fas fa-file-alt text-yellow-400 mr-3 mt-1"></i>
+                    <div>
+                        <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Draft Message</h3>
+                        <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                            This message has not been sent yet. Click "Send Message" to deliver it.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% elif message.status == 'SENT' %}
+            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <div class="flex">
+                    <i class="fas fa-check-circle text-green-400 mr-3 mt-1"></i>
+                    <div>
+                        <h3 class="text-sm font-medium text-green-800 dark:text-green-200">Message Sent</h3>
+                        <p class="mt-1 text-sm text-green-700 dark:text-green-300">
+                            Sent on {{ message.sent_at|date:"F d, Y \a\t H:i" }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% elif message.status == 'FAILED' %}
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <div class="flex">
+                    <i class="fas fa-exclamation-circle text-red-400 mr-3 mt-1"></i>
+                    <div>
+                        <h3 class="text-sm font-medium text-red-800 dark:text-red-200">Delivery Failed</h3>
+                        <p class="mt-1 text-sm text-red-700 dark:text-red-300">
+                            This message failed to deliver. Please check the logs for details.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Message Details -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Message Information</h2>
+            </div>
+            <div class="px-6 py-4 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Recipient</p>
+                        <p class="text-base font-medium text-gray-900 dark:text-white">
+                            {{ message.tenant.company_name }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Status</p>
+                        <p class="text-base font-medium">
+                            {% if message.status == 'DRAFT' %}
+                            <span class="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">Draft</span>
+                            {% elif message.status == 'SENT' %}
+                            <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Sent</span>
+                            {% elif message.status == 'FAILED' %}
+                            <span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded">Failed</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Subject</p>
+                    <p class="text-base font-medium text-gray-900 dark:text-white">{{ message.subject }}</p>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Message</p>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <p class="text-gray-900 dark:text-white whitespace-pre-wrap">{{ message.message }}</p>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Delivery Channels</p>
+                    <div class="flex space-x-2">
+                        {% if 'email' in message.channels %}
+                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            <i class="fas fa-envelope mr-1"></i>Email
+                            {% if message.email_sent %}<i class="fas fa-check ml-1"></i>{% endif %}
+                        </span>
+                        {% endif %}
+                        {% if 'sms' in message.channels %}
+                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                            <i class="fas fa-sms mr-1"></i>SMS
+                            {% if message.sms_sent %}<i class="fas fa-check ml-1"></i>{% endif %}
+                        </span>
+                        {% endif %}
+                        {% if 'in_app' in message.channels %}
+                        <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                            <i class="fas fa-bell mr-1"></i>In-App
+                            {% if message.in_app_sent %}<i class="fas fa-check ml-1"></i>{% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Created</p>
+                        <p class="text-base text-gray-900 dark:text-white">
+                            {{ message.created_at|date:"F d, Y \a\t H:i" }}
+                        </p>
+                    </div>
+                    {% if message.sent_at %}
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Sent</p>
+                        <p class="text-base text-gray-900 dark:text-white">
+                            {{ message.sent_at|date:"F d, Y \a\t H:i" }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if message.read_at %}
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Read</p>
+                    <p class="text-base text-gray-900 dark:text-white">
+                        {{ message.read_at|date:"F d, Y \a\t H:i" }}
+                    </p>
+                </div>
+                {% endif %}
+
+                <div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Created By</p>
+                    <p class="text-base text-gray-900 dark:text-white">
+                        {{ message.created_by.username|default:"System" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Communication Logs -->
+        {% if communication_logs %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Communication Logs</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                                Sent At
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                                Channels
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                                Status
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for log in communication_logs %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {{ log.sent_at|date:"Y-m-d H:i" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                {{ log.channels_used|join:", " }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                {% for channel, status in log.delivery_status.items %}
+                                <span class="{% if status %}text-green-600{% else %}text-red-600{% endif %}">
+                                    {{ channel }}: {% if status %}✓{% else %}✗{% endif %}
+                                </span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

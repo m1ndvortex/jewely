@@ -400,20 +400,30 @@ def direct_message_send(request, pk):
         return redirect("core:direct_message_detail", pk=pk)
 
     if request.method == "POST":
-        # Mark as sent
-        message.mark_as_sent()
+        # Import communication service
+        from apps.core.communication_service import CommunicationService
 
-        # TODO: Trigger actual delivery via Celery task
-        # This would be implemented in a separate task that:
-        # 1. Sends email if email channel selected
-        # 2. Sends SMS if SMS channel selected
-        # 3. Creates in-app notification if in_app channel selected
-        # 4. Creates CommunicationLog entry
-
-        messages.success(
-            request,
-            f"Direct message to {message.tenant.company_name} has been sent.",
+        # Send the message via selected channels
+        delivery_status = CommunicationService.send_direct_message(
+            message=message,
+            created_by=request.user,
         )
+
+        # Show delivery results
+        if any(delivery_status.values()):
+            success_channels = [channel for channel, success in delivery_status.items() if success]
+            messages.success(
+                request,
+                f"Direct message to {message.tenant.company_name} has been sent via: "
+                f"{', '.join(success_channels)}",
+            )
+        else:
+            messages.error(
+                request,
+                f"Failed to send message to {message.tenant.company_name}. "
+                "Please check the logs for details.",
+            )
+
         return redirect("core:direct_message_detail", pk=pk)
 
     return render(
@@ -870,3 +880,227 @@ def tenant_active_announcements_api(request):
             "unacknowledged_critical_count": len(unacknowledged_critical),
         }
     )
+
+
+# ============================================================================
+# Bulk Messaging Views
+# ============================================================================
+
+
+class BulkMessageCreateView(LoginRequiredMixin, PlatformAdminRequiredMixin, CreateView):
+    """
+    Create and send bulk messages to multiple tenants.
+
+    Requirement 31.8: Send direct messages to specific tenants.
+    """
+
+    model = DirectMessage
+    template_name = "core/announcements/bulk_message_form.html"
+    fields = []  # We'll use a custom form
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get all active tenants
+        context["tenants"] = Tenant.objects.filter(status=Tenant.ACTIVE).order_by("company_name")
+
+        # Get subscription plans for filtering
+        from apps.core.models import SubscriptionPlan
+
+        context["plans"] = SubscriptionPlan.objects.filter(
+            status=SubscriptionPlan.STATUS_ACTIVE
+        ).order_by("name")
+
+        # Get communication templates
+        context["templates"] = CommunicationTemplate.objects.filter(is_active=True).order_by("name")
+
+        return context
+
+    def _get_channels_from_post(self, request):
+        """Extract selected channels from POST data."""
+        channels = []
+        if request.POST.get("channel_email"):
+            channels.append("email")
+        if request.POST.get("channel_sms"):
+            channels.append("sms")
+        if request.POST.get("channel_in_app"):
+            channels.append("in_app")
+        return channels
+
+    def _validate_form_data(self, request, subject, message, channels):
+        """Validate form data and return error message if invalid."""
+        if not subject or not message:
+            return "Subject and message are required."
+        if not channels:
+            return "Please select at least one delivery channel."
+        return None
+
+    def _send_bulk_message(self, request, subject, message, channels):
+        """Send bulk message based on target type."""
+        from apps.core.communication_service import BulkCommunicationService
+
+        target_type = request.POST.get("target_type")
+
+        if target_type == "all":
+            return BulkCommunicationService.send_to_all_active(
+                subject=subject,
+                message=message,
+                channels=channels,
+                created_by=request.user,
+            )
+        elif target_type == "plan":
+            plan_name = request.POST.get("target_plan")
+            if not plan_name:
+                return None, "Please select a subscription plan."
+            return BulkCommunicationService.send_to_plan(
+                plan_name=plan_name,
+                subject=subject,
+                message=message,
+                channels=channels,
+                created_by=request.user,
+            ), None
+        elif target_type == "specific":
+            tenant_ids = request.POST.getlist("tenant_ids")
+            if not tenant_ids:
+                return None, "Please select at least one tenant."
+            return BulkCommunicationService.send_bulk_message(
+                tenant_ids=tenant_ids,
+                subject=subject,
+                message=message,
+                channels=channels,
+                created_by=request.user,
+            ), None
+        else:
+            return None, "Invalid target type."
+
+    def post(self, request, *args, **kwargs):
+        # Get form data
+        subject = request.POST.get("subject")
+        message = request.POST.get("message")
+        channels = self._get_channels_from_post(request)
+
+        # Validate
+        error = self._validate_form_data(request, subject, message, channels)
+        if error:
+            messages.error(request, error)
+            return self.get(request, *args, **kwargs)
+
+        # Send bulk message
+        result = self._send_bulk_message(request, subject, message, channels)
+        if isinstance(result, tuple):
+            results, error = result
+            if error:
+                messages.error(request, error)
+                return self.get(request, *args, **kwargs)
+        else:
+            results = result
+
+        # Show results
+        messages.success(
+            request,
+            f"Bulk message sent to {results['total']} tenants. "
+            f"Success: {results['success']}, Failed: {results['failed']}. "
+            f"Email: {results.get('email_sent', 0)}, "
+            f"SMS: {results.get('sms_sent', 0)}, "
+            f"In-App: {results.get('in_app_sent', 0)}",
+        )
+
+        return redirect("core:direct_message_list")
+
+
+@login_required
+def bulk_message_preview(request):
+    """
+    Preview bulk message before sending.
+
+    Requirement 31.8: Send direct messages to specific tenants.
+    """
+    # Check platform admin permission
+    if request.user.role != "PLATFORM_ADMIN":
+        messages.error(request, "You must be a platform administrator to perform this action.")
+        return redirect("admin:index")
+
+    if request.method == "POST":
+        subject = request.POST.get("subject")
+        message = request.POST.get("message")
+        target_type = request.POST.get("target_type")
+
+        # Get target tenant count
+        if target_type == "all":
+            target_count = Tenant.objects.filter(status=Tenant.ACTIVE).count()
+            target_description = "All active tenants"
+
+        elif target_type == "plan":
+            plan_name = request.POST.get("target_plan")
+            target_count = Tenant.objects.filter(
+                subscription__plan__name=plan_name,
+                status=Tenant.ACTIVE,
+            ).count()
+            target_description = f"Tenants on {plan_name} plan"
+
+        elif target_type == "specific":
+            tenant_ids = request.POST.getlist("tenant_ids")
+            target_count = len(tenant_ids)
+            target_description = f"{target_count} selected tenants"
+
+        else:
+            target_count = 0
+            target_description = "Unknown"
+
+        return render(
+            request,
+            "core/announcements/bulk_message_preview.html",
+            {
+                "subject": subject,
+                "message": message,
+                "target_count": target_count,
+                "target_description": target_description,
+            },
+        )
+
+    return redirect("core:bulk_message_create")
+
+
+@login_required
+def template_apply_to_bulk(request, pk):
+    """
+    Apply a communication template to bulk message form.
+
+    Requirement 31.9: Provide communication templates.
+    """
+    # Check platform admin permission
+    if request.user.role != "PLATFORM_ADMIN":
+        messages.error(request, "You must be a platform administrator to perform this action.")
+        return redirect("admin:index")
+
+    template = get_object_or_404(CommunicationTemplate, pk=pk)
+
+    if not template.is_active:
+        messages.error(request, "This template is not active.")
+        return redirect("core:template_detail", pk=pk)
+
+    # Increment usage counter
+    template.increment_usage()
+
+    # Render template with sample context
+    sample_context = {
+        "tenant_name": "[Tenant Name]",
+        "date": timezone.now().strftime("%Y-%m-%d"),
+        "time": timezone.now().strftime("%H:%M"),
+    }
+
+    subject, message = template.render(sample_context)
+
+    # Store in session for bulk message form
+    request.session["bulk_message_template"] = {
+        "subject": subject,
+        "message": message,
+        "channels": template.default_channels,
+    }
+
+    messages.info(
+        request,
+        f"Template '{template.name}' applied. You can customize the content before sending.",
+    )
+
+    return redirect("core:bulk_message_create")

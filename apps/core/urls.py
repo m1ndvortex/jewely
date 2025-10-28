@@ -670,6 +670,22 @@ urlpatterns = [
         announcement_views.direct_message_send,
         name="direct_message_send",
     ),
+    # Bulk Messaging
+    path(
+        "platform/bulk-messages/create/",
+        announcement_views.BulkMessageCreateView.as_view(),
+        name="bulk_message_create",
+    ),
+    path(
+        "platform/bulk-messages/preview/",
+        announcement_views.bulk_message_preview,
+        name="bulk_message_preview",
+    ),
+    path(
+        "platform/communication-templates/<uuid:pk>/apply-to-bulk/",
+        announcement_views.template_apply_to_bulk,
+        name="template_apply_to_bulk",
+    ),
     # Communication Template Management
     path(
         "platform/communication-templates/",
