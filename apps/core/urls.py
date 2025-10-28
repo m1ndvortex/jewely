@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from . import (
     admin_views,
     alert_views,
+    announcement_views,
     audit_views,
     branch_views,
     dashboard_views,
@@ -616,5 +617,89 @@ urlpatterns = [
         "platform/api/feature-flags/stats/",
         feature_flag_views.FeatureFlagStatsAPIView.as_view(),
         name="feature_flag_stats_api",
+    ),
+    # Announcement Management
+    path(
+        "platform/announcements/",
+        announcement_views.AnnouncementListView.as_view(),
+        name="announcement_list",
+    ),
+    path(
+        "platform/announcements/create/",
+        announcement_views.AnnouncementCreateView.as_view(),
+        name="announcement_create",
+    ),
+    path(
+        "platform/announcements/<uuid:pk>/",
+        announcement_views.AnnouncementDetailView.as_view(),
+        name="announcement_detail",
+    ),
+    path(
+        "platform/announcements/<uuid:pk>/edit/",
+        announcement_views.AnnouncementUpdateView.as_view(),
+        name="announcement_update",
+    ),
+    path(
+        "platform/announcements/<uuid:pk>/send/",
+        announcement_views.announcement_send,
+        name="announcement_send",
+    ),
+    path(
+        "platform/announcements/<uuid:pk>/cancel/",
+        announcement_views.announcement_cancel,
+        name="announcement_cancel",
+    ),
+    # Direct Message Management
+    path(
+        "platform/direct-messages/",
+        announcement_views.DirectMessageListView.as_view(),
+        name="direct_message_list",
+    ),
+    path(
+        "platform/direct-messages/create/",
+        announcement_views.DirectMessageCreateView.as_view(),
+        name="direct_message_create",
+    ),
+    path(
+        "platform/direct-messages/<uuid:pk>/",
+        announcement_views.DirectMessageDetailView.as_view(),
+        name="direct_message_detail",
+    ),
+    path(
+        "platform/direct-messages/<uuid:pk>/send/",
+        announcement_views.direct_message_send,
+        name="direct_message_send",
+    ),
+    # Communication Template Management
+    path(
+        "platform/communication-templates/",
+        announcement_views.CommunicationTemplateListView.as_view(),
+        name="template_list",
+    ),
+    path(
+        "platform/communication-templates/create/",
+        announcement_views.CommunicationTemplateCreateView.as_view(),
+        name="template_create",
+    ),
+    path(
+        "platform/communication-templates/<uuid:pk>/",
+        announcement_views.CommunicationTemplateDetailView.as_view(),
+        name="template_detail",
+    ),
+    path(
+        "platform/communication-templates/<uuid:pk>/edit/",
+        announcement_views.CommunicationTemplateUpdateView.as_view(),
+        name="template_update",
+    ),
+    path(
+        "platform/communication-templates/<uuid:pk>/use/",
+        announcement_views.template_use,
+        name="template_use",
+    ),
+    # Communication Log
+    path(
+        "platform/communication-logs/",
+        announcement_views.CommunicationLogListView.as_view(),
+        name="communication_log_list",
     ),
 ]
