@@ -31,6 +31,7 @@ from apps.core.integration_models import (
     IntegrationLog,
     OAuth2Token,
 )
+from apps.core.job_models import JobExecution, JobStatistics
 from apps.core.webhook_models import Webhook, WebhookDelivery
 
 from .models import (
@@ -3200,4 +3201,88 @@ class IntegrationLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         """Disable editing of logs."""
+        return False
+
+
+@admin.register(JobExecution)
+class JobExecutionAdmin(admin.ModelAdmin):
+    """Admin interface for JobExecution model."""
+
+    list_display = (
+        "task_id",
+        "task_name",
+        "status",
+        "queue",
+        "priority",
+        "execution_time",
+        "queued_at",
+        "completed_at",
+    )
+    list_filter = ("status", "queue", "queued_at", "completed_at")
+    search_fields = ("task_id", "task_name", "error")
+    readonly_fields = (
+        "task_id",
+        "task_name",
+        "status",
+        "args",
+        "kwargs",
+        "queued_at",
+        "started_at",
+        "completed_at",
+        "execution_time",
+        "queue",
+        "priority",
+        "result",
+        "error",
+        "traceback",
+        "retry_count",
+        "max_retries",
+        "worker_name",
+    )
+    ordering = ("-queued_at",)
+
+    def has_add_permission(self, request):
+        """Disable manual creation of job executions."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Disable editing of job executions."""
+        return False
+
+
+@admin.register(JobStatistics)
+class JobStatisticsAdmin(admin.ModelAdmin):
+    """Admin interface for JobStatistics model."""
+
+    list_display = (
+        "task_name",
+        "total_executions",
+        "successful_executions",
+        "failed_executions",
+        "avg_execution_time",
+        "last_execution_at",
+    )
+    search_fields = ("task_name",)
+    readonly_fields = (
+        "task_name",
+        "total_executions",
+        "successful_executions",
+        "failed_executions",
+        "avg_execution_time",
+        "min_execution_time",
+        "max_execution_time",
+        "avg_cpu_percent",
+        "avg_memory_mb",
+        "last_execution_at",
+        "last_execution_status",
+        "updated_at",
+    )
+    ordering = ("-total_executions",)
+
+    def has_add_permission(self, request):
+        """Disable manual creation of statistics."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Disable editing of statistics."""
         return False

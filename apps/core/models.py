@@ -36,6 +36,9 @@ from apps.core.integration_models import (  # noqa: F401
     OAuth2Token,
 )
 
+# Import job monitoring models to register them with Django
+from apps.core.job_models import JobExecution, JobStatistics  # noqa: F401
+
 # Import webhook models to register them with Django
 from apps.core.webhook_models import Webhook, WebhookDelivery  # noqa: F401
 

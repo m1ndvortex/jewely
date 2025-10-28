@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Job Detail - {{ job.task_id }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Job Details</h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">{{ job.task_name }}</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Basic Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Task ID</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono">{{ job.task_id }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Task Name</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.task_name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                    <dd class="mt-1">
+                        {% if job.status == 'SUCCESS' %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Success
+                        </span>
+                        {% elif job.status == 'FAILURE' %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                            Failed
+                        </span>
+                        {% elif job.status == 'STARTED' %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            Running
+                        </span>
+                        {% else %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                            {{ job.status }}
+                        </span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Queue</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.queue }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Priority</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.priority }}</dd>
+                </div>
+                {% if job.worker_name %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Worker</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.worker_name }}</dd>
+                </div>
+                {% endif %}
+            </dl>
+        </div>
+
+        <!-- Timing Information -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Timing</h2>
+            <dl class="space-y-3">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Queued At</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.queued_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                {% if job.started_at %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Started At</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.started_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                {% endif %}
+                {% if job.completed_at %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed At</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.completed_at|date:"Y-m-d H:i:s" }}</dd>
+                </div>
+                {% endif %}
+                {% if job.execution_time %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Execution Time</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.execution_time|floatformat:2 }} seconds</dd>
+                </div>
+                {% endif %}
+                <div>
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Retry Count</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ job.retry_count }} / {{ job.max_retries }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Arguments -->
+    {% if job.args or job.kwargs %}
+    <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Arguments</h2>
+        {% if job.args %}
+        <div class="mb-4">
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Positional Arguments</h3>
+            <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded text-sm overflow-x-auto"><code>{{ job.args|safe }}</code></pre>
+        </div>
+        {% endif %}
+        {% if job.kwargs %}
+        <div>
+            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Keyword Arguments</h3>
+            <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded text-sm overflow-x-auto"><code>{{ job.kwargs|safe }}</code></pre>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Result -->
+    {% if job.result %}
+    <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Result</h2>
+        <pre class="bg-gray-100 dark:bg-gray-900 p-4 rounded text-sm overflow-x-auto"><code>{{ job.result }}</code></pre>
+    </div>
+    {% endif %}
+
+    <!-- Error Details -->
+    {% if job.error %}
+    <div class="mt-6 bg-red-50 dark:bg-red-900/20 rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-red-900 dark:text-red-200 mb-4">Error Details</h2>
+        <div class="mb-4">
+            <h3 class="text-sm font-medium text-red-700 dark:text-red-300 mb-2">Error Message</h3>
+            <pre class="bg-red-100 dark:bg-red-900/40 p-4 rounded text-sm overflow-x-auto text-red-900 dark:text-red-200"><code>{{ job.error }}</code></pre>
+        </div>
+        {% if job.traceback %}
+        <div>
+            <h3 class="text-sm font-medium text-red-700 dark:text-red-300 mb-2">Traceback</h3>
+            <pre class="bg-red-100 dark:bg-red-900/40 p-4 rounded text-sm overflow-x-auto text-red-900 dark:text-red-200"><code>{{ job.traceback }}</code></pre>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="mt-6 flex space-x-4">
+        {% if job.can_retry %}
+        <form method="post" action="{% url 'core:jobs:retry' job.task_id %}">
+            {% csrf_token %}
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                Retry Job
+            </button>
+        </form>
+        {% endif %}
+        {% if job.is_running %}
+        <form method="post" action="{% url 'core:jobs:cancel' job.task_id %}">
+            {% csrf_token %}
+            <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700" onclick="return confirm('Cancel this job?')">
+                Cancel Job
+            </button>
+        </form>
+        {% endif %}
+        <a href="{% url 'core:jobs:dashboard' %}" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

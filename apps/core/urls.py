@@ -749,4 +749,6 @@ urlpatterns = [
     path("webhooks/", include("apps.core.webhook_urls")),
     # External Service Integration Management
     path("integrations/", include("apps.core.integration_urls")),
+    # Job Monitoring
+    path("platform/jobs/", include("apps.core.job_urls")),
 ]

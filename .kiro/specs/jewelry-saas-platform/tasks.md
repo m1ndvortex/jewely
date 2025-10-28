@@ -851,7 +851,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Monitor integration health
     - _Requirements: 32_
   
-  - [ ] 23.5 Write webhook tests
+  - [x] 23.5 Write webhook tests
     - Test webhook registration
     - Test delivery and retries
     - Test HMAC signing
@@ -859,7 +859,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 32, 28_
 
 - [ ] 24. Scheduled Job Management
-  - [ ] 24.1 Implement job monitoring interface
+  - [x] 24.1 Implement job monitoring interface
     - Display active Celery tasks
     - Show pending jobs in queue with priority and ETA
     - Display completed jobs with execution time and status
