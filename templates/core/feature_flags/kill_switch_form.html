@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Activate Emergency Kill Switch{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <h1 class="text-3xl font-bold text-red-600 mb-6">⚠️ Activate Emergency Kill Switch</h1>
+
+    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+        <p class="text-red-700">
+            <strong>Warning:</strong> This will immediately disable the selected feature across the entire platform. Use only in critical emergencies.
+        </p>
+    </div>
+
+    <div class="bg-white rounded shadow p-6">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Feature Flag *</label>
+                {{ form.flag_name }}
+                {% if form.flag_name.errors %}<p class="mt-1 text-sm text-red-600">{{ form.flag_name.errors.0 }}</p>{% endif %}
+                <p class="mt-1 text-sm text-gray-500">{{ form.flag_name.help_text }}</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Emergency Reason *</label>
+                {{ form.reason }}
+                {% if form.reason.errors %}<p class="mt-1 text-sm text-red-600">{{ form.reason.errors.0 }}</p>{% endif %}
+                <p class="mt-1 text-sm text-gray-500">{{ form.reason.help_text }}</p>
+            </div>
+
+            <div class="flex gap-4">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded" onclick="return confirm('Are you sure you want to activate this kill switch? This will immediately disable the feature!')">
+                    Activate Kill Switch
+                </button>
+                <a href="{% url 'core:kill_switch_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.5rem 0.75rem; }
+</style>
+{% endblock %}

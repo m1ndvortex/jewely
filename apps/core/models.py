@@ -19,6 +19,15 @@ from apps.core.audit_models import (  # noqa: F401
     LoginAttempt,
 )
 
+# Import feature flag models to register them with Django
+from apps.core.feature_flags import (  # noqa: F401
+    ABTestVariant,
+    EmergencyKillSwitch,
+    FeatureFlagHistory,
+    FeatureFlagMetric,
+    TenantFeatureFlag,
+)
+
 
 class Tenant(models.Model):
     """

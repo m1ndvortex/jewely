@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Create Tenant Feature Flag Override{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <h1 class="text-3xl font-bold mb-6">Create Tenant Feature Flag Override</h1>
+
+    <div class="bg-white rounded shadow p-6">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tenant *</label>
+                {{ form.tenant }}
+                {% if form.tenant.errors %}<p class="mt-1 text-sm text-red-600">{{ form.tenant.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Flag *</label>
+                {{ form.flag }}
+                {% if form.flag.errors %}<p class="mt-1 text-sm text-red-600">{{ form.flag.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="flex items-center">
+                    {{ form.enabled }}
+                    <span class="ml-2">Enable this flag for the selected tenant</span>
+                </label>
+                {% if form.enabled.errors %}<p class="mt-1 text-sm text-red-600">{{ form.enabled.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}<p class="mt-1 text-sm text-red-600">{{ form.notes.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="flex gap-4">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Create Override</button>
+                <a href="{% url 'core:tenant_feature_flag_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.5rem 0.75rem; }
+</style>
+{% endblock %}

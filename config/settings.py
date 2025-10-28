@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "import_export",
     "hijack",
     "hijack.contrib.admin",
+    "waffle",
     # Local apps
     "apps.core",
     "apps.inventory",
@@ -101,6 +102,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.csrf",
+                "apps.core.context_processors.waffle_flags",
             ],
         },
     },
@@ -529,3 +531,31 @@ PROMETHEUS_LATENCY_BUCKETS = (
 # Use URL-based exporter only (not separate port) to avoid conflicts with Django autoreloader
 # Metrics will be available at /metrics endpoint
 # PROMETHEUS_METRICS_EXPORT_PORT is intentionally not set to use URL exporter only
+
+# Django Waffle Configuration
+# Per Requirement 30 - Feature Flag Management
+# Allows gradual feature rollout and A/B testing
+
+# Cache configuration for waffle flags
+WAFFLE_CACHE_PREFIX = "waffle:"
+WAFFLE_CACHE_NAME = "default"  # Use default Redis cache
+
+# Flag defaults
+WAFFLE_FLAG_DEFAULT = False  # Flags are disabled by default
+WAFFLE_SWITCH_DEFAULT = False  # Switches are disabled by default
+WAFFLE_SAMPLE_DEFAULT = False  # Samples are disabled by default
+
+# Create flags in database automatically when referenced in code
+WAFFLE_CREATE_MISSING_FLAGS = DEBUG  # Only in development
+
+# Override flags for testing
+WAFFLE_OVERRIDE = os.getenv("WAFFLE_OVERRIDE", "False") == "True"
+
+# Flag model configuration
+WAFFLE_FLAG_MODEL = "waffle.Flag"
+WAFFLE_SWITCH_MODEL = "waffle.Switch"
+WAFFLE_SAMPLE_MODEL = "waffle.Sample"
+
+# Secure flag cookies
+WAFFLE_SECURE = not DEBUG  # Use secure cookies in production
+WAFFLE_MAX_AGE = 2592000  # 30 days cookie lifetime

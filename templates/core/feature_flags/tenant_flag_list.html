@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Tenant Feature Flag Overrides{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Tenant Feature Flag Overrides</h1>
+        <a href="{% url 'core:tenant_feature_flag_create' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            Create Override
+        </a>
+    </div>
+
+    <div class="bg-white rounded shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tenant</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flag</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for tf in tenant_flags %}
+                <tr>
+                    <td class="px-6 py-4">{{ tf.tenant.company_name }}</td>
+                    <td class="px-6 py-4">{{ tf.flag.name }}</td>
+                    <td class="px-6 py-4">
+                        {% if tf.enabled %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Enabled</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Disabled</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">{{ tf.notes|truncatewords:10 }}</td>
+                    <td class="px-6 py-4">{{ tf.created_by.username }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">No tenant overrides found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

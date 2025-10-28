@@ -4,6 +4,9 @@ Forms for core app settings and configuration.
 
 from django import forms
 
+from waffle.models import Flag
+
+from .feature_flags import ABTestVariant, TenantFeatureFlag
 from .models import IntegrationSettings, InvoiceSettings, Tenant, TenantSettings
 
 
@@ -870,3 +873,128 @@ class TenantEditForm(forms.ModelForm):
             raise forms.ValidationError("This slug is already in use.")
 
         return slug
+
+
+# ============================================================================
+# Feature Flag Management Forms
+# ============================================================================
+
+
+class FeatureFlagForm(forms.ModelForm):
+    """Form for creating/editing feature flags."""
+
+    reason = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Reason for this change..."}),
+        help_text="Explain why you're making this change (for audit trail)",
+    )
+
+    class Meta:
+        model = Flag
+        fields = ["name", "everyone", "percent", "note"]
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "e.g., new_pos_interface"}),
+            "note": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "Description of this feature..."}
+            ),
+            "percent": forms.NumberInput(attrs={"min": 0, "max": 100, "step": 0.1}),
+        }
+        help_texts = {
+            "everyone": "Enable for everyone (True), disable for everyone (False), or use percentage rollout (None)",
+            "percent": "Percentage of users to enable this flag for (0-100). Only used when 'everyone' is None.",
+        }
+
+
+class TenantFeatureFlagForm(forms.ModelForm):
+    """Form for creating tenant-specific feature flag overrides."""
+
+    class Meta:
+        model = TenantFeatureFlag
+        fields = ["tenant", "flag", "enabled", "notes"]
+        widgets = {
+            "notes": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "Reason for this override..."}
+            ),
+        }
+        help_texts = {
+            "tenant": "Select the tenant for this override",
+            "flag": "Select the feature flag to override",
+            "enabled": "Enable or disable this flag for the selected tenant",
+            "notes": "Explain why this tenant needs a special override (e.g., beta testing, early access)",
+        }
+
+
+class ABTestVariantForm(forms.ModelForm):
+    """Form for creating A/B test variants."""
+
+    class Meta:
+        model = ABTestVariant
+        fields = [
+            "name",
+            "flag",
+            "control_group_percentage",
+            "variant_group_percentage",
+            "description",
+            "hypothesis",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "e.g., checkout_flow_test_v1"}),
+            "description": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "What are you testing?"}
+            ),
+            "hypothesis": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "What do you expect to learn?"}
+            ),
+            "control_group_percentage": forms.NumberInput(
+                attrs={"min": 0, "max": 100, "step": 0.1}
+            ),
+            "variant_group_percentage": forms.NumberInput(
+                attrs={"min": 0, "max": 100, "step": 0.1}
+            ),
+        }
+        help_texts = {
+            "control_group_percentage": "Percentage of users in control group (typically 50%)",
+            "variant_group_percentage": "Percentage of users in variant group (typically 50%)",
+        }
+
+    def clean(self):
+        """Validate that percentages add up to 100."""
+        cleaned_data = super().clean()
+        control = cleaned_data.get("control_group_percentage")
+        variant = cleaned_data.get("variant_group_percentage")
+
+        if control and variant:
+            total = control + variant
+            if total != 100:
+                raise forms.ValidationError(
+                    f"Control and variant percentages must add up to 100%. Currently: {total}%"
+                )
+
+        return cleaned_data
+
+
+class EmergencyKillSwitchForm(forms.Form):
+    """Form for activating emergency kill switch."""
+
+    flag_name = forms.ChoiceField(
+        label="Feature Flag",
+        help_text="Select the feature flag to disable immediately",
+    )
+
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 4, "placeholder": "Explain the emergency..."}),
+        help_text="Describe the critical issue that requires immediate disable",
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Remove instance kwarg if present (Forms don't use it, only ModelForms do)
+        kwargs.pop("instance", None)
+        super().__init__(*args, **kwargs)
+        # Import here to avoid circular imports
+        from waffle.models import Flag
+
+        # Populate flag choices
+        self.fields["flag_name"].choices = [
+            (flag.name, f"{flag.name} - {flag.note}")
+            for flag in Flag.objects.all().order_by("name")
+        ]

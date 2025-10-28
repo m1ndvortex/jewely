@@ -8,6 +8,7 @@ from . import (
     audit_views,
     branch_views,
     dashboard_views,
+    feature_flag_views,
     monitoring_views,
     security_views,
     settings_views,
@@ -530,4 +531,90 @@ urlpatterns = [
     ),
     path("api/settings/upload-logo/", settings_views.upload_logo_api, name="api_upload_logo"),
     path("api/settings/update-colors/", settings_views.update_colors_api, name="api_update_colors"),
+    # Feature Flag Management
+    path(
+        "platform/feature-flags/",
+        feature_flag_views.FeatureFlagListView.as_view(),
+        name="feature_flag_list",
+    ),
+    path(
+        "platform/feature-flags/create/",
+        feature_flag_views.FeatureFlagCreateView.as_view(),
+        name="feature_flag_create",
+    ),
+    path(
+        "platform/feature-flags/<int:pk>/",
+        feature_flag_views.FeatureFlagDetailView.as_view(),
+        name="feature_flag_detail",
+    ),
+    path(
+        "platform/feature-flags/<int:pk>/edit/",
+        feature_flag_views.FeatureFlagUpdateView.as_view(),
+        name="feature_flag_update",
+    ),
+    path(
+        "platform/feature-flags/<int:pk>/toggle/",
+        feature_flag_views.FeatureFlagToggleAPIView.as_view(),
+        name="feature_flag_toggle",
+    ),
+    # Tenant Feature Flag Overrides
+    path(
+        "platform/tenant-feature-flags/",
+        feature_flag_views.TenantFeatureFlagListView.as_view(),
+        name="tenant_feature_flag_list",
+    ),
+    path(
+        "platform/tenant-feature-flags/create/",
+        feature_flag_views.TenantFeatureFlagCreateView.as_view(),
+        name="tenant_feature_flag_create",
+    ),
+    # A/B Testing
+    path(
+        "platform/ab-tests/",
+        feature_flag_views.ABTestListView.as_view(),
+        name="ab_test_list",
+    ),
+    path(
+        "platform/ab-tests/create/",
+        feature_flag_views.ABTestCreateView.as_view(),
+        name="ab_test_create",
+    ),
+    path(
+        "platform/ab-tests/<int:pk>/",
+        feature_flag_views.ABTestDetailView.as_view(),
+        name="ab_test_detail",
+    ),
+    path(
+        "platform/ab-tests/<int:pk>/stop/",
+        feature_flag_views.ABTestStopView.as_view(),
+        name="ab_test_stop",
+    ),
+    # Emergency Kill Switch
+    path(
+        "platform/kill-switches/",
+        feature_flag_views.EmergencyKillSwitchListView.as_view(),
+        name="kill_switch_list",
+    ),
+    path(
+        "platform/kill-switches/create/",
+        feature_flag_views.EmergencyKillSwitchCreateView.as_view(),
+        name="kill_switch_create",
+    ),
+    path(
+        "platform/kill-switches/<int:pk>/re-enable/",
+        feature_flag_views.EmergencyKillSwitchReEnableView.as_view(),
+        name="kill_switch_re_enable",
+    ),
+    # Metrics Dashboard
+    path(
+        "platform/feature-flags/metrics/",
+        feature_flag_views.FeatureFlagMetricsDashboardView.as_view(),
+        name="feature_flag_metrics",
+    ),
+    # API Endpoints
+    path(
+        "platform/api/feature-flags/stats/",
+        feature_flag_views.FeatureFlagStatsAPIView.as_view(),
+        name="feature_flag_stats_api",
+    ),
 ]

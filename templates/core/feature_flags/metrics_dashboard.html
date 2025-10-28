@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Feature Flag Metrics Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Feature Flag Metrics Dashboard</h1>
+
+    <!-- Active A/B Tests -->
+    <div class="bg-white rounded shadow p-6 mb-6">
+        <h2 class="text-xl font-bold mb-4">Active A/B Tests</h2>
+        {% if ab_tests %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for test in ab_tests %}
+            <div class="border rounded p-4">
+                <h3 class="font-bold mb-2">
+                    <a href="{% url 'core:ab_test_detail' test.pk %}" class="text-blue-600 hover:text-blue-800">
+                        {{ test.name }}
+                    </a>
+                </h3>
+                <p class="text-sm text-gray-600">Flag: {{ test.flag.name }}</p>
+                <p class="text-sm text-gray-600">Split: {{ test.control_group_percentage }}% / {{ test.variant_group_percentage }}%</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">No active A/B tests</p>
+        {% endif %}
+    </div>
+
+    <!-- Flag Metrics -->
+    <div class="bg-white rounded shadow p-6">
+        <h2 class="text-xl font-bold mb-4">Flag Metrics</h2>
+        <div class="space-y-4">
+            {% for item in flag_metrics %}
+            <div class="border-b pb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold">
+                        <a href="{% url 'core:feature_flag_detail' item.flag.pk %}" class="text-blue-600 hover:text-blue-800">
+                            {{ item.flag.name }}
+                        </a>
+                    </h3>
+                    <span class="text-sm text-gray-500">
+                        {% if item.flag.everyone == True %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                        {% elif item.flag.everyone == False %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">{{ item.flag.percent }}%</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-500">Total Events:</span>
+                        <span class="font-medium">{{ item.metrics.total_events }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">Unique Users:</span>
+                        <span class="font-medium">{{ item.metrics.unique_users }}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">Unique Tenants:</span>
+                        <span class="font-medium">{{ item.metrics.unique_tenants }}</span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-gray-500">No metrics available</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

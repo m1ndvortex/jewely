@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Create A/B Test{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-2xl">
+    <h1 class="text-3xl font-bold mb-6">Create A/B Test</h1>
+
+    <div class="bg-white rounded shadow p-6">
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Test Name *</label>
+                {{ form.name }}
+                {% if form.name.errors %}<p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Feature Flag *</label>
+                {{ form.flag }}
+                {% if form.flag.errors %}<p class="mt-1 text-sm text-red-600">{{ form.flag.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Control Group %</label>
+                    {{ form.control_group_percentage }}
+                    {% if form.control_group_percentage.errors %}<p class="mt-1 text-sm text-red-600">{{ form.control_group_percentage.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Variant Group %</label>
+                    {{ form.variant_group_percentage }}
+                    {% if form.variant_group_percentage.errors %}<p class="mt-1 text-sm text-red-600">{{ form.variant_group_percentage.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}<p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Hypothesis</label>
+                {{ form.hypothesis }}
+                {% if form.hypothesis.errors %}<p class="mt-1 text-sm text-red-600">{{ form.hypothesis.errors.0 }}</p>{% endif %}
+            </div>
+
+            <div class="flex gap-4">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Create Test</button>
+                <a href="{% url 'core:ab_test_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+input[type="text"], input[type="number"], textarea, select { width: 100%; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.5rem 0.75rem; }
+</style>
+{% endblock %}

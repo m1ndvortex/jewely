@@ -91,15 +91,11 @@ class SecurityMiddleware:
             # Check username-based lockout
             username = request.POST.get("username") or request.POST.get("email")
             if username and BruteForceProtection.is_locked_out(username):
-                return self._create_lockout_response(
-                    request, username, ip_address, is_user=True
-                )
+                return self._create_lockout_response(request, username, ip_address, is_user=True)
 
             # Check IP-based lockout
             if ip_address and BruteForceProtection.is_locked_out(ip_address):
-                return self._create_lockout_response(
-                    request, ip_address, ip_address, is_user=False
-                )
+                return self._create_lockout_response(request, ip_address, ip_address, is_user=False)
 
         except Exception as e:
             # Don't let middleware errors break the application
@@ -121,7 +117,9 @@ class SecurityMiddleware:
         else:
             logger.warning(f"Blocked login attempt from locked out IP {ip_address}")
             error_msg = "Too Many Attempts"
-            user_msg = "Too many failed login attempts from your IP address. Please try again later."
+            user_msg = (
+                "Too many failed login attempts from your IP address. Please try again later."
+            )
             html_msg = "<h1>Too Many Attempts</h1><p>Too many failed login attempts from your IP address. Please try again later.</p>"
 
         if request.path.startswith("/api/"):

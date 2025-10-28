@@ -379,8 +379,8 @@ def log_login_attempt(username, user=None, success=True, failure_reason=None, re
         description=description,
         ip_address=ip_address,
         user_agent=user_agent,
-        request_method=request.method if request else "SYSTEM",
-        request_path=request.path if request else "/",
+        request_method=request.method if request and hasattr(request, "method") else "SYSTEM",
+        request_path=request.path if request and hasattr(request, "path") else "/",
         metadata=(
             {"username": username, "failure_reason": failure_reason}
             if not success
