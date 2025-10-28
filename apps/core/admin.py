@@ -25,6 +25,12 @@ from apps.core.feature_flags import (
     FeatureFlagMetric,
     TenantFeatureFlag,
 )
+from apps.core.integration_models import (
+    ExternalService,
+    IntegrationHealthCheck,
+    IntegrationLog,
+    OAuth2Token,
+)
 from apps.core.webhook_models import Webhook, WebhookDelivery
 
 from .models import (
@@ -2873,3 +2879,325 @@ class WebhookDeliveryAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Allow deletion of old webhook deliveries for cleanup."""
         return True
+
+
+# External Service Integration Admin
+
+
+@admin.register(ExternalService)
+class ExternalServiceAdmin(admin.ModelAdmin):
+    """Admin interface for ExternalService model."""
+
+    list_display = [
+        "name",
+        "tenant",
+        "service_type",
+        "provider_name",
+        "auth_type",
+        "is_active",
+        "health_status",
+        "created_at",
+    ]
+
+    list_filter = [
+        "service_type",
+        "auth_type",
+        "is_active",
+        "health_status",
+        "is_test_mode",
+        "created_at",
+    ]
+
+    search_fields = [
+        "name",
+        "provider_name",
+        "description",
+        "tenant__company_name",
+    ]
+
+    readonly_fields = [
+        "id",
+        "created_at",
+        "updated_at",
+        "last_health_check_at",
+        "last_used_at",
+        "total_requests",
+        "failed_requests",
+        "consecutive_failures",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "tenant",
+                    "name",
+                    "service_type",
+                    "provider_name",
+                    "description",
+                )
+            },
+        ),
+        (
+            "Authentication",
+            {
+                "fields": (
+                    "auth_type",
+                    "api_key",
+                    "api_secret",
+                    "base_url",
+                    "config",
+                )
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "is_active",
+                    "is_test_mode",
+                    "health_status",
+                    "last_health_check_at",
+                    "consecutive_failures",
+                    "last_error_message",
+                )
+            },
+        ),
+        (
+            "Usage Statistics",
+            {
+                "fields": (
+                    "total_requests",
+                    "failed_requests",
+                    "last_used_at",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related("tenant", "created_by")
+
+
+@admin.register(OAuth2Token)
+class OAuth2TokenAdmin(admin.ModelAdmin):
+    """Admin interface for OAuth2Token model."""
+
+    list_display = [
+        "service",
+        "token_type",
+        "expires_at",
+        "created_at",
+        "updated_at",
+    ]
+
+    list_filter = [
+        "token_type",
+        "created_at",
+    ]
+
+    search_fields = [
+        "service__name",
+        "service__tenant__company_name",
+    ]
+
+    readonly_fields = [
+        "id",
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Service",
+            {"fields": ("id", "service")},
+        ),
+        (
+            "Tokens",
+            {
+                "fields": (
+                    "access_token",
+                    "refresh_token",
+                    "token_type",
+                    "expires_at",
+                    "scope",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related("service", "service__tenant")
+
+
+@admin.register(IntegrationHealthCheck)
+class IntegrationHealthCheckAdmin(admin.ModelAdmin):
+    """Admin interface for IntegrationHealthCheck model."""
+
+    list_display = [
+        "service",
+        "status",
+        "response_time_ms",
+        "status_code",
+        "checked_at",
+    ]
+
+    list_filter = [
+        "status",
+        "checked_at",
+    ]
+
+    search_fields = [
+        "service__name",
+        "service__tenant__company_name",
+        "error_message",
+    ]
+
+    readonly_fields = [
+        "id",
+        "service",
+        "status",
+        "response_time_ms",
+        "status_code",
+        "error_message",
+        "checked_at",
+    ]
+
+    fieldsets = (
+        (
+            "Health Check",
+            {
+                "fields": (
+                    "id",
+                    "service",
+                    "status",
+                    "response_time_ms",
+                    "status_code",
+                    "error_message",
+                    "checked_at",
+                )
+            },
+        ),
+    )
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related("service", "service__tenant")
+
+    def has_add_permission(self, request):
+        """Disable manual creation of health checks."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Disable editing of health checks."""
+        return False
+
+
+@admin.register(IntegrationLog)
+class IntegrationLogAdmin(admin.ModelAdmin):
+    """Admin interface for IntegrationLog model."""
+
+    list_display = [
+        "service",
+        "method",
+        "endpoint",
+        "response_status_code",
+        "success",
+        "response_time_ms",
+        "created_at",
+    ]
+
+    list_filter = [
+        "method",
+        "success",
+        "created_at",
+    ]
+
+    search_fields = [
+        "service__name",
+        "service__tenant__company_name",
+        "endpoint",
+        "error_message",
+    ]
+
+    readonly_fields = [
+        "id",
+        "service",
+        "method",
+        "endpoint",
+        "request_headers",
+        "request_body",
+        "response_status_code",
+        "response_body",
+        "response_time_ms",
+        "success",
+        "error_message",
+        "created_at",
+    ]
+
+    fieldsets = (
+        (
+            "Request",
+            {
+                "fields": (
+                    "id",
+                    "service",
+                    "method",
+                    "endpoint",
+                    "request_headers",
+                    "request_body",
+                )
+            },
+        ),
+        (
+            "Response",
+            {
+                "fields": (
+                    "response_status_code",
+                    "response_body",
+                    "response_time_ms",
+                    "success",
+                    "error_message",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {"fields": ("created_at",)},
+        ),
+    )
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        return super().get_queryset(request).select_related("service", "service__tenant")
+
+    def has_add_permission(self, request):
+        """Disable manual creation of logs."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Disable editing of logs."""
+        return False

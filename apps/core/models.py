@@ -28,6 +28,14 @@ from apps.core.feature_flags import (  # noqa: F401
     TenantFeatureFlag,
 )
 
+# Import integration models to register them with Django
+from apps.core.integration_models import (  # noqa: F401
+    ExternalService,
+    IntegrationHealthCheck,
+    IntegrationLog,
+    OAuth2Token,
+)
+
 # Import webhook models to register them with Django
 from apps.core.webhook_models import Webhook, WebhookDelivery  # noqa: F401
 

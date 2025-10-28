@@ -747,4 +747,6 @@ urlpatterns = [
     ),
     # Webhook Management
     path("webhooks/", include("apps.core.webhook_urls")),
+    # External Service Integration Management
+    path("integrations/", include("apps.core.integration_urls")),
 ]
