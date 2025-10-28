@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -745,4 +745,6 @@ urlpatterns = [
         announcement_views.tenant_active_announcements_api,
         name="api_tenant_active_announcements",
     ),
+    # Webhook Management
+    path("webhooks/", include("apps.core.webhook_urls")),
 ]

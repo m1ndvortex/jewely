@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Delivery Details - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-5xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <nav class="flex mb-4" aria-label="Breadcrumb">
+            <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                <li class="inline-flex items-center">
+                    <a href="{% url 'core:webhooks:webhook_list' %}" class="text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">
+                        Webhooks
+                    </a>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        <a href="{% url 'core:webhooks:webhook_detail' delivery.webhook.pk %}" class="ml-1 text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">
+                            {{ delivery.webhook.name }}
+                        </a>
+                    </div>
+                </li>
+                <li aria-current="page">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="ml-1 text-gray-500 dark:text-gray-400">Delivery Details</span>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+        <div class="flex items-center space-x-3">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Delivery Details</h1>
+            {% if delivery.status == 'SUCCESS' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                <svg class="mr-1.5 h-2 w-2 text-green-400" fill="currentColor" viewBox="0 0 8 8">
+                    <circle cx="4" cy="4" r="3"/>
+                </svg>
+                Success
+            </span>
+            {% elif delivery.status == 'FAILED' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                <svg class="mr-1.5 h-2 w-2 text-red-400" fill="currentColor" viewBox="0 0 8 8">
+                    <circle cx="4" cy="4" r="3"/>
+                </svg>
+                Failed
+            </span>
+            {% elif delivery.status == 'RETRYING' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                <svg class="mr-1.5 h-2 w-2 text-yellow-400" fill="currentColor" viewBox="0 0 8 8">
+                    <circle cx="4" cy="4" r="3"/>
+                </svg>
+                Retrying
+            </span>
+            {% else %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                <svg class="mr-1.5 h-2 w-2 text-gray-400" fill="currentColor" viewBox="0 0 8 8">
+                    <circle cx="4" cy="4" r="3"/>
+                </svg>
+                Pending
+            </span>
+            {% endif %}
+        </div>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            {{ delivery.event_type }} • {{ delivery.created_at|date:"F j, Y g:i A" }}
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Delivery Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Delivery Information</h2>
+                </div>
+                <div class="px-6 py-4 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Event Type</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ delivery.event_type }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Event ID</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono">{{ delivery.event_id }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Webhook URL</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ delivery.webhook.url }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Attempts</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ delivery.attempt_count }} / {{ delivery.max_attempts }}</dd>
+                        </div>
+                        {% if delivery.response_status_code %}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">HTTP Status</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ delivery.response_status_code }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if delivery.duration_ms %}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ delivery.duration_ms }}ms</dd>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- HMAC Signature -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">HMAC Signature</h2>
+                </div>
+                <div class="px-6 py-4">
+                    <code class="block bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded text-sm font-mono text-gray-900 dark:text-white break-all">
+                        {{ delivery.signature }}
+                    </code>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        This signature was sent in the <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">X-Webhook-Signature</code> header
+                    </p>
+                </div>
+            </div>
+
+            <!-- Payload -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Payload</h2>
+                </div>
+                <div class="px-6 py-4">
+                    <pre class="bg-gray-100 dark:bg-gray-700 px-4 py-3 rounded text-sm font-mono text-gray-900 dark:text-white overflow-x-auto">{{ formatted_payload }}</pre>
+                </div>
+            </div>
+
+            <!-- Response -->
+            {% if delivery.response_body %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Response</h2>
+                </div>
+                <div class="px-6 py-4">
+                    <pre class="bg-gray-100 dark:bg-gray-700 px-4 py-3 rounded text-sm font-mono text-gray-900 dark:text-white overflow-x-auto max-h-96">{{ delivery.response_body }}</pre>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Error Message -->
+            {% if delivery.error_message %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Error Message</h2>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="bg-red-50 dark:bg-red-900 border-l-4 border-red-400 p-4">
+                        <p class="text-sm text-red-700 dark:text-red-300">{{ delivery.error_message }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Timeline -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Timeline</h2>
+                </div>
+                <div class="px-6 py-4 space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Created</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ delivery.created_at|date:"F j, Y g:i A" }}
+                        </dd>
+                    </div>
+                    {% if delivery.sent_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Sent</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ delivery.sent_at|date:"F j, Y g:i A" }}
+                        </dd>
+                    </div>
+                    {% endif %}
+                    {% if delivery.completed_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Completed</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ delivery.completed_at|date:"F j, Y g:i A" }}
+                        </dd>
+                    </div>
+                    {% endif %}
+                    {% if delivery.next_retry_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Next Retry</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ delivery.next_retry_at|date:"F j, Y g:i A" }}
+                        </dd>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Retry Information -->
+            {% if retry_info.can_retry %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Retry Information</h2>
+                </div>
+                <div class="px-6 py-4 space-y-3">
+                    {% if retry_info.next_retry_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Next Retry In</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ retry_info.minutes_until_retry }} minute{{ retry_info.minutes_until_retry|pluralize }}
+                        </dd>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Retry Attempt</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ retry_info.attempt }} of {{ retry_info.max_attempts }}
+                        </dd>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">Actions</h2>
+                </div>
+                <div class="px-6 py-4 space-y-3">
+                    <a href="{% url 'core:webhooks:webhook_detail' delivery.webhook.pk %}" 
+                       class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        Back to Webhook
+                    </a>
+                    <a href="{% url 'core:webhooks:webhook_delivery_list' delivery.webhook.pk %}" 
+                       class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        View All Deliveries
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

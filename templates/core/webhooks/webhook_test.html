@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Test Webhook - {{ webhook.name }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Test Webhook</h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Send a test event to <strong>{{ webhook.name }}</strong>
+        </p>
+    </div>
+
+    <!-- Test Result (if available) -->
+    {% if test_result %}
+    <div class="mb-6">
+        {% if test_result.success %}
+        <div class="bg-green-50 dark:bg-green-900 border-l-4 border-green-400 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-green-800 dark:text-green-200">
+                        Test Successful!
+                    </h3>
+                    <div class="mt-2 text-sm text-green-700 dark:text-green-300">
+                        <p>Status Code: <strong>{{ test_result.status_code }}</strong></p>
+                        <p>Duration: <strong>{{ test_result.duration_ms }}ms</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-red-50 dark:bg-red-900 border-l-4 border-red-400 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                        Test Failed
+                    </h3>
+                    <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                        <p><strong>Error:</strong> {{ test_result.error }}</p>
+                        {% if test_result.status_code %}
+                        <p class="mt-1">Status Code: {{ test_result.status_code }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Test Details -->
+        <div class="mt-4 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Test Details</h3>
+            
+            {% if test_result.signature %}
+            <div class="mb-4">
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">HMAC Signature</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                    {{ test_result.signature }}
+                </dd>
+            </div>
+            {% endif %}
+
+            {% if test_result.payload %}
+            <div class="mb-4">
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Payload Sent</dt>
+                <dd class="mt-1">
+                    <pre class="text-sm text-gray-900 dark:text-white font-mono bg-gray-100 dark:bg-gray-700 p-4 rounded overflow-x-auto">{{ test_result.payload|safe }}</pre>
+                </dd>
+            </div>
+            {% endif %}
+
+            {% if test_result.response_body %}
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Response Body</dt>
+                <dd class="mt-1">
+                    <pre class="text-sm text-gray-900 dark:text-white font-mono bg-gray-100 dark:bg-gray-700 p-4 rounded overflow-x-auto max-h-64">{{ test_result.response_body }}</pre>
+                </dd>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Test Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Event Type Selection -->
+            <div>
+                <label for="{{ form.event_type.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ form.event_type.label }}
+                    <span class="text-red-500">*</span>
+                </label>
+                {{ form.event_type }}
+                {% if form.event_type.help_text %}
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.event_type.help_text }}</p>
+                {% endif %}
+                {% if form.event_type.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.event_type.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Test Payload -->
+            <div>
+                <label for="{{ form.test_payload.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ form.test_payload.label }}
+                </label>
+                {{ form.test_payload }}
+                {% if form.test_payload.help_text %}
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.test_payload.help_text }}</p>
+                {% endif %}
+                {% if form.test_payload.errors %}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.test_payload.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Info Box -->
+            <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">
+                            About Webhook Testing
+                        </h3>
+                        <div class="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                            <p>
+                                This will send a real HTTP POST request to your webhook URL with a test payload.
+                                The request will include the HMAC signature in the <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">X-Webhook-Signature</code> header.
+                            </p>
+                            <p class="mt-2">
+                                If you don't provide a custom payload, we'll generate a default test payload for the selected event type.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <a href="{% url 'core:webhooks:webhook_detail' webhook.pk %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Back to Webhook
+                </a>
+                <button type="submit" 
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Send Test Webhook
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
