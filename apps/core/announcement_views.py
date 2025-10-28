@@ -7,9 +7,11 @@ Per Requirement 31 - Communication and Announcement System
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import models
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.core.announcement_forms import (
@@ -613,3 +615,258 @@ class CommunicationLogListView(LoginRequiredMixin, PlatformAdminRequiredMixin, L
         context["tenants"] = Tenant.objects.filter(status=Tenant.ACTIVE).order_by("company_name")
         context["total_count"] = CommunicationLog.objects.count()
         return context
+
+
+# ============================================================================
+# Tenant-Facing Announcement Display Views
+# ============================================================================
+
+
+@login_required
+def tenant_announcement_center(request):
+    """
+    Announcement center for tenants to view all announcements.
+
+    Requirement 31.5: Display announcements as dismissible banners.
+    Requirement 31.6: Track read/unread status.
+    """
+    # Get tenant from request user
+    tenant = request.user.tenant
+
+    if not tenant:
+        messages.error(request, "You must be associated with a tenant to view announcements.")
+        return redirect("core:home")
+
+    # Get all active announcements for this tenant
+    active_announcements = (
+        Announcement.objects.filter(status=Announcement.SENT)
+        .filter(
+            models.Q(target_all_tenants=True)
+            | models.Q(
+                target_filter__plans__contains=(
+                    [tenant.subscription.plan.name] if hasattr(tenant, "subscription") else []
+                )
+            )
+        )
+        .order_by("-sent_at")
+    )
+
+    # Get read status for each announcement
+    read_announcements = AnnouncementRead.objects.filter(
+        tenant=tenant, announcement__in=active_announcements
+    ).values_list("announcement_id", flat=True)
+
+    # Separate unread and read announcements
+    unread_announcements = active_announcements.exclude(id__in=read_announcements)
+    read_announcements_list = active_announcements.filter(id__in=read_announcements)
+
+    # Get acknowledgment status
+    acknowledgment_status = {}
+    for announcement in active_announcements:
+        if announcement.requires_acknowledgment:
+            try:
+                read_record = AnnouncementRead.objects.get(tenant=tenant, announcement=announcement)
+                acknowledgment_status[announcement.id] = read_record.acknowledged
+            except AnnouncementRead.DoesNotExist:
+                acknowledgment_status[announcement.id] = False
+
+    return render(
+        request,
+        "core/announcements/tenant_announcement_center.html",
+        {
+            "unread_announcements": unread_announcements,
+            "read_announcements": read_announcements_list,
+            "acknowledgment_status": acknowledgment_status,
+            "unread_count": unread_announcements.count(),
+        },
+    )
+
+
+@login_required
+def tenant_announcement_detail(request, pk):
+    """
+    View announcement details for tenant.
+
+    Requirement 31.6: Track read/unread status.
+    """
+    tenant = request.user.tenant
+
+    if not tenant:
+        messages.error(request, "You must be associated with a tenant to view announcements.")
+        return redirect("core:home")
+
+    announcement = get_object_or_404(Announcement, pk=pk, status=Announcement.SENT)
+
+    # Mark as read if not already
+    read_record, created = AnnouncementRead.objects.get_or_create(
+        announcement=announcement, tenant=tenant, defaults={"user": request.user}
+    )
+
+    return render(
+        request,
+        "core/announcements/tenant_announcement_detail.html",
+        {
+            "announcement": announcement,
+            "read_record": read_record,
+        },
+    )
+
+
+@login_required
+def tenant_announcement_dismiss(request, pk):
+    """
+    Dismiss an announcement banner.
+
+    Requirement 31.5: Implement dismissible banners.
+    """
+    tenant = request.user.tenant
+
+    if not tenant:
+        return redirect("core:home")
+
+    announcement = get_object_or_404(Announcement, pk=pk)
+
+    # Check if announcement is dismissible
+    if not announcement.is_dismissible:
+        messages.error(request, "This announcement cannot be dismissed.")
+        return redirect("core:tenant_announcement_center")
+
+    # Get or create read record
+    read_record, created = AnnouncementRead.objects.get_or_create(
+        announcement=announcement, tenant=tenant, defaults={"user": request.user}
+    )
+
+    # Mark as dismissed
+    read_record.dismiss()
+
+    messages.success(request, "Announcement dismissed.")
+
+    # Return to previous page or announcement center
+    next_url = request.GET.get("next", reverse("core:tenant_announcement_center"))
+    return redirect(next_url)
+
+
+@login_required
+def tenant_announcement_acknowledge(request, pk):
+    """
+    Acknowledge a critical announcement.
+
+    Requirement 31.7: Require tenant acknowledgment for critical announcements.
+    """
+    tenant = request.user.tenant
+
+    if not tenant:
+        return redirect("core:home")
+
+    announcement = get_object_or_404(Announcement, pk=pk)
+
+    # Check if announcement requires acknowledgment
+    if not announcement.requires_acknowledgment:
+        messages.error(request, "This announcement does not require acknowledgment.")
+        return redirect("core:tenant_announcement_center")
+
+    # Get or create read record
+    read_record, created = AnnouncementRead.objects.get_or_create(
+        announcement=announcement, tenant=tenant, defaults={"user": request.user}
+    )
+
+    if request.method == "POST":
+        # Acknowledge the announcement
+        read_record.acknowledge(request.user)
+
+        messages.success(request, "Announcement acknowledged.")
+        return redirect("core:tenant_announcement_center")
+
+    return render(
+        request,
+        "core/announcements/tenant_announcement_acknowledge.html",
+        {
+            "announcement": announcement,
+            "read_record": read_record,
+        },
+    )
+
+
+@login_required
+def tenant_active_announcements_api(request):
+    """
+    API endpoint to get active announcements for the current tenant.
+
+    Used for displaying banners and notification badges.
+
+    Requirement 31.5: Display announcements as dismissible banners.
+    Requirement 31.6: Track read/unread status.
+    """
+    from django.http import JsonResponse
+
+    tenant = request.user.tenant
+
+    if not tenant:
+        return JsonResponse({"announcements": [], "unread_count": 0})
+
+    # Get active announcements that should be displayed
+    active_announcements = Announcement.objects.filter(
+        status=Announcement.SENT,
+    ).filter(models.Q(display_until__isnull=True) | models.Q(display_until__gt=timezone.now()))
+
+    # Filter by tenant targeting
+    # This is a simplified version - in production, you'd want more sophisticated filtering
+    if not request.user.role == "PLATFORM_ADMIN":
+        # For tenant users, only show announcements targeted to them
+        active_announcements = active_announcements.filter(
+            models.Q(target_all_tenants=True)
+            | models.Q(
+                target_filter__plans__contains=(
+                    [tenant.subscription.plan.name] if hasattr(tenant, "subscription") else []
+                )
+            )
+        )
+
+    # Get dismissed announcements
+    dismissed_announcements = AnnouncementRead.objects.filter(
+        tenant=tenant, dismissed=True
+    ).values_list("announcement_id", flat=True)
+
+    # Exclude dismissed announcements
+    active_announcements = active_announcements.exclude(id__in=dismissed_announcements)
+
+    # Get unacknowledged critical announcements
+    unacknowledged_critical = []
+    for announcement in active_announcements:
+        if announcement.requires_acknowledgment:
+            try:
+                read_record = AnnouncementRead.objects.get(tenant=tenant, announcement=announcement)
+                if not read_record.acknowledged:
+                    unacknowledged_critical.append(announcement.id)
+            except AnnouncementRead.DoesNotExist:
+                unacknowledged_critical.append(announcement.id)
+
+    # Build response
+    announcements_data = []
+    for announcement in active_announcements[:5]:  # Limit to 5 most recent
+        announcements_data.append(
+            {
+                "id": str(announcement.id),
+                "title": announcement.title,
+                "message": announcement.message[:200],  # Truncate for banner
+                "severity": announcement.severity,
+                "is_dismissible": announcement.is_dismissible,
+                "requires_acknowledgment": announcement.requires_acknowledgment,
+                "is_acknowledged": str(announcement.id) not in unacknowledged_critical,
+                "sent_at": announcement.sent_at.isoformat() if announcement.sent_at else None,
+            }
+        )
+
+    # Get unread count
+    read_announcements = AnnouncementRead.objects.filter(tenant=tenant).values_list(
+        "announcement_id", flat=True
+    )
+    unread_count = active_announcements.exclude(id__in=read_announcements).count()
+
+    return JsonResponse(
+        {
+            "announcements": announcements_data,
+            "unread_count": unread_count,
+            "unacknowledged_critical_count": len(unacknowledged_critical),
+        }
+    )

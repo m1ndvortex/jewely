@@ -247,10 +247,20 @@ class AuditLog(models.Model):
     request_method = models.CharField(
         max_length=10,
         blank=True,
+        null=True,
+        default="",
         help_text="HTTP request method (GET, POST, PUT, DELETE, etc.)",
     )
 
     request_path = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        default="",
+        help_text="HTTP request path",
+    )
+
+    request_query_params = models.TextField(
         max_length=500,
         blank=True,
         db_index=True,

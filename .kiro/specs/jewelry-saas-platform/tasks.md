@@ -800,7 +800,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement delivery channel selection (in-app, email, SMS)
     - _Requirements: 31_
   
-  - [ ] 22.3 Implement announcement display
+  - [x] 22.3 Implement announcement display
     - Create in-app banner component
     - Implement dismissible banners
     - Create announcement center

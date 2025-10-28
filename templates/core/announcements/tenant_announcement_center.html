@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Announcements - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Announcements
+        </h1>
+        <p class="text-gray-600 dark:text-gray-400">
+            View platform announcements and important updates
+        </p>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                            Unread Announcements
+                        </dt>
+                        <dd class="text-2xl font-semibold text-gray-900 dark:text-white">
+                            {{ unread_count }}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                            Read Announcements
+                        </dt>
+                        <dd class="text-2xl font-semibold text-gray-900 dark:text-white">
+                            {{ read_announcements.count }}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                            Requires Action
+                        </dt>
+                        <dd class="text-2xl font-semibold text-gray-900 dark:text-white">
+                            {% with unack_count=0 %}
+                                {% for ann_id, is_ack in acknowledgment_status.items %}
+                                    {% if not is_ack %}
+                                        {% with unack_count=unack_count|add:1 %}{% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                                {{ unack_count }}
+                            {% endwith %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unread Announcements -->
+    {% if unread_announcements %}
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Unread Announcements
+        </h2>
+        <div class="space-y-4">
+            {% for announcement in unread_announcements %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border-l-4 
+                {% if announcement.severity == 'CRITICAL' %}border-red-500
+                {% elif announcement.severity == 'WARNING' %}border-yellow-500
+                {% elif announcement.severity == 'MAINTENANCE' %}border-blue-500
+                {% else %}border-green-500{% endif %}">
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-2">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                                    {% if announcement.severity == 'CRITICAL' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                    {% elif announcement.severity == 'WARNING' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                    {% elif announcement.severity == 'MAINTENANCE' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                    {% else %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% endif %}">
+                                    {{ announcement.get_severity_display }}
+                                </span>
+                                {% if announcement.requires_acknowledgment %}
+                                <span class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                    Requires Acknowledgment
+                                </span>
+                                {% endif %}
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                                {{ announcement.title }}
+                            </h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                                {{ announcement.message|truncatewords:50 }}
+                            </p>
+                            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ announcement.sent_at|date:"F d, Y g:i A" }}
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-shrink-0 flex flex-col space-y-2">
+                            <a href="{% url 'core:tenant_announcement_detail' announcement.pk %}" 
+                               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                View Details
+                            </a>
+                            {% if announcement.requires_acknowledgment %}
+                            <a href="{% url 'core:tenant_announcement_acknowledge' announcement.pk %}" 
+                               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                                Acknowledge
+                            </a>
+                            {% endif %}
+                            {% if announcement.is_dismissible %}
+                            <a href="{% url 'core:tenant_announcement_dismiss' announcement.pk %}?next={{ request.path }}" 
+                               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Dismiss
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Read Announcements -->
+    {% if read_announcements %}
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Read Announcements
+        </h2>
+        <div class="space-y-4">
+            {% for announcement in read_announcements %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden opacity-75 hover:opacity-100 transition-opacity">
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-2">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                                    {% if announcement.severity == 'CRITICAL' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                    {% elif announcement.severity == 'WARNING' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                    {% elif announcement.severity == 'MAINTENANCE' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                    {% else %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% endif %}">
+                                    {{ announcement.get_severity_display }}
+                                </span>
+                                {% if announcement.requires_acknowledgment %}
+                                <span class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                    Requires Acknowledgment
+                                </span>
+                                {% endif %}
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                                {{ announcement.title }}
+                            </h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-2">
+                                {{ announcement.message|truncatewords:30 }}
+                            </p>
+                            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ announcement.sent_at|date:"F d, Y g:i A" }}
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-shrink-0">
+                            <a href="{% url 'core:tenant_announcement_detail' announcement.pk %}" 
+                               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Empty State -->
+    {% if not unread_announcements and not read_announcements %}
+    <div class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No announcements</h3>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            You don't have any announcements at this time.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -702,4 +702,31 @@ urlpatterns = [
         announcement_views.CommunicationLogListView.as_view(),
         name="communication_log_list",
     ),
+    # Tenant-Facing Announcement Display
+    path(
+        "announcements/",
+        announcement_views.tenant_announcement_center,
+        name="tenant_announcement_center",
+    ),
+    path(
+        "announcements/<uuid:pk>/",
+        announcement_views.tenant_announcement_detail,
+        name="tenant_announcement_detail",
+    ),
+    path(
+        "announcements/<uuid:pk>/dismiss/",
+        announcement_views.tenant_announcement_dismiss,
+        name="tenant_announcement_dismiss",
+    ),
+    path(
+        "announcements/<uuid:pk>/acknowledge/",
+        announcement_views.tenant_announcement_acknowledge,
+        name="tenant_announcement_acknowledge",
+    ),
+    # Tenant Announcement API
+    path(
+        "api/announcements/active/",
+        announcement_views.tenant_active_announcements_api,
+        name="api_tenant_active_announcements",
+    ),
 ]

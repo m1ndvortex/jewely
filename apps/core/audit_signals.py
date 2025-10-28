@@ -283,7 +283,13 @@ def log_user_login(sender, request, user, **kwargs):
             request=request,
         )
     except Exception as e:
+        # Log error but don't break the login flow
         logger.error(f"Error logging user login: {e}")
+        # In tests, we might have transaction issues, so we silently continue
+        import sys
+
+        if "pytest" in sys.modules:
+            pass
 
 
 @receiver(user_login_failed)

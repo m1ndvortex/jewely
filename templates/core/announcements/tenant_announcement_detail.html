@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ announcement.title }} - Announcements - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Breadcrumb -->
+    <nav class="flex mb-8" aria-label="Breadcrumb">
+        <ol class="inline-flex items-center space-x-1 md:space-x-3">
+            <li class="inline-flex items-center">
+                <a href="{% url 'core:tenant_announcement_center' %}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                    </svg>
+                    Announcements
+                </a>
+            </li>
+            <li aria-current="page">
+                <div class="flex items-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2 dark:text-gray-400">
+                        {{ announcement.title|truncatewords:5 }}
+                    </span>
+                </div>
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Announcement Content -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+        <!-- Header -->
+        <div class="border-l-4 p-6
+            {% if announcement.severity == 'CRITICAL' %}border-red-500 bg-red-50 dark:bg-red-900/20
+            {% elif announcement.severity == 'WARNING' %}border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20
+            {% elif announcement.severity == 'MAINTENANCE' %}border-blue-500 bg-blue-50 dark:bg-blue-900/20
+            {% else %}border-green-500 bg-green-50 dark:bg-green-900/20{% endif %}">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center mb-3">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                            {% if announcement.severity == 'CRITICAL' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                            {% elif announcement.severity == 'WARNING' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                            {% elif announcement.severity == 'MAINTENANCE' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                            {% else %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% endif %}">
+                            {{ announcement.get_severity_display }}
+                        </span>
+                        {% if announcement.requires_acknowledgment %}
+                        <span class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                            {% if read_record.acknowledged %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                            {% else %}bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200{% endif %}">
+                            {% if read_record.acknowledged %}
+                                <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                </svg>
+                                Acknowledged
+                            {% else %}
+                                Requires Acknowledgment
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                        {{ announcement.title }}
+                    </h1>
+                    <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                        <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Published on {{ announcement.sent_at|date:"F d, Y \a\t g:i A" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Content -->
+        <div class="p-6">
+            <div class="prose dark:prose-invert max-w-none">
+                {{ announcement.message|linebreaks }}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="bg-gray-50 dark:bg-gray-900 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                {% if read_record %}
+                <svg class="h-5 w-5 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                Read on {{ read_record.read_at|date:"F d, Y \a\t g:i A" }}
+                {% endif %}
+            </div>
+            <div class="flex space-x-3">
+                {% if announcement.requires_acknowledgment and not read_record.acknowledged %}
+                <a href="{% url 'core:tenant_announcement_acknowledge' announcement.pk %}" 
+                   class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Acknowledge
+                </a>
+                {% endif %}
+                {% if announcement.is_dismissible and not read_record.dismissed %}
+                <a href="{% url 'core:tenant_announcement_dismiss' announcement.pk %}?next={% url 'core:tenant_announcement_center' %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    Dismiss
+                </a>
+                {% endif %}
+                <a href="{% url 'core:tenant_announcement_center' %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Back to Announcements
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acknowledgment Info -->
+    {% if announcement.requires_acknowledgment and read_record.acknowledged %}
+    <div class="mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-green-800 dark:text-green-200">
+                    Acknowledged
+                </h3>
+                <div class="mt-2 text-sm text-green-700 dark:text-green-300">
+                    <p>
+                        This announcement was acknowledged by {{ read_record.acknowledged_by.get_full_name|default:read_record.acknowledged_by.username }}
+                        on {{ read_record.acknowledged_at|date:"F d, Y \a\t g:i A" }}.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
