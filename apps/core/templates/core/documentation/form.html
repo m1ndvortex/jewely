@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ action }} Documentation{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ action }} Documentation</h1>
+        <p class="text-gray-600">Create or edit documentation pages with Markdown support</p>
+    </div>
+
+    <!-- Form -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <!-- Title -->
+            <div>
+                <label for="{{ form.title.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    Title *
+                </label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.title.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Slug -->
+            <div>
+                <label for="{{ form.slug.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    Slug
+                </label>
+                {{ form.slug }}
+                <p class="mt-1 text-sm text-gray-500">Leave empty to auto-generate from title</p>
+                {% if form.slug.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.slug.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Category and Status -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Category *
+                    </label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.category.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Status *
+                    </label>
+                    {{ form.status }}
+                    {% if form.status.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.status.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div>
+                <label for="{{ form.summary.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    Summary
+                </label>
+                {{ form.summary }}
+                <p class="mt-1 text-sm text-gray-500">Brief summary or excerpt</p>
+                {% if form.summary.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.summary.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Content -->
+            <div>
+                <label for="{{ form.content.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    Content * (Markdown Supported)
+                </label>
+                {{ form.content }}
+                <p class="mt-1 text-sm text-gray-500">Use Markdown syntax for formatting</p>
+                {% if form.content.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.content.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Tags -->
+            <div>
+                <label for="{{ form.tags.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    Tags
+                </label>
+                {{ form.tags }}
+                <p class="mt-1 text-sm text-gray-500">{{ form.tags.help_text }}</p>
+                {% if form.tags.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.tags.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Version, Parent, and Order -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label for="{{ form.version.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Version
+                    </label>
+                    {{ form.version }}
+                    {% if form.version.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.version.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.parent.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Parent Page
+                    </label>
+                    {{ form.parent }}
+                    {% if form.parent.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.parent.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ form.order.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                        Order
+                    </label>
+                    {{ form.order }}
+                    {% if form.order.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.order.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+                <a href="{% if page %}{% url 'core:documentation:detail' page.slug %}{% else %}{% url 'core:documentation:list' %}{% endif %}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    {{ action }} Documentation
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Markdown Help -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="font-medium text-blue-900 mb-2">Markdown Quick Reference</h3>
+        <div class="text-sm text-blue-800 space-y-1">
+            <p><code># Heading 1</code> - Large heading</p>
+            <p><code>## Heading 2</code> - Medium heading</p>
+            <p><code>**bold text**</code> - Bold text</p>
+            <p><code>*italic text*</code> - Italic text</p>
+            <p><code>`code`</code> - Inline code</p>
+            <p><code>- List item</code> - Bullet list</p>
+            <p><code>1. List item</code> - Numbered list</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

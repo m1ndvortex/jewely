@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ category_name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <nav class="mb-4 text-sm">
+            <ol class="flex items-center space-x-2 text-gray-500">
+                <li><a href="{% url 'core:documentation:home' %}" class="hover:text-blue-600">Documentation</a></li>
+                <li class="flex items-center">
+                    <svg class="w-4 h-4 mx-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-gray-900 font-medium">{{ category_name }}</span>
+                </li>
+            </ol>
+        </nav>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ category_name }}</h1>
+        <p class="text-gray-600">Browse all {{ category_name|lower }} documentation</p>
+    </div>
+
+    <!-- Pages List -->
+    <div class="bg-white rounded-lg shadow">
+        {% if root_pages %}
+        <ul class="divide-y divide-gray-200">
+            {% for page in root_pages %}
+            <li class="px-6 py-4">
+                <a href="{% url 'core:documentation:detail' page.slug %}" class="block hover:bg-gray-50 -mx-6 -my-4 px-6 py-4">
+                    <h3 class="text-lg font-medium text-blue-600 hover:text-blue-700">{{ page.title }}</h3>
+                    {% if page.summary %}
+                    <p class="text-sm text-gray-600 mt-1">{{ page.summary }}</p>
+                    {% endif %}
+                    <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <span>Version {{ page.version }}</span>
+                        <span>•</span>
+                        <span>Updated {{ page.updated_at|timesince }} ago</span>
+                        <span>•</span>
+                        <span>{{ page.view_count }} views</span>
+                    </div>
+                </a>
+                {% if page.children.all %}
+                <ul class="ml-6 mt-2 space-y-1">
+                    {% for child in page.children.all %}
+                    <li>
+                        <a href="{% url 'core:documentation:detail' child.slug %}" class="text-sm text-blue-600 hover:text-blue-700">
+                            → {{ child.title }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="px-6 py-12 text-center text-gray-500">
+            <p>No documentation pages in this category yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

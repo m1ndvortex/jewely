@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Runbooks{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Operational Runbooks</h1>
+                <p class="text-gray-600">Step-by-step procedures for platform operations</p>
+            </div>
+            <a href="{% url 'core:documentation:runbook_create' %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                New Runbook
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <form method="get" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-1">
+                    {{ form.query }}
+                </div>
+                <div>
+                    {{ form.runbook_type }}
+                </div>
+                <div>
+                    {{ form.priority }}
+                </div>
+                <div>
+                    {{ form.status }}
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Search
+                </button>
+                <a href="{% url 'core:documentation:runbook_list' %}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="bg-white rounded-lg shadow">
+        {% if page_obj %}
+        <ul class="divide-y divide-gray-200">
+            {% for runbook in page_obj %}
+            <li>
+                <div class="px-6 py-4 hover:bg-gray-50">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0">
+                            <a href="{% url 'core:documentation:runbook_detail' runbook.slug %}" class="text-lg font-medium text-green-600 hover:text-green-700">
+                                {{ runbook.title }}
+                            </a>
+                            <p class="text-sm text-gray-600 mt-1">{{ runbook.description|truncatewords:30 }}</p>
+                            <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                <span>{{ runbook.get_runbook_type_display }}</span>
+                                <span>•</span>
+                                <span>Version {{ runbook.version }}</span>
+                                <span>•</span>
+                                <span>{{ runbook.execution_count }} executions</span>
+                                {% if runbook.expected_duration %}
+                                <span>•</span>
+                                <span>~{{ runbook.expected_duration }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="ml-4 flex flex-col items-end gap-2">
+                            <span class="px-3 py-1 text-xs font-medium rounded {% if runbook.priority == 'CRITICAL' %}bg-red-100 text-red-800{% elif runbook.priority == 'HIGH' %}bg-orange-100 text-orange-800{% elif runbook.priority == 'MEDIUM' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ runbook.get_priority_display }}
+                            </span>
+                            <span class="px-3 py-1 text-xs font-medium rounded {% if runbook.status == 'ACTIVE' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ runbook.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="px-6 py-4 border-t border-gray-200">
+            <nav class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="px-6 py-12 text-center text-gray-500">
+            <p>No runbooks found</p>
+            <a href="{% url 'core:documentation:runbook_create' %}" class="mt-4 inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                Create First Runbook
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

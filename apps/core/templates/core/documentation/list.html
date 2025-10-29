@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Documentation List{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Documentation</h1>
+                <p class="text-gray-600">Browse and search all documentation pages</p>
+            </div>
+            <a href="{% url 'core:documentation:create' %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                New Documentation
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <form method="get" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-1">
+                    {{ form.query }}
+                </div>
+                <div>
+                    {{ form.category }}
+                </div>
+                <div>
+                    {{ form.status }}
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Search
+                </button>
+                <a href="{% url 'core:documentation:list' %}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="bg-white rounded-lg shadow">
+        {% if page_obj %}
+        <ul class="divide-y divide-gray-200">
+            {% for page in page_obj %}
+            <li>
+                <div class="px-6 py-4 hover:bg-gray-50">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0">
+                            <a href="{% url 'core:documentation:detail' page.slug %}" class="text-lg font-medium text-blue-600 hover:text-blue-700">
+                                {{ page.title }}
+                            </a>
+                            {% if page.summary %}
+                            <p class="text-sm text-gray-600 mt-1">{{ page.summary|truncatewords:30 }}</p>
+                            {% endif %}
+                            <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                <span>{{ page.get_category_display }}</span>
+                                <span>•</span>
+                                <span>Version {{ page.version }}</span>
+                                <span>•</span>
+                                <span>Updated {{ page.updated_at|timesince }} ago</span>
+                                <span>•</span>
+                                <span>{{ page.view_count }} views</span>
+                            </div>
+                            {% if page.tags %}
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                {% for tag in page.tags %}
+                                <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-4 flex flex-col items-end gap-2">
+                            <span class="px-3 py-1 text-xs font-medium rounded {% if page.status == 'PUBLISHED' %}bg-green-100 text-green-800{% elif page.status == 'DRAFT' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ page.get_status_display }}
+                            </span>
+                            <a href="{% url 'core:documentation:edit' page.slug %}" class="text-sm text-blue-600 hover:text-blue-700">Edit</a>
+                        </div>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="px-6 py-4 border-t border-gray-200">
+            <nav class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing page <span class="font-medium">{{ page_obj.number }}</span> of <span class="font-medium">{{ page_obj.paginator.num_pages }}</span>
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Previous
+                            </a>
+                            {% endif %}
+                            {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                Next
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="px-6 py-12 text-center text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p class="mt-4">No documentation pages found</p>
+            <a href="{% url 'core:documentation:create' %}" class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                Create First Documentation
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

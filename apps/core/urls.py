@@ -751,4 +751,6 @@ urlpatterns = [
     path("integrations/", include("apps.core.integration_urls")),
     # Job Monitoring
     path("platform/jobs/", include("apps.core.job_urls")),
+    # Documentation and Knowledge Base
+    path("platform/documentation/", include("apps.core.documentation_urls")),
 ]
