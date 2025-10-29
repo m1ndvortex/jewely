@@ -939,7 +939,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Implement locale-specific formatting
     - _Requirements: 2_
   
-  - [ ] 26.5 Create language switcher
+  - [x] 26.5 Create language switcher
     - Implement language selection interface
     - Store language preference in user profile
     - Apply language to all pages

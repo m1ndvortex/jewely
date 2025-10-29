@@ -238,7 +238,7 @@ class TestLanguageSwitcherUI:
         # Check for language switcher elements in the response
         content = response.content.decode("utf-8")
         assert "switchLanguage" in content  # JavaScript function
-        assert "language_switch" in content  # URL reference
+        assert "/api/user/language/switch/" in content  # URL reference
 
     def test_current_language_displayed_correctly(self, client, user):
         """Test that current language is displayed correctly in switcher."""

@@ -107,6 +107,55 @@ class UserPreferencesView(generics.UpdateAPIView):
         return self.request.user
 
 
+class LanguageSwitchView(APIView):
+    """
+    API endpoint for switching user's language preference.
+
+    Per Requirement 2 - Dual-Language Support (English and Persian)
+    Task 26.5 - Create language switcher
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        """
+        Switch user's language preference.
+
+        Expected payload:
+        {
+            "language": "en" or "fa"
+        }
+        """
+        language = request.data.get("language")
+
+        # Validate language choice
+        valid_languages = dict(User.LANGUAGE_CHOICES).keys()
+        if language not in valid_languages:
+            return Response(
+                {"error": "Invalid language choice", "valid_choices": list(valid_languages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update user's language preference
+        user = request.user
+        user.language = language
+        user.save(update_fields=["language"])
+
+        # Activate the new language for the current request
+        from django.utils import translation
+
+        translation.activate(language)
+
+        return Response(
+            {
+                "message": "Language preference updated successfully",
+                "language": language,
+                "language_name": dict(User.LANGUAGE_CHOICES)[language],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class MFAStatusView(APIView):
     """
     API endpoint to check MFA status for the current user.
