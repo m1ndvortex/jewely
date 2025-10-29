@@ -401,6 +401,7 @@ urlpatterns = [
     path("api/user/password/change/", views.PasswordChangeView.as_view(), name="password_change"),
     path("api/user/preferences/", views.UserPreferencesView.as_view(), name="user_preferences"),
     path("api/user/language/switch/", views.LanguageSwitchView.as_view(), name="language_switch"),
+    path("api/user/theme/switch/", views.ThemeSwitchView.as_view(), name="theme_switch"),
     # MFA endpoints
     path("api/mfa/status/", views.MFAStatusView.as_view(), name="mfa_status"),
     path("api/mfa/enable/", views.MFAEnableView.as_view(), name="mfa_enable"),

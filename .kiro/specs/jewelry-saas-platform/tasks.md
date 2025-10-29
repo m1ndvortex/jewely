@@ -945,7 +945,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Apply language to all pages
     - _Requirements: 2_
   
-  - [ ] 26.6 Write i18n tests
+  - [x] 26.6 Write i18n tests
     - Test translation coverage
     - Test RTL layout
     - Test number/date formatting
@@ -953,7 +953,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - _Requirements: 2, 28_
 
 - [ ] 27. Theme System Implementation
-  - [ ] 27.1 Implement theme infrastructure
+  - [x] 27.1 Implement theme infrastructure
     - Create theme CSS variables for light and dark modes
     - Implement theme toggle component
     - Store theme preference in user profile

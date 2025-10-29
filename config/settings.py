@@ -109,6 +109,8 @@ TEMPLATES = [
                 "django.template.context_processors.csrf",
                 # i18n context processor for language support
                 "django.template.context_processors.i18n",
+                # User preferences (language and theme)
+                "apps.core.context_processors.user_preferences",
                 "apps.core.context_processors.waffle_flags",
             ],
         },

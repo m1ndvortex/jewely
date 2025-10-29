@@ -156,6 +156,50 @@ class LanguageSwitchView(APIView):
         )
 
 
+class ThemeSwitchView(APIView):
+    """
+    API endpoint for switching user's theme preference.
+
+    Per Requirement 3 - Dual-Theme Support (Light and Dark Mode)
+    Task 27.1 - Implement theme infrastructure
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        """
+        Switch user's theme preference.
+
+        Expected payload:
+        {
+            "theme": "light" or "dark"
+        }
+        """
+        theme = request.data.get("theme")
+
+        # Validate theme choice
+        valid_themes = dict(User.THEME_CHOICES).keys()
+        if theme not in valid_themes:
+            return Response(
+                {"error": "Invalid theme choice", "valid_choices": list(valid_themes)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Update user's theme preference
+        user = request.user
+        user.theme = theme
+        user.save(update_fields=["theme"])
+
+        return Response(
+            {
+                "message": "Theme preference updated successfully",
+                "theme": theme,
+                "theme_name": dict(User.THEME_CHOICES)[theme],
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class MFAStatusView(APIView):
     """
     API endpoint to check MFA status for the current user.
