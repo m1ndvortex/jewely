@@ -906,7 +906,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add admin notes and tips
     - _Requirements: 34_
   
-  - [ ] 25.4 Write documentation tests
+  - [x] 25.4 Write documentation tests
     - Test documentation CRUD operations
     - Test search functionality
     - _Requirements: 34, 28_
@@ -914,7 +914,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
 ## Phase 4: Advanced Features & Optimizations
 
 - [ ] 26. Internationalization (i18n) Implementation
-  - [ ] 26.1 Configure Django i18n
+  - [x] 26.1 Configure Django i18n
     - Set up language support (English, Persian)
     - Configure locale paths
     - Set up format localization

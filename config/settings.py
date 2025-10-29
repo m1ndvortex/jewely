@@ -72,6 +72,8 @@ MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",  # Must be first
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # LocaleMiddleware must be after SessionMiddleware and before CommonMiddleware
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -102,6 +104,8 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.csrf",
+                # i18n context processor for language support
+                "django.template.context_processors.i18n",
                 "apps.core.context_processors.waffle_flags",
             ],
         },
@@ -187,10 +191,38 @@ PASSWORD_HASHERS = [
 ]
 
 # Internationalization
-LANGUAGE_CODE = "en-us"
+# Per Requirement 2 - Dual-Language Support (English and Persian)
+LANGUAGE_CODE = "en"  # Default language
 TIME_ZONE = "UTC"
-USE_I18N = True
-USE_TZ = True
+USE_I18N = True  # Enable internationalization
+USE_L10N = True  # Enable localized formatting
+USE_TZ = True  # Use timezone-aware datetimes
+
+# Supported languages
+LANGUAGES = [
+    ("en", "English"),
+    ("fa", "Persian (فارسی)"),
+]
+
+# Locale paths for translation files
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
+
+# Format localization settings
+# Use locale-specific formats for dates, numbers, etc.
+FORMAT_MODULE_PATH = [
+    "config.formats",
+]
+
+# Language cookie settings
+LANGUAGE_COOKIE_NAME = "django_language"
+LANGUAGE_COOKIE_AGE = 31536000  # 1 year
+LANGUAGE_COOKIE_DOMAIN = None
+LANGUAGE_COOKIE_PATH = "/"
+LANGUAGE_COOKIE_SECURE = not DEBUG  # Secure in production
+LANGUAGE_COOKIE_HTTPONLY = False  # Allow JavaScript access for language switcher
+LANGUAGE_COOKIE_SAMESITE = "Lax"
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = "static/"
