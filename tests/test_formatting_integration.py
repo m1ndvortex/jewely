@@ -17,7 +17,7 @@ from django.template import Context, Template
 from django.test import RequestFactory, TestCase
 from django.utils import translation
 
-from apps/core.formatting_utils import (
+from apps.core.formatting_utils import (
     format_currency,
     format_date,
     format_datetime,

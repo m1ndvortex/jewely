@@ -19,7 +19,7 @@ from typing import Union
 
 from django import template
 
-from apps/core.formatting_utils import (
+from apps.core.formatting_utils import (
     format_currency,
     format_date,
     format_datetime,
