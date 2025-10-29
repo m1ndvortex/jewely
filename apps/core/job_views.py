@@ -28,6 +28,8 @@ class JobMonitoringDashboardView(PlatformAdminRequiredMixin, TemplateView):
     Main job monitoring dashboard.
 
     Requirement 33.1-33.4: Display active, pending, completed, and failed jobs.
+    Requirement 33.9: Track execution times and identify slow jobs.
+    Requirement 33.10: Track CPU and memory usage per job type.
     """
 
     template_name = "jobs/dashboard.html"
@@ -47,10 +49,14 @@ class JobMonitoringDashboardView(PlatformAdminRequiredMixin, TemplateView):
         # Get recent activity
         context["recent_jobs"] = JobExecution.objects.all()[:10]
 
+        # Get performance summary
+        context["performance_summary"] = JobMonitoringService.get_performance_summary()
+
         # Get slow jobs
-        context["slow_jobs"] = JobStatistics.objects.filter(avg_execution_time__gt=60.0).order_by(
-            "-avg_execution_time"
-        )[:5]
+        context["slow_jobs"] = JobMonitoringService.get_slow_jobs()[:5]
+
+        # Get resource-intensive jobs
+        context["resource_intensive_jobs"] = JobMonitoringService.get_resource_intensive_jobs()[:5]
 
         return context
 
@@ -136,6 +142,7 @@ class JobStatisticsView(PlatformAdminRequiredMixin, ListView):
     Display job statistics.
 
     Requirement 33.9: Track execution times and identify slow jobs.
+    Requirement 33.10: Track CPU and memory usage per job type.
     """
 
     template_name = "jobs/statistics.html"
@@ -144,6 +151,20 @@ class JobStatisticsView(PlatformAdminRequiredMixin, ListView):
 
     def get_queryset(self):
         return JobStatistics.objects.all().order_by("-total_executions")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Add performance summary
+        context["performance_summary"] = JobMonitoringService.get_performance_summary()
+
+        # Add slow jobs
+        context["slow_jobs"] = JobMonitoringService.get_slow_jobs()[:10]
+
+        # Add resource-intensive jobs
+        context["resource_intensive_jobs"] = JobMonitoringService.get_resource_intensive_jobs()[:10]
+
+        return context
 
 
 class JobRetryView(PlatformAdminRequiredMixin, View):
@@ -252,3 +273,328 @@ class QueueStatsAPIView(PlatformAdminRequiredMixin, View):
                 "timestamp": timezone.now().isoformat(),
             }
         )
+
+
+class ManualJobTriggerView(PlatformAdminRequiredMixin, TemplateView):
+    """
+    View for manually triggering jobs.
+
+    Requirement 33.5: Allow administrators to manually trigger scheduled jobs.
+    """
+
+    template_name = "jobs/manual_trigger.html"
+
+    def get_context_data(self, **kwargs):
+        from apps.core.job_forms import ManualJobTriggerForm
+
+        context = super().get_context_data(**kwargs)
+        context["form"] = ManualJobTriggerForm()
+        return context
+
+    def post(self, request):
+        from apps.core.job_forms import ManualJobTriggerForm
+        from apps.core.job_service import JobManagementService
+
+        form = ManualJobTriggerForm(request.POST)
+
+        if form.is_valid():
+            task_id = JobManagementService.trigger_job(
+                task_name=form.cleaned_data["task_name"],
+                args=form.cleaned_data["args"],
+                kwargs=form.cleaned_data["kwargs"],
+                queue=form.cleaned_data["queue"],
+                priority=form.cleaned_data["priority"],
+                countdown=form.cleaned_data.get("countdown"),
+            )
+
+            if task_id:
+                messages.success(
+                    request,
+                    f"Job triggered successfully. Task ID: {task_id}",  # noqa: F541
+                )
+                return redirect("core:jobs:detail", task_id=task_id)
+            else:
+                messages.error(request, "Failed to trigger job.")
+
+        context = self.get_context_data()
+        context["form"] = form
+        return self.render_to_response(context)
+
+
+class JobScheduleListView(PlatformAdminRequiredMixin, ListView):
+    """
+    View for listing job schedules.
+
+    Requirement 33.6: Allow administrators to configure job schedules.
+    """
+
+    template_name = "jobs/schedule_list.html"
+    context_object_name = "schedules"
+    paginate_by = 50
+
+    def get_queryset(self):
+        from apps.core.job_models import JobSchedule
+
+        return JobSchedule.objects.all().order_by("-enabled", "name")
+
+
+class JobScheduleCreateView(PlatformAdminRequiredMixin, TemplateView):
+    """
+    View for creating job schedules.
+
+    Requirement 33.6: Allow administrators to configure job schedules.
+    """
+
+    template_name = "jobs/schedule_form.html"
+
+    def get_context_data(self, **kwargs):
+        from apps.core.job_forms import JobScheduleForm
+
+        context = super().get_context_data(**kwargs)
+        context["form"] = JobScheduleForm()
+        context["action"] = "Create"
+        return context
+
+    def post(self, request):
+        from apps.core.job_forms import JobScheduleForm
+        from apps.core.job_service import JobManagementService
+
+        form = JobScheduleForm(request.POST)
+
+        if form.is_valid():
+            schedule = JobManagementService.create_schedule(
+                name=f"{form.cleaned_data['task_name']}_schedule_{timezone.now().strftime('%Y%m%d_%H%M%S')}",
+                task_name=form.cleaned_data["task_name"],
+                schedule_type=form.cleaned_data["schedule_type"],
+                cron_expression=form.cleaned_data.get("cron_expression"),
+                interval_value=form.cleaned_data.get("interval_value"),
+                interval_unit=form.cleaned_data.get("interval_unit"),
+                args=form.cleaned_data["args"],
+                kwargs=form.cleaned_data["kwargs"],
+                queue=form.cleaned_data["queue"],
+                priority=form.cleaned_data["priority"],
+                enabled=form.cleaned_data["enabled"],
+                created_by=request.user,
+            )
+
+            if schedule:
+                messages.success(request, f"Schedule '{schedule.name}' created successfully.")
+                return redirect("core:jobs:schedules")
+            else:
+                messages.error(request, "Failed to create schedule.")
+
+        context = self.get_context_data()
+        context["form"] = form
+        return self.render_to_response(context)
+
+
+class JobScheduleUpdateView(PlatformAdminRequiredMixin, TemplateView):
+    """
+    View for updating job schedules.
+
+    Requirement 33.6: Allow administrators to configure job schedules.
+    """
+
+    template_name = "jobs/schedule_form.html"
+
+    def get_context_data(self, **kwargs):
+        from apps.core.job_forms import JobScheduleForm
+        from apps.core.job_models import JobSchedule
+
+        context = super().get_context_data(**kwargs)
+        schedule = JobSchedule.objects.get(pk=kwargs["pk"])
+
+        initial_data = {
+            "task_name": schedule.task_name,
+            "schedule_type": schedule.schedule_type,
+            "cron_expression": schedule.cron_expression,
+            "interval_value": schedule.interval_value,
+            "interval_unit": schedule.interval_unit,
+            "args": schedule.args,
+            "kwargs": schedule.kwargs,
+            "queue": schedule.queue,
+            "priority": schedule.priority,
+            "enabled": schedule.enabled,
+        }
+
+        context["form"] = JobScheduleForm(initial=initial_data)
+        context["schedule"] = schedule
+        context["action"] = "Update"
+        return context
+
+    def post(self, request, pk):
+        from apps.core.job_forms import JobScheduleForm
+        from apps.core.job_models import JobSchedule
+        from apps.core.job_service import JobManagementService
+
+        schedule = JobSchedule.objects.get(pk=pk)
+        form = JobScheduleForm(request.POST)
+
+        if form.is_valid():
+            updated = JobManagementService.update_schedule(
+                schedule_id=schedule.id,
+                task_name=form.cleaned_data["task_name"],
+                schedule_type=form.cleaned_data["schedule_type"],
+                cron_expression=form.cleaned_data.get("cron_expression"),
+                interval_value=form.cleaned_data.get("interval_value"),
+                interval_unit=form.cleaned_data.get("interval_unit"),
+                args=form.cleaned_data["args"],
+                kwargs=form.cleaned_data["kwargs"],
+                queue=form.cleaned_data["queue"],
+                priority=form.cleaned_data["priority"],
+                enabled=form.cleaned_data["enabled"],
+            )
+
+            if updated:
+                messages.success(request, f"Schedule '{schedule.name}' updated successfully.")
+                return redirect("core:jobs:schedules")
+            else:
+                messages.error(request, "Failed to update schedule.")
+
+        context = self.get_context_data(pk=pk)
+        context["form"] = form
+        return self.render_to_response(context)
+
+
+class JobScheduleDeleteView(PlatformAdminRequiredMixin, View):
+    """
+    View for deleting job schedules.
+
+    Requirement 33.6: Allow administrators to configure job schedules.
+    """
+
+    def post(self, request, pk):
+        from apps.core.job_models import JobSchedule
+
+        try:
+            schedule = JobSchedule.objects.get(pk=pk)
+            schedule_name = schedule.name
+            schedule.delete()
+            messages.success(request, f"Schedule '{schedule_name}' deleted successfully.")
+        except JobSchedule.DoesNotExist:
+            messages.error(request, "Schedule not found.")
+
+        return redirect("core:jobs:schedules")
+
+
+class JobScheduleToggleView(PlatformAdminRequiredMixin, View):
+    """
+    View for enabling/disabling job schedules.
+
+    Requirement 33.6: Allow administrators to configure job schedules.
+    """
+
+    def post(self, request, pk):
+        from apps.core.job_models import JobSchedule
+
+        try:
+            schedule = JobSchedule.objects.get(pk=pk)
+            schedule.enabled = not schedule.enabled
+            schedule.save()
+
+            status = "enabled" if schedule.enabled else "disabled"
+            messages.success(request, f"Schedule '{schedule.name}' {status} successfully.")
+        except JobSchedule.DoesNotExist:
+            messages.error(request, "Schedule not found.")
+
+        return redirect("core:jobs:schedules")
+
+
+class JobPriorityUpdateView(PlatformAdminRequiredMixin, View):
+    """
+    View for updating job priority.
+
+    Requirement 33.7: Allow administrators to set job priorities.
+    """
+
+    def post(self, request, task_id):
+        from apps.core.job_forms import JobPriorityForm
+        from apps.core.job_service import JobManagementService
+
+        form = JobPriorityForm(request.POST)
+
+        if form.is_valid():
+            success = JobManagementService.update_job_priority(
+                task_id=task_id,
+                priority=form.cleaned_data["priority"],
+                queue=form.cleaned_data.get("queue"),
+            )
+
+            if success:
+                messages.success(request, "Job priority updated successfully.")
+            else:
+                messages.error(request, "Failed to update job priority.")
+        else:
+            messages.error(request, "Invalid form data.")
+
+        return redirect("core:jobs:detail", task_id=task_id)
+
+
+class JobPerformanceView(PlatformAdminRequiredMixin, TemplateView):
+    """
+    View for job performance tracking and analysis.
+
+    Requirement 33.9: Track execution times and identify slow jobs.
+    Requirement 33.10: Track CPU and memory usage per job type.
+    """
+
+    template_name = "jobs/performance.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get performance summary
+        context["performance_summary"] = JobMonitoringService.get_performance_summary()
+
+        # Get slow jobs
+        context["slow_jobs"] = JobMonitoringService.get_slow_jobs()
+
+        # Get resource-intensive jobs
+        context["resource_intensive_jobs"] = JobMonitoringService.get_resource_intensive_jobs()
+
+        # Get all statistics for detailed analysis
+        context["all_statistics"] = JobStatistics.objects.all().order_by("-avg_execution_time")
+
+        return context
+
+
+class JobPerformanceAPIView(PlatformAdminRequiredMixin, View):
+    """
+    API endpoint for job performance data.
+
+    Requirement 33.9: Track execution times and identify slow jobs.
+    Requirement 33.10: Track CPU and memory usage per job type.
+    """
+
+    def get(self, request):
+        performance_summary = JobMonitoringService.get_performance_summary()
+        slow_jobs = JobMonitoringService.get_slow_jobs()
+        resource_intensive = JobMonitoringService.get_resource_intensive_jobs()
+
+        data = {
+            "timestamp": timezone.now().isoformat(),
+            "summary": performance_summary,
+            "slow_jobs": [
+                {
+                    "task_name": job.task_name,
+                    "avg_execution_time": float(job.avg_execution_time),
+                    "total_executions": job.total_executions,
+                    "success_rate": float(job.success_rate),
+                }
+                for job in slow_jobs[:10]
+            ],
+            "resource_intensive_jobs": [
+                {
+                    "task_name": job.task_name,
+                    "avg_cpu_percent": float(job.avg_cpu_percent) if job.avg_cpu_percent else None,
+                    "avg_memory_mb": float(job.avg_memory_mb) if job.avg_memory_mb else None,
+                    "peak_cpu_percent": (
+                        float(job.peak_cpu_percent) if job.peak_cpu_percent else None
+                    ),
+                    "peak_memory_mb": float(job.peak_memory_mb) if job.peak_memory_mb else None,
+                }
+                for job in resource_intensive[:10]
+            ],
+        }
+
+        return JsonResponse(data)

@@ -1,0 +1,183 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}Job Schedules - Job Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="mb-0">Job Schedules</h5>
+                            <p class="text-sm text-muted mt-2">
+                                Configure and manage scheduled job execution.
+                            </p>
+                        </div>
+                        <div>
+                            <a href="{% url 'core:jobs:schedule_create' %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-plus me-1"></i> Create Schedule
+                            </a>
+                            <a href="{% url 'core:jobs:dashboard' %}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Back
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body px-0 pt-0 pb-2">
+                    {% if messages %}
+                        <div class="px-4 pt-3">
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% if schedules %}
+                        <div class="table-responsive p-0">
+                            <table class="table align-items-center mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+                                            Schedule Name
+                                        </th>
+                                        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">
+                                            Task
+                                        </th>
+                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+                                            Schedule
+                                        </th>
+                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+                                            Queue
+                                        </th>
+                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+                                            Priority
+                                        </th>
+                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+                                            Status
+                                        </th>
+                                        <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+                                            Last Run
+                                        </th>
+                                        <th class="text-secondary opacity-7">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for schedule in schedules %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex px-2 py-1">
+                                                    <div class="d-flex flex-column justify-content-center">
+                                                        <h6 class="mb-0 text-sm">{{ schedule.name }}</h6>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <p class="text-xs font-weight-bold mb-0">{{ schedule.task_name|truncatechars:40 }}</p>
+                                            </td>
+                                            <td class="align-middle text-center text-sm">
+                                                <span class="badge badge-sm bg-gradient-info">
+                                                    {{ schedule.schedule_display }}
+                                                </span>
+                                            </td>
+                                            <td class="align-middle text-center">
+                                                <span class="text-secondary text-xs font-weight-bold">{{ schedule.queue }}</span>
+                                            </td>
+                                            <td class="align-middle text-center">
+                                                <span class="text-secondary text-xs font-weight-bold">{{ schedule.priority }}</span>
+                                            </td>
+                                            <td class="align-middle text-center text-sm">
+                                                {% if schedule.enabled %}
+                                                    <span class="badge badge-sm bg-gradient-success">Enabled</span>
+                                                {% else %}
+                                                    <span class="badge badge-sm bg-gradient-secondary">Disabled</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="align-middle text-center">
+                                                {% if schedule.last_run_at %}
+                                                    <span class="text-secondary text-xs font-weight-bold">
+                                                        {{ schedule.last_run_at|date:"Y-m-d H:i" }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-secondary text-xs">Never</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="align-middle">
+                                                <div class="btn-group" role="group">
+                                                    <form method="post" action="{% url 'core:jobs:schedule_toggle' schedule.pk %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-link text-secondary mb-0 px-2" 
+                                                                title="{% if schedule.enabled %}Disable{% else %}Enable{% endif %}">
+                                                            <i class="fas fa-{% if schedule.enabled %}pause{% else %}play{% endif %} text-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                    <a href="{% url 'core:jobs:schedule_update' schedule.pk %}" 
+                                                       class="btn btn-link text-secondary mb-0 px-2" title="Edit">
+                                                        <i class="fas fa-edit text-xs"></i>
+                                                    </a>
+                                                    <form method="post" action="{% url 'core:jobs:schedule_delete' schedule.pk %}" 
+                                                          class="d-inline" onsubmit="return confirm('Are you sure you want to delete this schedule?');">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-link text-danger mb-0 px-2" title="Delete">
+                                                            <i class="fas fa-trash text-xs"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if is_paginated %}
+                            <div class="px-4 py-3">
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination justify-content-center">
+                                        {% if page_obj.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page=1">First</a>
+                                            </li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                            </li>
+                                        {% endif %}
+
+                                        <li class="page-item active">
+                                            <span class="page-link">
+                                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                            </span>
+                                        </li>
+
+                                        {% if page_obj.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                            </li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="px-4 py-5 text-center">
+                            <i class="fas fa-calendar-alt fa-3x text-secondary mb-3"></i>
+                            <p class="text-muted">No job schedules configured yet.</p>
+                            <a href="{% url 'core:jobs:schedule_create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i> Create First Schedule
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

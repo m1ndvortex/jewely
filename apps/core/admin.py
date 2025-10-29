@@ -31,7 +31,7 @@ from apps.core.integration_models import (
     IntegrationLog,
     OAuth2Token,
 )
-from apps.core.job_models import JobExecution, JobStatistics
+from apps.core.job_models import JobExecution, JobSchedule, JobStatistics
 from apps.core.webhook_models import Webhook, WebhookDelivery
 
 from .models import (
@@ -3286,3 +3286,69 @@ class JobStatisticsAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         """Disable editing of statistics."""
         return False
+
+
+@admin.register(JobSchedule)
+class JobScheduleAdmin(admin.ModelAdmin):
+    """Admin interface for JobSchedule model."""
+
+    list_display = (
+        "name",
+        "task_name",
+        "schedule_type",
+        "schedule_display",
+        "queue",
+        "priority",
+        "enabled",
+        "last_run_at",
+        "created_at",
+    )
+    list_filter = ("schedule_type", "enabled", "queue")
+    search_fields = ("name", "task_name")
+    readonly_fields = ("created_at", "updated_at", "last_run_at")
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "name",
+                    "task_name",
+                    "enabled",
+                )
+            },
+        ),
+        (
+            "Schedule Configuration",
+            {
+                "fields": (
+                    "schedule_type",
+                    "cron_expression",
+                    "interval_value",
+                    "interval_unit",
+                )
+            },
+        ),
+        (
+            "Task Configuration",
+            {
+                "fields": (
+                    "args",
+                    "kwargs",
+                    "queue",
+                    "priority",
+                )
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                    "last_run_at",
+                )
+            },
+        ),
+    )
+    ordering = ("-enabled", "name")

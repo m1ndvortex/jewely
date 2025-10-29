@@ -1,0 +1,190 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ action }} Job Schedule - Job Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header pb-0">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0">{{ action }} Job Schedule</h5>
+                        <a href="{% url 'core:jobs:schedules' %}" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Back to Schedules
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.task_name.id_for_label }}" class="form-label">
+                                    {{ form.task_name.label }}
+                                </label>
+                                {{ form.task_name }}
+                                {% if form.task_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.task_name.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.schedule_type.id_for_label }}" class="form-label">
+                                    {{ form.schedule_type.label }}
+                                </label>
+                                {{ form.schedule_type }}
+                            </div>
+                        </div>
+
+                        <div class="row" id="cron-fields" style="display: none;">
+                            <div class="col-md-12 mb-3">
+                                <label for="{{ form.cron_expression.id_for_label }}" class="form-label">
+                                    {{ form.cron_expression.label }}
+                                </label>
+                                {{ form.cron_expression }}
+                                {% if form.cron_expression.help_text %}
+                                    <small class="form-text text-muted">{{ form.cron_expression.help_text }}</small>
+                                {% endif %}
+                                {% if form.cron_expression.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.cron_expression.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row" id="interval-fields">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.interval_value.id_for_label }}" class="form-label">
+                                    {{ form.interval_value.label }}
+                                </label>
+                                {{ form.interval_value }}
+                                {% if form.interval_value.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.interval_value.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.interval_unit.id_for_label }}" class="form-label">
+                                    {{ form.interval_unit.label }}
+                                </label>
+                                {{ form.interval_unit }}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.args.id_for_label }}" class="form-label">
+                                    {{ form.args.label }}
+                                </label>
+                                {{ form.args }}
+                                {% if form.args.help_text %}
+                                    <small class="form-text text-muted">{{ form.args.help_text }}</small>
+                                {% endif %}
+                                {% if form.args.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.args.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.kwargs.id_for_label }}" class="form-label">
+                                    {{ form.kwargs.label }}
+                                </label>
+                                {{ form.kwargs }}
+                                {% if form.kwargs.help_text %}
+                                    <small class="form-text text-muted">{{ form.kwargs.help_text }}</small>
+                                {% endif %}
+                                {% if form.kwargs.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.kwargs.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.queue.id_for_label }}" class="form-label">
+                                    {{ form.queue.label }}
+                                </label>
+                                {{ form.queue }}
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">
+                                    {{ form.priority.label }}
+                                </label>
+                                {{ form.priority }}
+                                {% if form.priority.help_text %}
+                                    <small class="form-text text-muted">{{ form.priority.help_text }}</small>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label d-block">&nbsp;</label>
+                                <div class="form-check">
+                                    {{ form.enabled }}
+                                    <label class="form-check-label" for="{{ form.enabled.id_for_label }}">
+                                        {{ form.enabled.label }}
+                                    </label>
+                                </div>
+                                {% if form.enabled.help_text %}
+                                    <small class="form-text text-muted">{{ form.enabled.help_text }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> {{ action }} Schedule
+                            </button>
+                            <a href="{% url 'core:jobs:schedules' %}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleScheduleFields() {
+    const scheduleType = document.getElementById('{{ form.schedule_type.id_for_label }}').value;
+    const cronFields = document.getElementById('cron-fields');
+    const intervalFields = document.getElementById('interval-fields');
+    
+    if (scheduleType === 'cron') {
+        cronFields.style.display = 'block';
+        intervalFields.style.display = 'none';
+    } else {
+        cronFields.style.display = 'none';
+        intervalFields.style.display = 'block';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleScheduleFields();
+});
+</script>
+{% endblock %}
