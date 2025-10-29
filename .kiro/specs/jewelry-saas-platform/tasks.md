@@ -960,12 +960,12 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Apply theme across all pages
     - _Requirements: 3_
   
-  - [ ] 27.2 Ensure WCAG compliance
+  - [x] 27.2 Ensure WCAG compliance
     - Verify color contrast ratios (4.5:1 for normal text, 3:1 for large text)
     - Test both themes for accessibility
     - _Requirements: 3, 29_
   
-  - [ ] 27.3 Write theme tests
+  - [x] 27.3 Write theme tests
     - Test theme switching
     - Test theme persistence
     - Test color contrast
