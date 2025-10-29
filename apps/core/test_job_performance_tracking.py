@@ -121,12 +121,14 @@ class JobPerformanceTrackingIntegrationTest(TestCase):
 
         # Test slow job identification
         slow_jobs = JobMonitoringService.get_slow_jobs(threshold_seconds=60.0)
-        
+
         # Filter for our specific task
         slow_job = slow_jobs.filter(task_name=task_name).first()
         self.assertIsNotNone(slow_job, "Our test task should be identified as slow")
         self.assertTrue(slow_job.is_slow, "Job should be marked as slow")
-        self.assertGreater(slow_job.avg_execution_time, 60.0, "Average execution time should be >60s")
+        self.assertGreater(
+            slow_job.avg_execution_time, 60.0, "Average execution time should be >60s"
+        )
 
     def test_cpu_usage_tracking(self):
         """

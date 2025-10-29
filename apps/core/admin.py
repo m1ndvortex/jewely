@@ -18,6 +18,7 @@ from apps.core.announcement_models import (
     DirectMessage,
 )
 from apps.core.audit_models import APIRequestLog, AuditLog, DataChangeLog, LoginAttempt
+from apps.core.documentation_models import AdminNote, DocumentationPage, Runbook, RunbookExecution
 from apps.core.feature_flags import (
     ABTestVariant,
     EmergencyKillSwitch,
@@ -3352,3 +3353,490 @@ class JobScheduleAdmin(admin.ModelAdmin):
         ),
     )
     ordering = ("-enabled", "name")
+
+
+# Documentation and Knowledge Base Admin
+
+
+@admin.register(DocumentationPage)
+class DocumentationPageAdmin(admin.ModelAdmin):
+    """Admin interface for DocumentationPage model."""
+
+    list_display = [
+        "title",
+        "category",
+        "status",
+        "version",
+        "view_count",
+        "updated_at",
+        "published_at",
+    ]
+
+    list_filter = [
+        "category",
+        "status",
+        "created_at",
+        "updated_at",
+        "published_at",
+    ]
+
+    search_fields = [
+        "title",
+        "slug",
+        "content",
+        "summary",
+        "tags",
+    ]
+
+    readonly_fields = [
+        "id",
+        "slug",
+        "view_count",
+        "last_viewed_at",
+        "created_at",
+        "updated_at",
+        "published_at",
+    ]
+
+    prepopulated_fields = {"slug": ("title",)}
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "title",
+                    "slug",
+                    "category",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Content",
+            {
+                "fields": (
+                    "summary",
+                    "content",
+                )
+            },
+        ),
+        (
+            "Organization",
+            {
+                "fields": (
+                    "parent",
+                    "order",
+                    "tags",
+                    "version",
+                )
+            },
+        ),
+        (
+            "Statistics",
+            {
+                "fields": (
+                    "view_count",
+                    "last_viewed_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "updated_by",
+                    "created_at",
+                    "updated_at",
+                    "published_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["category", "order", "title"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("parent", "created_by", "updated_by")
+
+    def save_model(self, request, obj, form, change):
+        """Set created_by and updated_by to current user."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(Runbook)
+class RunbookAdmin(admin.ModelAdmin):
+    """Admin interface for Runbook model."""
+
+    list_display = [
+        "title",
+        "runbook_type",
+        "priority",
+        "status",
+        "version",
+        "execution_count",
+        "success_rate_display",
+        "updated_at",
+    ]
+
+    list_filter = [
+        "runbook_type",
+        "priority",
+        "status",
+        "created_at",
+        "updated_at",
+    ]
+
+    search_fields = [
+        "title",
+        "slug",
+        "description",
+        "tags",
+    ]
+
+    readonly_fields = [
+        "id",
+        "slug",
+        "execution_count",
+        "success_count",
+        "failure_count",
+        "success_rate_display",
+        "last_executed_at",
+        "created_at",
+        "updated_at",
+    ]
+
+    prepopulated_fields = {"slug": ("title",)}
+
+    filter_horizontal = ["related_documentation", "related_runbooks"]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "title",
+                    "slug",
+                    "description",
+                    "runbook_type",
+                    "priority",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Procedures",
+            {
+                "fields": (
+                    "prerequisites",
+                    "steps",
+                    "expected_duration",
+                )
+            },
+        ),
+        (
+            "Recovery Objectives",
+            {
+                "fields": (
+                    "rto",
+                    "rpo",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Verification & Rollback",
+            {
+                "fields": (
+                    "verification_steps",
+                    "rollback_steps",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Related Information",
+            {
+                "fields": (
+                    "related_documentation",
+                    "related_runbooks",
+                    "tags",
+                )
+            },
+        ),
+        (
+            "Version Control",
+            {
+                "fields": (
+                    "version",
+                    "changelog",
+                )
+            },
+        ),
+        (
+            "Execution Statistics",
+            {
+                "fields": (
+                    "execution_count",
+                    "success_count",
+                    "failure_count",
+                    "success_rate_display",
+                    "last_executed_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "updated_by",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-priority", "runbook_type", "title"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("created_by", "updated_by")
+
+    def save_model(self, request, obj, form, change):
+        """Set created_by and updated_by to current user."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def success_rate_display(self, obj):
+        """Display success rate as percentage."""
+        rate = obj.get_success_rate()
+        if rate is None:
+            return "N/A"
+        return f"{rate * 100:.1f}%"
+
+    success_rate_display.short_description = "Success Rate"
+
+
+@admin.register(RunbookExecution)
+class RunbookExecutionAdmin(admin.ModelAdmin):
+    """Admin interface for RunbookExecution model."""
+
+    list_display = [
+        "runbook",
+        "runbook_version",
+        "executed_by",
+        "status",
+        "duration",
+        "verification_passed",
+        "started_at",
+        "completed_at",
+    ]
+
+    list_filter = [
+        "status",
+        "verification_passed",
+        "rollback_performed",
+        "started_at",
+        "completed_at",
+    ]
+
+    search_fields = [
+        "runbook__title",
+        "executed_by__username",
+        "notes",
+        "error_message",
+    ]
+
+    readonly_fields = [
+        "id",
+        "runbook",
+        "runbook_version",
+        "executed_by",
+        "started_at",
+        "completed_at",
+        "duration",
+        "status",
+        "steps_completed",
+        "current_step",
+        "notes",
+        "error_message",
+        "verification_passed",
+        "rollback_performed",
+    ]
+
+    fieldsets = (
+        (
+            "Execution Details",
+            {
+                "fields": (
+                    "id",
+                    "runbook",
+                    "runbook_version",
+                    "executed_by",
+                    "status",
+                )
+            },
+        ),
+        (
+            "Progress",
+            {
+                "fields": (
+                    "current_step",
+                    "steps_completed",
+                )
+            },
+        ),
+        (
+            "Results",
+            {
+                "fields": (
+                    "verification_passed",
+                    "rollback_performed",
+                    "notes",
+                    "error_message",
+                )
+            },
+        ),
+        (
+            "Timing",
+            {
+                "fields": (
+                    "started_at",
+                    "completed_at",
+                    "duration",
+                )
+            },
+        ),
+    )
+
+    ordering = ["-started_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("runbook", "executed_by")
+
+    def has_add_permission(self, request):
+        """Disable manual creation of runbook executions."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Make runbook executions read-only."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Allow deletion of old executions for cleanup."""
+        return True
+
+
+@admin.register(AdminNote)
+class AdminNoteAdmin(admin.ModelAdmin):
+    """Admin interface for AdminNote model."""
+
+    list_display = [
+        "title",
+        "note_type",
+        "is_pinned",
+        "helpful_count",
+        "created_by",
+        "created_at",
+    ]
+
+    list_filter = [
+        "note_type",
+        "is_pinned",
+        "created_at",
+    ]
+
+    search_fields = [
+        "title",
+        "content",
+        "tags",
+    ]
+
+    readonly_fields = [
+        "id",
+        "helpful_count",
+        "created_at",
+        "updated_at",
+    ]
+
+    fieldsets = (
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "id",
+                    "title",
+                    "note_type",
+                    "content",
+                )
+            },
+        ),
+        (
+            "Related Items",
+            {
+                "fields": (
+                    "documentation_page",
+                    "runbook",
+                )
+            },
+        ),
+        (
+            "Organization",
+            {
+                "fields": (
+                    "tags",
+                    "is_pinned",
+                )
+            },
+        ),
+        (
+            "Engagement",
+            {
+                "fields": ("helpful_count",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": (
+                    "created_by",
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    ordering = ["-is_pinned", "-created_at"]
+
+    def get_queryset(self, request):
+        """Optimize queryset with select_related."""
+        qs = super().get_queryset(request)
+        return qs.select_related("documentation_page", "runbook", "created_by")
+
+    def save_model(self, request, obj, form, change):
+        """Set created_by to current user if creating new note."""
+        if not change:  # Creating new object
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

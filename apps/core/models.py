@@ -19,6 +19,14 @@ from apps.core.audit_models import (  # noqa: F401
     LoginAttempt,
 )
 
+# Import documentation models to register them with Django
+from apps.core.documentation_models import (  # noqa: F401
+    AdminNote,
+    DocumentationPage,
+    Runbook,
+    RunbookExecution,
+)
+
 # Import feature flag models to register them with Django
 from apps.core.feature_flags import (  # noqa: F401
     ABTestVariant,

@@ -15,7 +15,7 @@ from django.utils import timezone
 from celery import shared_task
 
 from apps.core.job_models import JobExecution, JobSchedule
-from apps.core.job_service import JobManagementService
+from apps.core.job_service import JobManagementService, JobMonitoringService
 
 
 # Test task for integration testing
@@ -695,11 +695,282 @@ class JobScheduleViewsIntegrationTest(TestCase):
         self.assertFalse(JobSchedule.objects.filter(id=schedule_id).exists())
 
 
+class JobCancellationIntegrationTest(TestCase):
+    """
+    REAL integration tests for job cancellation.
+
+    Requirement 33.8: Allow administrators to cancel running or pending jobs.
+    """
+
+    def setUp(self):
+        """Set up test data."""
+        User = get_user_model()
+
+        # Clean up
+        JobExecution.objects.all().delete()
+
+        # Create platform admin user
+        self.admin_user = User.objects.create_user(
+            username="admin",
+            email="admin@example.com",
+            password="testpass123",
+            role="PLATFORM_ADMIN",
+        )
+
+        self.client.login(username="admin", password="testpass123")
+
+    def test_cancel_pending_job(self):
+        """
+        Test cancelling a pending job.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Create a pending job
+        job = JobExecution.objects.create(
+            task_id="cancel-test-pending-123",
+            task_name="test_job_management.test_manual_task",
+            status="PENDING",
+            args=["test"],
+            kwargs={},
+            queue="default",
+            priority=5,
+        )
+
+        # Cancel the job
+        success = JobMonitoringService.cancel_job(job.task_id)
+
+        # Verify cancellation was successful
+        self.assertTrue(success, "Job cancellation should succeed")
+
+        # Verify job status was updated
+        job.refresh_from_db()
+        self.assertEqual(job.status, "REVOKED", "Job status should be REVOKED")
+        self.assertIsNotNone(job.completed_at, "Completed timestamp should be set")
+
+    def test_cancel_running_job(self):
+        """
+        Test cancelling a running job.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Create a running job
+        job = JobExecution.objects.create(
+            task_id="cancel-test-running-456",
+            task_name="test_job_management.test_manual_task",
+            status="RUNNING",
+            args=["test"],
+            kwargs={},
+            queue="default",
+            priority=5,
+            started_at=timezone.now(),
+        )
+
+        # Cancel the job
+        success = JobMonitoringService.cancel_job(job.task_id)
+
+        # Verify cancellation was successful
+        self.assertTrue(success, "Job cancellation should succeed")
+
+        # Verify job status was updated
+        job.refresh_from_db()
+        self.assertEqual(job.status, "REVOKED", "Job status should be REVOKED")
+        self.assertIsNotNone(job.completed_at, "Completed timestamp should be set")
+
+    def test_cancel_nonexistent_job(self):
+        """
+        Test cancelling a job that doesn't exist in database.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Try to cancel a job that doesn't exist in database
+        # The service should still attempt to revoke it from Celery
+        success = JobMonitoringService.cancel_job("nonexistent-task-id-999")
+
+        # Should return True even if job doesn't exist in database
+        # because revoke command was sent to Celery
+        self.assertTrue(success, "Cancel should succeed even for nonexistent job")
+
+    def test_cancel_completed_job(self):
+        """
+        Test cancelling a job that's already completed.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Create a completed job
+        job = JobExecution.objects.create(
+            task_id="cancel-test-completed-789",
+            task_name="test_job_management.test_manual_task",
+            status="SUCCESS",
+            args=["test"],
+            kwargs={},
+            queue="default",
+            priority=5,
+            completed_at=timezone.now(),
+        )
+
+        # Try to cancel the completed job
+        success = JobMonitoringService.cancel_job(job.task_id)
+
+        # Should still return True (revoke command sent)
+        self.assertTrue(success, "Cancel should succeed")
+
+        # Verify job status was updated to REVOKED
+        job.refresh_from_db()
+        self.assertEqual(job.status, "REVOKED", "Job status should be updated to REVOKED")
+
+    def test_cancel_multiple_jobs(self):
+        """
+        Test cancelling multiple jobs.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Create multiple pending jobs
+        jobs = []
+        for i in range(5):
+            job = JobExecution.objects.create(
+                task_id=f"cancel-multi-{i}",
+                task_name="test_job_management.test_manual_task",
+                status="PENDING",
+                args=[f"test_{i}"],
+                kwargs={},
+                queue="default",
+                priority=5,
+            )
+            jobs.append(job)
+
+        # Cancel all jobs
+        for job in jobs:
+            success = JobMonitoringService.cancel_job(job.task_id)
+            self.assertTrue(success, f"Job {job.task_id} cancellation should succeed")
+
+        # Verify all jobs were cancelled
+        for job in jobs:
+            job.refresh_from_db()
+            self.assertEqual(job.status, "REVOKED", f"Job {job.task_id} should be REVOKED")
+
+    def test_cancel_job_service_method(self):
+        """
+        Test cancelling a job using the service method directly.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Create a pending job
+        job = JobExecution.objects.create(
+            task_id="cancel-service-test-123",
+            task_name="test_job_management.test_manual_task",
+            status="PENDING",
+            args=["test"],
+            kwargs={},
+            queue="default",
+            priority=5,
+        )
+
+        # Cancel using service method
+        success = JobMonitoringService.cancel_job(job.task_id)
+
+        # Verify cancellation was successful
+        self.assertTrue(success, "Cancellation should succeed")
+
+        # Verify job was cancelled
+        job.refresh_from_db()
+        self.assertEqual(job.status, "REVOKED", "Job should be cancelled")
+
+    def test_cancel_job_updates_timestamp(self):
+        """
+        Test that cancelling a job updates the completed_at timestamp.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Create a pending job
+        job = JobExecution.objects.create(
+            task_id="cancel-timestamp-test-456",
+            task_name="test_job_management.test_manual_task",
+            status="PENDING",
+            args=["test"],
+            kwargs={},
+            queue="default",
+            priority=5,
+        )
+
+        # Record time before cancellation
+        before_cancel = timezone.now()
+
+        # Cancel the job
+        JobMonitoringService.cancel_job(job.task_id)
+
+        # Verify completed_at was set
+        job.refresh_from_db()
+        self.assertIsNotNone(job.completed_at, "Completed timestamp should be set")
+        self.assertGreaterEqual(
+            job.completed_at, before_cancel, "Completed timestamp should be recent"
+        )
+
+    def test_cancel_high_priority_job(self):
+        """
+        Test cancelling a high-priority job.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        # Create a high-priority job
+        job = JobExecution.objects.create(
+            task_id="cancel-high-priority-789",
+            task_name="test_job_management.test_manual_task",
+            status="PENDING",
+            args=["test"],
+            kwargs={},
+            queue="high_priority",
+            priority=10,
+        )
+
+        # Cancel the job
+        success = JobMonitoringService.cancel_job(job.task_id)
+
+        # Verify cancellation was successful
+        self.assertTrue(success, "High priority job cancellation should succeed")
+
+        # Verify job status
+        job.refresh_from_db()
+        self.assertEqual(job.status, "REVOKED", "Job should be cancelled")
+        self.assertEqual(job.priority, 10, "Priority should remain unchanged")
+
+    def test_cancel_job_in_different_queues(self):
+        """
+        Test cancelling jobs in different queues.
+
+        Requirement 33.8: Allow administrators to cancel running or pending jobs.
+        """
+        queues = ["default", "high_priority", "low_priority", "backups"]
+        jobs = []
+
+        # Create jobs in different queues
+        for queue in queues:
+            job = JobExecution.objects.create(
+                task_id=f"cancel-queue-{queue}",
+                task_name="test_job_management.test_manual_task",
+                status="PENDING",
+                args=[queue],
+                kwargs={},
+                queue=queue,
+                priority=5,
+            )
+            jobs.append(job)
+
+        # Cancel all jobs
+        for job in jobs:
+            success = JobMonitoringService.cancel_job(job.task_id)
+            self.assertTrue(success, f"Job in {job.queue} should be cancelled")
+
+        # Verify all jobs were cancelled
+        for job in jobs:
+            job.refresh_from_db()
+            self.assertEqual(job.status, "REVOKED", f"Job in {job.queue} should be REVOKED")
+
+
 class JobManagementComprehensiveTest(TestCase):
     """
     Comprehensive integration tests covering all job management features.
 
-    Tests Requirements 33.5, 33.6, 33.7
+    Tests Requirements 33.5, 33.6, 33.7, 33.8
     """
 
     def setUp(self):
@@ -848,3 +1119,89 @@ class JobManagementComprehensiveTest(TestCase):
         # Verify we can query jobs by priority
         high_priority_jobs = JobExecution.objects.filter(priority__gte=8)
         self.assertEqual(high_priority_jobs.count(), 2)
+
+    def test_complete_job_lifecycle_with_cancellation(self):
+        """
+        Test complete job lifecycle: trigger, update priority, cancel.
+
+        Requirements 33.5, 33.7, 33.8
+        """
+        # Step 1: Trigger a job
+        task_id = JobManagementService.trigger_job(
+            task_name="test_job_management.test_manual_task",
+            args=["lifecycle_test"],
+            kwargs={"test": True},
+            queue="default",
+            priority=5,
+        )
+
+        # Verify job was created
+        self.assertIsNotNone(task_id)
+        job = JobExecution.objects.get(task_id=task_id)
+        self.assertEqual(job.status, "PENDING")
+        self.assertEqual(job.priority, 5)
+
+        # Step 2: Update priority
+        success = JobManagementService.update_job_priority(task_id=task_id, priority=9)
+        self.assertTrue(success)
+
+        job.refresh_from_db()
+        self.assertEqual(job.priority, 9)
+
+        # Step 3: Cancel the job
+        success = JobMonitoringService.cancel_job(task_id)
+        self.assertTrue(success)
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, "REVOKED")
+        self.assertIsNotNone(job.completed_at)
+
+    def test_trigger_schedule_and_cancel_workflow(self):
+        """
+        Test workflow: create schedule, trigger job from schedule, cancel job.
+
+        Requirements 33.5, 33.6, 33.8
+        """
+        # Step 1: Create a schedule
+        schedule = JobManagementService.create_schedule(
+            name="test_workflow_schedule",
+            task_name="test_job_management.test_manual_task",
+            schedule_type="interval",
+            interval_value=10,
+            interval_unit="minutes",
+            args=["workflow"],
+            kwargs={},
+            queue="default",
+            priority=7,
+            enabled=True,
+            created_by=self.admin_user,
+        )
+
+        self.assertIsNotNone(schedule)
+
+        # Step 2: Manually trigger a job based on the schedule
+        task_id = JobManagementService.trigger_job(
+            task_name=schedule.task_name,
+            args=schedule.args,
+            kwargs=schedule.kwargs,
+            queue=schedule.queue,
+            priority=schedule.priority,
+        )
+
+        self.assertIsNotNone(task_id)
+
+        # Step 3: Verify job was created
+        job = JobExecution.objects.get(task_id=task_id)
+        self.assertEqual(job.task_name, schedule.task_name)
+        self.assertEqual(job.priority, schedule.priority)
+
+        # Step 4: Cancel the job
+        success = JobMonitoringService.cancel_job(task_id)
+        self.assertTrue(success)
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, "REVOKED")
+
+        # Step 5: Clean up schedule
+        JobManagementService.delete_schedule(schedule.id)
+        self.assertFalse(JobSchedule.objects.filter(id=schedule.id).exists())

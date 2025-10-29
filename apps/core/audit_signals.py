@@ -47,6 +47,10 @@ def store_original_values(sender, instance, **kwargs):  # noqa: C901
         "APIRequestLog",
         "PermissionAuditLog",
         "Migration",  # Django migrations
+        "DocumentationPage",  # Documentation models (not critical business data)
+        "Runbook",
+        "RunbookExecution",
+        "AdminNote",
     ]
 
     if sender.__name__ in excluded_models:
@@ -129,6 +133,10 @@ def log_model_save(sender, instance, created, **kwargs):  # noqa: C901
         "APIRequestLog",
         "PermissionAuditLog",
         "Migration",  # Django migrations
+        "DocumentationPage",  # Documentation models (not critical business data)
+        "Runbook",
+        "RunbookExecution",
+        "AdminNote",
     ]
 
     if sender.__name__ in excluded_models:
@@ -219,6 +227,10 @@ def log_model_delete(sender, instance, **kwargs):
         "APIRequestLog",
         "PermissionAuditLog",
         "Migration",  # Django migrations
+        "DocumentationPage",  # Documentation models (not critical business data)
+        "Runbook",
+        "RunbookExecution",
+        "AdminNote",
     ]
 
     if sender.__name__ in excluded_models:
