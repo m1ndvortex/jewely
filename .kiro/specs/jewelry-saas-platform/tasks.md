@@ -933,7 +933,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Test all pages in RTL mode
     - _Requirements: 2_
   
-  - [ ] 26.4 Implement number and date formatting
+  - [x] 26.4 Implement number and date formatting
     - Create Persian numeral conversion utilities
     - Integrate jdatetime for Persian calendar
     - Implement locale-specific formatting

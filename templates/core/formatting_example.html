@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load formatting_filters %}
+
+{% block title %}{% trans "Number and Date Formatting Examples" %}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">{% trans "Number and Date Formatting Examples" %}</h1>
+
+    <!-- Number Formatting Section -->
+    <section class="mb-12">
+        <h2 class="text-2xl font-semibold mb-4">{% trans "Number Formatting" %}</h2>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Basic Number" %}</h3>
+                    <p class="text-lg">{{ 1234567.89|format_number }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "With Decimal Places" %}</h3>
+                    <p class="text-lg">{{ 1234567.89|format_number:2 }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Persian Numerals Only" %}</h3>
+                    <p class="text-lg">{{ "123456"|persian_numerals }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Integer" %}</h3>
+                    <p class="text-lg">{{ 999999|format_number }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Currency Formatting Section -->
+    <section class="mb-12">
+        <h2 class="text-2xl font-semibold mb-4">{% trans "Currency Formatting" %}</h2>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "US Dollar" %}</h3>
+                    <p class="text-lg">{{ 1234.56|format_currency:"USD" }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Iranian Rial" %}</h3>
+                    <p class="text-lg">{{ 1234567|format_currency:"IRR" }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Euro" %}</h3>
+                    <p class="text-lg">{{ 9876.54|format_currency:"EUR" }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "British Pound" %}</h3>
+                    <p class="text-lg">{{ 5432.10|format_currency:"GBP" }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Date Formatting Section -->
+    <section class="mb-12">
+        <h2 class="text-2xl font-semibold mb-4">{% trans "Date Formatting" %}</h2>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Default Format" %}</h3>
+                    <p class="text-lg">{{ today|format_date }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Custom Format (YYYY/MM/DD)" %}</h3>
+                    <p class="text-lg">{{ today|format_date:"%Y/%m/%d" }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Custom Format (DD-MM-YYYY)" %}</h3>
+                    <p class="text-lg">{{ today|format_date:"%d-%m-%Y" }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "With Month Name" %}</h3>
+                    <p class="text-lg">{{ today|format_date:"%d %B %Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DateTime Formatting Section -->
+    <section class="mb-12">
+        <h2 class="text-2xl font-semibold mb-4">{% trans "DateTime Formatting" %}</h2>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Default Format" %}</h3>
+                    <p class="text-lg">{{ now|format_datetime }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Custom Format" %}</h3>
+                    <p class="text-lg">{{ now|format_datetime:"%Y-%m-%d %H:%M:%S" }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Date and Time Separate" %}</h3>
+                    <p class="text-lg">{{ now|format_date }} - {{ now|format_datetime:"%H:%M" }}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "24-Hour Format" %}</h3>
+                    <p class="text-lg">{{ now|format_datetime:"%H:%M:%S" }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Inclusion Tags Section -->
+    <section class="mb-12">
+        <h2 class="text-2xl font-semibold mb-4">{% trans "Using Inclusion Tags" %}</h2>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Formatted Number Tag" %}</h3>
+                    <p class="text-lg">{% formatted_number 987654.321 2 %}</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Formatted Currency Tag" %}</h3>
+                    <p class="text-lg">{% formatted_currency 12345.67 "USD" %}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Language Note -->
+    <section class="mb-12">
+        <div class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-6">
+            <h3 class="font-semibold text-blue-900 dark:text-blue-100 mb-2">{% trans "Note" %}</h3>
+            <p class="text-blue-800 dark:text-blue-200">
+                {% trans "The formatting automatically adapts based on your selected language. Switch to Persian to see Jalali calendar dates and Persian numerals." %}
+            </p>
+        </div>
+    </section>
+</div>
+{% endblock %}

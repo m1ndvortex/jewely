@@ -84,3 +84,6 @@ responses==0.25.8
 
 # Translation Management
 django-rosetta==0.10.0
+
+# Persian Calendar & Date Formatting
+jdatetime==5.0.0
