@@ -96,23 +96,13 @@ class JobPerformanceTrackingIntegrationTest(TestCase):
         # Create job executions with varying execution times
         task_name = "test_performance.test_slow_identification"
 
-        # Create fast jobs
+        # Create slow jobs (>60s) - make sure average is >60s
         for i in range(5):
-            JobExecution.objects.create(
-                task_id=f"fast-{i}",
-                task_name=task_name,
-                status="SUCCESS",
-                execution_time=10.0 + i,
-                completed_at=timezone.now(),
-            )
-
-        # Create slow jobs (>60s)
-        for i in range(3):
             JobExecution.objects.create(
                 task_id=f"slow-{i}",
                 task_name=task_name,
                 status="SUCCESS",
-                execution_time=70.0 + i * 10,
+                execution_time=70.0 + i * 5,  # 70, 75, 80, 85, 90 - average will be 80
                 completed_at=timezone.now(),
             )
 
@@ -123,20 +113,20 @@ class JobPerformanceTrackingIntegrationTest(TestCase):
         stats = JobStatistics.objects.get(task_name=task_name)
 
         # Verify statistics
-        self.assertEqual(stats.total_executions, 8)
-        self.assertGreater(
-            stats.avg_execution_time, 30.0, "Average should be high due to slow jobs"
-        )
-        self.assertEqual(stats.min_execution_time, 10.0)
+        self.assertEqual(stats.total_executions, 5)
+        self.assertEqual(stats.avg_execution_time, 80.0, "Average should be 80s")
+        self.assertEqual(stats.min_execution_time, 70.0)
         self.assertEqual(stats.max_execution_time, 90.0)
+        self.assertTrue(stats.is_slow, "Job should be marked as slow")
 
         # Test slow job identification
         slow_jobs = JobMonitoringService.get_slow_jobs(threshold_seconds=60.0)
-        self.assertGreater(slow_jobs.count(), 0, "Should identify slow jobs")
-
+        
+        # Filter for our specific task
         slow_job = slow_jobs.filter(task_name=task_name).first()
         self.assertIsNotNone(slow_job, "Our test task should be identified as slow")
         self.assertTrue(slow_job.is_slow, "Job should be marked as slow")
+        self.assertGreater(slow_job.avg_execution_time, 60.0, "Average execution time should be >60s")
 
     def test_cpu_usage_tracking(self):
         """
