@@ -1,0 +1,1942 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-29 12:10+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#, python-format
+msgid "Welcome back, %(name)s!"
+msgstr ""
+
+#, python-format
+msgid "You have %(count)d item in your inventory."
+msgid_plural "You have %(count)d items in your inventory."
+msgstr[0] ""
+msgstr[1] ""
+
+msgctxt "sale status"
+msgid "Completed"
+msgstr ""
+
+msgctxt "sale status"
+msgid "Pending"
+msgstr ""
+
+msgctxt "sale status"
+msgid "Cancelled"
+msgstr ""
+
+msgid "This field is required."
+msgstr ""
+
+msgid "Please enter a valid email address."
+msgstr ""
+
+msgid "Please enter a valid phone number."
+msgstr ""
+
+msgid "Insufficient stock available."
+msgstr ""
+
+msgid "Invalid username or password."
+msgstr ""
+
+msgid "You do not have permission to perform this action."
+msgstr ""
+
+msgid "The requested item was not found."
+msgstr ""
+
+msgid "An item with this information already exists."
+msgstr ""
+
+msgid "Item created successfully."
+msgstr ""
+
+msgid "Item updated successfully."
+msgstr ""
+
+msgid "Item deleted successfully."
+msgstr ""
+
+msgid "Sale completed successfully."
+msgstr ""
+
+msgid "Customer added successfully."
+msgstr ""
+
+msgid "Email sent successfully."
+msgstr ""
+
+msgid "Settings saved successfully."
+msgstr ""
+
+msgid "Are you sure you want to delete this item?"
+msgstr ""
+
+msgid "Are you sure you want to delete this customer?"
+msgstr ""
+
+msgid "Are you sure you want to cancel this sale?"
+msgstr ""
+
+msgid "Are you sure you want to log out?"
+msgstr ""
+
+#, python-format
+msgid "%(start)s to %(end)s"
+msgstr ""
+
+#, python-format
+msgid "%(amount)s %(currency)s"
+msgstr ""
+
+msgid "Basic Information"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Action"
+msgstr ""
+
+msgid "Timestamps"
+msgstr ""
+
+msgid "Basic Settings"
+msgstr ""
+
+msgid "Quiet Hours"
+msgstr ""
+
+msgid "Templates"
+msgstr ""
+
+msgid "Action Templates"
+msgstr ""
+
+msgid "Use Django template syntax. Available variables depend on context."
+msgstr ""
+
+msgid "Email Details"
+msgstr ""
+
+msgid "Status & Tracking"
+msgstr ""
+
+msgid "Scheduling"
+msgstr ""
+
+msgid "Template Details"
+msgstr ""
+
+msgid "Email Content"
+msgstr ""
+
+msgid "Campaign Details"
+msgstr ""
+
+msgid "Targeting"
+msgstr ""
+
+msgid "Statistics"
+msgstr ""
+
+msgid "Delivery Rate"
+msgstr ""
+
+msgid "Open Rate"
+msgstr ""
+
+msgid "SMS Details"
+msgstr ""
+
+msgid "Delivery Status"
+msgstr ""
+
+msgid "Campaign & Cost"
+msgstr ""
+
+msgid "Message Content"
+msgstr ""
+
+msgid "Length"
+msgstr ""
+
+msgid ""
+"Use Django template syntax. Keep under 160 characters for single SMS. "
+"Available variables depend on context."
+msgstr ""
+
+msgid "User"
+msgstr ""
+
+msgid "Opt-out Preferences"
+msgstr ""
+
+msgid "Information"
+msgstr ""
+
+msgid "Success"
+msgstr ""
+
+msgid "Warning"
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Low Stock Alert"
+msgstr ""
+
+msgid "Payment Reminder"
+msgstr ""
+
+msgid "Order Status Update"
+msgstr ""
+
+msgid "System Notification"
+msgstr ""
+
+msgid "Promotion"
+msgstr ""
+
+msgid "Appointment Reminder"
+msgstr ""
+
+msgid "Transactional Email"
+msgstr ""
+
+msgid "Marketing Email"
+msgstr ""
+
+msgid "User who will receive this notification"
+msgstr ""
+
+msgid "Notification title/subject"
+msgstr ""
+
+msgid "Notification message content"
+msgstr ""
+
+msgid "Type of notification for styling and filtering"
+msgstr ""
+
+msgid "Whether the user has read this notification"
+msgstr ""
+
+msgid "When the notification was created"
+msgstr ""
+
+msgid "When the notification was marked as read"
+msgstr ""
+
+msgid "URL to navigate to when notification is clicked"
+msgstr ""
+
+msgid "Text for action button (e.g., \"View Order\", \"Update Inventory\")"
+msgstr ""
+
+msgid "When this notification expires and should be hidden"
+msgstr ""
+
+msgid "Notification"
+msgstr ""
+
+msgid "Notifications"
+msgstr ""
+
+msgid "In-App Notification"
+msgstr ""
+
+msgid "Email"
+msgstr ""
+
+msgid "SMS"
+msgstr ""
+
+msgid "Push Notification"
+msgstr ""
+
+msgid "User these preferences belong to"
+msgstr ""
+
+msgid "Type of notification this preference applies to"
+msgstr ""
+
+msgid "Notification delivery channel"
+msgstr ""
+
+msgid "Whether this notification type is enabled for this channel"
+msgstr ""
+
+msgid "When this preference was created"
+msgstr ""
+
+msgid "When this preference was last updated"
+msgstr ""
+
+msgid "Start of quiet hours (no notifications sent)"
+msgstr ""
+
+msgid "End of quiet hours"
+msgstr ""
+
+msgid "Notification Preference"
+msgstr ""
+
+msgid "Notification Preferences"
+msgstr ""
+
+msgid "Unique name for this template"
+msgstr ""
+
+msgid "Type of notification this template is for"
+msgstr ""
+
+msgid "Template for notification title (supports Django template syntax)"
+msgstr ""
+
+msgid "Template for notification message (supports Django template syntax)"
+msgstr ""
+
+msgid "Template for action button text"
+msgstr ""
+
+msgid "Template for action URL"
+msgstr ""
+
+msgid "Whether this template is active and can be used"
+msgstr ""
+
+msgid "When this template was created"
+msgstr ""
+
+msgid "When this template was last updated"
+msgstr ""
+
+msgid "Notification Template"
+msgstr ""
+
+msgid "Notification Templates"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Sent"
+msgstr ""
+
+msgid "Delivered"
+msgstr ""
+
+msgid "Bounced"
+msgstr ""
+
+msgid "Failed"
+msgstr ""
+
+msgid "Opened"
+msgstr ""
+
+msgid "Clicked"
+msgstr ""
+
+msgid "Complained"
+msgstr ""
+
+msgid "Unsubscribed"
+msgstr ""
+
+msgid "Transactional"
+msgstr ""
+
+msgid "Marketing"
+msgstr ""
+
+msgid "System"
+msgstr ""
+
+msgid "User who received this email"
+msgstr ""
+
+msgid "Associated in-app notification"
+msgstr ""
+
+msgid "Email subject"
+msgstr ""
+
+msgid "Recipient email address"
+msgstr ""
+
+msgid "Sender email address"
+msgstr ""
+
+msgid "Email template used"
+msgstr ""
+
+msgid "Type of email"
+msgstr ""
+
+msgid "Current delivery status"
+msgstr ""
+
+msgid "Email service provider message ID"
+msgstr ""
+
+msgid "Error message if delivery failed"
+msgstr ""
+
+msgid "Reason for bounce if applicable"
+msgstr ""
+
+msgid "When to send this email (for scheduled emails)"
+msgstr ""
+
+msgid "Campaign ID for marketing emails"
+msgstr ""
+
+msgid "Email Notification"
+msgstr ""
+
+msgid "Email Notifications"
+msgstr ""
+
+msgid "Unique name for this email template"
+msgstr ""
+
+msgid "Template for email subject (supports Django template syntax)"
+msgstr ""
+
+msgid "HTML template for email body"
+msgstr ""
+
+msgid "Plain text template for email body (optional)"
+msgstr ""
+
+msgid "Type of email this template is for"
+msgstr ""
+
+msgid "Email Template"
+msgstr ""
+
+msgid "Email Templates"
+msgstr ""
+
+msgid "Queued"
+msgstr ""
+
+msgid "Undelivered"
+msgstr ""
+
+msgid "Alert"
+msgstr ""
+
+msgid "User who received this SMS"
+msgstr ""
+
+msgid "SMS message content"
+msgstr ""
+
+msgid "Recipient phone number"
+msgstr ""
+
+msgid "Sender phone number"
+msgstr ""
+
+msgid "SMS template used"
+msgstr ""
+
+msgid "Type of SMS"
+msgstr ""
+
+msgid "Twilio message SID"
+msgstr ""
+
+msgid "Twilio error code if applicable"
+msgstr ""
+
+msgid "When to send this SMS (for scheduled SMS)"
+msgstr ""
+
+msgid "Campaign ID for marketing SMS"
+msgstr ""
+
+msgid "Cost of sending this SMS"
+msgstr ""
+
+msgid "Currency unit for price"
+msgstr ""
+
+msgid "SMS Notification"
+msgstr ""
+
+msgid "SMS Notifications"
+msgstr ""
+
+msgid "Unique name for this SMS template"
+msgstr ""
+
+msgid "SMS message template (supports Django template syntax)"
+msgstr ""
+
+msgid "Type of SMS this template is for"
+msgstr ""
+
+msgid "SMS Template"
+msgstr ""
+
+msgid "SMS Templates"
+msgstr ""
+
+msgid "User who opted out of SMS"
+msgstr ""
+
+msgid "When the user opted out"
+msgstr ""
+
+msgid "Reason for opting out"
+msgstr ""
+
+msgid "Opted out of transactional SMS"
+msgstr ""
+
+msgid "Opted out of marketing SMS (default: True)"
+msgstr ""
+
+msgid "Opted out of system SMS"
+msgstr ""
+
+msgid "Opted out of alert SMS"
+msgstr ""
+
+msgid "SMS Opt-Out"
+msgstr ""
+
+msgid "SMS Opt-Outs"
+msgstr ""
+
+msgid "Draft"
+msgstr ""
+
+msgid "Scheduled"
+msgstr ""
+
+msgid "Sending"
+msgstr ""
+
+msgid "Cancelled"
+msgstr ""
+
+msgid "Campaign name"
+msgstr ""
+
+msgid "Email template to use"
+msgstr ""
+
+msgid "Specific users to target (leave empty for all users)"
+msgstr ""
+
+msgid "Customer segments to target"
+msgstr ""
+
+msgid "User roles to target"
+msgstr ""
+
+msgid "Tenant statuses to target"
+msgstr ""
+
+msgid "When to send this campaign"
+msgstr ""
+
+msgid "Email Campaign"
+msgstr ""
+
+msgid "Email Campaigns"
+msgstr ""
+
+msgid "Static Segment"
+msgstr ""
+
+msgid "Dynamic Segment"
+msgstr ""
+
+msgid "Segment name"
+msgstr ""
+
+msgid "Segment description"
+msgstr ""
+
+msgid "Type of segment (static or dynamic)"
+msgstr ""
+
+msgid "Segmentation criteria for dynamic segments"
+msgstr ""
+
+msgid "Customers in this segment (for static segments)"
+msgstr ""
+
+msgid "Whether this segment is active"
+msgstr ""
+
+msgid "User who created this segment"
+msgstr ""
+
+msgid "Number of customers in segment"
+msgstr ""
+
+msgid "When segment was last calculated"
+msgstr ""
+
+msgid "Customer Segment"
+msgstr ""
+
+msgid "Customer Segments"
+msgstr ""
+
+msgid "SMS Campaign"
+msgstr ""
+
+msgid "Mixed Campaign"
+msgstr ""
+
+msgid "Campaign identifier"
+msgstr ""
+
+msgid "Type of campaign"
+msgstr ""
+
+msgid "Customer segment targeted"
+msgstr ""
+
+msgid "Total recipients targeted"
+msgstr ""
+
+msgid "Total messages sent"
+msgstr ""
+
+msgid "Messages delivered"
+msgstr ""
+
+msgid "Messages failed"
+msgstr ""
+
+msgid "Emails opened"
+msgstr ""
+
+msgid "Emails clicked"
+msgstr ""
+
+msgid "Emails bounced"
+msgstr ""
+
+msgid "Unsubscribes from campaign"
+msgstr ""
+
+msgid "Number of conversions"
+msgstr ""
+
+msgid "Total value of conversions"
+msgstr ""
+
+msgid "Total cost of campaign"
+msgstr ""
+
+msgid "Delivery rate percentage"
+msgstr ""
+
+msgid "Open rate percentage (email only)"
+msgstr ""
+
+msgid "Click rate percentage (email only)"
+msgstr ""
+
+msgid "Conversion rate percentage"
+msgstr ""
+
+msgid "Return on investment percentage"
+msgstr ""
+
+msgid "When campaign was sent"
+msgstr ""
+
+msgid "Campaign Analytics"
+msgstr ""
+
+msgid "Phone Call"
+msgstr ""
+
+msgid "In-Person Meeting"
+msgstr ""
+
+msgid "Internal Note"
+msgstr ""
+
+msgid "Outbound"
+msgstr ""
+
+msgid "Inbound"
+msgstr ""
+
+msgid "Internal"
+msgstr ""
+
+msgid "Customer this communication is with"
+msgstr ""
+
+msgid "Type of communication"
+msgstr ""
+
+msgid "Direction of communication"
+msgstr ""
+
+msgid "Subject or title of communication"
+msgstr ""
+
+msgid "Content or summary of communication"
+msgstr ""
+
+msgid "Campaign ID if this is part of a campaign"
+msgstr ""
+
+msgid "Related email notification"
+msgstr ""
+
+msgid "Related SMS notification"
+msgstr ""
+
+msgid "Whether message was opened"
+msgstr ""
+
+msgid "Whether links were clicked"
+msgstr ""
+
+msgid "Whether this led to a conversion"
+msgstr ""
+
+msgid "Value of conversion if applicable"
+msgstr ""
+
+msgid "Additional communication metadata"
+msgstr ""
+
+msgid "When the communication occurred"
+msgstr ""
+
+msgid "User who logged this communication"
+msgstr ""
+
+msgid "Communication Log"
+msgstr ""
+
+msgid "Communication Logs"
+msgstr ""
+
+msgid "SMS template to use"
+msgstr ""
+
+msgid "SMS Campaigns"
+msgstr ""
+
+msgid "Jewelry Shop"
+msgstr ""
+
+msgid "Translation Example"
+msgstr ""
+
+msgid "Translation Example Page"
+msgstr ""
+
+msgid "This page demonstrates how to use Django's translation system."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"        Welcome back, %(name)s! We're glad to see you again.\n"
+"        "
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"        You have %(counter)s item in your inventory.\n"
+"        "
+msgid_plural ""
+"\n"
+"        You have %(counter)s items in your inventory.\n"
+"        "
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Dashboard"
+msgstr ""
+
+msgid "Inventory"
+msgstr ""
+
+msgid "Sales"
+msgstr ""
+
+msgid "Customers"
+msgstr ""
+
+msgid "Name"
+msgstr ""
+
+msgid "Enter your name"
+msgstr ""
+
+msgid "Please enter your full name."
+msgstr ""
+
+msgid "Email Address"
+msgstr ""
+
+msgid "Enter your email"
+msgstr ""
+
+msgid "Message"
+msgstr ""
+
+msgid "Enter your message"
+msgstr ""
+
+msgid "Submit"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Product Name"
+msgstr ""
+
+msgid "SKU"
+msgstr ""
+
+msgid "Price"
+msgstr ""
+
+msgid "Quantity"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Active"
+msgstr ""
+
+msgid "Inactive"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "No items found."
+msgstr ""
+
+msgid "Your changes have been saved successfully."
+msgstr ""
+
+msgid "Please review your information before submitting."
+msgstr ""
+
+msgid "An error occurred while processing your request."
+msgstr ""
+
+msgid "This is an informational message."
+msgstr ""
+
+msgid "Delete Item"
+msgstr ""
+
+msgid "Bulk Campaign"
+msgstr ""
+
+msgid "Send targeted email or SMS campaigns to customer segments."
+msgstr ""
+
+msgid "Campaign Type"
+msgstr ""
+
+msgid "Type"
+msgstr ""
+
+msgid "Target Segment"
+msgstr ""
+
+msgid "Select a segment..."
+msgstr ""
+
+msgid "Email Settings"
+msgstr ""
+
+msgid "Select template..."
+msgstr ""
+
+msgid "Email Subject"
+msgstr ""
+
+msgid "SMS Settings"
+msgstr ""
+
+msgid "Template Variables"
+msgstr ""
+
+msgid ""
+"Add custom variables to personalize your campaign. Use these in your "
+"templates as {{ variable_name }}."
+msgstr ""
+
+msgid "Remove"
+msgstr ""
+
+msgid "Add Variable"
+msgstr ""
+
+msgid "Campaign Summary"
+msgstr ""
+
+msgid "Select a segment and template to see campaign summary."
+msgstr ""
+
+msgid "Preview"
+msgstr ""
+
+msgid "Send Campaign"
+msgstr ""
+
+msgid "Type:"
+msgstr ""
+
+msgid "Target:"
+msgstr ""
+
+msgid "Ready to send campaign to selected segment."
+msgstr ""
+
+msgid ""
+"Are you sure you want to send this campaign? This action cannot be undone."
+msgstr ""
+
+msgid "Track the performance of your email and SMS campaigns."
+msgstr ""
+
+msgid "Start Date"
+msgstr ""
+
+msgid "End Date"
+msgstr ""
+
+msgid "Apply Filters"
+msgstr ""
+
+msgid "Total Campaigns"
+msgstr ""
+
+msgid "Messages Sent"
+msgstr ""
+
+msgid "Conversion Rate"
+msgstr ""
+
+msgid "Email Metrics"
+msgstr ""
+
+msgid "Click Rate"
+msgstr ""
+
+msgid "Total Opened"
+msgstr ""
+
+msgid "Total Clicked"
+msgstr ""
+
+msgid "Revenue Metrics"
+msgstr ""
+
+msgid "Total Conversions"
+msgstr ""
+
+msgid "Conversion Value"
+msgstr ""
+
+msgid "Total Cost"
+msgstr ""
+
+msgid "ROI"
+msgstr ""
+
+msgid "Recent Campaigns"
+msgstr ""
+
+msgid "Campaign"
+msgstr ""
+
+msgid "Conversions"
+msgstr ""
+
+msgid "No campaigns found for the selected period."
+msgstr ""
+
+msgid "View all customer communications across all channels."
+msgstr ""
+
+msgid "Customer ID"
+msgstr ""
+
+msgid "Enter customer ID..."
+msgstr ""
+
+msgid "Communication Type"
+msgstr ""
+
+msgid "All Types"
+msgstr ""
+
+msgid "Campaign ID"
+msgstr ""
+
+msgid "Enter campaign ID..."
+msgstr ""
+
+msgid "Communication History"
+msgstr ""
+
+msgid "Date"
+msgstr ""
+
+msgid "Customer"
+msgstr ""
+
+msgid "Direction"
+msgstr ""
+
+msgid "Subject"
+msgstr ""
+
+msgid "Engagement"
+msgstr ""
+
+msgid "Converted"
+msgstr ""
+
+msgid "No communications found."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"                        Showing %(start)s to %(end)s of %(total)s "
+"communications\n"
+"                    "
+msgstr ""
+
+msgid "Previous"
+msgstr ""
+
+msgid "Next"
+msgstr ""
+
+msgid "Create Segment"
+msgstr ""
+
+msgid "All Segments"
+msgstr ""
+
+msgid "Last Updated"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "No customer segments found."
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"                        Showing %(start)s to %(end)s of %(total)s segments\n"
+"                    "
+msgstr ""
+
+msgid "Notification Center"
+msgstr ""
+
+msgid "Manage your notifications and stay updated"
+msgstr ""
+
+msgid "Preferences"
+msgstr ""
+
+msgid "Mark All Read"
+msgstr ""
+
+msgid "Unread only"
+msgstr ""
+
+msgid "All types"
+msgstr ""
+
+#, python-format
+msgid ""
+"\n"
+"                                    %(counter)s unread notification\n"
+"                                "
+msgid_plural ""
+"\n"
+"                                    %(counter)s unread notifications\n"
+"                                "
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "All notifications read"
+msgstr ""
+
+msgid "New"
+msgstr ""
+
+msgid "Showing"
+msgstr ""
+
+msgid "to"
+msgstr ""
+
+msgid "of"
+msgstr ""
+
+msgid "notifications"
+msgstr ""
+
+msgid "No notifications"
+msgstr ""
+
+msgid "You're all caught up! No notifications to display."
+msgstr ""
+
+msgid "Mark all notifications as read?"
+msgstr ""
+
+msgid "new"
+msgstr ""
+
+msgid "Mark all as read"
+msgstr ""
+
+msgid "ago"
+msgstr ""
+
+msgid "View all notifications"
+msgstr ""
+
+msgid "Error:"
+msgstr ""
+
+#, python-format
+msgid "%(count)s customers match this criteria"
+msgstr ""
+
+#, python-format
+msgid "Showing first %(showing)s of %(total)s"
+msgstr ""
+
+msgid "Total Purchases"
+msgstr ""
+
+msgid "Loyalty Tier"
+msgstr ""
+
+msgid "No customers match the current criteria."
+msgstr ""
+
+msgid "Customize how and when you receive notifications"
+msgstr ""
+
+msgid "Back to Notifications"
+msgstr ""
+
+msgid "Notification Types"
+msgstr ""
+
+msgid "Choose how you want to receive different types of notifications"
+msgstr ""
+
+msgid "Notification Type"
+msgstr ""
+
+msgid "Set times when you don't want to receive non-critical notifications"
+msgstr ""
+
+msgid "Start Time"
+msgstr ""
+
+msgid "End Time"
+msgstr ""
+
+msgid ""
+"During quiet hours, you'll only receive critical notifications (errors and "
+"system alerts)"
+msgstr ""
+
+msgid "Save Preferences"
+msgstr ""
+
+msgid "Create Customer Segment"
+msgstr ""
+
+msgid "Segment Name"
+msgstr ""
+
+msgid "Segment Type"
+msgstr ""
+
+msgid "Description"
+msgstr ""
+
+msgid "Segmentation Criteria"
+msgstr ""
+
+msgid "Minimum Total Purchases"
+msgstr ""
+
+msgid "Maximum Total Purchases"
+msgstr ""
+
+msgid "Last Purchase Within (Days)"
+msgstr ""
+
+msgid "Loyalty Tiers"
+msgstr ""
+
+msgid "Customer Tags (comma-separated)"
+msgstr ""
+
+msgid "Communication Preferences"
+msgstr ""
+
+msgid "Marketing Opt-in"
+msgstr ""
+
+msgid "SMS Opt-in"
+msgstr ""
+
+msgid "Select Customers"
+msgstr ""
+
+msgid "For static segments, manually select customers to include."
+msgstr ""
+
+msgid "Preview Customers"
+msgstr ""
+
+msgid "Click 'Preview Customers' to see who would be included in this segment."
+msgstr ""
+
+msgid "Calculate Price"
+msgstr ""
+
+msgid "Back to Dashboard"
+msgstr ""
+
+msgid "Price Calculator"
+msgstr ""
+
+msgid "Current Gold Rate"
+msgstr ""
+
+msgid "Karat"
+msgstr ""
+
+msgid "Weight (grams)"
+msgstr ""
+
+msgid "Product Type"
+msgstr ""
+
+msgid "Any Type"
+msgstr ""
+
+msgid "Craftsmanship Level"
+msgstr ""
+
+msgid "Any Level"
+msgstr ""
+
+msgid "Customer Tier"
+msgstr ""
+
+msgid "Stone Value"
+msgstr ""
+
+msgid "Active Pricing Rules"
+msgstr ""
+
+msgid "No active pricing rules found. Please configure pricing rules first."
+msgstr ""
+
+msgid "Pricing Dashboard"
+msgstr ""
+
+msgid "Recalculate Prices"
+msgstr ""
+
+msgid "Rules configured"
+msgstr ""
+
+msgid "Pending Overrides"
+msgstr ""
+
+msgid "Awaiting approval"
+msgstr ""
+
+msgid "Recent Price Changes"
+msgstr ""
+
+msgid "View all changes"
+msgstr ""
+
+msgid "No recent price changes"
+msgstr ""
+
+msgid "Pending Override Requests"
+msgstr ""
+
+msgid "Requested by"
+msgstr ""
+
+msgid "View all requests"
+msgstr ""
+
+msgid "No pending override requests"
+msgstr ""
+
+msgid ""
+"This will recalculate prices for all inventory items based on current gold "
+"rates and pricing rules."
+msgstr ""
+
+msgid "Retail"
+msgstr ""
+
+msgid "Wholesale"
+msgstr ""
+
+msgid "VIP"
+msgstr ""
+
+msgid "Recalculate"
+msgstr ""
+
+msgid "Gold Rate Comparison"
+msgstr ""
+
+msgid "View History"
+msgstr ""
+
+msgid "Highest"
+msgstr ""
+
+msgid "Same as base"
+msgstr ""
+
+msgid "Per Tola"
+msgstr ""
+
+msgid "Per Ounce"
+msgstr ""
+
+msgid "Currency"
+msgstr ""
+
+msgid "Updated"
+msgstr ""
+
+msgid "Source"
+msgstr ""
+
+msgid "Detailed Comparison"
+msgstr ""
+
+msgid "All rates compared to"
+msgstr ""
+
+msgid "market"
+msgstr ""
+
+msgid "Market"
+msgstr ""
+
+msgid "Per Gram"
+msgstr ""
+
+msgid "Difference"
+msgstr ""
+
+msgid "Base"
+msgstr ""
+
+msgid "Same"
+msgstr ""
+
+msgid "Refresh Rates"
+msgstr ""
+
+msgid "No Rate Data Available"
+msgstr ""
+
+msgid "No gold rate data is currently available for comparison."
+msgstr ""
+
+msgid "Gold Rate History"
+msgstr ""
+
+msgid "Compare Markets"
+msgstr ""
+
+msgid "Time Period"
+msgstr ""
+
+msgid "Last 7 days"
+msgstr ""
+
+msgid "Last 30 days"
+msgstr ""
+
+msgid "Last 90 days"
+msgstr ""
+
+msgid "Last year"
+msgstr ""
+
+msgid "Update"
+msgstr ""
+
+msgid "Current Rate"
+msgstr ""
+
+msgid "Period Change"
+msgstr ""
+
+msgid "Highest Rate"
+msgstr ""
+
+msgid "Lowest Rate"
+msgstr ""
+
+msgid "Rate Trend"
+msgstr ""
+
+msgid "Historical Data"
+msgstr ""
+
+msgid "Date & Time"
+msgstr ""
+
+msgid "No Historical Data"
+msgstr ""
+
+msgid "No gold rate data available for the selected market and time period."
+msgstr ""
+
+msgid "Rate (USD)"
+msgstr ""
+
+msgid "Live Gold Rates"
+msgstr ""
+
+msgid "History"
+msgstr ""
+
+msgid "Compare"
+msgstr ""
+
+msgid "No change"
+msgstr ""
+
+msgid "Tola"
+msgstr ""
+
+msgid "Oz"
+msgstr ""
+
+msgid "No gold rates available"
+msgstr ""
+
+msgid "Rates will appear when data is fetched from external APIs"
+msgstr ""
+
+msgid "Auto-refreshes every 30 seconds"
+msgstr ""
+
+msgid "Price Override Requests"
+msgstr ""
+
+msgid "All Statuses"
+msgstr ""
+
+msgid "Filter"
+msgstr ""
+
+msgid "Item"
+msgstr ""
+
+msgid "Current Price"
+msgstr ""
+
+msgid "Requested Price"
+msgstr ""
+
+msgid "Deviation"
+msgstr ""
+
+msgid "Requested By"
+msgstr ""
+
+msgid "View"
+msgstr ""
+
+msgid "results"
+msgstr ""
+
+msgid "No price override requests found."
+msgstr ""
+
+msgid "Price Calculation Result"
+msgstr ""
+
+msgid "Calculate Another"
+msgstr ""
+
+msgid "Calculation Details"
+msgstr ""
+
+msgid "Weight"
+msgstr ""
+
+msgid "Craftsmanship"
+msgstr ""
+
+msgid "Gold Rate"
+msgstr ""
+
+msgid "Rule Applied"
+msgstr ""
+
+msgid "Price Breakdown"
+msgstr ""
+
+msgid "Gold Value"
+msgstr ""
+
+msgid "Markup Amount"
+msgstr ""
+
+msgid "Making Charges"
+msgstr ""
+
+msgid "Stone Charges"
+msgstr ""
+
+msgid "Fixed Markup"
+msgstr ""
+
+msgid "Total Price"
+msgstr ""
+
+msgid "Pricing by Customer Tier"
+msgstr ""
+
+msgid "Selected"
+msgstr ""
+
+msgid "Markup"
+msgstr ""
+
+msgid "Complete Goods Receipt"
+msgstr ""
+
+msgid "Back to Receipt"
+msgstr ""
+
+msgid "Completion Confirmation"
+msgstr ""
+
+msgid "What happens when you complete this receipt?"
+msgstr ""
+
+msgid "Inventory levels will be updated for all accepted items"
+msgstr ""
+
+msgid "New inventory items will be created if they don't exist"
+msgstr ""
+
+msgid "Purchase order status will be updated"
+msgstr ""
+
+msgid "The receipt status will be marked as completed"
+msgstr ""
+
+msgid "Three-Way Matching Warning"
+msgstr ""
+
+msgid ""
+"The quantities in this receipt do not match the purchase order. Please "
+"review the items before completing."
+msgstr ""
+
+msgid "Discrepancy Warning"
+msgstr ""
+
+msgid ""
+"This receipt has discrepancies. Completing it will still update inventory "
+"with accepted quantities only."
+msgstr ""
+
+msgid "Items to be Added to Inventory"
+msgstr ""
+
+msgid "Quantity Accepted"
+msgstr ""
+
+msgid "Unit Price"
+msgstr ""
+
+msgid "Total Value"
+msgstr ""
+
+msgid "Update Existing"
+msgstr ""
+
+msgid "Create New"
+msgstr ""
+
+msgid "No items to add to inventory"
+msgstr ""
+
+msgid "Receipt Summary"
+msgstr ""
+
+msgid "Receipt Number"
+msgstr ""
+
+msgid "Purchase Order"
+msgstr ""
+
+msgid "Supplier"
+msgstr ""
+
+msgid "Received Date"
+msgstr ""
+
+msgid "Current Status"
+msgstr ""
+
+msgid "Inventory Impact"
+msgstr ""
+
+msgid "Items Added"
+msgstr ""
+
+msgid "Complete Receipt & Update Inventory"
+msgstr ""
+
+msgid ""
+"This action cannot be undone. Make sure all information is correct before "
+"proceeding."
+msgstr ""
+
+msgid "Goods Receipt"
+msgstr ""
+
+msgid "Complete Receipt"
+msgstr ""
+
+msgid "Back to List"
+msgstr ""
+
+msgid "Receipt Information"
+msgstr ""
+
+msgid "Received By"
+msgstr ""
+
+msgid "Invoice Number"
+msgstr ""
+
+msgid "Tracking Number"
+msgstr ""
+
+msgid "Inspection Notes"
+msgstr ""
+
+msgid "Discrepancy Notes"
+msgstr ""
+
+msgid "Receipt Items"
+msgstr ""
+
+msgid "Ordered"
+msgstr ""
+
+msgid "Received"
+msgstr ""
+
+msgid "Accepted"
+msgstr ""
+
+msgid "Rejected"
+msgstr ""
+
+msgid "Quality"
+msgstr ""
+
+msgid "Notes"
+msgstr ""
+
+msgid "Passed"
+msgstr ""
+
+msgid "No items in this receipt"
+msgstr ""
+
+msgid "Quality Check Summary"
+msgstr ""
+
+msgid "Three-Way Matching"
+msgstr ""
+
+msgid "Match Complete"
+msgstr ""
+
+msgid "PO, receipt, and invoice quantities match"
+msgstr ""
+
+msgid "Pending Match"
+msgstr ""
+
+msgid "Quantities do not match or receipt incomplete"
+msgstr ""
+
+msgid "Purchase Order Summary"
+msgstr ""
+
+msgid "PO Number"
+msgstr ""
+
+msgid "Order Date"
+msgstr ""
+
+msgid "Total Amount"
+msgstr ""
+
+msgid "PO Status"
+msgstr ""
+
+msgid "View Purchase Order"
+msgstr ""
+
+msgid "Create Goods Receipt"
+msgstr ""
+
+msgid "Add Item"
+msgstr ""
+
+msgid "Purchase Order Item"
+msgstr ""
+
+msgid "Quantity Received"
+msgstr ""
+
+msgid "Quantity Rejected"
+msgstr ""
+
+msgid "Quality Check"
+msgstr ""
+
+msgid "Quality Notes"
+msgstr ""
+
+msgid "Discrepancy Reason"
+msgstr ""
+
+msgid "Purchase Order Details"
+msgstr ""
+
+msgid "Please select a purchase order first to add items."
+msgstr ""
+
+msgid "Rejected quantity cannot exceed received quantity"
+msgstr ""
+
+msgid "Goods Receipts"
+msgstr ""
+
+msgid "New Goods Receipt"
+msgstr ""
+
+msgid "Search"
+msgstr ""
+
+msgid "Receipt number, PO number, invoice..."
+msgstr ""
+
+msgid "All Purchase Orders"
+msgstr ""
+
+msgid "Discrepancy"
+msgstr ""
+
+msgid "All"
+msgstr ""
+
+msgid "Has Discrepancy"
+msgstr ""
+
+msgid "No Discrepancy"
+msgstr ""
+
+msgid "Clear"
+msgstr ""
+
+msgid "Has discrepancy"
+msgstr ""
+
+msgid "No discrepancy"
+msgstr ""
+
+msgid "View Details"
+msgstr ""
+
+msgid "Goods receipts pagination"
+msgstr ""
+
+msgid "First"
+msgstr ""
+
+msgid "Page"
+msgstr ""
+
+msgid "Last"
+msgstr ""
+
+msgid "No goods receipts found"
+msgstr ""
+
+msgid "Create your first goods receipt to track received shipments."
+msgstr ""
+
+msgid "Back to Reports"
+msgstr ""
+
+msgid "Report Parameters"
+msgstr ""
+
+msgid "Select..."
+msgstr ""
+
+msgid "Output Format"
+msgstr ""
+
+msgid "Email Recipients"
+msgstr ""
+
+msgid "optional"
+msgstr ""
+
+msgid "Enter email addresses separated by commas"
+msgstr ""
+
+msgid "Leave empty to download directly"
+msgstr ""
+
+msgid "Generate Report"
+msgstr ""
+
+msgid "Report Information"
+msgstr ""
+
+msgid "Category"
+msgstr ""
+
+msgid "Available Formats"
+msgstr ""
+
+msgid "Parameters"
+msgstr ""
+
+msgid "parameter(s)"
+msgstr ""
+
+msgid "Pre-built Reports"
+msgstr ""
+
+msgid "Ready-to-use reports for common business analysis needs"
+msgstr ""
+
+msgid "Reports"
+msgstr ""
+
+msgid "Run Report"
+msgstr ""
+
+msgid "Execute Report"
+msgstr ""
+
+msgid "Execute"
+msgstr ""
+
+msgid "Output Formats"
+msgstr ""
+
+msgid "Execution Parameters"
+msgstr ""
+
+msgid "Enable"
+msgstr ""
+
+msgid "Select an option"
+msgstr ""
+
+msgid "Choose the format for the generated report"
+msgstr ""
+
+msgid "Optional"
+msgstr ""
+
+msgid ""
+"Leave empty to download directly, or enter email addresses to send the "
+"report via email"
+msgstr ""
+
+msgid "Execution Information"
+msgstr ""
+
+msgid "Report execution may take several minutes for large datasets"
+msgstr ""
+
+msgid "You will be notified when the report is ready"
+msgstr ""
+
+msgid ""
+"If email recipients are specified, the report will be sent automatically"
+msgstr ""
+
+msgid "Otherwise, you can download the report from the execution history"
+msgstr ""

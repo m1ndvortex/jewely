@@ -10,10 +10,11 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.utils import translation
+
+import pytest
 
 from apps.core.models import Tenant
 

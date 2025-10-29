@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "hijack",
     "hijack.contrib.admin",
     "waffle",
+    "rosetta",  # Translation management interface
     # Local apps
     "apps.core",
     "apps.inventory",
@@ -77,6 +78,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # User language middleware - must be after AuthenticationMiddleware and LocaleMiddleware
+    "apps.core.language_middleware.UserLanguageMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Allauth middleware - must be after AuthenticationMiddleware

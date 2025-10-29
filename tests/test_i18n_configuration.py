@@ -3,10 +3,11 @@ Tests for Django i18n configuration.
 Per Requirement 2 - Dual-Language Support (English and Persian)
 """
 
-import pytest
 from django.conf import settings
 from django.test import TestCase
 from django.utils import translation
+
+import pytest
 
 
 class I18nConfigurationTest(TestCase):

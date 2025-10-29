@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     musl-dev \
     libpq-dev \
     git \
+    gettext \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory

@@ -11,6 +11,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),  # django-allauth URLs
     path("hijack/", include("hijack.urls")),  # django-hijack URLs for impersonation
+    path("rosetta/", include("rosetta.urls")),  # Translation management interface
     path("", include("apps.core.urls")),
     path("", include("apps.inventory.urls")),
     path("", include("apps.sales.urls")),

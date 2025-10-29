@@ -1,12 +1,47 @@
+{% load i18n %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Jewelry Shop{% endblock %}</title>
+    <title>{% block title %}{% trans "Jewelry Shop" %}{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- RTL CSS Support -->
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/rtl.css' %}">
+    
+    <!-- HTMX for dynamic interactions -->
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    
+    <!-- Alpine.js for reactive components -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    
+    <!-- Persian font for RTL support -->
+    {% if LANGUAGE_CODE == 'fa' %}
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <style>
+        @font-face {
+            font-family: 'Vazir';
+            src: url('https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/Vazir-Regular.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Vazir';
+            src: url('https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/Vazir-Bold.woff2') format('woff2');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }
+        body {
+            font-family: 'Vazir', 'Tahoma', 'Arial', sans-serif;
+        }
+    </style>
+    {% endif %}
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
     <!-- Impersonation Banner -->

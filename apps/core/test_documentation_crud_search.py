@@ -11,10 +11,11 @@ Per Task 25.4 - Write documentation tests
 Requirements: 34, 28
 """
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+
+import pytest
 
 from .documentation_models import AdminNote, DocumentationPage, Runbook
 
