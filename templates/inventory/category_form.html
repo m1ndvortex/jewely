@@ -1,252 +1,476 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}{{ title }} - {{ block.super }}{% endblock %}
+{% block title %}
+    {% if is_edit %}
+        {% trans "Edit Category" %} - {{ block.super }}
+    {% else %}
+        {% trans "Add New Category" %} - {{ block.super }}
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Custom styles for drag-and-drop upload area */
+    .upload-area-active {
+        border-color: #10B981 !important;
+        background-color: #D1FAE5 !important;
+    }
+</style>
+{% endblock %}
+
+{% block alpine_components %}
+<script>
+// Queue component registration to run when Alpine initializes
+window.deferredAlpineInit = window.deferredAlpineInit || [];
+window.deferredAlpineInit.push(() => {
+    // Category form component
+    Alpine.data('categoryFormComponent', () => ({
+    categoryName: '',
+    slug: '',
+    metaTitle: '',
+    metaDescription: '',
+    baseUrl: window.location.origin,
+    
+    get previewUrl() {
+        const slugValue = this.slug || this.generateSlug(this.categoryName) || 'new-category';
+        return `${this.baseUrl}/categories/${slugValue}`;
+    },
+    
+    get previewTitle() {
+        const placeholder = this.$el.dataset.titlePlaceholder || 'Title for search engines';
+        return this.metaTitle || this.categoryName || placeholder;
+    },
+    
+    get previewDescription() {
+        const placeholder = this.$el.dataset.descPlaceholder || 'Description for search engines';
+        return this.metaDescription || placeholder;
+    },
+    
+    get descriptionLength() {
+        return this.metaDescription.length;
+    },
+    
+    generateSlug(name) {
+        if (!name) return '';
+        return name.toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    },
+    
+    updateSlug() {
+        if (!this.slug || this.slug === this.generateSlug(this.categoryName)) {
+            this.slug = this.generateSlug(this.categoryName);
+        }
+    },
+    
+    updateSeoPreview() {
+        // This method is called to trigger reactivity
+    },
+    
+    handleSubmit(e) {
+        // Form validation can be added here if needed
+    }
+}));
+
+// Image upload component
+Alpine.data('imageUploadComponent', () => ({
+        isDragging: false,
+        imagePreview: null,
+        fileName: null,
+        fileSize: null,
+        
+        triggerFileInput() {
+            this.$refs.fileInput.click();
+        },
+        
+        handleDragOver(e) {
+            e.preventDefault();
+            this.isDragging = true;
+        },
+        
+        handleDragLeave(e) {
+            e.preventDefault();
+            this.isDragging = false;
+        },
+        
+        handleDrop(e) {
+            e.preventDefault();
+            this.isDragging = false;
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleFile(files[0]);
+            }
+        },
+        
+        handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                this.handleFile(files[0]);
+            }
+        },
+        
+        handleFile(file) {
+            const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+            if (!validTypes.includes(file.type)) {
+                const errorMsg = this.$el.dataset.errorType || 'Only PNG, JPG, and GIF files are supported';
+                alert(errorMsg);
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                const errorMsg = this.$el.dataset.errorSize || 'File size must be less than 10MB';
+                alert(errorMsg);
+                return;
+            }
+            
+            this.fileName = file.name;
+            this.fileSize = this.formatFileSize(file.size);
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.imagePreview = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        },
+        
+        removeImage() {
+            this.imagePreview = null;
+            this.fileName = null;
+            this.fileSize = null;
+            this.$refs.fileInput.value = '';
+        },
+        
+        formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+    }));
+});
+</script>
+{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
-    <div class="mb-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                    {{ title }}
-                </h1>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                    {% if is_edit %}
-                        {% trans "Update category information including images and metadata" %}
-                    {% else %}
-                        {% trans "Create a new product category with hierarchical organization" %}
-                    {% endif %}
-                </p>
-            </div>
-            <a href="{% url 'inventory:category_list' %}" 
-               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
-                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-                {% trans "Cancel" %}
-            </a>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header with Close Button -->
+    <div class="flex items-start justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {% if is_edit %}
+                    {% trans "Edit Category" %}
+                {% else %}
+                    {% trans "Add New Category" %}
+                {% endif %}
+            </h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {% trans "Create a new product category with its organizational details." %}
+            </p>
         </div>
+        <a href="{% url 'inventory:category_list' %}" 
+           class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </a>
     </div>
 
-    <!-- Form -->
-    <form method="post" enctype="multipart/form-data" class="space-y-8">
-        {% csrf_token %}
-        
-        <!-- Display form errors -->
-        {% if form.non_field_errors %}
-        <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
-                        {% trans "Please correct the following errors:" %}
-                    </h3>
-                    <div class="mt-2 text-sm text-red-700 dark:text-red-300">
-                        <ul class="list-disc pl-5 space-y-1">
-                            {% for error in form.non_field_errors %}
-                            <li>{{ error }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
+    <!-- Display form errors -->
+    {% if form.non_field_errors %}
+    <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                    {% trans "Please correct the following errors:" %}
+                </h3>
+                <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                    <ul class="list-disc pl-5 space-y-1">
+                        {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
                 </div>
             </div>
         </div>
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- Basic Information -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                    {% trans "Basic Information" %}
-                </h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {% trans "Essential category details" %}
-                </p>
-            </div>
-            <div class="px-6 py-5 space-y-6">
-                <!-- Name -->
-                <div>
-                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {% trans "Category Name" %} <span class="text-red-500">*</span>
-                    </label>
-                    {{ form.name }}
-                    {% if form.name.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.name.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "Enter a descriptive name for this category (e.g., Rings, Necklaces, Bracelets)" %}
-                    </p>
+    <form method="post" enctype="multipart/form-data" 
+          x-data="categoryFormComponent()" 
+          x-init="categoryName = '{{ form.name.value|default:""|escapejs }}'; slug = '{{ form.slug.value|default:""|escapejs }}'; metaTitle = '{{ form.meta_title.value|default:""|escapejs }}'; metaDescription = '{{ form.meta_description.value|default:""|escapejs }}'"
+          data-title-placeholder="{% trans 'Title for search engines' %}"
+          data-desc-placeholder="{% trans 'Description for search engines' %}"
+          @submit="handleSubmit">
+        {% csrf_token %}
+        
+        <!-- Two-column grid on desktop -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Left Column: Basic Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Basic Information" %}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Essential category details." %}</p>
                 </div>
-
+                
+                <!-- Category Name -->
+                <div class="mb-4">
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Category Name" %}<span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" 
+                           name="name" 
+                           id="{{ form.name.id_for_label }}"
+                           x-model="categoryName"
+                           @input="updateSlug(); updateSeoPreview()"
+                           value="{{ form.name.value|default:'' }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                           placeholder="{% trans 'e.g. Rings, Necklaces, Bracelets' %}"
+                           required>
+                    {% if form.name.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
                 <!-- Parent Category -->
-                <div>
+                <div class="mb-4">
                     <label for="{{ form.parent.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         {% trans "Parent Category" %}
                     </label>
-                    {{ form.parent }}
+                    <select name="parent" 
+                            id="{{ form.parent.id_for_label }}"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="">{% trans "Select a parent category..." %}</option>
+                        {% for choice in form.parent.field.choices %}
+                            {% if choice.0 %}
+                            <option value="{{ choice.0 }}" {% if form.parent.value == choice.0|stringformat:"s" %}selected{% endif %}>
+                                {{ choice.1 }}
+                            </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
                     {% if form.parent.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.parent.errors.0 }}</p>
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.parent.errors.0 }}</p>
                     {% endif %}
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "Select a parent category to create a subcategory, or leave empty for a top-level category" %}
-                    </p>
                 </div>
-
+                
                 <!-- Description -->
-                <div>
+                <div class="mb-4">
                     <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                         {% trans "Description" %}
                     </label>
-                    {{ form.description }}
+                    <textarea name="description" 
+                              id="{{ form.description.id_for_label }}"
+                              rows="4"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                              placeholder="{% trans 'Provide a detailed description of this category.' %}">{{ form.description.value|default:'' }}</textarea>
                     {% if form.description.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.description.errors.0 }}</p>
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.description.errors.0 }}</p>
                     {% endif %}
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "Provide a detailed description of this category" %}
-                    </p>
                 </div>
-
-                <!-- Active Status -->
+                
+                <!-- Active Checkbox -->
                 <div class="flex items-start">
                     <div class="flex items-center h-5">
-                        {{ form.is_active }}
+                        <input type="checkbox" 
+                               name="is_active" 
+                               id="{{ form.is_active.id_for_label }}"
+                               {% if form.is_active.value or form.is_active.value == None %}checked{% endif %}
+                               class="rounded border-gray-300 text-teal-600 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600">
                     </div>
-                    <div class="ml-3 text-sm">
-                        <label for="{{ form.is_active.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                    <div class="ml-3">
+                        <label for="{{ form.is_active.id_for_label }}" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {% trans "Active" %}
                         </label>
-                        <p class="text-gray-500 dark:text-gray-400">
-                            {% trans "Inactive categories are hidden from the system" %}
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            {% trans "Inactive categories are hidden from the store." %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Category Image -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Category Image" %}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Upload an image to represent this category." %}</p>
+                </div>
+                
+                <!-- Upload Area with Alpine.js -->
+                <div x-data="imageUploadComponent()" 
+                     data-error-type="{% trans 'Only PNG, JPG, and GIF files are supported' %}"
+                     data-error-size="{% trans 'File size must be less than 10MB' %}"
+                     class="mt-4">
+                    <div 
+                        @dragover.prevent="handleDragOver"
+                        @dragleave.prevent="handleDragLeave"
+                        @drop.prevent="handleDrop"
+                        @click="triggerFileInput"
+                        :class="{'upload-area-active': isDragging}"
+                        class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                        
+                        <!-- Upload prompt (shown when no image) -->
+                        <div x-show="!imagePreview">
+                            <!-- Cloud Upload Icon -->
+                            <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                <span class="font-medium text-teal-600 hover:text-teal-500 dark:text-teal-400">{% trans "Upload a file" %}</span>
+                                <span class="text-gray-500 dark:text-gray-400"> {% trans "or drag and drop" %}</span>
+                            </p>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "PNG, JPG, GIF up to 10MB" %}</p>
+                        </div>
+                        
+                        <!-- Image preview (shown when image uploaded) -->
+                        <div x-show="imagePreview" class="relative" style="display: none;">
+                            <img :src="imagePreview" class="mx-auto max-h-48 rounded-lg" alt="Preview" />
+                            <button 
+                                type="button"
+                                @click.stop="removeImage"
+                                class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                            <p class="mt-2 text-sm text-gray-600 dark:text-gray-300" x-text="fileName"></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="fileSize"></p>
+                        </div>
+                    </div>
+                    
+                    <input 
+                        type="file" 
+                        x-ref="fileInput"
+                        @change="handleFileSelect"
+                        accept="image/png,image/jpeg,image/jpg,image/gif"
+                        class="hidden"
+                        id="{{ form.image.id_for_label }}"
+                        name="image" />
+                    {% if form.image.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.image.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Advanced Settings Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6">
+            <div class="mb-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Advanced Settings" %}</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "URL and search engine optimization." %}</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- URL Slug -->
+                <div>
+                    <label for="{{ form.slug.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "URL Slug" %}
+                    </label>
+                    <input type="text" 
+                           name="slug" 
+                           id="{{ form.slug.id_for_label }}"
+                           x-model="slug"
+                           @input="updateSeoPreview()"
+                           value="{{ form.slug.value|default:'' }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                           placeholder="{% trans 'e.g. gold-engagement-rings' %}">
+                    {% if form.slug.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.slug.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Display Order -->
+                <div>
+                    <label for="{{ form.display_order.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Display Order" %}
+                    </label>
+                    <input type="number" 
+                           name="display_order" 
+                           id="{{ form.display_order.id_for_label }}"
+                           value="{{ form.display_order.value|default:'0' }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                           placeholder="0">
+                    {% if form.display_order.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.display_order.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <!-- SEO Title -->
+                <div class="mb-4">
+                    <label for="{{ form.meta_title.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "SEO Title (Optional)" %}
+                    </label>
+                    <input type="text" 
+                           name="meta_title" 
+                           id="{{ form.meta_title.id_for_label }}"
+                           x-model="metaTitle"
+                           @input="updateSeoPreview()"
+                           value="{{ form.meta_title.value|default:'' }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                           placeholder="{% trans 'Title for search engines' %}">
+                    {% if form.meta_title.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.meta_title.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- SEO Meta Description -->
+                <div>
+                    <label for="{{ form.meta_description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "SEO Meta Description (Optional)" %}
+                    </label>
+                    <textarea name="meta_description" 
+                              id="{{ form.meta_description.id_for_label }}"
+                              x-model="metaDescription"
+                              @input="updateSeoPreview()"
+                              rows="2"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                              placeholder="{% trans 'Description for search engines' %}">{{ form.meta_description.value|default:'' }}</textarea>
+                    {% if form.meta_description.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.meta_description.errors.0 }}</p>
+                    {% endif %}
+                    <div class="flex justify-between mt-1">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            {% trans "Characters:" %} <span x-text="descriptionLength">0</span>
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            {% trans "Recommended: 120-158 characters" %}
                         </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Image Upload -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                    {% trans "Category Image" %}
-                </h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {% trans "Upload an image to represent this category" %}
-                </p>
-            </div>
-            <div class="px-6 py-5">
-                {% if is_edit and category.image %}
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "Current Image" %}
-                    </label>
-                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="h-48 w-auto rounded-lg shadow-md">
-                </div>
-                {% endif %}
-                
-                <div>
-                    <label for="{{ form.image.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% if is_edit and category.image %}
-                            {% trans "Replace Image" %}
-                        {% else %}
-                            {% trans "Upload Image" %}
-                        {% endif %}
-                    </label>
-                    {{ form.image }}
-                    {% if form.image.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.image.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "Recommended: Square image, at least 400x400 pixels. Supported formats: JPG, PNG, WebP" %}
-                    </p>
-                </div>
+        <!-- Search Engine Snippet Preview -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                {% trans "Search Engine Snippet Preview" %}
+            </h3>
+            
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <p class="text-sm text-green-600 dark:text-green-400" x-text="previewUrl"></p>
+                <h4 class="text-lg text-blue-600 dark:text-blue-400 hover:underline cursor-pointer mt-1" x-text="previewTitle"></h4>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" x-text="previewDescription"></p>
             </div>
         </div>
 
-        <!-- Advanced Settings -->
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-                    {% trans "Advanced Settings" %}
-                </h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {% trans "Optional settings for SEO and organization" %}
-                </p>
-            </div>
-            <div class="px-6 py-5 space-y-6">
-                <!-- Slug -->
-                <div>
-                    <label for="{{ form.slug.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {% trans "URL Slug" %}
-                    </label>
-                    {{ form.slug }}
-                    {% if form.slug.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.slug.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "URL-friendly version of the name. Auto-generated if left empty." %}
-                    </p>
-                </div>
-
-                <!-- Display Order -->
-                <div>
-                    <label for="{{ form.display_order.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {% trans "Display Order" %}
-                    </label>
-                    {{ form.display_order }}
-                    {% if form.display_order.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.display_order.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "Lower numbers appear first. Use 0 for default ordering." %}
-                    </p>
-                </div>
-
-                <!-- Meta Title -->
-                <div>
-                    <label for="{{ form.meta_title.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {% trans "SEO Meta Title" %}
-                    </label>
-                    {{ form.meta_title }}
-                    {% if form.meta_title.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.meta_title.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "Title for search engines (optional)" %}
-                    </p>
-                </div>
-
-                <!-- Meta Description -->
-                <div>
-                    <label for="{{ form.meta_description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {% trans "SEO Meta Description" %}
-                    </label>
-                    {{ form.meta_description }}
-                    {% if form.meta_description.errors %}
-                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.meta_description.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {% trans "Description for search engines (optional)" %}
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Form Actions -->
-        <div class="flex justify-end space-x-3">
-            <a href="{% url 'inventory:category_list' %}"
-               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+        <!-- Action Buttons -->
+        <div class="flex justify-end gap-3 mt-6">
+            <a href="{% url 'inventory:category_list' %}" 
+               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
                 {% trans "Cancel" %}
             </a>
-            <button type="submit"
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            <button type="submit" 
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">
+                <svg class="inline-block h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
                 {% if is_edit %}
                     {% trans "Update Category" %}

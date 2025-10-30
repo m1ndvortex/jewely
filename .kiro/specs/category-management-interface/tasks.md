@@ -1,0 +1,173 @@
+# Implementation Plan
+
+- [x] 1. Create image processing utilities
+  - Create `apps/inventory/image_utils.py` with ImageProcessor class
+  - Implement image validation method (size, format checks)
+  - Implement image optimization method (resize, compress, convert to WebP)
+  - Implement thumbnail generation method
+  - Add error handling for invalid images and processing failures
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 2. Create storage service for organized file management
+  - Create `apps/inventory/storage.py` with CategoryImageStorage class
+  - Implement filename generation with timestamp and category slug
+  - Implement organized path generation (media/categories/{year}/{month}/)
+  - Implement image save method with directory creation
+  - Implement thumbnail save method in thumbnails subfolder
+  - Implement image deletion method for cleanup
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+
+- [x] 3. Update ProductCategoryForm with image processing
+  - Modify `apps/inventory/forms.py` ProductCategoryForm class
+  - Add clean_image method for server-side validation
+  - Override save method to integrate image processing
+  - Add logic to delete old images when replacing
+  - Add error handling for image processing failures
+  - Ensure tenant context is maintained throughout form processing
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 5.3, 5.4_
+
+- [x] 4. Update category views with enhanced error handling
+  - Modify `apps/inventory/web_views.py` category_create_view function
+  - Add try-catch blocks for image processing errors
+  - Add user-friendly error messages for validation failures
+  - Pass image configuration to template context (max size, allowed formats)
+  - Update category_edit_view with same error handling
+  - Verify tenant isolation with @tenant_required decorator
+  - Ensure all database queries filter by request.user.tenant
+  - Add tenant context verification in all category operations
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [x] 5. Create modern category form template matching screen.png design
+  - Create new `templates/inventory/category_form.html` template
+  - Implement EXACT layout from screen.png: modal/card design with close button
+  - Implement three-section layout (Basic Info, Image, Advanced Settings)
+  - Add responsive grid layout (2-column desktop, 1-column mobile)
+  - Style all form fields with Tailwind CSS classes matching design colors
+  - Add proper labels, placeholders, and help text exactly as shown in screen.png
+  - Implement "Add New Category" heading with subtitle
+  - Add "Cancel" (gray) and "Create Category" (teal) buttons at bottom-right
+  - Match exact spacing, padding, and typography from design
+  - Use white background with light gray borders for sections
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 11.1, 11.2, 11.3, 11.4, 11.5_
+
+- [ ] 6. Implement drag-and-drop image upload component matching screen.png
+  - Add Alpine.js imageUpload component to category_form.html
+  - Implement upload area with cloud icon and dashed border as shown in design
+  - Add "Upload a file" link in teal color with "or drag and drop" text
+  - Display "PNG, JPG, GIF up to 10MB" text below upload area
+  - Implement drag-over, drag-leave, and drop event handlers
+  - Implement click-to-upload file picker
+  - Add client-side file validation (size, format)
+  - Implement image preview display with filename and size
+  - Add remove image functionality with overlay button
+  - Match exact styling from screen.png design
+  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [ ] 7. Implement SEO preview component matching screen.png
+  - Add Alpine.js seoPreview component to category_form.html
+  - Implement "Search Engine Snippet Preview" section as shown in design
+  - Display URL in green text (www.yourshop.com/categories/new-category)
+  - Display title in blue text (clickable appearance)
+  - Display description in gray text below title
+  - Implement real-time URL preview generation
+  - Implement real-time title preview
+  - Implement real-time description preview with character counter
+  - Add "Characters: 0" and "Recommended: 120-158 characters" text
+  - Add auto-slug generation from category name
+  - Match exact styling and layout from screen.png
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 8.1, 8.2, 8.3, 8.4, 8.5_
+
+- [ ] 8. Implement parent category selection
+  - Update parent category dropdown in template
+  - Add "Select a parent category..." placeholder option
+  - Display full category path for nested categories
+  - Add client-side validation to prevent circular references
+  - Style dropdown with proper Tailwind classes
+  - Ensure parent category queryset is filtered by tenant in form __init__
+  - Verify tenant isolation in parent category selection
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [ ] 9. Add form validation and user feedback
+  - Add client-side validation for required fields
+  - Add server-side validation error display in template
+  - Implement Django messages for success/error feedback
+  - Add inline field error messages
+  - Style validation states (error borders, success states)
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [ ] 10. Update database integration and verify RLS
+  - Verify ProductCategory model has all required fields
+  - Ensure image field uses proper upload_to path
+  - Verify tenant foreign key relationship and CASCADE behavior
+  - Verify unique constraints on tenant, name, parent
+  - Test auto-generation of created_at and updated_at
+  - Verify RLS policies ensure tenant isolation at database level
+  - Test that users cannot access categories from other tenants
+  - Verify all indexes include tenant field for query performance
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
+
+- [ ] 11. Add Pillow dependency and configuration
+  - Add Pillow==10.1.0 to requirements.txt
+  - Run docker-compose build web to install dependency
+  - Verify MEDIA_ROOT and MEDIA_URL in settings.py
+  - Create media/categories directory structure
+  - Test image processing imports
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [ ] 12. Test with Playwright browser automation and verify design matches screen.png
+  - Navigate to http://localhost:8000/inventory/categories/add/
+  - Take screenshot and compare with screen.png design
+  - Verify layout matches: two-column grid, section positioning, spacing
+  - Verify colors match: teal buttons, gray text, white backgrounds
+  - Verify typography matches: heading sizes, font weights, text colors
+  - Test form rendering and layout
+  - Test drag-and-drop image upload with cloud icon
+  - Test click-to-upload functionality
+  - Test image preview display
+  - Test image removal
+  - Test form submission with valid data
+  - Test form submission with invalid data (oversized file, wrong format)
+  - Test SEO preview updates with correct colors (green URL, blue title, gray description)
+  - Test responsive design on different screen sizes
+  - Verify category created in database with optimized image
+  - Verify image files saved in correct folder structure
+  - Verify thumbnail generated
+  - Test tenant isolation: login as different tenant, verify cannot see other tenant's categories
+  - Test parent category dropdown only shows current tenant's categories
+  - Verify image paths are tenant-isolated (no cross-tenant access)
+  - _Requirements: All requirements_
+
+- [ ]* 13. Write unit tests for image processing
+  - Create `apps/inventory/tests/test_image_utils.py`
+  - Test ImageProcessor.validate_image with valid images
+  - Test ImageProcessor.validate_image with invalid size
+  - Test ImageProcessor.validate_image with invalid format
+  - Test ImageProcessor.optimize_image resizing
+  - Test ImageProcessor.optimize_image compression
+  - Test ImageProcessor.optimize_image WebP conversion
+  - Test thumbnail generation
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [ ]* 14. Write unit tests for storage service
+  - Create `apps/inventory/tests/test_storage.py`
+  - Test CategoryImageStorage.generate_filename
+  - Test CategoryImageStorage.get_upload_path
+  - Test CategoryImageStorage.save_image
+  - Test CategoryImageStorage.save_thumbnail
+  - Test CategoryImageStorage.delete_image
+  - Test directory creation
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+
+- [ ]* 15. Write integration tests for category creation
+  - Create `apps/inventory/tests/test_category_integration.py`
+  - Test complete category creation flow with image
+  - Test category creation without image
+  - Test category update with new image
+  - Test category update without changing image
+  - Test image replacement and old image deletion
+  - Test tenant isolation: create categories for multiple tenants
+  - Test that tenant A cannot access tenant B's categories
+  - Test that parent category selection is tenant-scoped
+  - Test RLS policies prevent cross-tenant data access
+  - Test image storage paths are tenant-isolated
+  - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_

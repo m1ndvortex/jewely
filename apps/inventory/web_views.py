@@ -454,10 +454,25 @@ def inventory_reports_view(request):
 @login_required
 @tenant_required
 def category_list_view(request):
-    """List all product categories with hierarchical display."""
+    """
+    List all product categories with hierarchical display.
+
+    Features:
+    - Tenant isolation verification
+    - Search functionality
+    - Category statistics
+
+    Requirements: 10.3 (tenant isolation)
+    """
     user = request.user
 
+    # Verify tenant context
+    if not user.tenant:
+        messages.error(request, _("No tenant associated with your account."))
+        return redirect("core:dashboard")
+
     with tenant_context(user.tenant.id):
+        # Ensure all queries filter by tenant
         all_categories = ProductCategory.objects.filter(tenant=user.tenant)
 
         # Search functionality
@@ -474,7 +489,7 @@ def category_list_view(request):
                 "display_order", "name"
             )
 
-        # Statistics
+        # Statistics - all filtered by tenant
         stats = {
             "total_categories": all_categories.count(),
             "active_categories": all_categories.filter(is_active=True).count(),
@@ -491,35 +506,98 @@ def category_list_view(request):
 @login_required
 @tenant_required
 @require_http_methods(["GET", "POST"])
-def category_create_view(request):
-    """Create new product category."""
+def category_create_view(request):  # noqa: C901
+    """
+    Create new product category with enhanced error handling.
+
+    Features:
+    - Image processing with comprehensive error handling
+    - Tenant isolation verification
+    - User-friendly error messages
+    - Image configuration passed to template
+
+    Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+    """
+    # Verify tenant context
+    if not request.user.tenant:
+        messages.error(request, _("No tenant associated with your account."))
+        return redirect("core:dashboard")
+
     if request.method == "POST":
         form = ProductCategoryForm(request.POST, request.FILES, tenant=request.user.tenant)
-        if form.is_valid():
-            category = form.save(commit=False)
-            category.tenant = request.user.tenant
-            category.save()
-            messages.success(
-                request, _('Category "{}" created successfully.').format(category.name)
+
+        try:
+            if form.is_valid():
+                # Verify tenant isolation before saving
+                with tenant_context(request.user.tenant.id):
+                    category = form.save(commit=False)
+                    category.tenant = request.user.tenant
+
+                    # Verify tenant is set correctly
+                    if category.tenant != request.user.tenant:
+                        messages.error(request, _("Security error: Tenant mismatch detected."))
+                        return redirect("inventory:category_list")
+
+                    category.save()
+
+                    messages.success(
+                        request, _('Category "{}" created successfully.').format(category.name)
+                    )
+                    return redirect("inventory:category_list")
+            else:
+                # Form validation failed - errors will be displayed in template
+                messages.error(request, _("Please correct the errors below."))
+
+        except ValueError as e:
+            # Image processing errors (from ImageProcessor)
+            messages.error(request, _("Image processing error: {}").format(str(e)))
+        except Exception as e:
+            # Unexpected errors
+            messages.error(
+                request, _("An error occurred while creating the category: {}").format(str(e))
             )
-            return redirect("inventory:category_list")
+            # Log the error for debugging
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Category creation error: {str(e)}", exc_info=True)
     else:
         # Pre-select parent if provided in URL
         parent_id = request.GET.get("parent")
         initial = {}
         if parent_id:
             try:
-                parent = ProductCategory.objects.get(id=parent_id, tenant=request.user.tenant)
-                initial["parent"] = parent
+                # Ensure parent belongs to current tenant
+                with tenant_context(request.user.tenant.id):
+                    parent = ProductCategory.objects.get(id=parent_id, tenant=request.user.tenant)
+                    initial["parent"] = parent
             except ProductCategory.DoesNotExist:
-                pass
+                messages.warning(request, _("The specified parent category was not found."))
 
         form = ProductCategoryForm(tenant=request.user.tenant, initial=initial)
+
+    # Import image configuration from ImageProcessor
+    from .image_utils import ImageProcessor
+
+    # Prepare image configuration for template
+    image_config = {
+        "max_size_mb": ImageProcessor.MAX_SIZE / (1024 * 1024),
+        "max_size_bytes": ImageProcessor.MAX_SIZE,
+        "allowed_formats": list(ImageProcessor.ALLOWED_FORMATS),
+        "allowed_formats_display": ", ".join(ImageProcessor.ALLOWED_FORMATS),
+        "max_width": ImageProcessor.MAX_WIDTH,
+        "max_height": ImageProcessor.MAX_HEIGHT,
+    }
 
     return render(
         request,
         "inventory/category_form.html",
-        {"form": form, "title": _("Add New Category"), "is_edit": False},
+        {
+            "form": form,
+            "title": _("Add New Category"),
+            "is_edit": False,
+            "image_config": image_config,
+        },
     )
 
 
@@ -527,26 +605,92 @@ def category_create_view(request):
 @tenant_required
 @require_http_methods(["GET", "POST"])
 def category_edit_view(request, id):
-    """Edit existing product category."""
-    category = get_object_or_404(ProductCategory, id=id, tenant=request.user.tenant)
+    """
+    Edit existing product category with enhanced error handling.
+
+    Features:
+    - Image processing with comprehensive error handling
+    - Tenant isolation verification
+    - User-friendly error messages
+    - Image configuration passed to template
+
+    Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+    """
+    # Verify tenant context
+    if not request.user.tenant:
+        messages.error(request, _("No tenant associated with your account."))
+        return redirect("core:dashboard")
+
+    # Ensure category belongs to current tenant
+    with tenant_context(request.user.tenant.id):
+        category = get_object_or_404(ProductCategory, id=id, tenant=request.user.tenant)
 
     if request.method == "POST":
         form = ProductCategoryForm(
             request.POST, request.FILES, instance=category, tenant=request.user.tenant
         )
-        if form.is_valid():
-            form.save()
-            messages.success(
-                request, _('Category "{}" updated successfully.').format(category.name)
+
+        try:
+            if form.is_valid():
+                # Verify tenant isolation before saving
+                with tenant_context(request.user.tenant.id):
+                    updated_category = form.save(commit=False)
+
+                    # Verify tenant hasn't changed
+                    if updated_category.tenant != request.user.tenant:
+                        messages.error(request, _("Security error: Tenant mismatch detected."))
+                        return redirect("inventory:category_list")
+
+                    updated_category.save()
+
+                    messages.success(
+                        request,
+                        _('Category "{}" updated successfully.').format(updated_category.name),
+                    )
+                    return redirect("inventory:category_list")
+            else:
+                # Form validation failed - errors will be displayed in template
+                messages.error(request, _("Please correct the errors below."))
+
+        except ValueError as e:
+            # Image processing errors (from ImageProcessor)
+            messages.error(request, _("Image processing error: {}").format(str(e)))
+        except Exception as e:
+            # Unexpected errors
+            messages.error(
+                request, _("An error occurred while updating the category: {}").format(str(e))
             )
-            return redirect("inventory:category_list")
+            # Log the error for debugging
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Category update error: {str(e)}", exc_info=True)
     else:
         form = ProductCategoryForm(instance=category, tenant=request.user.tenant)
+
+    # Import image configuration from ImageProcessor
+    from .image_utils import ImageProcessor
+
+    # Prepare image configuration for template
+    image_config = {
+        "max_size_mb": ImageProcessor.MAX_SIZE / (1024 * 1024),
+        "max_size_bytes": ImageProcessor.MAX_SIZE,
+        "allowed_formats": list(ImageProcessor.ALLOWED_FORMATS),
+        "allowed_formats_display": ", ".join(ImageProcessor.ALLOWED_FORMATS),
+        "max_width": ImageProcessor.MAX_WIDTH,
+        "max_height": ImageProcessor.MAX_HEIGHT,
+    }
 
     return render(
         request,
         "inventory/category_form.html",
-        {"form": form, "category": category, "title": _("Edit Category"), "is_edit": True},
+        {
+            "form": form,
+            "category": category,
+            "title": _("Edit Category"),
+            "is_edit": True,
+            "image_config": image_config,
+        },
     )
 
 
@@ -554,35 +698,46 @@ def category_edit_view(request, id):
 @tenant_required
 @require_http_methods(["GET", "POST"])
 def category_delete_view(request, id):
-    """Delete a product category."""
-    category = get_object_or_404(ProductCategory, id=id, tenant=request.user.tenant)
+    """
+    Delete a product category with tenant isolation verification.
 
-    # Check if category has items
-    item_count = category.items.count()
-    has_subcategories = category.subcategories.exists()
+    Requirements: 10.3 (tenant isolation)
+    """
+    # Verify tenant context
+    if not request.user.tenant:
+        messages.error(request, _("No tenant associated with your account."))
+        return redirect("core:dashboard")
 
-    if request.method == "POST":
-        if item_count > 0:
-            messages.error(
-                request,
-                _(
-                    'Cannot delete category "{}". It has {} items. Please move or delete the items first.'
-                ).format(category.name, item_count),
-            )
-        elif has_subcategories:
-            messages.error(
-                request,
-                _(
-                    'Cannot delete category "{}". It has subcategories. Please delete subcategories first.'
-                ).format(category.name),
-            )
-        else:
-            category_name = category.name
-            category.delete()
-            messages.success(
-                request, _('Category "{}" deleted successfully.').format(category_name)
-            )
-            return redirect("inventory:category_list")
+    # Ensure category belongs to current tenant
+    with tenant_context(request.user.tenant.id):
+        category = get_object_or_404(ProductCategory, id=id, tenant=request.user.tenant)
+
+        # Check if category has items (filtered by tenant)
+        item_count = category.items.filter(tenant=request.user.tenant).count()
+        has_subcategories = category.subcategories.filter(tenant=request.user.tenant).exists()
+
+        if request.method == "POST":
+            if item_count > 0:
+                messages.error(
+                    request,
+                    _(
+                        'Cannot delete category "{}". It has {} items. Please move or delete the items first.'
+                    ).format(category.name, item_count),
+                )
+            elif has_subcategories:
+                messages.error(
+                    request,
+                    _(
+                        'Cannot delete category "{}". It has subcategories. Please delete subcategories first.'
+                    ).format(category.name),
+                )
+            else:
+                category_name = category.name
+                category.delete()
+                messages.success(
+                    request, _('Category "{}" deleted successfully.').format(category_name)
+                )
+                return redirect("inventory:category_list")
 
     return render(
         request,
@@ -594,25 +749,45 @@ def category_delete_view(request, id):
 @login_required
 @tenant_required
 def category_detail_view(request, id):
-    """View category details with items and subcategories."""
-    category = get_object_or_404(ProductCategory, id=id, tenant=request.user.tenant)
+    """
+    View category details with items and subcategories.
 
-    # Get items in this category
-    items = category.items.filter(is_active=True).order_by("-created_at")[:20]
+    Features:
+    - Tenant isolation verification
+    - Category statistics
 
-    # Get subcategories
-    subcategories = category.get_children()
+    Requirements: 10.3 (tenant isolation)
+    """
+    # Verify tenant context
+    if not request.user.tenant:
+        messages.error(request, _("No tenant associated with your account."))
+        return redirect("core:dashboard")
 
-    # Statistics
-    total_items = category.get_item_count()
-    total_value = sum(item.calculate_total_selling_value() for item in category.items.all())
+    # Ensure category belongs to current tenant
+    with tenant_context(request.user.tenant.id):
+        category = get_object_or_404(ProductCategory, id=id, tenant=request.user.tenant)
 
-    context = {
-        "category": category,
-        "items": items,
-        "subcategories": subcategories,
-        "total_items": total_items,
-        "total_value": total_value,
-    }
+        # Get items in this category (filtered by tenant)
+        items = category.items.filter(tenant=request.user.tenant, is_active=True).order_by(
+            "-created_at"
+        )[:20]
+
+        # Get subcategories (filtered by tenant)
+        subcategories = category.subcategories.filter(tenant=request.user.tenant)
+
+        # Statistics (all filtered by tenant)
+        total_items = category.items.filter(tenant=request.user.tenant).count()
+        total_value = sum(
+            item.calculate_total_selling_value()
+            for item in category.items.filter(tenant=request.user.tenant)
+        )
+
+        context = {
+            "category": category,
+            "items": items,
+            "subcategories": subcategories,
+            "total_items": total_items,
+            "total_value": total_value,
+        }
 
     return render(request, "inventory/category_detail.html", context)

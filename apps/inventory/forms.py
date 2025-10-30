@@ -4,7 +4,16 @@ Forms for inventory management.
 Provides comprehensive forms with validation for:
 - Inventory item creation and editing
 - Stock adjustments
-- Product categories
+- Product categories with automatic image processing
+
+ProductCategoryForm includes:
+- Server-side image validation (size, format)
+- Automatic image optimization (resize, compress, WebP conversion)
+- Thumbnail generation (200x200px)
+- Organized storage (media/categories/{year}/{month}/)
+- Old image cleanup when replacing
+- Tenant context preservation
+- Automatic slug generation
 """
 
 from django import forms
@@ -279,6 +288,7 @@ class StockAdjustmentForm(forms.Form):
 class ProductCategoryForm(forms.ModelForm):
     """
     Form for creating and editing product categories with full support for images and metadata.
+    Includes automatic image processing, optimization, and organized storage.
     """
 
     class Meta:
@@ -371,6 +381,43 @@ class ProductCategoryForm(forms.ModelForm):
         self.fields["meta_title"].required = False
         self.fields["meta_description"].required = False
 
+    def clean_image(self):
+        """
+        Validate uploaded image file.
+
+        Performs server-side validation for:
+        - File size (max 10MB)
+        - File format (PNG, JPG, GIF only)
+        - Image integrity
+
+        Returns:
+            UploadedFile: Validated image file or None
+
+        Raises:
+            ValidationError: If image validation fails
+        """
+        image = self.cleaned_data.get("image")
+
+        if image:
+            try:
+                from .image_utils import ImageProcessor
+
+                # Validate image using ImageProcessor
+                is_valid, error = ImageProcessor.validate_image(image)
+                if not is_valid:
+                    raise ValidationError(error)
+
+                # Reset file pointer after validation
+                image.seek(0)
+
+            except ImportError:
+                # If ImageProcessor not available, skip validation
+                pass
+            except Exception as e:
+                raise ValidationError(_("Error validating image: %(error)s") % {"error": str(e)})
+
+        return image
+
     def clean(self):
         """Validate category data."""
         cleaned_data = super().clean()
@@ -391,3 +438,92 @@ class ProductCategoryForm(forms.ModelForm):
                 current = current.parent
 
         return cleaned_data
+
+    def save(self, commit=True):  # noqa: C901
+        """
+        Save category with automatic image processing.
+
+        Handles:
+        - Image optimization (resize, compress, convert to WebP)
+        - Thumbnail generation
+        - Organized storage (media/categories/{year}/{month}/)
+        - Old image cleanup when replacing
+        - Automatic slug generation
+        - Tenant context preservation
+
+        Args:
+            commit: Whether to save to database immediately
+
+        Returns:
+            ProductCategory: Saved category instance
+
+        Raises:
+            ValueError: If image processing fails
+        """
+        from django.utils.text import slugify
+
+        instance = super().save(commit=False)
+
+        # Ensure tenant context is maintained
+        if self.tenant and not instance.tenant_id:
+            instance.tenant = self.tenant
+
+        # Generate slug if not provided
+        if not instance.slug and instance.name:
+            instance.slug = slugify(instance.name)
+
+        # Process image if uploaded
+        if "image" in self.changed_data and self.cleaned_data.get("image"):
+            try:
+                from .image_utils import ImageProcessor
+                from .storage import CategoryImageStorage
+
+                image_file = self.cleaned_data["image"]
+
+                # Store old image path for cleanup
+                old_image_path = None
+                if instance.pk and instance.image:
+                    old_image_path = instance.image.name
+
+                # Process new image (optimize, resize, convert to WebP)
+                optimized_bytes, thumbnail_bytes, format_ext = (
+                    ImageProcessor.process_category_image(image_file)
+                )
+
+                # Save optimized image with organized naming
+                image_path = CategoryImageStorage.save_image(
+                    optimized_bytes, image_file.name, instance.slug
+                )
+
+                # Save thumbnail
+                CategoryImageStorage.save_thumbnail(thumbnail_bytes, image_file.name, instance.slug)
+
+                # Update instance with new image path
+                instance.image = image_path
+
+                # Delete old image after successful processing
+                if old_image_path:
+                    try:
+                        CategoryImageStorage.delete_image(old_image_path)
+                    except Exception:
+                        # Don't fail if old image deletion fails
+                        pass
+
+            except ImportError:
+                # If image processing modules not available, raise clear error
+                raise ValidationError(
+                    _("Image processing is not available. Please ensure Pillow is installed.")
+                )
+            except ValueError as e:
+                # Image validation or processing error
+                raise ValidationError(_("Image processing failed: %(error)s") % {"error": str(e)})
+            except Exception as e:
+                # Unexpected error during image processing
+                raise ValidationError(
+                    _("Unexpected error processing image: %(error)s") % {"error": str(e)}
+                )
+
+        if commit:
+            instance.save()
+
+        return instance

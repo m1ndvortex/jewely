@@ -39,6 +39,16 @@
     <!-- HTMX for dynamic interactions -->
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     
+    <!-- Set up Alpine.js initialization listener and load Alpine.js with defer -->
+    <script>
+        // This runs immediately, before Alpine loads
+        window.deferredAlpineInit = [];
+        document.addEventListener('alpine:init', () => {
+            // Run deferred initialization when Alpine starts
+            window.deferredAlpineInit.forEach(fn => fn());
+        });
+    </script>
+    
     <!-- Alpine.js for reactive components -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     
@@ -567,6 +577,9 @@
             return cookieValue;
         }
     </script>
+    
+    <!-- Alpine.js component registration -->
+    {% block alpine_components %}{% endblock %}
     
     <!-- Page-specific JavaScript -->
     {% block extra_js %}{% endblock %}
