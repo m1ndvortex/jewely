@@ -435,25 +435,33 @@ def inventory_reports_view(request):
 
         # Dead stock (items not sold in 90 days)
         from datetime import timedelta
+
         from django.utils import timezone
+
         ninety_days_ago = timezone.now() - timedelta(days=90)
-        
+
         # Get items with no recent sales
         from apps.sales.models import SaleItem
-        recent_sale_item_ids = SaleItem.objects.filter(
-            sale__created_at__gte=ninety_days_ago,
-            inventory_item__tenant=user.tenant
-        ).values_list('inventory_item_id', flat=True).distinct()
-        
+
+        recent_sale_item_ids = (
+            SaleItem.objects.filter(
+                sale__created_at__gte=ninety_days_ago, inventory_item__tenant=user.tenant
+            )
+            .values_list("inventory_item_id", flat=True)
+            .distinct()
+        )
+
         dead_stock_items = items.exclude(id__in=recent_sale_item_ids).filter(quantity__gt=0)
-        
+
         # Inventory turnover calculation (last 90 days)
-        total_sold = SaleItem.objects.filter(
-            sale__created_at__gte=ninety_days_ago,
-            inventory_item__tenant=user.tenant
-        ).aggregate(total=Sum('quantity'))['total'] or 0
-        
-        avg_inventory = items.aggregate(avg=Sum('quantity'))['avg'] or 1
+        total_sold = (
+            SaleItem.objects.filter(
+                sale__created_at__gte=ninety_days_ago, inventory_item__tenant=user.tenant
+            ).aggregate(total=Sum("quantity"))["total"]
+            or 0
+        )
+
+        avg_inventory = items.aggregate(avg=Sum("quantity"))["avg"] or 1
         turnover_ratio = (total_sold / avg_inventory) if avg_inventory > 0 else 0
 
         context = {

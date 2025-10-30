@@ -186,11 +186,8 @@
                         <a href="{% url 'inventory:inventory_list' %}" class="{% if 'inventory' in request.resolver_match.app_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
                             {% trans "Inventory" %}
                         </a>
-                        <a href="{% url 'sales:pos_interface' %}" class="{% if request.resolver_match.url_name == 'pos_interface' %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                        <a href="{% url 'sales:pos_interface' %}" class="{% if 'sales' in request.resolver_match.app_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
                             {% trans "POS" %}
-                        </a>
-                        <a href="{% url 'sales:sale_list_view' %}" class="{% if request.resolver_match.url_name in 'sale_list_view,sale_detail_view,sale_edit_view' %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
-                            {% trans "Sales" %}
                         </a>
                         <a href="{% url 'crm:customer_list' %}" class="{% if 'crm' in request.resolver_match.app_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
                             {% trans "Customers" %}

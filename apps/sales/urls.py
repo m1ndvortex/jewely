@@ -15,7 +15,6 @@ urlpatterns = [
     path("sales/<uuid:sale_id>/edit/", views.sale_edit_view, name="sale_edit_view"),
     path("sales/<uuid:sale_id>/void/", views.sale_void, name="sale_void"),
     path("sales/<uuid:sale_id>/refund/", views.sale_refund, name="sale_refund"),
-    
     # POS Interface
     path("pos/", views.pos_interface, name="pos_interface"),
     # POS API Endpoints
