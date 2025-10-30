@@ -1,0 +1,297 @@
+#!/usr/bin/env python3
+"""
+Translate number formatting, campaigns, and remaining UI strings
+"""
+import re
+
+TRANSLATIONS = {
+    # Number and date formatting examples
+    "Impersonating: %(username)s": "جعل هویت: %(username)s",
+    "Number and Date Formatting Examples": "نمونه‌های قالب‌بندی اعداد و تاریخ",
+    "Number Formatting": "قالب‌بندی اعداد",
+    "Basic Number": "عدد ساده",
+    "With Decimal Places": "با اعشار",
+    "Persian Numerals Only": "فقط ارقام فارسی",
+    "Integer": "عدد صحیح",
+    "Currency Formatting": "قالب‌بندی ارز",
+    "US Dollar": "دلار آمریکا",
+    "Iranian Rial": "ریال ایران",
+    "Euro": "یورو",
+    "British Pound": "پوند انگلیس",
+    "Date Formatting": "قالب‌بندی تاریخ",
+    "Default Format": "قالب پیش‌فرض",
+    "Custom Format (YYYY/MM/DD)": "قالب سفارشی (YYYY/MM/DD)",
+    "Custom Format (DD-MM-YYYY)": "قالب سفارشی (DD-MM-YYYY)",
+    "With Month Name": "با نام ماه",
+    "DateTime Formatting": "قالب‌بندی تاریخ و زمان",
+    "Custom Format": "قالب سفارشی",
+    "Date and Time Separate": "تاریخ و زمان جداگانه",
+    "24-Hour Format": "قالب 24 ساعته",
+    "Using Inclusion Tags": "استفاده از برچسب‌های درج",
+    "Formatted Number Tag": "برچسب عدد قالب‌بندی شده",
+    "Formatted Currency Tag": "برچسب ارز قالب‌بندی شده",
+    "Note": "توجه",
+    
+    # Translation example page
+    "Translation Example": "نمونه ترجمه",
+    "Translation Example Page": "صفحه نمونه ترجمه",
+    "This page demonstrates how to use Django's translation system.": "این صفحه نحوه استفاده از سیستم ترجمه جنگو را نشان می‌دهد.",
+    "Enter your name": "نام خود را وارد کنید",
+    "Please enter your full name.": "لطفاً نام کامل خود را وارد کنید.",
+    "Enter your email": "ایمیل خود را وارد کنید",
+    "Enter your message": "پیام خود را وارد کنید",
+    "Product Name": "نام محصول",
+    "No items found.": "موردی یافت نشد.",
+    "Your changes have been saved successfully.": "تغییرات شما با موفقیت ذخیره شد.",
+    "Please review your information before submitting.": "لطفاً قبل از ارسال اطلاعات خود را بررسی کنید.",
+    "An error occurred while processing your request.": "خطایی در پردازش درخواست شما رخ داد.",
+    "This is an informational message.": "این یک پیام اطلاعاتی است.",
+    
+    # Bulk Campaign
+    "Bulk Campaign": "کمپین گروهی",
+    "Send targeted email or SMS campaigns to customer segments.": "ارسال کمپین‌های ایمیل یا پیامک هدفمند به بخش‌های مشتری.",
+    "Campaign Type": "نوع کمپین",
+    "Type": "نوع",
+    "Target Segment": "بخش هدف",
+    "Select a segment...": "یک بخش انتخاب کنید...",
+    "Select template...": "یک قالب انتخاب کنید...",
+    "Email Subject": "موضوع ایمیل",
+    "Template Variables": "متغیرهای قالب",
+    "Add Variable": "افزودن متغیر",
+    "Campaign Summary": "خلاصه کمپین",
+    "Select a segment and template to see campaign summary.": "یک بخش و قالب برای مشاهده خلاصه کمپین انتخاب کنید.",
+    
+    # More campaign strings
+    "Campaign scheduled successfully": "کمپین با موفقیت زمان‌بندی شد",
+    "Campaign sent successfully": "کمپین با موفقیت ارسال شد",
+    "Failed to schedule campaign": "زمان‌بندی کمپین ناموفق بود",
+    "Failed to send campaign": "ارسال کمپین ناموفق بود",
+    "Target Recipients": "گیرندگان هدف",
+    "Estimated Reach": "دسترسی تخمینی",
+    "Estimated Cost": "هزینه تخمینی",
+    "Template Preview": "پیش‌نمایش قالب",
+    "Schedule Campaign": "زمان‌بندی کمپین",
+    "Send Now": "ارسال فوری",
+    "Schedule for Later": "زمان‌بندی برای بعد",
+    "Select Date and Time": "تاریخ و زمان انتخاب کنید",
+    "Recurring": "تکرارشونده",
+    "One Time": "یک‌بار",
+    "Daily": "روزانه",
+    "Weekly": "هفتگی",
+    "Monthly": "ماهانه",
+    "Custom Schedule": "زمان‌بندی سفارشی",
+    
+    # Customer segments
+    "All Customers": "تمام مشتریان",
+    "Active Customers": "مشتریان فعال",
+    "Inactive Customers": "مشتریان غیرفعال",
+    "VIP Customers": "مشتریان VIP",
+    "New Customers": "مشتریان جدید",
+    "Returning Customers": "مشتریان بازگشتی",
+    "High Value": "ارزش بالا",
+    "Low Value": "ارزش پایین",
+    "At Risk": "در معرض خطر",
+    "Loyal": "وفادار",
+    "Lost": "از دست رفته",
+    "Potential": "بالقوه",
+    "Segment Name": "نام بخش",
+    "Segment Type": "نوع بخش",
+    "Segment Criteria": "معیارهای بخش",
+    "Segment Size": "اندازه بخش",
+    "Last Calculated": "آخرین محاسبه",
+    "Recalculate": "محاسبه مجدد",
+    "Dynamic Segment": "بخش پویا",
+    "Static Segment": "بخش ثابت",
+    
+    # Template variables
+    "Customer First Name": "نام مشتری",
+    "Customer Last Name": "نام خانوادگی مشتری",
+    "Customer Full Name": "نام کامل مشتری",
+    "Customer Email": "ایمیل مشتری",
+    "Customer Phone": "تلفن مشتری",
+    "Customer ID": "شناسه مشتری",
+    "Company Name": "نام شرکت",
+    "Shop Name": "نام فروشگاه",
+    "Shop URL": "آدرس فروشگاه",
+    "Current Date": "تاریخ فعلی",
+    "Current Time": "زمان فعلی",
+    "Discount Code": "کد تخفیف",
+    "Order Number": "شماره سفارش",
+    "Total Amount": "مبلغ کل",
+    "Unsubscribe Link": "لینک لغو اشتراک",
+    
+    # Email/SMS templates
+    "Template Name": "نام قالب",
+    "Template Type": "نوع قالب",
+    "Template Subject": "موضوع قالب",
+    "Template Body": "متن قالب",
+    "Template Preview": "پیش‌نمایش قالب",
+    "Template Variables": "متغیرهای قالب",
+    "Available Variables": "متغیرهای موجود",
+    "Insert Variable": "درج متغیر",
+    "Email Template": "قالب ایمیل",
+    "SMS Template": "قالب پیامک",
+    "Push Template": "قالب اعلان فشاری",
+    "Default Template": "قالب پیش‌فرض",
+    "Custom Template": "قالب سفارشی",
+    "System Template": "قالب سیستم",
+    
+    # Campaign analytics
+    "Sent": "ارسال شده",
+    "Delivered": "تحویل شده",
+    "Opened": "باز شده",
+    "Clicked": "کلیک شده",
+    "Bounced": "برگشتی",
+    "Failed": "ناموفق",
+    "Unsubscribed": "لغو اشتراک",
+    "Complained": "شکایت شده",
+    "Delivery Rate": "نرخ تحویل",
+    "Open Rate": "نرخ باز شدن",
+    "Click Rate": "نرخ کلیک",
+    "Bounce Rate": "نرخ برگشت",
+    "Unsubscribe Rate": "نرخ لغو اشتراک",
+    "Conversion Rate": "نرخ تبدیل",
+    "ROI": "بازگشت سرمایه",
+    "Revenue": "درآمد",
+    "Conversions": "تبدیل‌ها",
+    "Value": "ارزش",
+    "Cost": "هزینه",
+    "Profit": "سود",
+    "Loss": "ضرر",
+    
+    # Dashboard metrics
+    "Total Revenue": "درآمد کل",
+    "Total Orders": "سفارش‌های کل",
+    "Total Customers": "مشتریان کل",
+    "Active Users": "کاربران فعال",
+    "New Users": "کاربران جدید",
+    "Returning Users": "کاربران بازگشتی",
+    "Average Order Value": "میانگین ارزش سفارش",
+    "Customer Lifetime Value": "ارزش مادام‌العمر مشتری",
+    "Churn Rate": "نرخ ریزش",
+    "Retention Rate": "نرخ نگهداری",
+    "Growth Rate": "نرخ رشد",
+    
+    # Reports
+    "Sales Report": "گزارش فروش",
+    "Revenue Report": "گزارش درآمد",
+    "Customer Report": "گزارش مشتری",
+    "Product Report": "گزارش محصول",
+    "Inventory Report": "گزارش موجودی",
+    "Campaign Report": "گزارش کمپین",
+    "Activity Report": "گزارش فعالیت",
+    "Performance Report": "گزارش عملکرد",
+    "Financial Report": "گزارش مالی",
+    "Analytics Report": "گزارش تحلیل",
+    "Custom Report": "گزارش سفارشی",
+    "Export Report": "خروجی گزارش",
+    "Download Report": "دانلود گزارش",
+    "Print Report": "چاپ گزارش",
+    "Share Report": "اشتراک گزارش",
+    "Schedule Report": "زمان‌بندی گزارش",
+    
+    # Export formats
+    "Export to CSV": "خروجی CSV",
+    "Export to Excel": "خروجی اکسل",
+    "Export to PDF": "خروجی PDF",
+    "Export to JSON": "خروجی JSON",
+    "Export to XML": "خروجی XML",
+    
+    # Notification types
+    "Order Confirmation": "تأیید سفارش",
+    "Payment Confirmation": "تأیید پرداخت",
+    "Shipping Update": "به‌روزرسانی حمل",
+    "Delivery Notification": "اعلان تحویل",
+    "Account Update": "به‌روزرسانی حساب",
+    "Password Reset": "بازیابی رمز عبور",
+    "Welcome Email": "ایمیل خوش‌آمد",
+    "Thank You Email": "ایمیل تشکر",
+    "Feedback Request": "درخواست بازخورد",
+    "Review Request": "درخواست نظر",
+    "Promotional Email": "ایمیل تبلیغاتی",
+    "Newsletter": "خبرنامه",
+    "Announcement": "اطلاعیه",
+    "Reminder": "یادآوری",
+    "Alert": "هشدار",
+    "System Notification": "اعلان سیستم",
+    
+    # Order statuses
+    "Pending": "در انتظار",
+    "Processing": "در حال پردازش",
+    "Confirmed": "تأیید شده",
+    "Shipped": "ارسال شده",
+    "Delivered": "تحویل شده",
+    "Completed": "تکمیل شده",
+    "Cancelled": "لغو شده",
+    "Refunded": "بازپرداخت شده",
+    "On Hold": "در انتظار",
+    "Partially Fulfilled": "تحویل جزئی",
+    "Returned": "برگشتی",
+    "Exchanged": "تعویضی",
+    
+    # Payment statuses
+    "Paid": "پرداخت شده",
+    "Unpaid": "پرداخت نشده",
+    "Partially Paid": "پرداخت جزئی",
+    "Pending Payment": "در انتظار پرداخت",
+    "Payment Failed": "پرداخت ناموفق",
+    "Payment Declined": "پرداخت رد شد",
+    "Refund Pending": "بازپرداخت در انتظار",
+    "Refund Completed": "بازپرداخت تکمیل شد",
+    
+    # Product fields
+    "Product": "محصول",
+    "Products": "محصولات",
+    "SKU": "SKU",
+    "Barcode": "بارکد",
+    "Category": "دسته‌بندی",
+    "Brand": "برند",
+    "Description": "توضیحات",
+    "Price": "قیمت",
+    "Sale Price": "قیمت فروش",
+    "Regular Price": "قیمت عادی",
+    "Cost Price": "قیمت تمام شده",
+    "Stock": "موجودی",
+    "In Stock": "موجود",
+    "Out of Stock": "ناموجود",
+    "Low Stock": "موجودی کم",
+    "Quantity": "تعداد",
+    "Weight": "وزن",
+    "Dimensions": "ابعاد",
+    "Color": "رنگ",
+    "Size": "اندازه",
+    "Material": "متریال",
+    "Tags": "برچسب‌ها",
+    "Featured": "ویژه",
+    "New": "جدید",
+    "Sale": "فروش ویژه",
+    "Best Seller": "پرفروش",
+    "Limited Edition": "نسخه محدود",
+}
+
+
+def update_po_batch(filepath):
+    """Apply batch translations."""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    translated = 0
+    for en, fa in TRANSLATIONS.items():
+        esc = re.escape(en)
+        pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
+        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        if count:
+            content = new
+            translated += count
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    return translated
+
+if __name__ == '__main__':
+    po = 'locale/fa/LC_MESSAGES/django.po'
+    print('Translating campaigns, number formatting, and UI strings...')
+    count = update_po_batch(po)
+    print(f'✅ Translated {count} entries')
+    print(f'Progress: 403 + {count} = {403 + count} total translations')

@@ -122,12 +122,12 @@
    DARK THEME
    ============================================ */
 [data-theme="dark"] {
-  /* Background Colors */
-  --color-bg-primary: #111827;
-  --color-bg-secondary: #1f2937;
-  --color-bg-tertiary: #374151;
-  --color-bg-elevated: #1f2937;
-  --color-bg-overlay: rgba(0, 0, 0, 0.75);
+  /* Background Colors - Much better contrast */
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-bg-elevated: #1e293b;
+  --color-bg-overlay: rgba(0, 0, 0, 0.8);
   
   /* Text Colors */
   --color-text-primary: #f9fafb;
@@ -232,7 +232,6 @@
 body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
-  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 /* Links */
@@ -245,22 +244,73 @@ a:hover {
   color: var(--color-text-link-hover);
 }
 
+/* ============================================
+   COMPREHENSIVE TAILWIND CLASS OVERRIDES
+   ============================================ */
+
+/* Background Colors - Light Mode Equivalents */
+.bg-white { background-color: var(--color-bg-primary) !important; }
+.bg-gray-50 { background-color: var(--color-bg-secondary) !important; }
+.bg-gray-100 { background-color: var(--color-bg-secondary) !important; }
+.bg-gray-200 { background-color: var(--color-bg-tertiary) !important; }
+.bg-gray-300 { background-color: var(--color-bg-tertiary) !important; }
+
+/* Background Colors - Dark Mode Equivalents */
+.bg-gray-700 { background-color: var(--color-bg-tertiary) !important; }
+.bg-gray-800 { background-color: var(--color-bg-elevated) !important; }
+.bg-gray-900 { background-color: var(--color-bg-primary) !important; }
+
+/* Hover Background Colors */
+.hover\:bg-gray-50:hover { background-color: var(--color-bg-secondary) !important; }
+.hover\:bg-gray-100:hover { background-color: var(--color-bg-secondary) !important; }
+.hover\:bg-gray-200:hover { background-color: var(--color-bg-tertiary) !important; }
+.hover\:bg-gray-700:hover { background-color: var(--color-bg-tertiary) !important; }
+.hover\:bg-gray-800:hover { background-color: var(--color-bg-elevated) !important; }
+
+/* Text Colors - Light Mode */
+.text-gray-900 { color: var(--color-text-primary) !important; }
+.text-gray-800 { color: var(--color-text-primary) !important; }
+.text-gray-700 { color: var(--color-text-primary) !important; }
+.text-gray-600 { color: var(--color-text-secondary) !important; }
+.text-gray-500 { color: var(--color-text-secondary) !important; }
+.text-gray-400 { color: var(--color-text-tertiary) !important; }
+.text-gray-300 { color: var(--color-text-tertiary) !important; }
+
+/* Hover Text Colors */
+.hover\:text-gray-900:hover { color: var(--color-text-primary) !important; }
+.hover\:text-gray-700:hover { color: var(--color-text-primary) !important; }
+.hover\:text-gray-500:hover { color: var(--color-text-secondary) !important; }
+.hover\:text-gray-300:hover { color: var(--color-text-tertiary) !important; }
+
+/* Border Colors */
+.border-gray-200 { border-color: var(--color-border-primary) !important; }
+.border-gray-300 { border-color: var(--color-border-secondary) !important; }
+.border-gray-400 { border-color: var(--color-border-secondary) !important; }
+.border-gray-600 { border-color: var(--color-border-primary) !important; }
+.border-gray-700 { border-color: var(--color-border-primary) !important; }
+
+/* Ring Colors (for focus states) */
+.ring-gray-200 { --tw-ring-color: var(--color-border-primary) !important; }
+.ring-gray-300 { --tw-ring-color: var(--color-border-secondary) !important; }
+
+/* Divide Colors (for list separators) */
+.divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-border-primary) !important; }
+.divide-gray-300 > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-border-secondary) !important; }
+.divide-gray-700 > :not([hidden]) ~ :not([hidden]) { border-color: var(--color-border-primary) !important; }
+
 /* Cards */
 .card,
-.bg-white {
+.shadow-sm,
+.shadow,
+.shadow-md,
+.shadow-lg {
   background-color: var(--color-card-bg) !important;
   border-color: var(--color-card-border) !important;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md) !important;
 }
 
-/* Navigation */
-nav {
-  background-color: var(--color-nav-bg) !important;
-  border-color: var(--color-nav-border) !important;
-}
-
-/* Inputs */
-input:not([type="checkbox"]):not([type="radio"]),
+/* Forms - Inputs, Textareas, Selects */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 textarea,
 select {
   background-color: var(--color-input-bg) !important;
@@ -268,11 +318,12 @@ select {
   color: var(--color-text-primary) !important;
 }
 
-input:focus,
+input:focus:not([type="checkbox"]):not([type="radio"]),
 textarea:focus,
 select:focus {
   border-color: var(--color-input-focus-border) !important;
   --tw-ring-color: var(--color-input-focus-border) !important;
+  outline: none !important;
 }
 
 input:disabled,
@@ -280,125 +331,186 @@ textarea:disabled,
 select:disabled {
   background-color: var(--color-input-disabled-bg) !important;
   color: var(--color-input-disabled-text) !important;
+  cursor: not-allowed !important;
 }
 
-/* Buttons */
+/* Placeholder text color */
+::placeholder {
+  color: var(--color-text-tertiary) !important;
+  opacity: 1 !important;
+}
+
+/* Buttons - Primary */
 .btn-primary,
-.bg-blue-600 {
+.bg-blue-600,
+.bg-blue-500,
+button[class*="bg-blue"] {
   background-color: var(--color-button-primary-bg) !important;
   color: var(--color-button-primary-text) !important;
+  border-color: var(--color-button-primary-bg) !important;
 }
 
 .btn-primary:hover,
-.bg-blue-600:hover {
+.bg-blue-600:hover,
+.bg-blue-500:hover,
+.hover\:bg-blue-700:hover,
+.hover\:bg-blue-600:hover {
   background-color: var(--color-button-primary-hover) !important;
+  border-color: var(--color-button-primary-hover) !important;
+}
+
+/* Buttons - Secondary/Outline */
+.btn-secondary,
+button[class*="border-gray"] {
+  background-color: var(--color-button-secondary-bg) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-secondary) !important;
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-bg-secondary) !important;
 }
 
 /* Tables */
-table thead {
+table {
+  background-color: var(--color-card-bg) !important;
+  border-color: var(--color-table-border) !important;
+  color: var(--color-text-primary) !important;
+}
+
+table thead,
+table thead tr,
+table thead th {
   background-color: var(--color-table-header-bg) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-table-border) !important;
+}
+
+table tbody tr {
+  background-color: var(--color-card-bg) !important;
+  border-color: var(--color-table-border) !important;
 }
 
 table tbody tr:hover {
   background-color: var(--color-table-row-hover) !important;
 }
 
-table {
-  border-color: var(--color-table-border) !important;
-}
-
 table th,
 table td {
   border-color: var(--color-table-border) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Navigation */
+nav,
+nav.bg-white,
+nav[class*="bg-gray"] {
+  background-color: var(--color-nav-bg) !important;
+  border-color: var(--color-nav-border) !important;
+  color: var(--color-nav-text) !important;
+}
+
+/* Dropdown menus */
+.dropdown-menu,
+[class*="absolute"][class*="mt-2"][class*="rounded"],
+div[class*="absolute"][class*="shadow-lg"] {
+  background-color: var(--color-card-bg) !important;
+  border-color: var(--color-border-primary) !important;
+  color: var(--color-text-primary) !important;
 }
 
 /* Modals */
-.modal {
+.modal,
+[role="dialog"],
+div[class*="fixed"][class*="inset-0"] > div[class*="bg-white"] {
   background-color: var(--color-modal-bg) !important;
+  color: var(--color-text-primary) !important;
 }
 
-.modal-overlay {
+.modal-overlay,
+div[class*="fixed"][class*="bg-gray-500"] {
   background-color: var(--color-modal-overlay) !important;
 }
 
-/* Tooltips */
-.tooltip {
-  background-color: var(--color-tooltip-bg) !important;
-  color: var(--color-tooltip-text) !important;
-}
-
-/* Badges */
-.badge {
+/* Badges and Pills */
+.badge,
+span[class*="px-2"][class*="py-1"][class*="rounded"] {
   background-color: var(--color-badge-bg) !important;
   color: var(--color-badge-text) !important;
 }
 
-/* Text colors */
-.text-gray-900 {
+/* Alerts */
+.alert {
+  background-color: var(--color-bg-secondary) !important;
+  border-color: var(--color-border-primary) !important;
   color: var(--color-text-primary) !important;
 }
 
-.text-gray-700 {
-  color: var(--color-text-primary) !important;
+/* Tooltips */
+.tooltip,
+[role="tooltip"] {
+  background-color: var(--color-tooltip-bg) !important;
+  color: var(--color-tooltip-text) !important;
 }
 
-.text-gray-600,
-.text-gray-500 {
-  color: var(--color-text-secondary) !important;
+/* Sidebars */
+aside,
+.sidebar {
+  background-color: var(--color-sidebar-bg) !important;
+  border-color: var(--color-sidebar-border) !important;
 }
 
-.text-gray-400 {
-  color: var(--color-text-tertiary) !important;
+/* SVG Icons - ensure they inherit text color */
+svg {
+  color: currentColor !important;
+  fill: currentColor;
 }
 
-/* Background colors */
-.bg-gray-50 {
-  background-color: var(--color-bg-secondary) !important;
-}
+/* Status colors stay consistent across themes */
+.text-green-600,
+.text-green-500 { color: var(--color-success) !important; }
+.text-yellow-600,
+.text-yellow-500 { color: var(--color-warning) !important; }
+.text-red-600,
+.text-red-500 { color: var(--color-danger) !important; }
+.text-blue-600,
+.text-blue-500 { color: var(--color-info) !important; }
 
-.bg-gray-100 {
-  background-color: var(--color-bg-secondary) !important;
-}
-
-.bg-gray-200 {
-  background-color: var(--color-bg-tertiary) !important;
-}
-
-.bg-gray-800 {
-  background-color: var(--color-bg-elevated) !important;
-}
-
-.bg-gray-900 {
-  background-color: var(--color-bg-primary) !important;
-}
-
-/* Border colors */
-.border-gray-200 {
-  border-color: var(--color-border-primary) !important;
-}
-
-.border-gray-300 {
-  border-color: var(--color-border-secondary) !important;
-}
-
-.border-gray-700 {
-  border-color: var(--color-border-primary) !important;
-}
+.bg-green-100 { background-color: var(--color-success-light) !important; }
+.bg-yellow-100 { background-color: var(--color-warning-light) !important; }
+.bg-red-100 { background-color: var(--color-danger-light) !important; }
+.bg-blue-100 { background-color: var(--color-info-light) !important; }
 
 /* Smooth transitions for theme changes */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: var(--transition-base);
-  transition-timing-function: ease-in-out;
-}
-
-/* Disable transitions for elements that shouldn't animate */
-*:focus,
-*:active,
+body,
+nav,
+aside,
+main,
+section,
+div,
+span,
+a,
+button,
 input,
 textarea,
 select,
-button {
+table,
+thead,
+tbody,
+tr,
+th,
+td {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
+}
+
+/* Disable transitions for interactive elements to keep them snappy */
+button:hover,
+a:hover,
+input:focus,
+textarea:focus,
+select:focus {
   transition-duration: 0ms;
 }
 

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load i18n %}
 
-{% block title %}Dashboard - Jewelry Shop{% endblock %}
+{% block title %}{% trans "Dashboard - Jewelry Shop" %}{% endblock %}
 
 {% block content %}
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -9,9 +10,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-6">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Dashboard" %}</h1>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Welcome back! Here's what's happening with your jewelry shop today.
+                        {% trans "Welcome back! Here's what's happening with your jewelry shop today." %}
                     </p>
                 </div>
                 <div class="flex space-x-3">
@@ -19,7 +20,7 @@
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                         </svg>
-                        Refresh
+                        {% trans "Refresh" %}
                     </button>
                 </div>
             </div>
@@ -42,7 +43,7 @@
                         </div>
                         <div class="ml-5 w-0 flex-1">
                             <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Today's Sales</dt>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{% trans "Today's Sales" %}</dt>
                                 <dd class="flex items-baseline">
                                     <div class="text-2xl font-semibold text-gray-900 dark:text-white">
                                         ${{ today_sales.amount|floatformat:2 }}
@@ -57,11 +58,11 @@
                                                 <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                                             </svg>
                                         {% endif %}
-                                        <span class="sr-only">{% if today_sales.change_direction == 'up' %}Increased{% else %}Decreased{% endif %} by</span>
+                                        <span class="sr-only">{% if today_sales.change_direction == 'up' %}{% trans "Increased" %}{% else %}{% trans "Decreased" %}{% endif %} {% trans "by" %}</span>
                                         {{ today_sales.change_percent }}%
                                     </div>
                                 </dd>
-                                <dd class="text-sm text-gray-500 dark:text-gray-400">{{ today_sales.count }} transactions</dd>
+                                <dd class="text-sm text-gray-500 dark:text-gray-400">{% blocktrans count count=today_sales.count %}{{ count }} transaction{% plural %}{{ count }} transactions{% endblocktrans %}</dd>
                             </dl>
                         </div>
                     </div>

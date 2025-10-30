@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static i18n %}
 
 {% block title %}System Monitoring Dashboard{% endblock %}
 
@@ -99,8 +99,8 @@
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-8">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">System Monitoring</h1>
-            <p class="text-gray-600 mt-2">Real-time platform health and performance metrics</p>
+            <h1 class="text-3xl font-bold text-gray-900">{% trans "System Monitoring" %}</h1>
+            <p class="text-gray-600 mt-2">{% trans "Real-time platform health and performance metrics" %}</p>
         </div>
         <div class="text-right">
             <div class="text-sm text-gray-600">
@@ -115,7 +115,7 @@
     
     <!-- Service Status Overview -->
     <div class="metric-card mb-8">
-        <h2 class="text-xl font-semibold mb-4">Service Status</h2>
+        <h2 class="text-xl font-semibold mb-4">{% trans "Service Status" %}</h2>
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
             {% for key, service in services.items %}
             <div class="text-center p-4 border rounded-lg" id="service-{{ key }}">
@@ -135,10 +135,10 @@
     <!-- Tabs -->
     <div class="border-b mb-6">
         <div class="flex space-x-4">
-            <button class="tab-button active" data-tab="system">System Overview</button>
+            <button class="tab-button active" data-tab="system">{% trans "System Overview" %}</button>
             <button class="tab-button" data-tab="database">Database</button>
             <button class="tab-button" data-tab="cache">Cache</button>
-            <button class="tab-button" data-tab="celery">Celery</button>
+            <button class="tab-button" data-tab="celery">{% trans "Celery" %}</button>
         </div>
     </div>
     
@@ -147,7 +147,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- CPU -->
             <div class="metric-card">
-                <div class="metric-label">CPU Usage</div>
+                <div class="metric-label">{% trans "CPU Usage" %}</div>
                 <div class="metric-value" id="cpu-usage">--</div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="cpu-progress" style="width: 0%"></div>
@@ -159,7 +159,7 @@
             
             <!-- Memory -->
             <div class="metric-card">
-                <div class="metric-label">Memory Usage</div>
+                <div class="metric-label">{% trans "Memory Usage" %}</div>
                 <div class="metric-value" id="memory-usage">--</div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="memory-progress" style="width: 0%"></div>
@@ -171,7 +171,7 @@
             
             <!-- Disk -->
             <div class="metric-card">
-                <div class="metric-label">Disk Usage</div>
+                <div class="metric-label">{% trans "Disk Usage" %}</div>
                 <div class="metric-value" id="disk-usage">--</div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="disk-progress" style="width: 0%"></div>
@@ -183,7 +183,7 @@
             
             <!-- Network -->
             <div class="metric-card">
-                <div class="metric-label">Network I/O</div>
+                <div class="metric-label">{% trans "Network I/O" %}</div>
                 <div class="text-sm mt-2">
                     <div class="flex justify-between mb-1">
                         <span class="text-gray-600">Sent:</span>
@@ -203,7 +203,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Connections -->
             <div class="metric-card">
-                <div class="metric-label">Database Connections</div>
+                <div class="metric-label">{% trans "Database Connections" %}</div>
                 <div class="metric-value" id="db-connections">--</div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="db-connections-progress" style="width: 0%"></div>
@@ -217,7 +217,7 @@
             
             <!-- Cache Hit Ratio -->
             <div class="metric-card">
-                <div class="metric-label">Cache Hit Ratio</div>
+                <div class="metric-label">{% trans "Cache Hit Ratio" %}</div>
                 <div class="metric-value" id="db-cache-hit">--</div>
                 <div class="progress-bar">
                     <div class="progress-fill progress-ok" id="db-cache-progress" style="width: 0%"></div>
@@ -229,7 +229,7 @@
             
             <!-- Database Size -->
             <div class="metric-card">
-                <div class="metric-label">Database Size</div>
+                <div class="metric-label">{% trans "Database Size" %}</div>
                 <div class="metric-value" id="db-size">--</div>
                 <div class="text-sm text-gray-600 mt-2">
                     <div>Tables: <span id="db-tables">--</span></div>
@@ -239,7 +239,7 @@
             
             <!-- Activity -->
             <div class="metric-card">
-                <div class="metric-label">Transaction Activity</div>
+                <div class="metric-label">{% trans "Transaction Activity" %}</div>
                 <div class="text-sm mt-2">
                     <div class="flex justify-between mb-1">
                         <span class="text-gray-600">Commits:</span>
@@ -263,7 +263,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Hit Rate -->
             <div class="metric-card">
-                <div class="metric-label">Cache Hit Rate</div>
+                <div class="metric-label">{% trans "Cache Hit Rate" %}</div>
                 <div class="metric-value" id="cache-hit-rate">--</div>
                 <div class="progress-bar">
                     <div class="progress-fill progress-ok" id="cache-hit-progress" style="width: 0%"></div>
@@ -276,7 +276,7 @@
             
             <!-- Memory Usage -->
             <div class="metric-card">
-                <div class="metric-label">Memory Usage</div>
+                <div class="metric-label">{% trans "Memory Usage" %}</div>
                 <div class="metric-value" id="cache-memory">--</div>
                 <div class="progress-bar">
                     <div class="progress-fill" id="cache-memory-progress" style="width: 0%"></div>
@@ -288,7 +288,7 @@
             
             <!-- Keys -->
             <div class="metric-card">
-                <div class="metric-label">Total Keys</div>
+                <div class="metric-label">{% trans "Total Keys" %}</div>
                 <div class="metric-value" id="cache-keys">--</div>
                 <div class="text-sm text-gray-600 mt-2">
                     Evicted: <span id="cache-evicted">--</span><br>
@@ -298,7 +298,7 @@
             
             <!-- Operations -->
             <div class="metric-card">
-                <div class="metric-label">Operations/sec</div>
+                <div class="metric-label">{% trans "Operations/sec" %}</div>
                 <div class="metric-value" id="cache-ops">--</div>
                 <div class="text-sm text-gray-600 mt-2">
                     Clients: <span id="cache-clients">--</span><br>
@@ -313,7 +313,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <!-- Workers -->
             <div class="metric-card">
-                <div class="metric-label">Active Workers</div>
+                <div class="metric-label">{% trans "Active Workers" %}</div>
                 <div class="metric-value" id="celery-workers">--</div>
                 <div class="text-sm text-gray-600 mt-2" id="celery-worker-status">
                     Checking...
@@ -322,7 +322,7 @@
             
             <!-- Queue -->
             <div class="metric-card">
-                <div class="metric-label">Pending Tasks</div>
+                <div class="metric-label">{% trans "Pending Tasks" %}</div>
                 <div class="metric-value" id="celery-pending">--</div>
                 <div class="text-sm text-gray-600 mt-2">
                     Reserved: <span id="celery-reserved">--</span><br>
@@ -332,7 +332,7 @@
             
             <!-- Status -->
             <div class="metric-card">
-                <div class="metric-label">System Status</div>
+                <div class="metric-label">{% trans "System Status" %}</div>
                 <div class="metric-value" id="celery-status-text">--</div>
                 <div class="text-sm text-gray-600 mt-2">
                     Overall health indicator
@@ -513,7 +513,7 @@
                     </div>
                 `).join('');
             } else {
-                workerList.innerHTML = '<div class="text-gray-600">No workers found</div>';
+                workerList.innerHTML = '<div class="text-gray-600">{% trans "No workers found" %}</div>';
             }
         }
         

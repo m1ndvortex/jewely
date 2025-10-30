@@ -46,14 +46,17 @@ class AccountAdapter(DefaultAccountAdapter):
     def get_login_redirect_url(self, request):
         """
         Customize login redirect based on user role.
+        
+        Platform admins go to: /platform/dashboard/
+        Tenant users go to: /dashboard/
         """
         user = request.user
 
         if user.is_authenticated:
             if user.is_platform_admin():
-                return "/admin/dashboard/"
+                return "/platform/dashboard/"
             elif user.has_tenant_access():
-                return "/tenant/dashboard/"
+                return "/dashboard/"
 
         return super().get_login_redirect_url(request)
 

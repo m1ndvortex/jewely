@@ -307,6 +307,39 @@ class ErrorFeedAPIView(PlatformAdminRequiredMixin, View):
         )
 
 
+class RecentActivityAPIView(PlatformAdminRequiredMixin, View):
+    """API endpoint for recent platform activity."""
+
+    def get(self, request):
+        """Return recent tenant signups and changes."""
+        limit = int(request.GET.get("limit", 10))
+
+        # Get recent tenants
+        recent_tenants = Tenant.objects.all().order_by("-created_at")[:limit]
+
+        activities = []
+        for tenant in recent_tenants:
+            activities.append(
+                {
+                    "id": str(tenant.id),
+                    "type": "tenant_created",
+                    "tenant_name": tenant.company_name,
+                    "tenant_slug": tenant.slug,
+                    "status": tenant.status,
+                    "created_at": tenant.created_at.isoformat(),
+                    "description": f"New tenant '{tenant.company_name}' created",
+                }
+            )
+
+        return JsonResponse(
+            {
+                "activities": activities,
+                "count": len(activities),
+                "timestamp": timezone.now().isoformat(),
+            }
+        )
+
+
 # ============================================================================
 # Tenant Management Views
 # ============================================================================

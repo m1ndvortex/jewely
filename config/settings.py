@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.github",
+    "allauth.socialaccount.providers.facebook",
     "django_otp",
     "django_otp.plugins.otp_totp",
     "django_otp.plugins.otp_static",
@@ -88,6 +91,8 @@ MIDDLEWARE = [
     "hijack.middleware.HijackUserMiddleware",
     # Tenant context middleware - must be after AuthenticationMiddleware
     "apps.core.middleware.TenantContextMiddleware",
+    # Role-based access control - must be after TenantContextMiddleware
+    "apps.core.role_middleware.RoleBasedAccessMiddleware",
     # Audit logging middleware - must be after TenantContextMiddleware
     "apps.core.audit_middleware.AuditLoggingMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",  # Must be last
@@ -165,8 +170,67 @@ ACCOUNT_RATE_LIMITS = {
 
 # Login/Logout URLs
 LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/"
+LOGIN_REDIRECT_URL = "/dashboard/"  # Tenant dashboard after login
+LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+# Social Account Providers Configuration
+# Per Task 23.4 - OAuth2 support for tenant login
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": [
+            "profile",
+            "email",
+        ],
+        "AUTH_PARAMS": {
+            "access_type": "online",
+        },
+        "APP": {
+            "client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
+            "secret": os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+            "key": "",
+        },
+    },
+    "github": {
+        "SCOPE": [
+            "user",
+            "user:email",
+        ],
+        "APP": {
+            "client_id": os.getenv("GITHUB_OAUTH_CLIENT_ID", ""),
+            "secret": os.getenv("GITHUB_OAUTH_CLIENT_SECRET", ""),
+            "key": "",
+        },
+    },
+    "facebook": {
+        "METHOD": "oauth2",
+        "SCOPE": ["email", "public_profile"],
+        "AUTH_PARAMS": {"auth_type": "reauthenticate"},
+        "INIT_PARAMS": {"cookie": True},
+        "FIELDS": [
+            "id",
+            "email",
+            "name",
+            "first_name",
+            "last_name",
+            "verified",
+        ],
+        "EXCHANGE_TOKEN": True,
+        "VERIFIED_EMAIL": False,
+        "VERSION": "v13.0",
+        "APP": {
+            "client_id": os.getenv("FACEBOOK_OAUTH_CLIENT_ID", ""),
+            "secret": os.getenv("FACEBOOK_OAUTH_CLIENT_SECRET", ""),
+            "key": "",
+        },
+    },
+}
+
+# Allauth social account settings
+SOCIALACCOUNT_AUTO_SIGNUP = True  # Automatically create account on OAuth login
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "optional"  # Less strict for OAuth
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_STORE_TOKENS = True  # Store OAuth tokens for API access
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

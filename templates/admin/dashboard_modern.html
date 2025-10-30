@@ -1,0 +1,958 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Platform Dashboard" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-blue: #3b82f6;
+        --primary-blue-dark: #2563eb;
+        --success-green: #10b981;
+        --warning-yellow: #f59e0b;
+        --danger-red: #ef4444;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --gray-900: #111827;
+    }
+
+    /* Dashboard specific background */
+    .dashboard-wrapper {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: calc(100vh - 64px);
+        margin: 0 -2rem;
+        padding: 0 2rem;
+    }
+
+    .dashboard-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    /* Glassmorphism Cards */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Header Section */
+    .dashboard-header {
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    .dashboard-subtitle {
+        color: var(--gray-600);
+        font-size: 1.125rem;
+    }
+
+    /* Metric Cards */
+    .metric-card {
+        padding: 1.75rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(180deg, var(--primary-blue), var(--primary-blue-dark));
+    }
+
+    .metric-card.success::before {
+        background: linear-gradient(180deg, var(--success-green), #059669);
+    }
+
+    .metric-card.warning::before {
+        background: linear-gradient(180deg, var(--warning-yellow), #d97706);
+    }
+
+    .metric-card.danger::before {
+        background: linear-gradient(180deg, var(--danger-red), #dc2626);
+    }
+
+    .metric-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        font-size: 1.75rem;
+    }
+
+    .metric-icon.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .metric-icon.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .metric-icon.warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .metric-icon.danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .metric-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .metric-value {
+        font-size: 2.75rem;
+        font-weight: 800;
+        color: var(--gray-900);
+        line-height: 1;
+        margin-bottom: 0.75rem;
+    }
+
+    .metric-change {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .metric-change.positive {
+        color: var(--success-green);
+    }
+
+    .metric-change.negative {
+        color: var(--danger-red);
+    }
+
+    .metric-change.neutral {
+        color: var(--gray-600);
+    }
+
+    /* Chart Container */
+    .chart-card {
+        padding: 2rem;
+        height: 400px;
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .chart-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--gray-900);
+    }
+
+    .chart-container {
+        position: relative;
+        height: calc(100% - 60px);
+    }
+
+    /* Progress Bars */
+    .progress-wrapper {
+        margin-bottom: 1.5rem;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--gray-700);
+    }
+
+    .progress-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--gray-900);
+    }
+
+    .progress-bar {
+        height: 12px;
+        background: var(--gray-200);
+        border-radius: 100px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 100px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .progress-fill::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+        to {
+            left: 100%;
+        }
+    }
+
+    .progress-fill.healthy {
+        background: linear-gradient(90deg, var(--success-green), #059669);
+    }
+
+    .progress-fill.warning {
+        background: linear-gradient(90deg, var(--warning-yellow), #d97706);
+    }
+
+    .progress-fill.critical {
+        background: linear-gradient(90deg, var(--danger-red), #dc2626);
+    }
+
+    /* Status Badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 100px;
+        font-size: 0.875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-badge::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    .status-badge.healthy {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+    }
+
+    .status-badge.healthy::before {
+        background: #10b981;
+    }
+
+    .status-badge.warning {
+        background: rgba(245, 158, 11, 0.1);
+        color: #d97706;
+    }
+
+    .status-badge.warning::before {
+        background: #f59e0b;
+    }
+
+    .status-badge.critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+    }
+
+    .status-badge.critical::before {
+        background: #ef4444;
+    }
+
+    /* Quick Actions */
+    .quick-action {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        border: 2px solid var(--gray-200);
+        border-radius: 16px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .quick-action:hover {
+        border-color: var(--primary-blue);
+        background: rgba(59, 130, 246, 0.05);
+        transform: translateX(4px);
+    }
+
+    .quick-action-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .quick-action-icon.blue {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+    }
+
+    .quick-action-icon.green {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    .quick-action-icon.purple {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        color: white;
+    }
+
+    .quick-action-content h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin-bottom: 0.25rem;
+    }
+
+    .quick-action-content p {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+        margin: 0;
+    }
+
+    /* Loading Animation */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(59, 130, 246, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--primary-blue);
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Responsive Grid */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Dark mode support */
+    .dark .glass-card {
+        background: rgba(31, 41, 55, 0.95);
+        border-color: rgba(75, 85, 99, 0.3);
+    }
+
+    .dark .metric-value,
+    .dark .chart-title,
+    .dark .progress-label,
+    .dark .progress-value,
+    .dark .quick-action-content h3 {
+        color: #f9fafb;
+    }
+
+    .dark .metric-label,
+    .dark .dashboard-subtitle,
+    .dark .quick-action-content p {
+        color: #d1d5db;
+    }
+
+    .dark .quick-action {
+        background: rgba(31, 41, 55, 0.5);
+        border-color: rgba(75, 85, 99, 0.5);
+    }
+
+    .dark .quick-action:hover {
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    /* Time Selector */
+    .time-selector {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .time-btn {
+        padding: 0.5rem 1rem;
+        border: 2px solid var(--gray-300);
+        border-radius: 8px;
+        background: white;
+        color: var(--gray-700);
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .time-btn:hover {
+        border-color: var(--primary-blue);
+        color: var(--primary-blue);
+    }
+
+    .time-btn.active {
+        background: var(--primary-blue);
+        border-color: var(--primary-blue);
+        color: white;
+    }
+
+    /* Auto refresh indicator */
+    .refresh-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--gray-600);
+        font-size: 0.75rem;
+        padding: 0.5rem 1rem;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 100px;
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        z-index: 50;
+    }
+
+    .refresh-indicator.active .loading-spinner {
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">{% trans "Platform Dashboard" %}</h1>
+        <p class="dashboard-subtitle">{% trans "Real-time platform monitoring and analytics" %}</p>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="glass-card" style="padding: 2rem; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--gray-900);">
+            {% trans "Quick Actions" %}
+        </h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <a href="{% url 'core:admin_tenant_list' %}" class="quick-action">
+                <div class="quick-action-icon blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <div class="quick-action-content">
+                    <h3>{% trans "Manage Tenants" %}</h3>
+                    <p>{% trans "View and manage all tenant accounts" %}</p>
+                </div>
+            </a>
+            
+            <a href="{% url 'core:admin_tenant_create' %}" class="quick-action">
+                <div class="quick-action-icon green">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                </div>
+                <div class="quick-action-content">
+                    <h3>{% trans "Create Tenant" %}</h3>
+                    <p>{% trans "Add a new tenant to the platform" %}</p>
+                </div>
+            </a>
+            
+            <a href="{% url 'core:audit_log_explorer' %}" class="quick-action">
+                <div class="quick-action-icon purple">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div class="quick-action-content">
+                    <h3>{% trans "Audit Logs" %}</h3>
+                    <p>{% trans "View system audit trail and security events" %}</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Tenant Metrics -->
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; color: white;">
+            {% trans "Tenant Metrics" %}
+        </h2>
+    </div>
+    <div class="metrics-grid">
+        <div class="glass-card metric-card">
+            <div class="metric-icon primary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 28px; height: 28px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+            </div>
+            <div class="metric-label">{% trans "Total Tenants" %}</div>
+            <div class="metric-value" id="total-tenants">{{ tenant_metrics.total }}</div>
+            <div class="metric-change neutral">
+                <span id="new-signups-30d">{{ tenant_metrics.new_signups_30d }}</span> {% trans "new in last 30 days" %}
+            </div>
+        </div>
+
+        <div class="glass-card metric-card success">
+            <div class="metric-icon success">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 28px; height: 28px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="metric-label">{% trans "Active Tenants" %}</div>
+            <div class="metric-value" id="active-tenants">{{ tenant_metrics.active }}</div>
+            <div class="metric-change positive">
+                <span id="new-signups-today">{{ tenant_metrics.new_signups_today }}</span> {% trans "new today" %}
+            </div>
+        </div>
+
+        <div class="glass-card metric-card warning">
+            <div class="metric-icon warning">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 28px; height: 28px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+            </div>
+            <div class="metric-label">{% trans "Suspended" %}</div>
+            <div class="metric-value" id="suspended-tenants">{{ tenant_metrics.suspended }}</div>
+            <div class="metric-change neutral">
+                {% trans "Requires attention" %}
+            </div>
+        </div>
+
+        <div class="glass-card metric-card danger">
+            <div class="metric-icon danger">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 28px; height: 28px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+            </div>
+            <div class="metric-label">{% trans "Pending Deletion" %}</div>
+            <div class="metric-value" id="pending-deletion">{{ tenant_metrics.pending_deletion }}</div>
+            <div class="metric-change neutral">
+                {% trans "Scheduled for removal" %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+        <!-- Tenant Signups Chart -->
+        <div class="glass-card chart-card">
+            <div class="chart-header">
+                <h3 class="chart-title">{% trans "Tenant Signups" %}</h3>
+                <div class="time-selector">
+                    <button class="time-btn active" data-period="30">30D</button>
+                    <button class="time-btn" data-period="90">90D</button>
+                    <button class="time-btn" data-period="365">1Y</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="signup-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- System Health Chart -->
+        <div class="glass-card chart-card">
+            <div class="chart-header">
+                <h3 class="chart-title">{% trans "System Health" %}</h3>
+                <span class="status-badge healthy" id="system-status-badge">
+                    {% trans "Healthy" %}
+                </span>
+            </div>
+            <div style="padding-top: 1rem;">
+                <div class="progress-wrapper">
+                    <div class="progress-header">
+                        <span class="progress-label">{% trans "CPU Usage" %}</span>
+                        <span class="progress-value" id="cpu-value">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill healthy" id="cpu-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="progress-wrapper">
+                    <div class="progress-header">
+                        <span class="progress-label">{% trans "Memory Usage" %}</span>
+                        <span class="progress-value" id="memory-value">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill healthy" id="memory-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="progress-wrapper">
+                    <div class="progress-header">
+                        <span class="progress-label">{% trans "Disk Usage" %}</span>
+                        <span class="progress-value" id="disk-value">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill healthy" id="disk-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="progress-wrapper" style="margin-bottom: 0;">
+                    <div class="progress-header">
+                        <span class="progress-label">{% trans "Database Connections" %}</span>
+                        <span class="progress-value" id="db-connections-value">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Metrics -->
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; color: white;">
+            {% trans "Revenue Metrics" %}
+        </h2>
+    </div>
+    <div class="metrics-grid">
+        <div class="glass-card metric-card">
+            <div class="metric-label">{% trans "Monthly Recurring Revenue" %}</div>
+            <div class="metric-value">${{ revenue_metrics.mrr|floatformat:2 }}</div>
+            {% if revenue_metrics.note %}
+            <div class="metric-change neutral" style="font-size: 0.75rem;">
+                {{ revenue_metrics.note }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="glass-card metric-card">
+            <div class="metric-label">{% trans "Annual Recurring Revenue" %}</div>
+            <div class="metric-value">${{ revenue_metrics.arr|floatformat:2 }}</div>
+        </div>
+
+        <div class="glass-card metric-card">
+            <div class="metric-label">{% trans "Churn Rate" %}</div>
+            <div class="metric-value">{{ revenue_metrics.churn_rate|floatformat:2 }}%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-refresh indicator -->
+<div class="refresh-indicator" id="refresh-indicator">
+    <div class="loading-spinner" style="display: none;"></div>
+    <span>{% trans "Auto-updating" %}</span>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    // Configuration
+    const REFRESH_INTERVALS = {
+        tenantMetrics: 30000,  // 30 seconds
+        systemHealth: 10000,   // 10 seconds
+        signupChart: 60000     // 1 minute
+    };
+
+    let signupChart = null;
+    let refreshTimers = {};
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        initSignupChart();
+        updateTenantMetrics();
+        updateSystemHealth();
+        
+        // Start auto-refresh
+        startAutoRefresh();
+    });
+
+    // Initialize Tenant Signup Chart
+    function initSignupChart() {
+        const ctx = document.getElementById('signup-chart');
+        if (!ctx) return;
+
+        fetch('/platform/api/tenant-signup-chart/')
+            .then(response => response.json())
+            .then(data => {
+                if (signupChart) {
+                    signupChart.destroy();
+                }
+
+                signupChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: '{% trans "New Signups" %}',
+                            data: data.data,
+                            borderColor: 'rgb(102, 126, 234)',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: 'rgb(102, 126, 234)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                borderRadius: 8,
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    font: {
+                                        size: 12
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: {
+                                        size: 12
+                                    },
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading signup chart:', error);
+            });
+    }
+
+    // Update Tenant Metrics
+    function updateTenantMetrics() {
+        showRefreshIndicator();
+        
+        fetch('/platform/api/tenant-metrics/')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-tenants').textContent = data.total;
+                document.getElementById('active-tenants').textContent = data.active;
+                document.getElementById('suspended-tenants').textContent = data.suspended;
+                document.getElementById('pending-deletion').textContent = data.pending_deletion;
+                document.getElementById('new-signups-30d').textContent = data.new_signups_30d;
+                document.getElementById('new-signups-today').textContent = data.new_signups_today;
+                
+                hideRefreshIndicator();
+            })
+            .catch(error => {
+                console.error('Error updating tenant metrics:', error);
+                hideRefreshIndicator();
+            });
+    }
+
+    // Update System Health
+    function updateSystemHealth() {
+        showRefreshIndicator();
+        
+        fetch('/platform/api/system-health/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('System health error:', data.error);
+                    hideRefreshIndicator();
+                    return;
+                }
+
+                // Update CPU
+                updateProgress('cpu', data.cpu_percent);
+                
+                // Update Memory
+                updateProgress('memory', data.memory_percent);
+                document.getElementById('memory-value').textContent = 
+                    `${data.memory_percent}% (${data.memory_used_gb}GB / ${data.memory_total_gb}GB)`;
+                
+                // Update Disk
+                updateProgress('disk', data.disk_percent);
+                document.getElementById('disk-value').textContent = 
+                    `${data.disk_percent}% (${data.disk_used_gb}GB / ${data.disk_total_gb}GB)`;
+                
+                // Update DB Connections
+                document.getElementById('db-connections-value').textContent = data.db_connections;
+                
+                // Update system status badge
+                const statusBadge = document.getElementById('system-status-badge');
+                statusBadge.className = 'status-badge ' + data.status;
+                statusBadge.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                
+                hideRefreshIndicator();
+            })
+            .catch(error => {
+                console.error('Error updating system health:', error);
+                hideRefreshIndicator();
+            });
+    }
+
+    // Update progress bar
+    function updateProgress(metric, percent) {
+        const progressEl = document.getElementById(metric + '-progress');
+        const valueEl = document.getElementById(metric + '-value');
+        
+        if (!progressEl || !valueEl) return;
+        
+        // Update value
+        valueEl.textContent = percent + '%';
+        
+        // Update progress bar width
+        progressEl.style.width = percent + '%';
+        
+        // Update color based on threshold
+        progressEl.className = 'progress-fill';
+        if (percent > 80) {
+            progressEl.classList.add('critical');
+        } else if (percent > 60) {
+            progressEl.classList.add('warning');
+        } else {
+            progressEl.classList.add('healthy');
+        }
+    }
+
+    // Auto-refresh functions
+    function startAutoRefresh() {
+        // Tenant metrics refresh
+        refreshTimers.tenantMetrics = setInterval(() => {
+            updateTenantMetrics();
+        }, REFRESH_INTERVALS.tenantMetrics);
+        
+        // System health refresh
+        refreshTimers.systemHealth = setInterval(() => {
+            updateSystemHealth();
+        }, REFRESH_INTERVALS.systemHealth);
+        
+        // Signup chart refresh
+        refreshTimers.signupChart = setInterval(() => {
+            initSignupChart();
+        }, REFRESH_INTERVALS.signupChart);
+    }
+
+    function stopAutoRefresh() {
+        Object.values(refreshTimers).forEach(timer => clearInterval(timer));
+        refreshTimers = {};
+    }
+
+    // Refresh indicator functions
+    function showRefreshIndicator() {
+        const indicator = document.getElementById('refresh-indicator');
+        const spinner = indicator.querySelector('.loading-spinner');
+        spinner.style.display = 'inline-block';
+        indicator.classList.add('active');
+    }
+
+    function hideRefreshIndicator() {
+        const indicator = document.getElementById('refresh-indicator');
+        const spinner = indicator.querySelector('.loading-spinner');
+        setTimeout(() => {
+            spinner.style.display = 'none';
+            indicator.classList.remove('active');
+        }, 300);
+    }
+
+    // Time period selector for chart
+    document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            // Note: Backend API would need to support period parameter
+            initSignupChart();
+        });
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        stopAutoRefresh();
+    });
+</script>
+{% endblock %}

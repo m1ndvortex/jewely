@@ -1,0 +1,413 @@
+Number of customers in segment
+When segment was last calculated
+SMS Campaign
+Mixed Campaign
+Campaign identifier
+Type of campaign
+Customer segment targeted
+Total recipients targeted
+Total messages sent
+Messages delivered
+Messages failed
+Emails opened
+Emails clicked
+Emails bounced
+Unsubscribes from campaign
+Number of conversions
+Total value of conversions
+Total cost of campaign
+Delivery rate percentage
+Open rate percentage (email only)
+Click rate percentage (email only)
+Conversion rate percentage
+Return on investment percentage
+When campaign was sent
+Campaign Analytics
+Phone Call
+In-Person Meeting
+Internal Note
+Outbound
+Inbound
+Internal
+Customer this communication is with
+Type of communication
+Direction of communication
+Subject or title of communication
+Content or summary of communication
+Campaign ID if this is part of a campaign
+Related email notification
+Related SMS notification
+Whether message was opened
+Whether links were clicked
+Whether this led to a conversion
+Value of conversion if applicable
+Additional communication metadata
+When the communication occurred
+User who logged this communication
+Communication Log
+Communication Logs
+SMS template to use
+SMS Campaigns
+Sign in to your jewelry shop account
+Sign in with
+Continue with Google
+Continue with GitHub
+Continue with Facebook
+Or continue with
+Username or Email
+Enter your username or email
+Enter your password
+Don't have an account?
+Sign up
+All rights reserved.
+Create Account
+Join our jewelry shop platform
+Choose a username
+Enter your email address
+Create a strong password
+Minimum 12 characters
+Confirm your password
+Already have an account?
+Sign in
+Secure administrator access only
+Login Failed
+Restricted Access
+Enter your admin username
+Enter your admin password
+Sign In Securely
+Are you a tenant user?
+Go to Tenant Login
+Protected by advanced security measures
+Impersonating: %(username)s
+Number and Date Formatting Examples
+Number Formatting
+Basic Number
+With Decimal Places
+Persian Numerals Only
+Integer
+Currency Formatting
+US Dollar
+Iranian Rial
+Euro
+British Pound
+Date Formatting
+Default Format
+Custom Format (YYYY/MM/DD)
+Custom Format (DD-MM-YYYY)
+With Month Name
+DateTime Formatting
+Custom Format
+Date and Time Separate
+24-Hour Format
+Using Inclusion Tags
+Formatted Number Tag
+Formatted Currency Tag
+Note
+Translation Example
+Translation Example Page
+This page demonstrates how to use Django's translation system.
+Enter your name
+Please enter your full name.
+Enter your email
+Message
+Enter your message
+Product Name
+Actions
+No items found.
+Your changes have been saved successfully.
+Please review your information before submitting.
+An error occurred while processing your request.
+This is an informational message.
+Bulk Campaign
+Send targeted email or SMS campaigns to customer segments.
+Campaign Type
+Type
+Target Segment
+Select a segment...
+Email Settings
+Select template...
+Email Subject
+SMS Settings
+Template Variables
+Add Variable
+Campaign Summary
+Select a segment and template to see campaign summary.
+Send Campaign
+Type:
+Target:
+Ready to send campaign to selected segment.
+Track the performance of your email and SMS campaigns.
+Apply Filters
+Total Campaigns
+Messages Sent
+Conversion Rate
+Email Metrics
+Click Rate
+Total Opened
+Total Clicked
+Total Conversions
+Conversion Value
+Total Cost
+Recent Campaigns
+Conversions
+No campaigns found for the selected period.
+View all customer communications across all channels.
+Enter customer ID...
+Communication Type
+All Types
+Campaign ID
+Enter campaign ID...
+Communication History
+Direction
+Subject
+Engagement
+Converted
+No communications found.
+Create Segment
+All Segments
+Last Updated
+No customer segments found.
+Notification Center
+Manage your notifications and stay updated
+Mark All Read
+Unread only
+All types
+All notifications read
+to
+notifications
+No notifications
+You're all caught up! No notifications to display.
+Mark all notifications as read?
+new
+Mark all as read
+ago
+View all notifications
+Error:
+Showing first %(showing)s of %(total)s
+Total Purchases
+Loyalty Tier
+No customers match the current criteria.
+Customize how and when you receive notifications
+Back to Notifications
+Notification Types
+Choose how you want to receive different types of notifications
+Notification Type
+Set times when you don't want to receive non-critical notifications
+Start Time
+End Time
+Save Preferences
+Create Customer Segment
+Segment Name
+Segment Type
+Segmentation Criteria
+Minimum Total Purchases
+Maximum Total Purchases
+Last Purchase Within (Days)
+Loyalty Tiers
+Customer Tags (comma-separated)
+Communication Preferences
+Marketing Opt-in
+SMS Opt-in
+Select Customers
+For static segments, manually select customers to include.
+Preview Customers
+Click 'Preview Customers' to see who would be included in this segment.
+Calculate Price
+Back to Dashboard
+Price Calculator
+Current Gold Rate
+Karat
+Weight (grams)
+Product Type
+Any Type
+Craftsmanship Level
+Any Level
+Customer Tier
+Stone Value
+Active Pricing Rules
+No active pricing rules found. Please configure pricing rules first.
+Pricing Dashboard
+Recalculate Prices
+Rules configured
+Pending Overrides
+Awaiting approval
+Recent Price Changes
+View all changes
+No recent price changes
+Pending Override Requests
+Requested by
+View all requests
+No pending override requests
+Retail
+Wholesale
+VIP
+Recalculate
+Gold Rate Comparison
+View History
+Highest
+Same as base
+Per Tola
+Per Ounce
+Currency
+Updated
+Source
+Detailed Comparison
+All rates compared to
+market
+Market
+Per Gram
+Difference
+Base
+Same
+Refresh Rates
+No Rate Data Available
+No gold rate data is currently available for comparison.
+Gold Rate History
+Compare Markets
+Time Period
+Last 7 days
+Last 30 days
+Last 90 days
+Last year
+Current Rate
+Period Change
+Highest Rate
+Lowest Rate
+Rate Trend
+Historical Data
+Date & Time
+No Historical Data
+No gold rate data available for the selected market and time period.
+Rate (USD)
+Live Gold Rates
+Compare
+No change
+Tola
+Oz
+No gold rates available
+Rates will appear when data is fetched from external APIs
+Auto-refreshes every 30 seconds
+Price Override Requests
+All Statuses
+Current Price
+Requested Price
+Deviation
+Requested By
+results
+No price override requests found.
+Price Calculation Result
+Calculate Another
+Calculation Details
+Craftsmanship
+Gold Rate
+Rule Applied
+Price Breakdown
+Gold Value
+Markup Amount
+Making Charges
+Stone Charges
+Fixed Markup
+Total Price
+Pricing by Customer Tier
+Selected
+Markup
+Complete Goods Receipt
+Back to Receipt
+Completion Confirmation
+What happens when you complete this receipt?
+Inventory levels will be updated for all accepted items
+New inventory items will be created if they don't exist
+Purchase order status will be updated
+The receipt status will be marked as completed
+Three-Way Matching Warning
+Discrepancy Warning
+Items to be Added to Inventory
+Quantity Accepted
+Unit Price
+Total Value
+Update Existing
+No items to add to inventory
+Receipt Summary
+Receipt Number
+Purchase Order
+Supplier
+Received Date
+Current Status
+Inventory Impact
+Items Added
+Complete Receipt & Update Inventory
+Goods Receipt
+Complete Receipt
+Back to List
+Receipt Information
+Received By
+Invoice Number
+Tracking Number
+Inspection Notes
+Discrepancy Notes
+Receipt Items
+Ordered
+Received
+Accepted
+Quality
+Passed
+No items in this receipt
+Quality Check Summary
+Three-Way Matching
+Match Complete
+PO, receipt, and invoice quantities match
+Pending Match
+Quantities do not match or receipt incomplete
+Purchase Order Summary
+PO Number
+Order Date
+PO Status
+View Purchase Order
+Create Goods Receipt
+Add Item
+Purchase Order Item
+Quantity Received
+Quantity Rejected
+Quality Check
+Quality Notes
+Discrepancy Reason
+Purchase Order Details
+Please select a purchase order first to add items.
+Rejected quantity cannot exceed received quantity
+Goods Receipts
+New Goods Receipt
+Receipt number, PO number, invoice...
+All Purchase Orders
+Discrepancy
+Has Discrepancy
+No Discrepancy
+Has discrepancy
+No discrepancy
+Goods receipts pagination
+No goods receipts found
+Create your first goods receipt to track received shipments.
+Back to Reports
+Report Parameters
+Select...
+Output Format
+Email Recipients
+optional
+Enter email addresses separated by commas
+Leave empty to download directly
+Report Information
+Available Formats
+Parameters
+parameter(s)
+Pre-built Reports
+Ready-to-use reports for common business analysis needs
+Run Report
+Execute Report
+Execute
+Output Formats
+Execution Parameters
+Select an option
+Choose the format for the generated report
+Execution Information
+Report execution may take several minutes for large datasets
+You will be notified when the report is ready
+Otherwise, you can download the report from the execution history

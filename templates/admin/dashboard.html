@@ -1,421 +1,676 @@
 {% extends "base.html" %}
 {% load static %}
+{% load i18n %}
 
-{% block title %}Admin Dashboard - Platform Management{% endblock %}
+{% block title %}{% trans "Platform Dashboard" %}{% endblock %}
 
 {% block extra_css %}
 <style>
-    .metric-card {
-        background: white;
-        border-radius: 8px;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    /* Modern Gradient Backgrounds - Use !important to override Tailwind */
+    .gradient-blue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; }
+    .gradient-green { background: linear-gradient(135deg, #0ba360 0%, #3cba92 100%) !important; }
+    .gradient-orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
+    .gradient-purple { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
+    .gradient-red { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important; }
+    .gradient-yellow { background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%) !important; }
+    
+    /* Stat Cards */
+    .stat-card-gradient {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
     }
     
-    .metric-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f2937;
+    .stat-card-gradient::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+        pointer-events: none;
     }
     
-    .metric-label {
-        font-size: 0.875rem;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+    .stat-card-gradient:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     }
     
-    .metric-change {
-        font-size: 0.875rem;
-        margin-top: 0.5rem;
-    }
-    
-    .metric-change.positive {
-        color: #10b981;
-    }
-    
-    .metric-change.negative {
-        color: #ef4444;
-    }
-    
-    .status-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    
-    .status-healthy {
-        background-color: #d1fae5;
-        color: #065f46;
-    }
-    
-    .status-warning {
-        background-color: #fef3c7;
-        color: #92400e;
-    }
-    
-    .status-critical {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-    
+    /* Charts */
     .chart-container {
         position: relative;
-        height: 300px;
+        height: 350px;
     }
     
-    .progress-bar {
-        height: 8px;
+    .chart-container-small {
+        position: relative;
+        height: 120px;
+    }
+    
+    /* Pulse Animation */
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.1); }
+    }
+    
+    .pulse-dot {
+        animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    /* Activity Timeline */
+    .timeline-item {
+        position: relative;
+        padding-left: 2rem;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.5rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 50%;
+        background-color: #3b82f6;
+    }
+    
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: 0.34rem;
+        top: 1.25rem;
+        bottom: 0;
+        width: 2px;
         background-color: #e5e7eb;
-        border-radius: 4px;
-        overflow: hidden;
     }
     
-    .progress-fill {
-        height: 100%;
-        transition: width 0.3s ease;
+    .timeline-item:last-child::after {
+        display: none;
     }
     
-    .progress-fill.healthy {
-        background-color: #10b981;
+    /* Loading State */
+    .skeleton {
+        animation: skeleton-loading 1s linear infinite;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
     }
     
-    .progress-fill.warning {
-        background-color: #f59e0b;
+    @keyframes skeleton-loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
     }
     
-    .progress-fill.critical {
-        background-color: #ef4444;
+    /* Progress Ring */
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+    
+    .progress-ring-circle {
+        transition: stroke-dashoffset 0.5s ease;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
+<div class="container mx-auto px-4 py-6">
     <!-- Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Platform Admin Dashboard</h1>
-        <p class="text-gray-600 mt-2">Monitor platform health, tenant metrics, and system performance</p>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <a href="{% url 'core:admin_tenant_list' %}" 
-                   class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
-                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900">Manage Tenants</p>
-                        <p class="text-xs text-gray-500">View and manage all tenants</p>
-                    </div>
-                </a>
-                
-                <a href="{% url 'core:admin_tenant_create' %}" 
-                   class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
-                        <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900">Create Tenant</p>
-                        <p class="text-xs text-gray-500">Add a new tenant account</p>
-                    </div>
-                </a>
-                
-                <a href="#" 
-                   class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors opacity-50 cursor-not-allowed">
-                    <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
-                        <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900">Audit Logs</p>
-                        <p class="text-xs text-gray-500">Coming in Task 20</p>
-                    </div>
-                </a>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Tenant Metrics Section -->
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Tenant Metrics</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="tenant-metrics">
-            <!-- Total Tenants -->
-            <div class="metric-card">
-                <div class="metric-label">Total Tenants</div>
-                <div class="metric-value" id="total-tenants">{{ tenant_metrics.total }}</div>
-                <div class="metric-change">
-                    <span class="text-gray-600">{{ tenant_metrics.new_signups_30d }} new in last 30 days</span>
-                </div>
-            </div>
-            
-            <!-- Active Tenants -->
-            <div class="metric-card">
-                <div class="metric-label">Active Tenants</div>
-                <div class="metric-value text-green-600" id="active-tenants">{{ tenant_metrics.active }}</div>
-                <div class="metric-change">
-                    <span class="text-gray-600">{{ tenant_metrics.new_signups_today }} new today</span>
-                </div>
-            </div>
-            
-            <!-- Suspended Tenants -->
-            <div class="metric-card">
-                <div class="metric-label">Suspended</div>
-                <div class="metric-value text-yellow-600" id="suspended-tenants">{{ tenant_metrics.suspended }}</div>
-                <div class="metric-change">
-                    <span class="text-gray-600">Requires attention</span>
-                </div>
-            </div>
-            
-            <!-- Pending Deletion -->
-            <div class="metric-card">
-                <div class="metric-label">Pending Deletion</div>
-                <div class="metric-value text-red-600" id="pending-deletion">{{ tenant_metrics.pending_deletion }}</div>
-                <div class="metric-change">
-                    <span class="text-gray-600">Scheduled for removal</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Revenue Metrics Section -->
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Revenue Metrics</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- MRR -->
-            <div class="metric-card">
-                <div class="metric-label">Monthly Recurring Revenue (MRR)</div>
-                <div class="metric-value">${{ revenue_metrics.mrr|floatformat:2 }}</div>
-                {% if revenue_metrics.note %}
-                <div class="text-sm text-gray-500 mt-2">{{ revenue_metrics.note }}</div>
-                {% endif %}
-            </div>
-            
-            <!-- ARR -->
-            <div class="metric-card">
-                <div class="metric-label">Annual Recurring Revenue (ARR)</div>
-                <div class="metric-value">${{ revenue_metrics.arr|floatformat:2 }}</div>
-            </div>
-            
-            <!-- Churn Rate -->
-            <div class="metric-card">
-                <div class="metric-label">Churn Rate</div>
-                <div class="metric-value">{{ revenue_metrics.churn_rate|floatformat:2 }}%</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- System Health Section -->
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">System Health</h2>
-        {% if system_health.error %}
-        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p class="text-red-800">Error loading system health: {{ system_health.error }}</p>
-        </div>
-        {% else %}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- System Resources -->
-            <div class="metric-card">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-semibold text-gray-900">System Resources</h3>
-                    <span class="status-badge status-{{ system_health.status }}" id="system-status">
-                        {{ system_health.status|upper }}
-                    </span>
-                </div>
-                
-                <!-- CPU -->
-                <div class="mb-4">
-                    <div class="flex justify-between mb-1">
-                        <span class="text-sm text-gray-600">CPU Usage</span>
-                        <span class="text-sm font-semibold" id="cpu-percent">{{ system_health.cpu_percent }}%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill {% if system_health.cpu_percent > 80 %}critical{% elif system_health.cpu_percent > 60 %}warning{% else %}healthy{% endif %}" 
-                             style="width: {{ system_health.cpu_percent }}%"></div>
-                    </div>
-                </div>
-                
-                <!-- Memory -->
-                <div class="mb-4">
-                    <div class="flex justify-between mb-1">
-                        <span class="text-sm text-gray-600">Memory Usage</span>
-                        <span class="text-sm font-semibold" id="memory-percent">
-                            {{ system_health.memory_percent }}% ({{ system_health.memory_used_gb }}GB / {{ system_health.memory_total_gb }}GB)
-                        </span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill {% if system_health.memory_percent > 80 %}critical{% elif system_health.memory_percent > 60 %}warning{% else %}healthy{% endif %}" 
-                             style="width: {{ system_health.memory_percent }}%"></div>
-                    </div>
-                </div>
-                
-                <!-- Disk -->
-                <div class="mb-4">
-                    <div class="flex justify-between mb-1">
-                        <span class="text-sm text-gray-600">Disk Usage</span>
-                        <span class="text-sm font-semibold" id="disk-percent">
-                            {{ system_health.disk_percent }}% ({{ system_health.disk_used_gb }}GB / {{ system_health.disk_total_gb }}GB)
-                        </span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill {% if system_health.disk_percent > 80 %}critical{% elif system_health.disk_percent > 60 %}warning{% else %}healthy{% endif %}" 
-                             style="width: {{ system_health.disk_percent }}%"></div>
-                    </div>
-                </div>
-                
-                <!-- Database Connections -->
+    <div class="mb-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Database Connections</span>
-                        <span class="text-sm font-semibold" id="db-connections">{{ system_health.db_connections }}</span>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Platform Dashboard" %}</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">{% trans "Real-time platform monitoring and analytics" %}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <span class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></span>
+                        <span id="update-status">{% trans "Auto-updating" %}</span>
+                    </span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400" id="last-update"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{% trans "Quick Actions" %}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <a href="{% url 'core:admin_tenant_list' %}" class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow hover:shadow-md transition-all">
+                    <div class="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{% trans "Manage Tenants" %}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{% trans "View and manage all tenant accounts" %}</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'core:admin_tenant_create' %}" class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow hover:shadow-md transition-all">
+                    <div class="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{% trans "Create Tenant" %}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{% trans "Add a new tenant to the platform" %}</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'core:audit_log_explorer' %}" class="flex items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow hover:shadow-md transition-all">
+                    <div class="flex-shrink-0 w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600 dark:text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{% trans "Audit Logs" %}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{% trans "View system audit trail and security events" %}</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Tenant Metrics -->
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{% trans "Tenant Metrics" %}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Total Tenants -->
+                <div class="stat-card-gradient gradient-blue rounded-xl p-6 text-white shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-white/80 mb-2">{% trans "Total Tenants" %}</p>
+                            <p class="text-4xl font-bold" id="total-tenants">{{ tenant_metrics.total }}</p>
+                            <p class="text-sm text-white/70 mt-2" id="total-tenants-change">
+                                +{{ tenant_metrics.new_signups_30d }} {% trans "in last 30 days" %}
+                            </p>
+                        </div>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background: rgba(255,255,255,0.2);">
+                            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Tenants -->
+                <div class="stat-card-gradient gradient-green rounded-xl p-6 text-white shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-white/80 mb-2">{% trans "Active Tenants" %}</p>
+                            <p class="text-4xl font-bold" id="active-tenants">{{ tenant_metrics.active }}</p>
+                            <p class="text-sm text-white/70 mt-2" id="active-tenants-change">
+                                +{{ tenant_metrics.new_signups_today }} {% trans "new today" %}
+                            </p>
+                        </div>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background: rgba(255,255,255,0.2);">
+                            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Suspended Tenants -->
+                <div class="stat-card-gradient gradient-orange rounded-xl p-6 text-white shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-white/80 mb-2">{% trans "Suspended" %}</p>
+                            <p class="text-4xl font-bold" id="suspended-tenants">{{ tenant_metrics.suspended }}</p>
+                            <p class="text-sm text-white/70 mt-2">{% trans "Requires attention" %}</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background: rgba(255,255,255,0.2);">
+                            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Deletion -->
+                <div class="stat-card-gradient gradient-red rounded-xl p-6 text-white shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-white/80 mb-2">{% trans "Pending Deletion" %}</p>
+                            <p class="text-4xl font-bold" id="pending-deletion">{{ tenant_metrics.pending_deletion }}</p>
+                            <p class="text-sm text-white/70 mt-2">{% trans "Scheduled for removal" %}</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background: rgba(255,255,255,0.2);">
+                            <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
                     </div>
                 </div>
             </div>
-            
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- Tenant Signup Chart -->
-            <div class="metric-card">
-                <h3 class="font-semibold text-gray-900 mb-4">Tenant Signups (Last 30 Days)</h3>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Tenant Signups" %}</h3>
+                    <div class="flex gap-2">
+                        <button onclick="loadSignupChart(30)" class="px-3 py-1 text-xs font-medium rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 active-period" data-period="30">30D</button>
+                        <button onclick="loadSignupChart(90)" class="px-3 py-1 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" data-period="90">90D</button>
+                        <button onclick="loadSignupChart(365)" class="px-3 py-1 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" data-period="365">1Y</button>
+                    </div>
+                </div>
                 <div class="chart-container">
                     <canvas id="signup-chart"></canvas>
                 </div>
             </div>
+
+            <!-- System Health -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "System Health" %}</h3>
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full" id="system-status-badge">
+                        {{ system_health.status|upper }}
+                    </span>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- CPU Usage -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{% trans "CPU Usage" %}</span>
+                            <span class="text-sm font-bold text-gray-900 dark:text-white" id="cpu-percent">{{ system_health.cpu_percent }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div id="cpu-bar" class="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full transition-all duration-500" style="width: {{ system_health.cpu_percent }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Memory Usage -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{% trans "Memory Usage" %}</span>
+                            <span class="text-sm font-bold text-gray-900 dark:text-white" id="memory-percent">{{ system_health.memory_percent }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div id="memory-bar" class="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-500" style="width: {{ system_health.memory_percent }}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" id="memory-details">
+                            {{ system_health.memory_used_gb }}GB / {{ system_health.memory_total_gb }}GB
+                        </p>
+                    </div>
+
+                    <!-- Disk Usage -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{% trans "Disk Usage" %}</span>
+                            <span class="text-sm font-bold text-gray-900 dark:text-white" id="disk-percent">{{ system_health.disk_percent }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div id="disk-bar" class="bg-gradient-to-r from-purple-400 to-purple-600 h-2 rounded-full transition-all duration-500" style="width: {{ system_health.disk_percent }}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" id="disk-details">
+                            {{ system_health.disk_used_gb }}GB / {{ system_health.disk_total_gb }}GB
+                        </p>
+                    </div>
+
+                    <!-- Database Connections -->
+                    <div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{% trans "Database Connections" %}</span>
+                            <span class="text-sm font-bold text-gray-900 dark:text-white" id="db-connections">{{ system_health.db_connections }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        {% endif %}
-    </div>
-    
-    <!-- Error Feed Section -->
-    <div class="mb-8">
-        <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Errors</h2>
-        <div class="metric-card">
-            <div id="error-feed">
-                <p class="text-gray-500 text-center py-8">Error feed will be available after Sentry integration</p>
+
+        <!-- Recent Activity & Revenue -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Recent Activity -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Recent Activity" %}</h3>
+                <div id="recent-activity" class="space-y-4">
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-sm">{% trans "Loading recent activity..." %}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Metrics -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Revenue Metrics" %}</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Monthly Recurring Revenue" %}</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${{ revenue_metrics.mrr|floatformat:2 }}</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-green-600 dark:text-green-300" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"></path>
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Annual Recurring Revenue" %}</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">${{ revenue_metrics.arr|floatformat:2 }}</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-300" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Churn Rate" %}</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ revenue_metrics.churn_rate|floatformat:2 }}%</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-orange-600 dark:text-orange-300" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    {% if revenue_metrics.note %}
+                    <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <p class="text-xs text-blue-800 dark:text-blue-200">
+                            <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            {{ revenue_metrics.note }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
 <script>
-    // Auto-refresh intervals (in milliseconds)
-    const TENANT_METRICS_REFRESH = 30000;  // 30 seconds
-    const SYSTEM_HEALTH_REFRESH = 10000;   // 10 seconds
+// Configuration
+const UPDATE_INTERVALS = {
+    tenantMetrics: 30000,  // 30 seconds
+    systemHealth: 10000,   // 10 seconds
+    recentActivity: 60000  // 60 seconds
+};
+
+let signupChart = null;
+let updateTimers = {};
+
+// Initialize Chart
+function initSignupChart(data) {
+    const ctx = document.getElementById('signup-chart');
+    if (!ctx) return;
     
-    // Initialize signup chart
-    let signupChart = null;
+    if (signupChart) {
+        signupChart.destroy();
+    }
     
-    function initSignupChart() {
-        const ctx = document.getElementById('signup-chart');
-        if (!ctx) return;
-        
-        fetch('/platform/api/tenant-signup-chart/')
-            .then(response => response.json())
-            .then(data => {
-                if (signupChart) {
-                    signupChart.destroy();
+    signupChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: '{% trans "New Signups" %}',
+                data: data.data,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: { size: 14 },
+                    bodyFont: { size: 13 }
                 }
-                
-                signupChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: data.labels,
-                        datasets: [{
-                            label: 'New Signups',
-                            data: data.data,
-                            borderColor: 'rgb(59, 130, 246)',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            tension: 0.4,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    stepSize: 1
-                                }
-                            }
-                        }
-                    }
-                });
-            })
-            .catch(error => console.error('Error loading signup chart:', error));
-    }
-    
-    // Update tenant metrics
-    function updateTenantMetrics() {
-        fetch('/platform/api/tenant-metrics/')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('total-tenants').textContent = data.total;
-                document.getElementById('active-tenants').textContent = data.active;
-                document.getElementById('suspended-tenants').textContent = data.suspended;
-                document.getElementById('pending-deletion').textContent = data.pending_deletion;
-            })
-            .catch(error => console.error('Error updating tenant metrics:', error));
-    }
-    
-    // Update system health
-    function updateSystemHealth() {
-        fetch('/platform/api/system-health/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    console.error('System health error:', data.error);
-                    return;
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 },
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                },
+                x: {
+                    grid: { display: false }
                 }
-                
-                // Update CPU
-                document.getElementById('cpu-percent').textContent = data.cpu_percent + '%';
-                
-                // Update Memory
-                document.getElementById('memory-percent').textContent = 
-                    `${data.memory_percent}% (${data.memory_used_gb}GB / ${data.memory_total_gb}GB)`;
-                
-                // Update Disk
-                document.getElementById('disk-percent').textContent = 
-                    `${data.disk_percent}% (${data.disk_used_gb}GB / ${data.disk_total_gb}GB)`;
-                
-                // Update DB Connections
-                document.getElementById('db-connections').textContent = data.db_connections;
-                
-                // Update status badge
-                const statusBadge = document.getElementById('system-status');
-                statusBadge.textContent = data.status.toUpperCase();
-                statusBadge.className = 'status-badge status-' + data.status;
-            })
-            .catch(error => console.error('Error updating system health:', error));
-    }
-    
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        initSignupChart();
-        
-        // Set up auto-refresh
-        setInterval(updateTenantMetrics, TENANT_METRICS_REFRESH);
-        setInterval(updateSystemHealth, SYSTEM_HEALTH_REFRESH);
+            }
+        }
     });
+}
+
+// Load signup chart data
+function loadSignupChart(days = 30) {
+    fetch('/platform/api/tenant-signup-chart/')
+        .then(response => response.json())
+        .then(data => {
+            initSignupChart(data);
+            
+            // Update active button
+            document.querySelectorAll('[data-period]').forEach(btn => {
+                btn.classList.remove('bg-blue-100', 'text-blue-700', 'dark:bg-blue-900', 'dark:text-blue-200', 'active-period');
+                btn.classList.add('text-gray-600', 'dark:text-gray-400');
+            });
+            const activeBtn = document.querySelector(`[data-period="${days}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-blue-100', 'text-blue-700', 'dark:bg-blue-900', 'dark:text-blue-200', 'active-period');
+                activeBtn.classList.remove('text-gray-600', 'dark:text-gray-400');
+            }
+        })
+        .catch(error => console.error('Error loading signup chart:', error));
+}
+
+// Update tenant metrics
+function updateTenantMetrics() {
+    fetch('/platform/api/tenant-metrics/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-tenants').textContent = data.total;
+            document.getElementById('active-tenants').textContent = data.active;
+            document.getElementById('suspended-tenants').textContent = data.suspended;
+            document.getElementById('pending-deletion').textContent = data.pending_deletion;
+            
+            document.getElementById('total-tenants-change').textContent = 
+                `+${data.new_signups_30d} {% trans "in last 30 days" %}`;
+            document.getElementById('active-tenants-change').textContent = 
+                `+${data.new_signups_today} {% trans "new today" %}`;
+            
+            updateLastUpdateTime();
+        })
+        .catch(error => console.error('Error updating tenant metrics:', error));
+}
+
+// Update system health
+function updateSystemHealth() {
+    fetch('/platform/api/system-health/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) return;
+            
+            // Update percentages
+            document.getElementById('cpu-percent').textContent = data.cpu_percent + '%';
+            document.getElementById('memory-percent').textContent = data.memory_percent + '%';
+            document.getElementById('disk-percent').textContent = data.disk_percent + '%';
+            document.getElementById('db-connections').textContent = data.db_connections;
+            
+            // Update progress bars
+            document.getElementById('cpu-bar').style.width = data.cpu_percent + '%';
+            document.getElementById('memory-bar').style.width = data.memory_percent + '%';
+            document.getElementById('disk-bar').style.width = data.disk_percent + '%';
+            
+            // Update details
+            document.getElementById('memory-details').textContent = 
+                `${data.memory_used_gb}GB / ${data.memory_total_gb}GB`;
+            document.getElementById('disk-details').textContent = 
+                `${data.disk_used_gb}GB / ${data.disk_total_gb}GB`;
+            
+            // Update status badge
+            const badge = document.getElementById('system-status-badge');
+            badge.textContent = data.status.toUpperCase();
+            badge.className = 'px-3 py-1 text-xs font-semibold rounded-full ';
+            if (data.status === 'healthy') {
+                badge.className += 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+            } else if (data.status === 'warning') {
+                badge.className += 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+            } else {
+                badge.className += 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+            }
+            
+            // Update bar colors based on thresholds
+            updateBarColor('cpu-bar', data.cpu_percent);
+            updateBarColor('memory-bar', data.memory_percent);
+            updateBarColor('disk-bar', data.disk_percent);
+            
+            updateLastUpdateTime();
+        })
+        .catch(error => console.error('Error updating system health:', error));
+}
+
+// Update progress bar colors based on threshold
+function updateBarColor(barId, percent) {
+    const bar = document.getElementById(barId);
+    bar.className = 'h-2 rounded-full transition-all duration-500 ';
+    if (percent > 80) {
+        bar.className += 'bg-gradient-to-r from-red-400 to-red-600';
+    } else if (percent > 60) {
+        bar.className += 'bg-gradient-to-r from-yellow-400 to-yellow-600';
+    } else {
+        const colors = {
+            'cpu-bar': 'from-blue-400 to-blue-600',
+            'memory-bar': 'from-green-400 to-green-600',
+            'disk-bar': 'from-purple-400 to-purple-600'
+        };
+        bar.className += 'bg-gradient-to-r ' + (colors[barId] || 'from-blue-400 to-blue-600');
+    }
+}
+
+// Load recent activity
+function loadRecentActivity() {
+    fetch('/platform/api/recent-activity/?limit=5')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('recent-activity');
+            if (!data.activities || data.activities.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                        </svg>
+                        <p class="text-sm">{% trans "No recent activity" %}</p>
+                    </div>`;
+                return;
+            }
+            
+            container.innerHTML = data.activities.map(activity => {
+                const date = new Date(activity.created_at);
+                const timeAgo = getTimeAgo(date);
+                const statusClass = 
+                    activity.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                    activity.status === 'suspended' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                    activity.status === 'pending_deletion' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+                
+                return `
+                    <div class="timeline-item">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">${activity.tenant_name}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    ${activity.description} • ${timeAgo}
+                                </p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">
+                                ${activity.status}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        })
+        .catch(error => {
+            console.error('Error loading recent activity:', error);
+            document.getElementById('recent-activity').innerHTML = `
+                <div class="text-center py-8 text-red-500 dark:text-red-400">
+                    <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="text-sm">{% trans "Unable to load activity" %}</p>
+                </div>`;
+        });
+}
+
+// Helper function to get time ago string
+function getTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    
+    const intervals = {
+        year: 31536000,
+        month: 2592000,
+        week: 604800,
+        day: 86400,
+        hour: 3600,
+        minute: 60
+    };
+    
+    for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+        const interval = Math.floor(seconds / secondsInUnit);
+        if (interval >= 1) {
+            return interval === 1 ? `1 ${unit} ago` : `${interval} ${unit}s ago`;
+        }
+    }
+    
+    return 'just now';
+}
+
+// Update last update time
+function updateLastUpdateTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString();
+    document.getElementById('last-update').textContent = `{% trans "Last updated" %}: ${timeString}`;
+}
+
+// Initialize and start updates
+function init() {
+    // Load initial data
+    loadSignupChart(30);
+    loadRecentActivity();
+    updateLastUpdateTime();
+    
+    // Set up auto-refresh intervals
+    updateTimers.tenantMetrics = setInterval(updateTenantMetrics, UPDATE_INTERVALS.tenantMetrics);
+    updateTimers.systemHealth = setInterval(updateSystemHealth, UPDATE_INTERVALS.systemHealth);
+    updateTimers.recentActivity = setInterval(loadRecentActivity, UPDATE_INTERVALS.recentActivity);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', init);
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    Object.values(updateTimers).forEach(timer => clearInterval(timer));
+    if (signupChart) signupChart.destroy();
+});
 </script>
 {% endblock %}

@@ -34,11 +34,14 @@ class TenantContextMiddleware(MiddlewareMixin):
 
     # Paths that don't require tenant context
     EXEMPT_PATHS = [
+        "/accounts/",  # Django allauth (login, logout, etc.)
         "/admin/",  # Django admin (platform admin)
         "/platform/",  # Platform admin dashboard
         "/api/auth/login/",
         "/api/auth/register/",
         "/api/auth/refresh/",
+        "/api/user/theme/switch/",  # Theme switcher
+        "/api/user/language/switch/",  # Language switcher
         "/health/",
         "/metrics/",
         "/static/",

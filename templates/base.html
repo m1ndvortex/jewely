@@ -1,6 +1,9 @@
 {% load i18n %}
 <!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" data-theme="{% if user.is_authenticated %}{{ user.theme }}{% else %}light{% endif %}"
+<html lang="{{ LANGUAGE_CODE }}" 
+      dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" 
+      data-theme="{% if user.is_authenticated %}{{ user.theme }}{% else %}light{% endif %}"
+      class="{% if user.is_authenticated and user.theme == 'dark' %}dark{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +11,23 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            DEFAULT: '#2563eb',
+                            hover: '#1d4ed8',
+                            light: '#dbeafe',
+                            dark: '#1e40af',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     
     <!-- Theme CSS (Light and Dark Mode) -->
     {% load static %}
@@ -45,6 +65,9 @@
         }
     </style>
     {% endif %}
+    
+    <!-- Page-specific CSS -->
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
     <!-- Impersonation Banner -->
@@ -58,13 +81,13 @@
                 </svg>
                 <div>
                     <p class="font-semibold">
-                        Impersonating: {{ request.user.username }}
+                        {% blocktrans with username=request.user.username %}Impersonating: {{ username }}{% endblocktrans %}
                         {% if request.user.tenant %}
                         ({{ request.user.tenant.company_name }})
                         {% endif %}
                     </p>
                     <p class="text-sm text-purple-200">
-                        You are viewing this account as a platform administrator. All actions are logged.
+                        {% trans "You are viewing this account as a platform administrator. All actions are logged." %}
                     </p>
                 </div>
             </div>
@@ -75,7 +98,7 @@
                     <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                     </svg>
-                    Stop Impersonating
+                    {% trans "Stop Impersonating" %}
                 </button>
             </form>
         </div>
@@ -90,28 +113,107 @@
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
                         <h1 class="text-xl font-bold text-gray-900 dark:text-white">
-                            Jewelry Shop
+                            {% if user.role == 'PLATFORM_ADMIN' %}
+                                {% trans "Platform Admin" %}
+                            {% else %}
+                                {% trans "Jewelry Shop" %}
+                            {% endif %}
                         </h1>
                     </div>
+                    
+                    {% if user.role == 'PLATFORM_ADMIN' %}
+                    <!-- Platform Admin Navigation -->
                     <div class="hidden md:ml-6 md:flex md:space-x-8">
-                        <a href="/dashboard/" class="text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
-                            Dashboard
+                        <a href="{% url 'core:admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "Dashboard" %}
                         </a>
-                        <a href="/inventory/" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
-                            Inventory
+                        <a href="{% url 'core:admin_tenant_list' %}" class="{% if 'tenant' in request.resolver_match.url_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "Tenants" %}
                         </a>
-                        <a href="/sales/" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
-                            Sales
+                        <a href="{% url 'core:admin_subscription_plan_list' %}" class="{% if 'subscription' in request.resolver_match.url_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "Subscriptions" %}
                         </a>
-                        <a href="/customers/" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
-                            Customers
+                        <a href="{% url 'core:monitoring_dashboard' %}" class="{% if 'monitoring' in request.resolver_match.url_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "Monitoring" %}
                         </a>
+                        <a href="{% url 'core:audit_log_explorer' %}" class="{% if 'audit' in request.resolver_match.url_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "Audit Logs" %}
+                        </a>
+                        <!-- More dropdown for additional admin features -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium inline-flex items-center">
+                                {% trans "More" %}
+                                <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="open" 
+                                 @click.away="open = false"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
+                                 style="display: none;">
+                                <div class="py-1">
+                                    <a href="{% url 'backups:dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Backups" %}</a>
+                                    <a href="{% url 'core:security_dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Security" %}</a>
+                                    <a href="{% url 'core:feature_flag_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Feature Flags" %}</a>
+                                    <a href="{% url 'core:announcement_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Announcements" %}</a>
+                                    <!-- Webhooks, Jobs, Documentation apps not yet implemented -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                    {% else %}
+                    <!-- Tenant Navigation -->
+                    <div class="hidden md:ml-6 md:flex md:space-x-8">
+                        <a href="{% url 'core:tenant_dashboard' %}" class="{% if request.resolver_match.url_name == 'tenant_dashboard' %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "Dashboard" %}
+                        </a>
+                        <a href="{% url 'sales:pos_interface' %}" class="{% if 'sales' in request.resolver_match.app_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "POS" %}
+                        </a>
+                        <a href="{% url 'crm:customer_list' %}" class="{% if 'crm' in request.resolver_match.app_name %}text-blue-600 dark:text-blue-400{% else %}text-gray-500 dark:text-gray-400{% endif %} hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium">
+                            {% trans "Customers" %}
+                        </a>
+                        <!-- More dropdown for additional tenant features -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 text-sm font-medium inline-flex items-center">
+                                {% trans "More" %}
+                                <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="open" 
+                                 @click.away="open = false"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="transform opacity-0 scale-95"
+                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-75"
+                                 x-transition:leave-start="transform opacity-100 scale-100"
+                                 x-transition:leave-end="transform opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
+                                 style="display: none;">
+                                <div class="py-1">
+                                    <a href="{% url 'accounting:financial_reports' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Accounting" %}</a>
+                                    <a href="{% url 'repair:repair_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Repairs" %}</a>
+                                    <a href="{% url 'procurement:supplier_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Procurement" %}</a>
+                                    <a href="{% url 'core:branch_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Branches" %}</a>
+                                    <a href="{% url 'reporting:report_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Reports" %}</a>
+                                    <a href="{% url 'core:settings_overview' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Settings" %}</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <div class="flex items-center space-x-4">
                     <!-- Theme Toggle -->
-                    <button @click="toggleTheme()" 
+                    <button onclick="toggleTheme()" 
                             class="theme-toggle p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
                             title="Toggle theme">
                         <!-- Sun icon (shown in dark mode) -->
@@ -148,7 +250,7 @@
                              class="absolute {% if LANGUAGE_BIDI %}left-0{% else %}right-0{% endif %} mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
                              style="display: none;">
                             <div class="py-1">
-                                <button @click="switchLanguage('en')" 
+                                <button onclick="switchLanguage('en'); open = false;" 
                                         class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between">
                                     <span>English</span>
                                     {% if LANGUAGE_CODE == 'en' %}
@@ -157,7 +259,7 @@
                                     </svg>
                                     {% endif %}
                                 </button>
-                                <button @click="switchLanguage('fa')" 
+                                <button onclick="switchLanguage('fa'); open = false;" 
                                         class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between">
                                     <span>فارسی (Persian)</span>
                                     {% if LANGUAGE_CODE == 'fa' %}
@@ -174,7 +276,7 @@
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" 
                                 class="relative p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <span class="sr-only">View notifications</span>
+                            <span class="sr-only">{% trans "View notifications" %}</span>
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM9 7H4l5-5v5zm6 10V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2z"></path>
                             </svg>
@@ -208,7 +310,7 @@
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" 
                                 class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <span class="sr-only">Open user menu</span>
+                            <span class="sr-only">{% trans "Open user menu" %}</span>
                             <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
                                 <span class="text-sm font-medium text-white">
                                     {{ user.first_name.0|default:user.username.0|upper }}
@@ -229,19 +331,19 @@
                             <div class="py-1">
                                 <a href="{% url 'notifications:center' %}" 
                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    Notifications
+                                    {% trans "Notifications" %}
                                 </a>
                                 <a href="{% url 'notifications:preferences' %}" 
                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    Notification Settings
+                                    {% trans "Notification Settings" %}
                                 </a>
                                 <a href="/profile/" 
                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    Profile
+                                    {% trans "Profile" %}
                                 </a>
-                                <a href="/logout/" 
+                                <a href="{% if user.is_platform_admin %}{% url 'core:admin_logout' %}{% else %}{% url 'core:tenant_logout' %}{% endif %}" 
                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    Sign out
+                                    {% trans "Sign out" %}
                                 </a>
                             </div>
                         </div>
@@ -276,6 +378,13 @@
             // Update the DOM immediately for instant feedback
             html.setAttribute('data-theme', newTheme);
             
+            // Toggle dark class for Tailwind
+            if (newTheme === 'dark') {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+            }
+            
             // Get CSRF token
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
                              document.querySelector('meta[name="csrf-token"]')?.content ||
@@ -296,12 +405,22 @@
                     console.error('Theme switch error:', data.error);
                     // Revert on error
                     html.setAttribute('data-theme', currentTheme);
+                    if (currentTheme === 'dark') {
+                        html.classList.add('dark');
+                    } else {
+                        html.classList.remove('dark');
+                    }
                 }
             })
             .catch(error => {
                 console.error('Theme switch error:', error);
                 // Revert on error
                 html.setAttribute('data-theme', currentTheme);
+                if (currentTheme === 'dark') {
+                    html.classList.add('dark');
+                } else {
+                    html.classList.remove('dark');
+                }
             });
         }
         
@@ -321,7 +440,16 @@
                 },
                 body: JSON.stringify({ language: language })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Language switch failed with status:', response.status);
+                    return response.text().then(text => {
+                        console.error('Response body:', text.substring(0, 500));
+                        throw new Error(`HTTP ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.message) {
                     // Reload page to apply new language
@@ -353,5 +481,8 @@
             return cookieValue;
         }
     </script>
+    
+    <!-- Page-specific JavaScript -->
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,53 +1,53 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static i18n %}
 
-{% block title %}Audit Log Explorer - Platform Admin{% endblock %}
+{% block title %}{% trans "Audit Log Explorer" %} - {% trans "Platform Admin" %}{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
     <!-- Header -->
     <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Audit Log Explorer</h1>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{% trans "Audit Log Explorer" %}</h1>
         <p class="text-gray-600 dark:text-gray-400">
-            Comprehensive audit trail of all system actions and events
+            {% trans "Comprehensive audit trail of all system actions and events" %}
         </p>
     </div>
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Logs</div>
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{% trans "Total Logs" %}</div>
             <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ total_count|default:0 }}</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Admin Actions</div>
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{% trans "Admin Actions" %}</div>
             <div class="text-2xl font-bold text-blue-600">{{ category_counts.ADMIN|default:0 }}</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Security Events</div>
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{% trans "Security Events" %}</div>
             <div class="text-2xl font-bold text-red-600">{{ category_counts.SECURITY|default:0 }}</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Critical</div>
+            <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">{% trans "Critical" %}</div>
             <div class="text-2xl font-bold text-orange-600">{{ severity_counts.CRITICAL|default:0 }}</div>
         </div>
     </div>
 
-    <!-- Filters and Search -->
+    <!-- Filters and {% trans "Search" %} -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
         <div class="p-6">
             <form method="get" action="{% url 'core:audit_log_explorer' %}" class="space-y-4">
-                <!-- Search Bar -->
+                <!-- {% trans "Search" %} Bar -->
                 <div>
                     <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Search
+                        {% trans "Search" %}
                     </label>
                     <input
                         type="text"
                         name="q"
                         id="search"
                         value="{{ current_filters.q }}"
-                        placeholder="Search by description, user, IP address..."
+                        placeholder="{% trans "Search" %} by description, user, IP address..."
                         class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                     />
                 </div>
@@ -55,26 +55,26 @@
                 <!-- Quick Filters -->
                 <div class="flex flex-wrap gap-2">
                     <button type="submit" name="quick_filter" value="today" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
-                        Today
+                        {% trans "Today" %}
                     </button>
                     <button type="submit" name="quick_filter" value="yesterday" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
-                        Yesterday
+                        {% trans "Yesterday" %}
                     </button>
                     <button type="submit" name="quick_filter" value="last_7_days" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
-                        Last 7 Days
+                        {% trans "Last 7 Days" %}
                     </button>
                     <button type="submit" name="quick_filter" value="last_30_days" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
-                        Last 30 Days
+                        {% trans "Last 30 Days" %}
                     </button>
                     <button type="submit" name="quick_filter" value="last_90_days" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
-                        Last 90 Days
+                        {% trans "Last 90 Days" %}
                     </button>
                 </div>
 
-                <!-- Advanced Filters -->
+                <!-- {% trans "Advanced Filters" %} -->
                 <details class="border-t border-gray-200 dark:border-gray-700 pt-4">
                     <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-                        Advanced Filters
+                        {% trans "Advanced Filters" %}
                     </summary>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <!-- Category Filter -->
@@ -185,19 +185,19 @@
                         type="submit"
                         class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
                     >
-                        Apply Filters
+                        {% trans "Apply Filters" %}
                     </button>
                     <a
                         href="{% url 'core:audit_log_explorer' %}"
                         class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                     >
-                        Clear Filters
+                        {% trans "Clear Filters" %}
                     </a>
                     <a
                         href="{% url 'core:audit_log_export' %}?{{ request.GET.urlencode }}"
                         class="ml-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500"
                     >
-                        Export to CSV
+                        {% trans "Export to CSV" %}
                     </a>
                 </div>
             </form>
@@ -346,7 +346,7 @@
             <p class="text-sm text-gray-600 dark:text-gray-400">Track all data modifications</p>
         </a>
         <a href="{% url 'core:api_request_explorer' %}" class="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
-            <h3 class="font-semibold text-gray-900 dark:text-white mb-1">API Requests</h3>
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-1">{% trans "API Request" %}s</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400">Monitor API usage and performance</p>
         </a>
         <a href="{% url 'core:audit_log_retention' %}" class="block p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">

@@ -25,6 +25,11 @@ urlpatterns = [
     # Basic views
     path("", views.home, name="home"),
     path("health/", views.health_check, name="health_check"),
+    # Platform admin login/logout (username/password only - no OAuth2)
+    path("platform/login/", views.AdminLoginView.as_view(), name="admin_login"),
+    path("platform/logout/", views.AdminLogoutView.as_view(), name="admin_logout"),
+    # Tenant logout (login handled by allauth at accounts/login/)
+    path("accounts/logout/", views.TenantLogoutView.as_view(), name="tenant_logout"),
     # Stripe webhook
     path("webhooks/stripe/", stripe_webhooks.stripe_webhook, name="stripe_webhook"),
     # Platform Admin Panel
@@ -48,6 +53,11 @@ urlpatterns = [
         "platform/api/error-feed/",
         admin_views.ErrorFeedAPIView.as_view(),
         name="admin_api_error_feed",
+    ),
+    path(
+        "platform/api/recent-activity/",
+        admin_views.RecentActivityAPIView.as_view(),
+        name="admin_api_recent_activity",
     ),
     # Monitoring Dashboard
     path(
@@ -748,11 +758,11 @@ urlpatterns = [
         name="api_tenant_active_announcements",
     ),
     # Webhook Management
-    path("webhooks/", include("apps.core.webhook_urls")),
+    path("webhooks/", include(("apps.core.webhook_urls", "webhooks"), namespace="webhooks")),
     # External Service Integration Management
-    path("integrations/", include("apps.core.integration_urls")),
+    path("integrations/", include(("apps.core.integration_urls", "integrations"), namespace="integrations")),
     # Job Monitoring
-    path("platform/jobs/", include("apps.core.job_urls")),
+    path("platform/jobs/", include(("apps.core.job_urls", "jobs"), namespace="jobs")),
     # Documentation and Knowledge Base
-    path("platform/documentation/", include("apps.core.documentation_urls")),
+    path("platform/documentation/", include(("apps.core.documentation_urls", "documentation"), namespace="documentation")),
 ]

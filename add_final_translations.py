@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""
+Final comprehensive batch: campaigns, segments, and all remaining common strings
+"""
+import re
+
+TRANSLATIONS = {
+    # SMS Opt-out
+    "SMS Opt-Out": "انصراف از پیامک",
+    "SMS Opt-Outs": "انصرافات از پیامک",
+    
+    # Campaigns
+    "Sending": "در حال ارسال",
+    "Email template to use": "قالب ایمیل مورد استفاده",
+    "Specific users to target (leave empty for all users)": "کاربران خاص هدف (برای همه خالی بگذارید)",
+    "Customer segments to target": "بخش‌های مشتری هدف",
+    "User roles to target": "نقش‌های کاربری هدف",
+    "Tenant statuses to target": "وضعیت‌های مستأجر هدف",
+    "When to send this campaign": "زمان ارسال این کمپین",
+    "Email Campaign": "کمپین ایمیلی",
+    "Email Campaigns": "کمپین‌های ایمیلی",
+    
+    # Segments
+    "Static Segment": "بخش ثابت",
+    "Dynamic Segment": "بخش پویا",
+    "Segment name": "نام بخش",
+    "Segment description": "توضیحات بخش",
+    "Type of segment (static or dynamic)": "نوع بخش (ثابت یا پویا)",
+    "Segmentation criteria for dynamic segments": "معیارهای بخش‌بندی برای بخش‌های پویا",
+    "Customers in this segment (for static segments)": "مشتریان در این بخش (برای بخش‌های ثابت)",
+    "Whether this segment is active": "آیا این بخش فعال است",
+    "User who created this segment": "کاربری که این بخش را ایجاد کرد",
+    "Segment": "بخش",
+    "Segments": "بخش‌ها",
+    "Customer Segment": "بخش مشتری",
+    "Customer Segments": "بخش‌های مشتری",
+    
+    # More campaign fields
+    "Subject line": "خط موضوع",
+    "Preview text": "متن پیش‌نمایش",
+    "From name": "نام فرستنده",
+    "Reply-to email": "ایمیل پاسخ به",
+    "Track opens": "ردیابی باز شدن",
+    "Track clicks": "ردیابی کلیک",
+    "Total sent": "مجموع ارسال شده",
+    "Total delivered": "مجموع تحویل شده",
+    "Total opened": "مجموع باز شده",
+    "Total clicked": "مجموع کلیک شده",
+    "Total bounced": "مجموع برگشتی",
+    "Total unsubscribed": "مجموع لغو اشتراک شده",
+    "Unique opens": "باز شدن منحصر به فرد",
+    "Unique clicks": "کلیک منحصر به فرد",
+    
+    # Schedule and automation
+    "Schedule": "زمان‌بندی",
+    "Send immediately": "ارسال فوری",
+    "Send later": "ارسال بعدی",
+    "Send at specific time": "ارسال در زمان خاص",
+    "Recurring": "تکرارشونده",
+    "Frequency": "فرکانس",
+    "Daily": "روزانه",
+    "Weekly": "هفتگی",
+    "Monthly": "ماهانه",
+    "Yearly": "سالانه",
+    "Once": "یک بار",
+    "Repeat": "تکرار",
+    "Repeat every": "تکرار هر",
+    "days": "روز",
+    "weeks": "هفته",
+    "months": "ماه",
+    "years": "سال",
+    
+    # Permissions and roles
+    "Permissions": "مجوزها",
+    "Permission": "مجوز",
+    "Role": "نقش",
+    "Roles": "نقش‌ها",
+    "Group": "گروه",
+    "Groups": "گروه‌ها",
+    "User Role": "نقش کاربر",
+    "User Roles": "نقش‌های کاربر",
+    "Admin": "مدیر",
+    "Manager": "مدیر",
+    "Staff": "کارمند",
+    "Employee": "کارمند",
+    "Salesperson": "فروشنده",
+    "Cashier": "صندوقدار",
+    "Viewer": "بیننده",
+    "Guest": "مهمان",
+    "Owner": "مالک",
+    "Superuser": "کاربر ارشد",
+    
+    # Access control
+    "Can view": "می‌تواند مشاهده کند",
+    "Can add": "می‌تواند اضافه کند",
+    "Can change": "می‌تواند تغییر دهد",
+    "Can delete": "می‌تواند حذف کند",
+    "Can export": "می‌تواند خروجی بگیرد",
+    "Can import": "می‌تواند ورودی بگیرد",
+    "Has access": "دسترسی دارد",
+    "No access": "دسترسی ندارد",
+    "Read only": "فقط خواندنی",
+    "Full access": "دسترسی کامل",
+    "Limited access": "دسترسی محدود",
+    
+    # Common fieldsets
+    "General": "عمومی",
+    "General Information": "اطلاعات عمومی",
+    "Personal Information": "اطلاعات شخصی",
+    "Contact Information": "اطلاعات تماس",
+    "Account Information": "اطلاعات حساب",
+    "Company Information": "اطلاعات شرکت",
+    "Business Information": "اطلاعات تجاری",
+    "Billing Information": "اطلاعات صورتحساب",
+    "Shipping Information": "اطلاعات حمل و نقل",
+    "Payment Information": "اطلاعات پرداخت",
+    "Additional Information": "اطلاعات اضافی",
+    "Advanced": "پیشرفته",
+    "Advanced Options": "گزینه‌های پیشرفته",
+    "Advanced Settings": "تنظیمات پیشرفته",
+    "Preferences": "ترجیحات",
+    "Options": "گزینه‌ها",
+    "Configuration": "پیکربندی",
+    "Meta Data": "متادیتا",
+    "Metadata": "متادیتا",
+    "Custom Fields": "فیلدهای سفارشی",
+    "Tags": "برچسب‌ها",
+    "Labels": "برچسب‌ها",
+    "Attributes": "ویژگی‌ها",
+    
+    # Audit and tracking
+    "Audit": "حسابرسی",
+    "Audit Trail": "رد حسابرسی",
+    "Activity Log": "گزارش فعالیت",
+    "History": "تاریخچه",
+    "Change History": "تاریخچه تغییرات",
+    "Version History": "تاریخچه نسخه",
+    "Revision": "نسخه",
+    "Revisions": "نسخه‌ها",
+    "Created by": "ایجاد شده توسط",
+    "Modified by": "تغییر داده شده توسط",
+    "Deleted by": "حذف شده توسط",
+    "Created on": "ایجاد شده در",
+    "Modified on": "تغییر داده شده در",
+    "Deleted on": "حذف شده در",
+    "Last updated": "آخرین به‌روزرسانی",
+    "Last accessed": "آخرین دسترسی",
+    
+    # File management
+    "Files": "فایل‌ها",
+    "Documents": "اسناد",
+    "Images": "تصاویر",
+    "Videos": "ویدئوها",
+    "Media": "رسانه",
+    "Upload File": "بارگذاری فایل",
+    "Upload Image": "بارگذاری تصویر",
+    "Choose File": "انتخاب فایل",
+    "Select File": "انتخاب فایل",
+    "Drop files here": "فایل‌ها را اینجا رها کنید",
+    "Drag and drop": "کشیدن و رها کردن",
+    "Browse files": "مرور فایل‌ها",
+    "File name": "نام فایل",
+    "File type": "نوع فایل",
+    "File size": "حجم فایل",
+    "Download file": "دانلود فایل",
+    "Delete file": "حذف فایل",
+    "Preview": "پیش‌نمایش",
+    "Thumbnail": "تصویر کوچک",
+    
+    # Integration and API
+    "Integration": "یکپارچه‌سازی",
+    "Integrations": "یکپارچه‌سازی‌ها",
+    "API": "API",
+    "API Key": "کلید API",
+    "API Keys": "کلیدهای API",
+    "API Token": "توکن API",
+    "API Tokens": "توکن‌های API",
+    "Webhook": "وب‌هوک",
+    "Webhooks": "وب‌هوک‌ها",
+    "Webhook URL": "آدرس وب‌هوک",
+    "Secret Key": "کلید مخفی",
+    "Public Key": "کلید عمومی",
+    "Private Key": "کلید خصوصی",
+    "Access Token": "توکن دسترسی",
+    "Refresh Token": "توکن تازه‌سازی",
+    "OAuth": "OAuth",
+    "Connected": "متصل",
+    "Disconnected": "قطع شده",
+    "Authorized": "مجاز",
+    "Unauthorized": "غیرمجاز",
+    
+    # Sync and backup
+    "Sync": "همگام‌سازی",
+    "Synchronize": "همگام‌سازی",
+    "Synchronization": "همگام‌سازی",
+    "Last synced": "آخرین همگام‌سازی",
+    "Sync now": "همگام‌سازی اکنون",
+    "Auto sync": "همگام‌سازی خودکار",
+    "Manual sync": "همگام‌سازی دستی",
+    "Backup": "پشتیبان",
+    "Restore": "بازگردانی",
+    "Backup now": "پشتیبان‌گیری اکنون",
+    "Auto backup": "پشتیبان‌گیری خودکار",
+    "Backup frequency": "فرکانس پشتیبان‌گیری",
+    "Last backup": "آخرین پشتیبان",
+    "Backup size": "حجم پشتیبان",
+    "Backup location": "مکان پشتیبان",
+    
+    # Notifications preferences
+    "Email notifications": "اعلان‌های ایمیلی",
+    "Push notifications": "اعلان‌های فشار",
+    "SMS notifications": "اعلان‌های پیامکی",
+    "In-app notifications": "اعلان‌های درون برنامه‌ای",
+    "Desktop notifications": "اعلان‌های دسکتاپ",
+    "Mobile notifications": "اعلان‌های موبایل",
+    "Notification sound": "صدای اعلان",
+    "Notification badge": "نشان اعلان",
+    "Do not disturb": "مزاحم نشوید",
+    "Mute notifications": "بی‌صدا کردن اعلان‌ها",
+    "Unmute notifications": "صدادار کردن اعلان‌ها",
+    
+    # Subscription and billing
+    "Subscription": "اشتراک",
+    "Plan": "طرح",
+    "Free Plan": "طرح رایگان",
+    "Basic Plan": "طرح پایه",
+    "Standard Plan": "طرح استاندارد",
+    "Premium Plan": "طرح ویژه",
+    "Enterprise Plan": "طرح سازمانی",
+    "Current Plan": "طرح فعلی",
+    "Upgrade Plan": "ارتقای طرح",
+    "Downgrade Plan": "کاهش طرح",
+    "Change Plan": "تغییر طرح",
+    "Billing": "صورتحساب",
+    "Billing Cycle": "چرخه صورتحساب",
+    "Billing Period": "دوره صورتحساب",
+    "Billing Date": "تاریخ صورتحساب",
+    "Next Billing Date": "تاریخ صورتحساب بعدی",
+    "Invoice": "فاکتور",
+    "Billing History": "تاریخچه صورتحساب",
+    "Payment History": "تاریخچه پرداخت",
+    "Trial Period": "دوره آزمایشی",
+    "Trial Ends": "پایان آزمایشی",
+    "Active Subscription": "اشتراک فعال",
+    "Expired Subscription": "اشتراک منقضی شده",
+    "Renew Subscription": "تمدید اشتراک",
+    "Cancel Subscription": "لغو اشتراک",
+    
+    # Support and help
+    "Support": "پشتیبانی",
+    "Help Center": "مرکز راهنمایی",
+    "Help & Support": "راهنما و پشتیبانی",
+    "Contact Support": "تماس با پشتیبانی",
+    "Submit Ticket": "ثبت تیکت",
+    "Open Ticket": "تیکت باز",
+    "Closed Ticket": "تیکت بسته",
+    "Ticket Status": "وضعیت تیکت",
+    "Ticket Priority": "اولویت تیکت",
+    "High Priority": "اولویت بالا",
+    "Medium Priority": "اولویت متوسط",
+    "Low Priority": "اولویت پایین",
+    "Urgent": "فوری",
+    "Normal": "عادی",
+    "Knowledge Base": "پایگاه دانش",
+    "Tutorials": "آموزش‌ها",
+    "Video Guides": "راهنماهای ویدئویی",
+    "User Guide": "راهنمای کاربر",
+    "Getting Started": "شروع کار",
+    
+    # Common system terms
+    "System": "سیستم",
+    "System Status": "وضعیت سیستم",
+    "System Settings": "تنظیمات سیستم",
+    "System Configuration": "پیکربندی سیستم",
+    "System Information": "اطلاعات سیستم",
+    "System Logs": "گزارش‌های سیستم",
+    "System Maintenance": "تعمیر و نگهداری سیستم",
+    "Maintenance Mode": "حالت تعمیر و نگهداری",
+    "Under Maintenance": "در حال تعمیر و نگهداری",
+    "Coming Soon": "به زودی",
+    "Not Available": "در دسترس نیست",
+    "Beta": "بتا",
+    "Alpha": "آلفا",
+    "Experimental": "آزمایشی",
+    "Deprecated": "منسوخ شده",
+    "Legacy": "قدیمی",
+}
+
+
+def update_po(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    translated = 0
+    for en, fa in TRANSLATIONS.items():
+        esc = re.escape(en)
+        pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
+        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        if count:
+            content = new
+            translated += count
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    return translated
+
+if __name__ == '__main__':
+    po = 'locale/fa/LC_MESSAGES/django.po'
+    print('Adding final comprehensive batch...')
+    count = update_po(po)
+    print(f'✅ Translated {count} entries')

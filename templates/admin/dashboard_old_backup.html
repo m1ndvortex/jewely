@@ -1,0 +1,497 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Platform Dashboard" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Modern Gradient Backgrounds */
+    .gradient-blue {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .gradient-green {
+        background: linear-gradient(135deg, #0ba360 0%, #3cba92 100%);
+    }
+    
+    .gradient-orange {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .gradient-purple {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .gradient-red {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+    
+    /* Modern Cards */
+    .stat-card {
+        @apply bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .stat-card-gradient {
+        @apply rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card-gradient::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+        pointer-events: none;
+    }
+    
+    /* Icon Containers */
+    .icon-container {
+        @apply w-12 h-12 rounded-lg flex items-center justify-center;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+    }
+    
+    /* Charts */
+    .chart-container {
+        position: relative;
+        height: 350px;
+        padding: 1rem;
+    }
+    
+    .chart-container-small {
+        position: relative;
+        height: 200px;
+    }
+    
+    /* Progress Rings */
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+    
+    .progress-ring-circle {
+        transition: stroke-dashoffset 0.5s ease;
+    }
+    
+    /* Pulse Animation */
+    @keyframes pulse-dot {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+    
+    .pulse-dot {
+        animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    /* Activity Timeline */
+    .timeline-item {
+        @apply relative pl-8 pb-6;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        @apply absolute left-0 top-2 w-3 h-3 rounded-full bg-blue-500;
+    }
+    
+    .timeline-item::after {
+        content: '';
+        @apply absolute left-1.5 top-5 bottom-0 w-px bg-gray-200 dark:bg-gray-700;
+    }
+    
+    .timeline-item:last-child::after {
+        display: none;
+    }
+    
+    /* Loading Skeleton */
+    .skeleton {
+        @apply animate-pulse bg-gray-200 dark:bg-gray-700 rounded;
+    }
+    
+    /* Status Badges */
+    .status-badge {
+        @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    }
+    
+    .status-healthy {
+        @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+    }
+    
+    .status-warning {
+        @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+    }
+    
+    .status-critical {
+        @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+    }
+    
+    /* Metric Cards */
+    .metric-value {
+        @apply text-4xl font-bold;
+    }
+    
+    .metric-change {
+        @apply flex items-center gap-1 text-sm font-medium mt-2;
+    }
+    
+    .metric-change.positive {
+        @apply text-green-600 dark:text-green-400;
+    }
+    
+    .metric-change.negative {
+        @apply text-red-600 dark:text-red-400;
+    }
+    
+    /* Glass Effect */
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    <!-- Header with Real-time Status -->
+    <div class="mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Platform Dashboard" %}</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">{% trans "Real-time platform monitoring and analytics" %}</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <span class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></span>
+                <span id="update-status">{% trans "Auto-updating" %}</span>
+            </span>
+            <span class="text-xs text-gray-500 dark:text-gray-400" id="last-update"></span>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Quick Actions" %}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <a href="{% url 'core:admin_tenant_list' %}" 
+                   class="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <div class="flex-shrink-0 bg-blue-100 dark:bg-blue-900 rounded-lg p-3">
+                        <svg class="h-6 w-6 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{% trans "Manage Tenants" %}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{% trans "View and manage all tenants" %}</p>
+                    </div>
+                </a>
+                
+                <a href="{% url 'core:admin_tenant_create' %}" 
+                   class="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <div class="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-lg p-3">
+                        <svg class="h-6 w-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{% trans "Create Tenant" %}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{% trans "Add a new tenant account" %}</p>
+                    </div>
+                </a>
+                
+                <a href="#" 
+                   class="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors opacity-50 cursor-not-allowed">
+                    <div class="flex-shrink-0 bg-purple-100 dark:bg-purple-900 rounded-lg p-3">
+                        <svg class="h-6 w-6 text-purple-600 dark:text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{% trans "Audit Logs" %}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{% trans "Coming in Task 20" %}</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tenant Metrics Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Tenant Metrics" %}</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="tenant-metrics">
+            <!-- Total Tenants -->
+            <div class="metric-card dark:bg-gray-800">
+                <div class="metric-label dark:text-gray-400">{% trans "Total Tenants" %}</div>
+                <div class="metric-value dark:text-white" id="total-tenants">{{ tenant_metrics.total }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600 dark:text-gray-400">{% blocktrans count count=tenant_metrics.new_signups_30d %}{{ count }} new in last 30 days{% plural %}{{ count }} new in last 30 days{% endblocktrans %}</span>
+                </div>
+            </div>
+            
+            <!-- Active Tenants -->
+            <div class="metric-card dark:bg-gray-800">
+                <div class="metric-label dark:text-gray-400">{% trans "Active Tenants" %}</div>
+                <div class="metric-value text-green-600 dark:text-green-400" id="active-tenants">{{ tenant_metrics.active }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600 dark:text-gray-400">{% blocktrans count count=tenant_metrics.new_signups_today %}{{ count }} new today{% plural %}{{ count }} new today{% endblocktrans %}</span>
+                </div>
+            </div>
+            
+            <!-- Suspended Tenants -->
+            <div class="metric-card dark:bg-gray-800">
+                <div class="metric-label dark:text-gray-400">{% trans "Suspended" %}</div>
+                <div class="metric-value text-yellow-600 dark:text-yellow-400" id="suspended-tenants">{{ tenant_metrics.suspended }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Requires attention" %}</span>
+                </div>
+            </div>
+            
+            <!-- Pending Deletion -->
+            <div class="metric-card dark:bg-gray-800">
+                <div class="metric-label dark:text-gray-400">{% trans "Pending Deletion" %}</div>
+                <div class="metric-value text-red-600 dark:text-red-400" id="pending-deletion">{{ tenant_metrics.pending_deletion }}</div>
+                <div class="metric-change">
+                    <span class="text-gray-600 dark:text-gray-400">{% trans "Scheduled for removal" %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Revenue Metrics Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Revenue Metrics" %}</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- MRR -->
+            <div class="metric-card dark:bg-gray-800">
+                <div class="metric-label dark:text-gray-400">{% trans "Monthly Recurring Revenue (MRR)" %}</div>
+                <div class="metric-value dark:text-white">${{ revenue_metrics.mrr|floatformat:2 }}</div>
+                {% if revenue_metrics.note %}
+                <div class="text-sm text-gray-500 mt-2">{{ revenue_metrics.note }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- ARR -->
+            <div class="metric-card">
+                <div class="metric-label">Annual Recurring Revenue (ARR)</div>
+                <div class="metric-value">${{ revenue_metrics.arr|floatformat:2 }}</div>
+            </div>
+            
+            <!-- Churn Rate -->
+            <div class="metric-card">
+                <div class="metric-label">Churn Rate</div>
+                <div class="metric-value">{{ revenue_metrics.churn_rate|floatformat:2 }}%</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Health Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">System Health</h2>
+        {% if system_health.error %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-red-800">Error loading system health: {{ system_health.error }}</p>
+        </div>
+        {% else %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- System Resources -->
+            <div class="metric-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-gray-900">System Resources</h3>
+                    <span class="status-badge status-{{ system_health.status }}" id="system-status">
+                        {{ system_health.status|upper }}
+                    </span>
+                </div>
+                
+                <!-- CPU -->
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">CPU Usage</span>
+                        <span class="text-sm font-semibold" id="cpu-percent">{{ system_health.cpu_percent }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if system_health.cpu_percent > 80 %}critical{% elif system_health.cpu_percent > 60 %}warning{% else %}healthy{% endif %}" 
+                             style="width: {{ system_health.cpu_percent }}%"></div>
+                    </div>
+                </div>
+                
+                <!-- Memory -->
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">Memory Usage</span>
+                        <span class="text-sm font-semibold" id="memory-percent">
+                            {{ system_health.memory_percent }}% ({{ system_health.memory_used_gb }}GB / {{ system_health.memory_total_gb }}GB)
+                        </span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if system_health.memory_percent > 80 %}critical{% elif system_health.memory_percent > 60 %}warning{% else %}healthy{% endif %}" 
+                             style="width: {{ system_health.memory_percent }}%"></div>
+                    </div>
+                </div>
+                
+                <!-- Disk -->
+                <div class="mb-4">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm text-gray-600">Disk Usage</span>
+                        <span class="text-sm font-semibold" id="disk-percent">
+                            {{ system_health.disk_percent }}% ({{ system_health.disk_used_gb }}GB / {{ system_health.disk_total_gb }}GB)
+                        </span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if system_health.disk_percent > 80 %}critical{% elif system_health.disk_percent > 60 %}warning{% else %}healthy{% endif %}" 
+                             style="width: {{ system_health.disk_percent }}%"></div>
+                    </div>
+                </div>
+                
+                <!-- Database Connections -->
+                <div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-600">Database Connections</span>
+                        <span class="text-sm font-semibold" id="db-connections">{{ system_health.db_connections }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tenant Signup Chart -->
+            <div class="metric-card">
+                <h3 class="font-semibold text-gray-900 mb-4">Tenant Signups (Last 30 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="signup-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Error Feed Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Errors</h2>
+        <div class="metric-card">
+            <div id="error-feed">
+                <p class="text-gray-500 text-center py-8">Error feed will be available after Sentry integration</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    // Auto-refresh intervals (in milliseconds)
+    const TENANT_METRICS_REFRESH = 30000;  // 30 seconds
+    const SYSTEM_HEALTH_REFRESH = 10000;   // 10 seconds
+    
+    // Initialize signup chart
+    let signupChart = null;
+    
+    function initSignupChart() {
+        const ctx = document.getElementById('signup-chart');
+        if (!ctx) return;
+        
+        fetch('/platform/api/tenant-signup-chart/')
+            .then(response => response.json())
+            .then(data => {
+                if (signupChart) {
+                    signupChart.destroy();
+                }
+                
+                signupChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'New Signups',
+                            data: data.data,
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading signup chart:', error));
+    }
+    
+    // Update tenant metrics
+    function updateTenantMetrics() {
+        fetch('/platform/api/tenant-metrics/')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-tenants').textContent = data.total;
+                document.getElementById('active-tenants').textContent = data.active;
+                document.getElementById('suspended-tenants').textContent = data.suspended;
+                document.getElementById('pending-deletion').textContent = data.pending_deletion;
+            })
+            .catch(error => console.error('Error updating tenant metrics:', error));
+    }
+    
+    // Update system health
+    function updateSystemHealth() {
+        fetch('/platform/api/system-health/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('System health error:', data.error);
+                    return;
+                }
+                
+                // Update CPU
+                document.getElementById('cpu-percent').textContent = data.cpu_percent + '%';
+                
+                // Update Memory
+                document.getElementById('memory-percent').textContent = 
+                    `${data.memory_percent}% (${data.memory_used_gb}GB / ${data.memory_total_gb}GB)`;
+                
+                // Update Disk
+                document.getElementById('disk-percent').textContent = 
+                    `${data.disk_percent}% (${data.disk_used_gb}GB / ${data.disk_total_gb}GB)`;
+                
+                // Update DB Connections
+                document.getElementById('db-connections').textContent = data.db_connections;
+                
+                // Update status badge
+                const statusBadge = document.getElementById('system-status');
+                statusBadge.textContent = data.status.toUpperCase();
+                statusBadge.className = 'status-badge status-' + data.status;
+            })
+            .catch(error => console.error('Error updating system health:', error));
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initSignupChart();
+        
+        // Set up auto-refresh
+        setInterval(updateTenantMetrics, TENANT_METRICS_REFRESH);
+        setInterval(updateSystemHealth, SYSTEM_HEALTH_REFRESH);
+    });
+</script>
+{% endblock %}
