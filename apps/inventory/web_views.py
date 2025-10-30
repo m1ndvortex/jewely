@@ -461,6 +461,7 @@ def category_list_view(request):
     - Tenant isolation verification
     - Search functionality
     - Category statistics
+    - Selected category details
 
     Requirements: 10.3 (tenant isolation)
     """
@@ -496,10 +497,24 @@ def category_list_view(request):
             "top_level_categories": all_categories.filter(parent__isnull=True).count(),
         }
 
+        # Get selected category if provided
+        selected_category = None
+        category_id = request.GET.get("category")
+        if category_id:
+            try:
+                selected_category = all_categories.get(id=category_id)
+            except (ProductCategory.DoesNotExist, ValueError):
+                pass
+
     return render(
         request,
-        "inventory/category_list.html",
-        {"categories": categories, "stats": stats, "search": search},
+        "inventory/category_list_new.html",
+        {
+            "categories": categories,
+            "stats": stats,
+            "search": search,
+            "selected_category": selected_category,
+        },
     )
 
 
