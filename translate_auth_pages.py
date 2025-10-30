@@ -19,7 +19,6 @@ TRANSLATIONS = {
     "Don't have an account?": "حساب کاربری ندارید؟",
     "Sign up": "ثبت‌نام",
     "All rights reserved.": "تمامی حقوق محفوظ است.",
-    
     # Registration page
     "Create Account": "ایجاد حساب کاربری",
     "Join our jewelry shop platform": "به پلتفرم جواهرفروشی ما بپیوندید",
@@ -30,7 +29,6 @@ TRANSLATIONS = {
     "Confirm your password": "رمز عبور خود را تأیید کنید",
     "Already have an account?": "قبلاً حساب کاربری دارید؟",
     "Sign in": "ورود",
-    
     # Admin login
     "Secure administrator access only": "فقط دسترسی امن مدیر",
     "Login Failed": "ورود ناموفق",
@@ -41,7 +39,6 @@ TRANSLATIONS = {
     "Are you a tenant user?": "کاربر مستأجر هستید؟",
     "Go to Tenant Login": "به ورود مستأجر بروید",
     "Protected by advanced security measures": "محافظت شده توسط اقدامات امنیتی پیشرفته",
-    
     # Password reset
     "Reset Password": "بازیابی رمز عبور",
     "Forgot your password?": "رمز عبور خود را فراموش کرده‌اید؟",
@@ -53,7 +50,6 @@ TRANSLATIONS = {
     "New Password": "رمز عبور جدید",
     "Set new password": "تنظیم رمز عبور جدید",
     "Password changed successfully": "رمز عبور با موفقیت تغییر یافت",
-    
     # Validation messages
     "This field is required": "این فیلد الزامی است",
     "Invalid email address": "آدرس ایمیل نامعتبر",
@@ -65,7 +61,6 @@ TRANSLATIONS = {
     "Account is disabled": "حساب کاربری غیرفعال است",
     "Account is locked": "حساب کاربری قفل شده است",
     "Too many login attempts": "تلاش‌های ورود بیش از حد",
-    
     # Common form labels
     "Username": "نام کاربری",
     "Email Address": "آدرس ایمیل",
@@ -87,7 +82,6 @@ TRANSLATIONS = {
     "Country": "کشور",
     "Postal Code": "کد پستی",
     "ZIP Code": "کد ZIP",
-    
     # Common buttons
     "Submit": "ارسال",
     "Cancel": "لغو",
@@ -141,7 +135,6 @@ TRANSLATIONS = {
     "Detach": "جداسازی",
     "Link": "لینک",
     "Unlink": "لغو لینک",
-    
     # Status messages
     "Success": "موفق",
     "Error": "خطا",
@@ -160,7 +153,6 @@ TRANSLATIONS = {
     "No results found": "نتیجه‌ای یافت نشد",
     "No items to display": "موردی برای نمایش وجود ندارد",
     "Empty list": "لیست خالی",
-    
     # Time and date
     "Today": "امروز",
     "Yesterday": "دیروز",
@@ -183,7 +175,6 @@ TRANSLATIONS = {
     "Weeks ago": "هفته‌ای پیش",
     "Months ago": "ماهی پیش",
     "Years ago": "سالی پیش",
-    
     # Navigation
     "Home": "خانه",
     "Dashboard": "داشبورد",
@@ -223,7 +214,6 @@ TRANSLATIONS = {
     "Vendor": "فروشنده",
     "Supplier": "تأمین‌کننده",
     "Provider": "ارائه‌دهنده",
-    
     # Notifications
     "Notifications": "اعلان‌ها",
     "Alerts": "هشدارها",
@@ -244,7 +234,6 @@ TRANSLATIONS = {
     "Mark all as read": "علامت‌گذاری همه به عنوان خوانده شده",
     "Delete all": "حذف همه",
     "Clear all": "پاک کردن همه",
-    
     # Pagination
     "Page": "صفحه",
     "of": "از",
@@ -258,7 +247,6 @@ TRANSLATIONS = {
     "per page": "در هر صفحه",
     "Go to page": "برو به صفحه",
     "Items per page": "آیتم در هر صفحه",
-    
     # Filters and sorting
     "Filter": "فیلتر",
     "Filters": "فیلترها",
@@ -274,7 +262,6 @@ TRANSLATIONS = {
     "Sort ascending": "مرتب‌سازی صعودی",
     "Sort descending": "مرتب‌سازی نزولی",
     "Default sort": "مرتب‌سازی پیش‌فرض",
-    
     # File operations
     "File": "فایل",
     "Files": "فایل‌ها",
@@ -310,26 +297,27 @@ TRANSLATIONS = {
 
 def update_po_auth(filepath):
     """Apply authentication and UI translations."""
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
     translated = 0
     for en, fa in TRANSLATIONS.items():
         esc = re.escape(en)
         pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
-        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        new, count = re.subn(pattern, rf"\1{fa}\2", content)
         if count:
             content = new
             translated += count
 
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
     return translated
 
-if __name__ == '__main__':
-    po = 'locale/fa/LC_MESSAGES/django.po'
-    print('Translating authentication pages and common UI strings...')
+
+if __name__ == "__main__":
+    po = "locale/fa/LC_MESSAGES/django.po"
+    print("Translating authentication pages and common UI strings...")
     count = update_po_auth(po)
-    print(f'✅ Translated {count} entries')
-    print(f'Progress: 367 + {count} = {367 + count} total translations')
+    print(f"✅ Translated {count} entries")
+    print(f"Progress: 367 + {count} = {367 + count} total translations")

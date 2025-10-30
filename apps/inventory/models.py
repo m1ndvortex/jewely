@@ -61,6 +61,37 @@ class ProductCategory(models.Model):
         help_text="Optional description of the category",
     )
 
+    # Image support
+    image = models.ImageField(
+        upload_to="category_images/",
+        null=True,
+        blank=True,
+        help_text="Category image",
+    )
+
+    # Additional metadata
+    slug = models.SlugField(
+        max_length=120,
+        blank=True,
+        help_text="URL-friendly slug for the category",
+    )
+
+    display_order = models.IntegerField(
+        default=0,
+        help_text="Display order for sorting categories",
+    )
+
+    meta_title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="SEO meta title",
+    )
+
+    meta_description = models.TextField(
+        blank=True,
+        help_text="SEO meta description",
+    )
+
     is_active = models.BooleanField(
         default=True,
         help_text="Whether this category is active",
@@ -71,19 +102,28 @@ class ProductCategory(models.Model):
 
     class Meta:
         db_table = "inventory_categories"
-        ordering = ["name"]
+        ordering = ["display_order", "name"]
         verbose_name = "Product Category"
         verbose_name_plural = "Product Categories"
         unique_together = [["tenant", "name", "parent"]]
         indexes = [
             models.Index(fields=["tenant", "is_active"], name="cat_tenant_active_idx"),
             models.Index(fields=["tenant", "parent"], name="cat_tenant_parent_idx"),
+            models.Index(fields=["tenant", "slug"], name="cat_tenant_slug_idx"),
         ]
 
     def __str__(self):
         if self.parent:
             return f"{self.parent.name} > {self.name}"
         return self.name
+
+    def save(self, *args, **kwargs):
+        """Auto-generate slug if not provided."""
+        if not self.slug:
+            from django.utils.text import slugify
+
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
     def get_full_path(self):
         """Get the full category path (e.g., 'Jewelry > Rings > Gold Rings')."""
@@ -93,6 +133,34 @@ class ProductCategory(models.Model):
             path.insert(0, parent.name)
             parent = parent.parent
         return " > ".join(path)
+
+    def get_depth(self):
+        """Get the depth level of this category in the hierarchy."""
+        depth = 0
+        parent = self.parent
+        while parent:
+            depth += 1
+            parent = parent.parent
+        return depth
+
+    def get_children(self):
+        """Get direct children of this category."""
+        return self.subcategories.filter(is_active=True).order_by("display_order", "name")
+
+    def get_all_descendants(self):
+        """Get all descendants (children, grandchildren, etc.) of this category."""
+        descendants = []
+        for child in self.get_children():
+            descendants.append(child)
+            descendants.extend(child.get_all_descendants())
+        return descendants
+
+    def get_item_count(self):
+        """Get total number of items in this category and all subcategories."""
+        count = self.items.count()
+        for child in self.get_children():
+            count += child.get_item_count()
+        return count
 
 
 class InventoryItem(models.Model):

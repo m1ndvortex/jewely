@@ -4,12 +4,44 @@ URL configuration for inventory app.
 
 from django.urls import path
 
-from . import views
+from . import views, web_views
 
 app_name = "inventory"
 
 urlpatterns = [
-    # Inventory Item endpoints
+    # Web Interface URLs
+    path("inventory/", web_views.InventoryListView.as_view(), name="inventory_list"),
+    path("inventory/<uuid:id>/", web_views.InventoryDetailView.as_view(), name="inventory_detail"),
+    path("inventory/add/", web_views.InventoryCreateView.as_view(), name="inventory_create"),
+    path(
+        "inventory/<uuid:id>/edit/", web_views.InventoryUpdateView.as_view(), name="inventory_edit"
+    ),
+    path(
+        "inventory/<uuid:id>/delete/",
+        web_views.InventoryDeleteView.as_view(),
+        name="inventory_delete",
+    ),
+    path(
+        "inventory/<uuid:id>/adjust-stock/",
+        web_views.stock_adjustment_view,
+        name="stock_adjustment",
+    ),
+    path("inventory/<uuid:id>/barcode/", web_views.generate_barcode_view, name="barcode"),
+    path("inventory/<uuid:id>/qrcode/", web_views.generate_qr_code_view, name="qrcode"),
+    path("inventory/<uuid:id>/print-label/", web_views.print_label_view, name="print_label"),
+    path("inventory/reports/", web_views.inventory_reports_view, name="inventory_reports"),
+    path("inventory/categories/", web_views.category_list_view, name="category_list"),
+    path("inventory/categories/add/", web_views.category_create_view, name="category_create"),
+    path("inventory/categories/<uuid:id>/", web_views.category_detail_view, name="category_detail"),
+    path(
+        "inventory/categories/<uuid:id>/edit/", web_views.category_edit_view, name="category_edit"
+    ),
+    path(
+        "inventory/categories/<uuid:id>/delete/",
+        web_views.category_delete_view,
+        name="category_delete",
+    ),
+    # API endpoints
     path("api/inventory/items/", views.InventoryItemListView.as_view(), name="item_list"),
     path(
         "api/inventory/items/create/", views.InventoryItemCreateView.as_view(), name="item_create"
@@ -34,29 +66,31 @@ urlpatterns = [
         views.stock_adjustment,
         name="stock_adjustment",
     ),
-    # Product Category endpoints
+    # Product Category API endpoints
     path(
-        "api/inventory/categories/", views.ProductCategoryListView.as_view(), name="category_list"
+        "api/inventory/categories/",
+        views.ProductCategoryListView.as_view(),
+        name="api_category_list",
     ),
     path(
         "api/inventory/categories/create/",
         views.ProductCategoryCreateView.as_view(),
-        name="category_create",
+        name="api_category_create",
     ),
     path(
         "api/inventory/categories/<uuid:id>/",
         views.ProductCategoryDetailView.as_view(),
-        name="category_detail",
+        name="api_category_detail",
     ),
     path(
         "api/inventory/categories/<uuid:id>/update/",
         views.ProductCategoryUpdateView.as_view(),
-        name="category_update",
+        name="api_category_update",
     ),
     path(
         "api/inventory/categories/<uuid:id>/delete/",
         views.ProductCategoryDeleteView.as_view(),
-        name="category_delete",
+        name="api_category_delete",
     ),
     # Barcode scanning and lookup
     path(

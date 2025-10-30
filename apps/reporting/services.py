@@ -216,7 +216,7 @@ class ReportQueryEngine:
             SUM(s.tax) as total_tax,
             SUM(s.discount) as total_discount
         FROM sales s
-        JOIN core_branches b ON s.branch_id = b.id
+        JOIN branches b ON s.branch_id = b.id
         WHERE s.created_at >= %s AND s.created_at <= %s
         """
 
@@ -304,7 +304,7 @@ class ReportQueryEngine:
             MAX(s.created_at) as last_sale_date
         FROM sales s
         JOIN users u ON s.employee_id = u.id
-        JOIN core_branches b ON s.branch_id = b.id
+        JOIN branches b ON s.branch_id = b.id
         WHERE s.created_at >= %s AND s.created_at <= %s
         """
 
@@ -345,7 +345,7 @@ class ReportQueryEngine:
             MIN(s.created_at) as first_sale_date,
             MAX(s.created_at) as last_sale_date
         FROM sales s
-        JOIN core_branches b ON s.branch_id = b.id
+        JOIN branches b ON s.branch_id = b.id
         WHERE s.created_at >= %s AND s.created_at <= %s
         GROUP BY b.id, b.name, b.address
         ORDER BY total_revenue DESC
@@ -382,7 +382,7 @@ class ReportQueryEngine:
             i.created_at as date_added
         FROM inventory_items i
         JOIN inventory_categories pc ON i.category_id = pc.id
-        JOIN core_branches b ON i.branch_id = b.id
+        JOIN branches b ON i.branch_id = b.id
         WHERE i.is_active = true
         """
 
@@ -433,7 +433,7 @@ class ReportQueryEngine:
             END as days_to_sell_current_stock
         FROM inventory_items i
         JOIN inventory_categories pc ON i.category_id = pc.id
-        JOIN core_branches b ON i.branch_id = b.id
+        JOIN branches b ON i.branch_id = b.id
         LEFT JOIN sale_items si ON i.id = si.inventory_item_id
         LEFT JOIN sales s ON si.sale_id = s.id AND s.created_at >= %s AND s.created_at <= %s
         WHERE i.is_active = true
@@ -480,7 +480,7 @@ class ReportQueryEngine:
             COUNT(si.id) as total_sales_count
         FROM inventory_items i
         JOIN inventory_categories pc ON i.category_id = pc.id
-        JOIN core_branches b ON i.branch_id = b.id
+        JOIN branches b ON i.branch_id = b.id
         LEFT JOIN sale_items si ON i.id = si.inventory_item_id
         LEFT JOIN sales s ON si.sale_id = s.id
         WHERE i.is_active = true
@@ -645,7 +645,7 @@ class ReportQueryEngine:
             c.last_name,
             c.email,
             c.phone,
-            c.loyalty_tier,
+            lt.name as loyalty_tier,
             c.loyalty_points,
             c.store_credit,
             c.total_purchases as lifetime_value,
@@ -656,10 +656,11 @@ class ReportQueryEngine:
             MIN(s.created_at) as first_purchase_date,
             EXTRACT(DAYS FROM (MAX(s.created_at) - MIN(s.created_at))) as customer_lifespan_days
         FROM crm_customers c
+        LEFT JOIN crm_loyalty_tiers lt ON c.loyalty_tier_id = lt.id
         LEFT JOIN sales s ON c.id = s.customer_id
             AND s.created_at >= %s AND s.created_at <= %s
         GROUP BY c.id, c.customer_number, c.first_name, c.last_name,
-                 c.email, c.phone, c.loyalty_tier, c.loyalty_points,
+                 c.email, c.phone, lt.name, c.loyalty_points,
                  c.store_credit, c.total_purchases
         HAVING COUNT(s.id) > 0
         ORDER BY period_spending DESC
@@ -694,8 +695,9 @@ class ReportQueryEngine:
             COUNT(first_purchase.customer_id) as customers_with_first_purchase,
             COALESCE(SUM(first_purchase.first_purchase_amount), 0) as first_purchase_revenue,
             COALESCE(AVG(first_purchase.first_purchase_amount), 0) as avg_first_purchase_value,
-            COUNT(CASE WHEN c.loyalty_tier != 'BRONZE' THEN 1 END) as premium_signups
+            COUNT(CASE WHEN lt.name != 'BRONZE' THEN 1 END) as premium_signups
         FROM crm_customers c
+        LEFT JOIN crm_loyalty_tiers lt ON c.loyalty_tier_id = lt.id
         LEFT JOIN (
             SELECT
                 s.customer_id,
@@ -726,7 +728,7 @@ class ReportQueryEngine:
 
         sql = """
         SELECT
-            c.loyalty_tier,
+            lt.name as loyalty_tier,
             COUNT(c.id) as customer_count,
             AVG(c.loyalty_points) as avg_points_balance,
             SUM(c.loyalty_points) as total_points_outstanding,
@@ -737,6 +739,7 @@ class ReportQueryEngine:
             COUNT(CASE WHEN c.store_credit > 0 THEN 1 END) as customers_with_store_credit,
             COALESCE(AVG(CASE WHEN c.store_credit > 0 THEN c.store_credit END), 0) as avg_store_credit
         FROM crm_customers c
+        LEFT JOIN crm_loyalty_tiers lt ON c.loyalty_tier_id = lt.id
         LEFT JOIN (
             SELECT
                 s.customer_id,
@@ -746,9 +749,9 @@ class ReportQueryEngine:
             WHERE s.created_at >= %s AND s.created_at <= %s
             GROUP BY s.customer_id
         ) period_sales ON c.id = period_sales.customer_id
-        GROUP BY c.loyalty_tier
+        GROUP BY lt.name
         ORDER BY
-            CASE c.loyalty_tier
+            CASE lt.name
                 WHEN 'PLATINUM' THEN 1
                 WHEN 'GOLD' THEN 2
                 WHEN 'SILVER' THEN 3
@@ -777,7 +780,7 @@ class ReportQueryEngine:
             c.last_name,
             c.email,
             c.phone,
-            c.loyalty_tier,
+            lt.name as loyalty_tier,
             c.loyalty_points,
             c.store_credit,
             c.total_purchases,
@@ -785,10 +788,11 @@ class ReportQueryEngine:
             COALESCE(SUM(s.total), 0) as period_spending,
             MAX(s.created_at) as last_purchase_date
         FROM crm_customers c
+        LEFT JOIN crm_loyalty_tiers lt ON c.loyalty_tier_id = lt.id
         LEFT JOIN sales s ON c.id = s.customer_id
             AND s.created_at >= %s AND s.created_at <= %s
         GROUP BY c.id, c.customer_number, c.first_name, c.last_name,
-                 c.email, c.phone, c.loyalty_tier, c.loyalty_points,
+                 c.email, c.phone, lt.name, c.loyalty_points,
                  c.store_credit, c.total_purchases
         ORDER BY period_spending DESC
         """

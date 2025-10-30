@@ -9,6 +9,8 @@ from . import views
 app_name = "accounting"
 
 urlpatterns = [
+    # Main Dashboard
+    path("", views.accounting_dashboard, name="dashboard"),
     # Financial Reports
     path("reports/", views.financial_reports, name="financial_reports"),
     # Chart of Accounts

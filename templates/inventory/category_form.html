@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {{ title }}
+                </h1>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    {% if is_edit %}
+                        {% trans "Update category information including images and metadata" %}
+                    {% else %}
+                        {% trans "Create a new product category with hierarchical organization" %}
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{% url 'inventory:category_list' %}" 
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                {% trans "Cancel" %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="space-y-8">
+        {% csrf_token %}
+        
+        <!-- Display form errors -->
+        {% if form.non_field_errors %}
+        <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                        {% trans "Please correct the following errors:" %}
+                    </h3>
+                    <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                        <ul class="list-disc pl-5 space-y-1">
+                            {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Basic Information -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Basic Information" %}
+                </h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "Essential category details" %}
+                </p>
+            </div>
+            <div class="px-6 py-5 space-y-6">
+                <!-- Name -->
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Category Name" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Enter a descriptive name for this category (e.g., Rings, Necklaces, Bracelets)" %}
+                    </p>
+                </div>
+
+                <!-- Parent Category -->
+                <div>
+                    <label for="{{ form.parent.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Parent Category" %}
+                    </label>
+                    {{ form.parent }}
+                    {% if form.parent.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.parent.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Select a parent category to create a subcategory, or leave empty for a top-level category" %}
+                    </p>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Description" %}
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.description.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Provide a detailed description of this category" %}
+                    </p>
+                </div>
+
+                <!-- Active Status -->
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        {{ form.is_active }}
+                    </div>
+                    <div class="ml-3 text-sm">
+                        <label for="{{ form.is_active.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                            {% trans "Active" %}
+                        </label>
+                        <p class="text-gray-500 dark:text-gray-400">
+                            {% trans "Inactive categories are hidden from the system" %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Upload -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Category Image" %}
+                </h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "Upload an image to represent this category" %}
+                </p>
+            </div>
+            <div class="px-6 py-5">
+                {% if is_edit and category.image %}
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Current Image" %}
+                    </label>
+                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="h-48 w-auto rounded-lg shadow-md">
+                </div>
+                {% endif %}
+                
+                <div>
+                    <label for="{{ form.image.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% if is_edit and category.image %}
+                            {% trans "Replace Image" %}
+                        {% else %}
+                            {% trans "Upload Image" %}
+                        {% endif %}
+                    </label>
+                    {{ form.image }}
+                    {% if form.image.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.image.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Recommended: Square image, at least 400x400 pixels. Supported formats: JPG, PNG, WebP" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Advanced Settings" %}
+                </h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "Optional settings for SEO and organization" %}
+                </p>
+            </div>
+            <div class="px-6 py-5 space-y-6">
+                <!-- Slug -->
+                <div>
+                    <label for="{{ form.slug.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "URL Slug" %}
+                    </label>
+                    {{ form.slug }}
+                    {% if form.slug.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.slug.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "URL-friendly version of the name. Auto-generated if left empty." %}
+                    </p>
+                </div>
+
+                <!-- Display Order -->
+                <div>
+                    <label for="{{ form.display_order.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Display Order" %}
+                    </label>
+                    {{ form.display_order }}
+                    {% if form.display_order.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.display_order.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Lower numbers appear first. Use 0 for default ordering." %}
+                    </p>
+                </div>
+
+                <!-- Meta Title -->
+                <div>
+                    <label for="{{ form.meta_title.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "SEO Meta Title" %}
+                    </label>
+                    {{ form.meta_title }}
+                    {% if form.meta_title.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.meta_title.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Title for search engines (optional)" %}
+                    </p>
+                </div>
+
+                <!-- Meta Description -->
+                <div>
+                    <label for="{{ form.meta_description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "SEO Meta Description" %}
+                    </label>
+                    {{ form.meta_description }}
+                    {% if form.meta_description.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.meta_description.errors.0 }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Description for search engines (optional)" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'inventory:category_list' %}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit"
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                {% if is_edit %}
+                    {% trans "Update Category" %}
+                {% else %}
+                    {% trans "Create Category" %}
+                {% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

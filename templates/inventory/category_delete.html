@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Delete Category" %} - {{ category.name }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                        {% trans "Delete Category" %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-5">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                {% trans "Are you sure you want to delete the following category?" %}
+            </p>
+
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-6">
+                <div class="flex items-center">
+                    {% if category.image %}
+                    <img src="{{ category.image.url }}" alt="{{ category.name }}" class="h-16 w-16 rounded object-cover">
+                    {% else %}
+                    <div class="h-16 w-16 rounded bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                        </svg>
+                    </div>
+                    {% endif %}
+                    <div class="ml-4">
+                        <p class="text-lg font-medium text-gray-900 dark:text-white">
+                            {{ category.name }}
+                        </p>
+                        {% if category.parent %}
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            {% trans "Parent:" %} {{ category.parent.name }}
+                        </p>
+                        {% endif %}
+                        {% if category.description %}
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {{ category.description|truncatewords:20 }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warnings -->
+            {% if item_count > 0 or has_subcategories %}
+            <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                            {% trans "Cannot Delete Category" %}
+                        </h3>
+                        <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                            <ul class="list-disc pl-5 space-y-1">
+                                {% if item_count > 0 %}
+                                <li>
+                                    {% blocktrans count counter=item_count %}
+                                    This category contains {{ counter }} item. Please move or delete the item before deleting this category.
+                                    {% plural %}
+                                    This category contains {{ counter }} items. Please move or delete the items before deleting this category.
+                                    {% endblocktrans %}
+                                </li>
+                                {% endif %}
+                                {% if has_subcategories %}
+                                <li>
+                                    {% trans "This category has subcategories. Please delete or reassign the subcategories before deleting this category." %}
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            {% trans "Warning" %}
+                        </h3>
+                        <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                            <p>{% trans "This action cannot be undone. The category will be permanently deleted." %}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900 flex justify-end space-x-3">
+            <a href="{% url 'inventory:category_list' %}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                {% trans "Cancel" %}
+            </a>
+            {% if item_count == 0 and not has_subcategories %}
+            <form method="post" class="inline">
+                {% csrf_token %}
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    {% trans "Delete Category" %}
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

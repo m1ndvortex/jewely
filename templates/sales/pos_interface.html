@@ -3,6 +3,96 @@
 {% block title %}Point of Sale - Jewelry Shop{% endblock %}
 
 {% block content %}
+<script>
+// Define posApp before Alpine.js initializes
+function posApp() {
+    return {
+        // State
+        searchQuery: '',
+        searchResults: [],
+        loading: false,
+        cart: [],
+        selectedCustomer: null,
+        customerSearch: '',
+        customerResults: [],
+        selectedTerminalId: '',
+        selectedTerminal: null,
+        paymentMethod: 'CASH',
+        discount: 0,
+        processing: false,
+        showCustomerQuickAdd: false,
+        newCustomer: {
+            first_name: '',
+            last_name: '',
+            phone: '',
+            email: ''
+        },
+        showReceiptSearch: false,
+        receiptSearchQuery: '',
+        receiptSearchResults: [],
+        showHeldSales: false,
+        heldSales: [],
+        
+        // Offline mode state
+        isOnline: navigator.onLine,
+        offlineManager: null,
+        pendingTransactions: 0,
+        showOfflineStatus: false,
+        
+        // Quick access state
+        activeTab: 'favorites',
+        favoriteProducts: [],
+        recentTransactions: [],
+
+        // Computed
+        get subtotal() {
+            return this.cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+        },
+        get tax() {
+            return this.subtotal * 0.10; // 10% tax
+        },
+        get total() {
+            return this.subtotal + this.tax - this.discount;
+        },
+
+        // Initialize
+        init() {
+            console.log('[POS] Initializing POS system...');
+            
+            // TODO: Load quick access data when methods are defined
+            // this.loadFavoriteProducts();
+            // this.loadRecentTransactions();
+            
+            // Focus on search input
+            this.$nextTick(() => {
+                const searchInput = document.querySelector('input[type="text"]');
+                if (searchInput) searchInput.focus();
+            });
+        },
+        
+        // Basic methods
+        loadHeldSales() {
+            console.log('[POS] Loading held sales...');
+            this.showHeldSales = true;
+            // TODO: Load from API when implemented
+            this.heldSales = [];
+        },
+        
+        searchProducts() {
+            console.log('[POS] Searching products:', this.searchQuery);
+            // TODO: Implement API call
+        },
+        
+        searchCustomers() {
+            console.log('[POS] Searching customers:', this.customerSearch);
+            // TODO: Implement API call
+        },
+        
+        // Other methods will be defined in extra_js block
+    };
+}
+</script>
+
 <div x-data="posApp()" x-init="init()" class="h-screen flex flex-col">
     <!-- Header -->
     <header class="bg-blue-600 text-white p-4 shadow-lg">
@@ -678,11 +768,7 @@
 
 {% endblock %}
 
-{% block extra_scripts %}
-<!-- Load offline functionality scripts -->
-<script src="/static/js/pos-indexeddb.js"></script>
-<script src="/static/js/pos-offline.js"></script>
-
+{% block extra_js %}
 <script>
 function posApp() {
     return {
@@ -736,19 +822,19 @@ function posApp() {
 
         // Methods
         async init() {
-            // Initialize offline manager
-            try {
-                this.offlineManager = new POSOfflineManager();
-                await this.offlineManager.init();
-                
-                // Set up offline event listeners
-                this.setupOfflineEventListeners();
-                
-                console.log('[POS] Offline manager initialized successfully');
-            } catch (error) {
-                console.error('[POS] Failed to initialize offline manager:', error);
-                // Continue without offline functionality
-            }
+            // Initialize offline manager - DISABLED (files don't exist)
+            // try {
+            //     this.offlineManager = new POSOfflineManager();
+            //     await this.offlineManager.init();
+            //     
+            //     // Set up offline event listeners
+            //     this.setupOfflineEventListeners();
+            //     
+            //     console.log('[POS] Offline manager initialized successfully');
+            // } catch (error) {
+            //     console.error('[POS] Failed to initialize offline manager:', error);
+            //     // Continue without offline functionality
+            // }
             
             // Load quick access data
             await this.loadFavoriteProducts();

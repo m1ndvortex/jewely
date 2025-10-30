@@ -2,13 +2,13 @@
 Core views for the jewelry shop SaaS platform.
 """
 
-from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib import messages
+from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.utils.translation import gettext as _
 from django.views import View
 from django.views.decorators.http import require_http_methods
-from django.utils.translation import gettext as _
 
 from django_otp import user_has_device
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -44,15 +44,15 @@ def home(request):
     """
     if request.user.is_authenticated:
         if request.user.is_platform_admin():
-            return redirect('core:admin_dashboard')
+            return redirect("core:admin_dashboard")
         elif request.user.has_tenant_access():
-            return redirect('core:tenant_dashboard')
+            return redirect("core:tenant_dashboard")
         else:
             # User has no proper role/tenant - logout
-            return redirect('account_logout')
-    
+            return redirect("account_logout")
+
     # Unauthenticated users see login page
-    return redirect('account_login')
+    return redirect("account_login")
 
 
 # Authentication Views
@@ -61,71 +61,65 @@ def home(request):
 class AdminLoginView(View):
     """
     Custom admin login view for platform administrators.
-    
+
     This view only allows username/password authentication.
     OAuth2/social login is NOT available for admin accounts.
     """
-    
-    template_name = 'admin/admin_login.html'
-    
+
+    template_name = "admin/admin_login.html"
+
     def get(self, request):
         """Display the admin login form."""
         # If user is already logged in and is a platform admin, redirect to admin dashboard
         if request.user.is_authenticated and request.user.is_platform_admin():
-            return redirect('/platform/dashboard/')
-        
+            return redirect("/platform/dashboard/")
+
         # If user is logged in but not admin, log them out first
         if request.user.is_authenticated:
             from django.contrib.auth import logout
+
             logout(request)
-            messages.info(request, _('Please use your admin credentials to access this area.'))
-        
+            messages.info(request, _("Please use your admin credentials to access this area."))
+
         return render(request, self.template_name)
-    
+
     def post(self, request):
         """Handle admin login submission."""
-        username = request.POST.get('username', '').strip()
-        password = request.POST.get('password', '')
-        next_url = request.POST.get('next', '/platform/dashboard/')
-        
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        next_url = request.POST.get("next", "/platform/dashboard/")
+
         # Validate input
         if not username or not password:
-            messages.error(request, _('Username and password are required.'))
-            return render(request, self.template_name, {'form': request.POST})
-        
+            messages.error(request, _("Username and password are required."))
+            return render(request, self.template_name, {"form": request.POST})
+
         # Authenticate user
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
             # Check if user is a platform admin
             if not user.is_platform_admin():
                 messages.error(
-                    request,
-                    _('Access denied. This login is for platform administrators only.')
+                    request, _("Access denied. This login is for platform administrators only.")
                 )
-                return render(request, self.template_name, {'form': request.POST})
-            
+                return render(request, self.template_name, {"form": request.POST})
+
             # Check if account is active
             if not user.is_active:
-                messages.error(request, _('This account has been disabled.'))
-                return render(request, self.template_name, {'form': request.POST})
-            
+                messages.error(request, _("This account has been disabled."))
+                return render(request, self.template_name, {"form": request.POST})
+
             # Log the user in
             login(request, user)
-            messages.success(request, _('Welcome back, {}!').format(user.username))
-            
+            messages.success(request, _("Welcome back, {}!").format(user.username))
+
             # Redirect to next URL or default dashboard
             return redirect(next_url)
         else:
             # Authentication failed
-            messages.error(
-                request,
-                _('Invalid username or password. Please try again.')
-            )
-            return render(request, self.template_name, {
-                'form': request.POST,
-                'username': username
-            })
+            messages.error(request, _("Invalid username or password. Please try again."))
+            return render(request, self.template_name, {"form": request.POST, "username": username})
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -141,18 +135,18 @@ class AdminLogoutView(View):
     Custom logout view for platform administrators.
     Logs out the user and redirects to the admin login page.
     """
-    
+
     def get(self, request):
         """Handle admin logout."""
         logout(request)
-        messages.success(request, _('You have been successfully logged out.'))
-        return redirect('core:admin_login')
-    
+        messages.success(request, _("You have been successfully logged out."))
+        return redirect("core:admin_login")
+
     def post(self, request):
         """Handle admin logout via POST."""
         logout(request)
-        messages.success(request, _('You have been successfully logged out.'))
-        return redirect('core:admin_login')
+        messages.success(request, _("You have been successfully logged out."))
+        return redirect("core:admin_login")
 
 
 class TenantLogoutView(View):
@@ -160,18 +154,18 @@ class TenantLogoutView(View):
     Custom logout view for tenant users.
     Logs out the user and redirects to the tenant login page.
     """
-    
+
     def get(self, request):
         """Handle tenant logout."""
         logout(request)
-        messages.success(request, _('You have been successfully logged out.'))
-        return redirect('account_login')
-    
+        messages.success(request, _("You have been successfully logged out."))
+        return redirect("account_login")
+
     def post(self, request):
         """Handle tenant logout via POST."""
         logout(request)
-        messages.success(request, _('You have been successfully logged out.'))
-        return redirect('account_login')
+        messages.success(request, _("You have been successfully logged out."))
+        return redirect("account_login")
 
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -249,11 +243,11 @@ class LanguageSwitchView(APIView):
         }
         """
         from django.utils import translation
-        
+
         language = request.data.get("language")
 
         # Validate language choice - use simple validation
-        valid_languages = ['en', 'fa']
+        valid_languages = ["en", "fa"]
         if language not in valid_languages:
             return Response(
                 {"error": "Invalid language choice", "valid_choices": valid_languages},
@@ -269,10 +263,10 @@ class LanguageSwitchView(APIView):
             # Activate the new language for the current session
             translation.activate(language)
             # Set language in session using Django's standard key
-            request.session['django_language'] = language
-            
+            request.session["django_language"] = language
+
             # Get language name
-            language_names = {'en': 'English', 'fa': 'Persian'}
+            language_names = {"en": "English", "fa": "Persian"}
 
             return Response(
                 {
@@ -284,6 +278,7 @@ class LanguageSwitchView(APIView):
             )
         except Exception as e:
             import traceback
+
             print(f"Language switch error: {e}")
             print(traceback.format_exc())
             return Response(

@@ -8,7 +8,6 @@ TRANSLATIONS = {
     # SMS Opt-out
     "SMS Opt-Out": "انصراف از پیامک",
     "SMS Opt-Outs": "انصرافات از پیامک",
-    
     # Campaigns
     "Sending": "در حال ارسال",
     "Email template to use": "قالب ایمیل مورد استفاده",
@@ -19,7 +18,6 @@ TRANSLATIONS = {
     "When to send this campaign": "زمان ارسال این کمپین",
     "Email Campaign": "کمپین ایمیلی",
     "Email Campaigns": "کمپین‌های ایمیلی",
-    
     # Segments
     "Static Segment": "بخش ثابت",
     "Dynamic Segment": "بخش پویا",
@@ -34,7 +32,6 @@ TRANSLATIONS = {
     "Segments": "بخش‌ها",
     "Customer Segment": "بخش مشتری",
     "Customer Segments": "بخش‌های مشتری",
-    
     # More campaign fields
     "Subject line": "خط موضوع",
     "Preview text": "متن پیش‌نمایش",
@@ -50,7 +47,6 @@ TRANSLATIONS = {
     "Total unsubscribed": "مجموع لغو اشتراک شده",
     "Unique opens": "باز شدن منحصر به فرد",
     "Unique clicks": "کلیک منحصر به فرد",
-    
     # Schedule and automation
     "Schedule": "زمان‌بندی",
     "Send immediately": "ارسال فوری",
@@ -69,7 +65,6 @@ TRANSLATIONS = {
     "weeks": "هفته",
     "months": "ماه",
     "years": "سال",
-    
     # Permissions and roles
     "Permissions": "مجوزها",
     "Permission": "مجوز",
@@ -89,7 +84,6 @@ TRANSLATIONS = {
     "Guest": "مهمان",
     "Owner": "مالک",
     "Superuser": "کاربر ارشد",
-    
     # Access control
     "Can view": "می‌تواند مشاهده کند",
     "Can add": "می‌تواند اضافه کند",
@@ -102,7 +96,6 @@ TRANSLATIONS = {
     "Read only": "فقط خواندنی",
     "Full access": "دسترسی کامل",
     "Limited access": "دسترسی محدود",
-    
     # Common fieldsets
     "General": "عمومی",
     "General Information": "اطلاعات عمومی",
@@ -127,7 +120,6 @@ TRANSLATIONS = {
     "Tags": "برچسب‌ها",
     "Labels": "برچسب‌ها",
     "Attributes": "ویژگی‌ها",
-    
     # Audit and tracking
     "Audit": "حسابرسی",
     "Audit Trail": "رد حسابرسی",
@@ -145,7 +137,6 @@ TRANSLATIONS = {
     "Deleted on": "حذف شده در",
     "Last updated": "آخرین به‌روزرسانی",
     "Last accessed": "آخرین دسترسی",
-    
     # File management
     "Files": "فایل‌ها",
     "Documents": "اسناد",
@@ -166,7 +157,6 @@ TRANSLATIONS = {
     "Delete file": "حذف فایل",
     "Preview": "پیش‌نمایش",
     "Thumbnail": "تصویر کوچک",
-    
     # Integration and API
     "Integration": "یکپارچه‌سازی",
     "Integrations": "یکپارچه‌سازی‌ها",
@@ -188,7 +178,6 @@ TRANSLATIONS = {
     "Disconnected": "قطع شده",
     "Authorized": "مجاز",
     "Unauthorized": "غیرمجاز",
-    
     # Sync and backup
     "Sync": "همگام‌سازی",
     "Synchronize": "همگام‌سازی",
@@ -205,7 +194,6 @@ TRANSLATIONS = {
     "Last backup": "آخرین پشتیبان",
     "Backup size": "حجم پشتیبان",
     "Backup location": "مکان پشتیبان",
-    
     # Notifications preferences
     "Email notifications": "اعلان‌های ایمیلی",
     "Push notifications": "اعلان‌های فشار",
@@ -218,7 +206,6 @@ TRANSLATIONS = {
     "Do not disturb": "مزاحم نشوید",
     "Mute notifications": "بی‌صدا کردن اعلان‌ها",
     "Unmute notifications": "صدادار کردن اعلان‌ها",
-    
     # Subscription and billing
     "Subscription": "اشتراک",
     "Plan": "طرح",
@@ -245,7 +232,6 @@ TRANSLATIONS = {
     "Expired Subscription": "اشتراک منقضی شده",
     "Renew Subscription": "تمدید اشتراک",
     "Cancel Subscription": "لغو اشتراک",
-    
     # Support and help
     "Support": "پشتیبانی",
     "Help Center": "مرکز راهنمایی",
@@ -266,7 +252,6 @@ TRANSLATIONS = {
     "Video Guides": "راهنماهای ویدئویی",
     "User Guide": "راهنمای کاربر",
     "Getting Started": "شروع کار",
-    
     # Common system terms
     "System": "سیستم",
     "System Status": "وضعیت سیستم",
@@ -288,25 +273,26 @@ TRANSLATIONS = {
 
 
 def update_po(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
     translated = 0
     for en, fa in TRANSLATIONS.items():
         esc = re.escape(en)
         pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
-        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        new, count = re.subn(pattern, rf"\1{fa}\2", content)
         if count:
             content = new
             translated += count
 
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
     return translated
 
-if __name__ == '__main__':
-    po = 'locale/fa/LC_MESSAGES/django.po'
-    print('Adding final comprehensive batch...')
+
+if __name__ == "__main__":
+    po = "locale/fa/LC_MESSAGES/django.po"
+    print("Adding final comprehensive batch...")
     count = update_po(po)
-    print(f'✅ Translated {count} entries')
+    print(f"✅ Translated {count} entries")

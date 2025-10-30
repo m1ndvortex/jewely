@@ -22,6 +22,42 @@ logger = logging.getLogger(__name__)
 
 @login_required
 @tenant_access_required
+def accounting_dashboard(request):
+    """
+    Main accounting dashboard landing page.
+    """
+    # Check if accounting is set up
+    try:
+        JewelryEntity.objects.get(tenant=request.user.tenant)
+        is_setup = True
+    except JewelryEntity.DoesNotExist:
+        is_setup = False
+
+    # Get quick stats
+    context = {
+        "is_setup": is_setup,
+        "page_title": "Accounting Dashboard",
+    }
+
+    if is_setup:
+        # Get current month financial summary
+        end_date = date.today()
+        start_date = date(end_date.year, end_date.month, 1)
+        reports = AccountingService.get_financial_reports(request.user.tenant, start_date, end_date)
+
+        context.update(
+            {
+                "reports": reports,
+                "start_date": start_date,
+                "end_date": end_date,
+            }
+        )
+
+    return render(request, "accounting/dashboard.html", context)
+
+
+@login_required
+@tenant_access_required
 def financial_reports(request):
     """
     Display financial reports dashboard.

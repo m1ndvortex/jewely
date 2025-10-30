@@ -110,26 +110,27 @@ TRANSLATIONS = {
 
 
 def update_po(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
     translated = 0
     for en, fa in TRANSLATIONS.items():
         esc = re.escape(en)
         pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
-        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        new, count = re.subn(pattern, rf"\1{fa}\2", content)
         if count:
             content = new
             translated += count
             print(f"Translated: {en}")
 
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
     print(f"Done. Translated {translated} entries.")
 
-if __name__ == '__main__':
-    po = 'locale/fa/LC_MESSAGES/django.po'
-    print('Updating', po)
+
+if __name__ == "__main__":
+    po = "locale/fa/LC_MESSAGES/django.po"
+    print("Updating", po)
     update_po(po)
-    print('Run compilemessages and restart the web service afterwards.')
+    print("Run compilemessages and restart the web service afterwards.")

@@ -31,7 +31,6 @@ TRANSLATIONS = {
     "Formatted Number Tag": "برچسب عدد قالب‌بندی شده",
     "Formatted Currency Tag": "برچسب ارز قالب‌بندی شده",
     "Note": "توجه",
-    
     # Translation example page
     "Translation Example": "نمونه ترجمه",
     "Translation Example Page": "صفحه نمونه ترجمه",
@@ -46,7 +45,6 @@ TRANSLATIONS = {
     "Please review your information before submitting.": "لطفاً قبل از ارسال اطلاعات خود را بررسی کنید.",
     "An error occurred while processing your request.": "خطایی در پردازش درخواست شما رخ داد.",
     "This is an informational message.": "این یک پیام اطلاعاتی است.",
-    
     # Bulk Campaign
     "Bulk Campaign": "کمپین گروهی",
     "Send targeted email or SMS campaigns to customer segments.": "ارسال کمپین‌های ایمیل یا پیامک هدفمند به بخش‌های مشتری.",
@@ -60,7 +58,6 @@ TRANSLATIONS = {
     "Add Variable": "افزودن متغیر",
     "Campaign Summary": "خلاصه کمپین",
     "Select a segment and template to see campaign summary.": "یک بخش و قالب برای مشاهده خلاصه کمپین انتخاب کنید.",
-    
     # More campaign strings
     "Campaign scheduled successfully": "کمپین با موفقیت زمان‌بندی شد",
     "Campaign sent successfully": "کمپین با موفقیت ارسال شد",
@@ -80,7 +77,6 @@ TRANSLATIONS = {
     "Weekly": "هفتگی",
     "Monthly": "ماهانه",
     "Custom Schedule": "زمان‌بندی سفارشی",
-    
     # Customer segments
     "All Customers": "تمام مشتریان",
     "Active Customers": "مشتریان فعال",
@@ -102,7 +98,6 @@ TRANSLATIONS = {
     "Recalculate": "محاسبه مجدد",
     "Dynamic Segment": "بخش پویا",
     "Static Segment": "بخش ثابت",
-    
     # Template variables
     "Customer First Name": "نام مشتری",
     "Customer Last Name": "نام خانوادگی مشتری",
@@ -119,7 +114,6 @@ TRANSLATIONS = {
     "Order Number": "شماره سفارش",
     "Total Amount": "مبلغ کل",
     "Unsubscribe Link": "لینک لغو اشتراک",
-    
     # Email/SMS templates
     "Template Name": "نام قالب",
     "Template Type": "نوع قالب",
@@ -135,7 +129,6 @@ TRANSLATIONS = {
     "Default Template": "قالب پیش‌فرض",
     "Custom Template": "قالب سفارشی",
     "System Template": "قالب سیستم",
-    
     # Campaign analytics
     "Sent": "ارسال شده",
     "Delivered": "تحویل شده",
@@ -158,7 +151,6 @@ TRANSLATIONS = {
     "Cost": "هزینه",
     "Profit": "سود",
     "Loss": "ضرر",
-    
     # Dashboard metrics
     "Total Revenue": "درآمد کل",
     "Total Orders": "سفارش‌های کل",
@@ -171,7 +163,6 @@ TRANSLATIONS = {
     "Churn Rate": "نرخ ریزش",
     "Retention Rate": "نرخ نگهداری",
     "Growth Rate": "نرخ رشد",
-    
     # Reports
     "Sales Report": "گزارش فروش",
     "Revenue Report": "گزارش درآمد",
@@ -189,14 +180,12 @@ TRANSLATIONS = {
     "Print Report": "چاپ گزارش",
     "Share Report": "اشتراک گزارش",
     "Schedule Report": "زمان‌بندی گزارش",
-    
     # Export formats
     "Export to CSV": "خروجی CSV",
     "Export to Excel": "خروجی اکسل",
     "Export to PDF": "خروجی PDF",
     "Export to JSON": "خروجی JSON",
     "Export to XML": "خروجی XML",
-    
     # Notification types
     "Order Confirmation": "تأیید سفارش",
     "Payment Confirmation": "تأیید پرداخت",
@@ -214,7 +203,6 @@ TRANSLATIONS = {
     "Reminder": "یادآوری",
     "Alert": "هشدار",
     "System Notification": "اعلان سیستم",
-    
     # Order statuses
     "Pending": "در انتظار",
     "Processing": "در حال پردازش",
@@ -228,7 +216,6 @@ TRANSLATIONS = {
     "Partially Fulfilled": "تحویل جزئی",
     "Returned": "برگشتی",
     "Exchanged": "تعویضی",
-    
     # Payment statuses
     "Paid": "پرداخت شده",
     "Unpaid": "پرداخت نشده",
@@ -238,7 +225,6 @@ TRANSLATIONS = {
     "Payment Declined": "پرداخت رد شد",
     "Refund Pending": "بازپرداخت در انتظار",
     "Refund Completed": "بازپرداخت تکمیل شد",
-    
     # Product fields
     "Product": "محصول",
     "Products": "محصولات",
@@ -272,26 +258,27 @@ TRANSLATIONS = {
 
 def update_po_batch(filepath):
     """Apply batch translations."""
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
     translated = 0
     for en, fa in TRANSLATIONS.items():
         esc = re.escape(en)
         pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
-        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        new, count = re.subn(pattern, rf"\1{fa}\2", content)
         if count:
             content = new
             translated += count
 
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
     return translated
 
-if __name__ == '__main__':
-    po = 'locale/fa/LC_MESSAGES/django.po'
-    print('Translating campaigns, number formatting, and UI strings...')
+
+if __name__ == "__main__":
+    po = "locale/fa/LC_MESSAGES/django.po"
+    print("Translating campaigns, number formatting, and UI strings...")
     count = update_po_batch(po)
-    print(f'✅ Translated {count} entries')
-    print(f'Progress: 403 + {count} = {403 + count} total translations')
+    print(f"✅ Translated {count} entries")
+    print(f"Progress: 403 + {count} = {403 + count} total translations")

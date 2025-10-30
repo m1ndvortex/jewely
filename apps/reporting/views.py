@@ -11,6 +11,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -19,7 +20,6 @@ from django.views.generic import (
     CreateView,
     DeleteView,
     DetailView,
-    FormView,
     ListView,
     TemplateView,
     UpdateView,
@@ -27,6 +27,7 @@ from django.views.generic import (
 )
 
 from apps.core.mixins import TenantRequiredMixin
+from apps.reporting.forms import ReportForm
 from apps.reporting.models import Report, ReportExecution, ReportSchedule
 from apps.reporting.services import PrebuiltReportService, ReportExecutionService
 from apps.reporting.tasks import execute_report_async
@@ -78,16 +79,20 @@ class ReportCreateView(LoginRequiredMixin, TenantRequiredMixin, CreateView):
     """Create a new custom report."""
 
     model = Report
+    form_class = ReportForm
     template_name = "reporting/report_form.html"
-    fields = ["name", "description", "category", "query_config", "parameters", "output_formats"]
 
     def form_valid(self, form):
         form.instance.tenant = self.request.user.tenant
         form.instance.created_by = self.request.user
         form.instance.report_type = "CUSTOM"
+        form.instance.status = "ACTIVE"
         return super().form_valid(form)
 
     def get_success_url(self):
+        messages.success(
+            self.request, f"Report '{self.object.name}' has been created successfully."
+        )
         return reverse("reporting:report_detail", kwargs={"pk": self.object.pk})
 
 
@@ -95,11 +100,17 @@ class ReportUpdateView(LoginRequiredMixin, TenantRequiredMixin, UpdateView):
     """Update an existing report."""
 
     model = Report
+    form_class = ReportForm
     template_name = "reporting/report_form.html"
-    fields = ["name", "description", "category", "query_config", "parameters", "output_formats"]
 
     def get_queryset(self):
-        return Report.objects.filter(tenant=self.request.user.tenant)
+        return super().get_queryset().filter(tenant=self.request.user.tenant)
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, f"Report '{self.object.name}' has been updated successfully."
+        )
+        return super().form_valid(form)
 
     def get_success_url(self):
         return reverse("reporting:report_detail", kwargs={"pk": self.object.pk})
@@ -116,7 +127,7 @@ class ReportDeleteView(LoginRequiredMixin, TenantRequiredMixin, DeleteView):
         return Report.objects.filter(tenant=self.request.user.tenant)
 
 
-class ReportExecuteView(LoginRequiredMixin, TenantRequiredMixin, FormView):
+class ReportExecuteView(LoginRequiredMixin, TenantRequiredMixin, TemplateView):
     """Execute a report with parameters."""
 
     template_name = "reporting/report_execute.html"
@@ -262,6 +273,7 @@ class BasePrebuiltReportView(LoginRequiredMixin, TenantRequiredMixin, TemplateVi
         context["report_def"] = self.get_report_definition()
         return context
 
+    @transaction.atomic
     def post(self, request, *args, **kwargs):
         report_def = self.get_report_definition()
 
@@ -283,6 +295,20 @@ class BasePrebuiltReportView(LoginRequiredMixin, TenantRequiredMixin, TemplateVi
         email_recipients = [email.strip() for email in email_recipients if email.strip()]
 
         try:
+            # Get or create the category for the report
+            from apps.reporting.models import ReportCategory
+
+            # Try to get existing category by type, or create a default one
+            category = ReportCategory.objects.filter(category_type=report_def["category"]).first()
+
+            if not category:
+                category = ReportCategory.objects.create(
+                    name=f"{report_def['category'].title()} Reports",
+                    category_type=report_def["category"],
+                    description=f"Reports related to {report_def['category'].lower()} data",
+                    is_active=True,
+                )
+
             # Create or get the report instance
             report, created = Report.objects.get_or_create(
                 tenant=request.user.tenant,
@@ -291,6 +317,7 @@ class BasePrebuiltReportView(LoginRequiredMixin, TenantRequiredMixin, TemplateVi
                     "name": report_def["name"],
                     "description": report_def["description"],
                     "report_type": "PREDEFINED",
+                    "category": category,
                     "query_config": {"report_name": self.report_id},
                     "parameters": {"parameters": report_def["parameters"]},
                     "output_formats": report_def["output_formats"],

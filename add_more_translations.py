@@ -38,7 +38,6 @@ TRANSLATIONS = {
     "Opted out of alert SMS": "انصراف از پیامک هشدار",
     "SMS Opt-out": "انصراف از پیامک",
     "SMS Opt-outs": "انصرافات از پیامک",
-    
     # Campaign Related
     "Campaign": "کمپین",
     "Campaigns": "کمپین‌ها",
@@ -57,7 +56,6 @@ TRANSLATIONS = {
     "Budget": "بودجه",
     "Spent": "خرج شده",
     "ROI": "بازگشت سرمایه",
-    
     # More UI strings
     "Language switcher": "تغییر دهنده زبان",
     "Toggle navigation": "تغییر ناوبری",
@@ -89,7 +87,6 @@ TRANSLATIONS = {
     "Connecting": "در حال اتصال",
     "Disconnecting": "در حال قطع اتصال",
     "Refreshing": "در حال بارگیری مجدد",
-    
     # Common messages
     "No items found": "موردی یافت نشد",
     "No records to display": "رکوردی برای نمایش وجود ندارد",
@@ -104,7 +101,6 @@ TRANSLATIONS = {
     "Hide filters": "پنهان کردن فیلترها",
     "Advanced filters": "فیلترهای پیشرفته",
     "Quick filters": "فیلترهای سریع",
-    
     # Table/Grid
     "Show entries": "نمایش رکوردها",
     "Showing": "نمایش",
@@ -121,7 +117,6 @@ TRANSLATIONS = {
     "Sort descending": "مرتب‌سازی نزولی",
     "Sort by": "مرتب‌سازی بر اساس",
     "Group by": "گروه‌بندی بر اساس",
-    
     # Form validation
     "Please fill out this field": "لطفاً این فیلد را پر کنید",
     "Please select an option": "لطفاً یک گزینه انتخاب کنید",
@@ -135,7 +130,6 @@ TRANSLATIONS = {
     "Must not exceed": "نباید بیشتر از",
     "Invalid input": "ورودی نامعتبر",
     "Required field": "فیلد الزامی",
-    
     # Dates
     "Start Date": "تاریخ شروع",
     "End Date": "تاریخ پایان",
@@ -153,7 +147,6 @@ TRANSLATIONS = {
     "Select Date": "انتخاب تاریخ",
     "Select Time": "انتخاب زمان",
     "Date and Time": "تاریخ و زمان",
-    
     # Numbers and currency
     "Amount": "مقدار",
     "Total Amount": "مقدار کل",
@@ -167,7 +160,6 @@ TRANSLATIONS = {
     "Minimum": "حداقل",
     "Maximum": "حداکثر",
     "Sum": "مجموع",
-    
     # Actions
     "Create New": "ایجاد جدید",
     "Add New": "افزودن جدید",
@@ -197,30 +189,31 @@ TRANSLATIONS = {
 
 
 def update_po(filepath):
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
     translated = 0
     for en, fa in TRANSLATIONS.items():
         esc = re.escape(en)
         pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
-        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        new, count = re.subn(pattern, rf"\1{fa}\2", content)
         if count:
             content = new
             translated += count
             print(f"✓ {en[:60]:60s} → {fa[:40]}")
 
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
     print(f"\n✅ Translated {translated} entries")
     return translated
 
-if __name__ == '__main__':
-    po = 'locale/fa/LC_MESSAGES/django.po'
-    print('='*80)
-    print('ADDING SMS, CAMPAIGNS, AND UI TRANSLATIONS')
-    print('='*80 + '\n')
+
+if __name__ == "__main__":
+    po = "locale/fa/LC_MESSAGES/django.po"
+    print("=" * 80)
+    print("ADDING SMS, CAMPAIGNS, AND UI TRANSLATIONS")
+    print("=" * 80 + "\n")
     count = update_po(po)
-    print(f'\nTotal added: {count}')
-    print('Run compilemessages and restart.')
+    print(f"\nTotal added: {count}")
+    print("Run compilemessages and restart.")

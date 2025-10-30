@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {{ title }}
+                </h1>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    {% trans "Complete all required fields to add inventory item" %}
+                </p>
+            </div>
+            <a href="{% url 'inventory:inventory_list' %}" 
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                {% trans "Cancel" %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" class="space-y-8">
+        {% csrf_token %}
+        
+        <!-- Display form errors -->
+        {% if form.non_field_errors %}
+        <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                        {% trans "Please correct the following errors:" %}
+                    </h3>
+                    <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                        <ul class="list-disc pl-5 space-y-1">
+                            {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Basic Information -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Basic Information" %}
+                </h3>
+            </div>
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- SKU -->
+                <div>
+                    <label for="{{ form.sku.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "SKU" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.sku }}
+                    {% if form.sku.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.sku.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Name -->
+                <div>
+                    <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Product Name" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Category" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.category }}
+                    {% if form.category.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.category.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Branch -->
+                <div>
+                    <label for="{{ form.branch.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Branch" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.branch }}
+                    {% if form.branch.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.branch.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Description (full width) -->
+                <div class="md:col-span-2">
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Description" %}
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.description.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Jewelry Specifications -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Jewelry Specifications" %}
+                </h3>
+            </div>
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Karat -->
+                <div>
+                    <label for="{{ form.karat.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Karat" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.karat }}
+                    {% if form.karat.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.karat.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Weight -->
+                <div>
+                    <label for="{{ form.weight_grams.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Weight (grams)" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.weight_grams }}
+                    {% if form.weight_grams.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.weight_grams.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Craftsmanship -->
+                <div>
+                    <label for="{{ form.craftsmanship_level.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Craftsmanship" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.craftsmanship_level }}
+                    {% if form.craftsmanship_level.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.craftsmanship_level.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Pricing" %}
+                </h3>
+            </div>
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Cost Price -->
+                <div>
+                    <label for="{{ form.cost_price.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Cost Price" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.cost_price }}
+                    {% if form.cost_price.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.cost_price.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Markup % -->
+                <div>
+                    <label for="{{ form.markup_percentage.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Markup %" %}
+                    </label>
+                    {{ form.markup_percentage }}
+                    {% if form.markup_percentage.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.markup_percentage.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Selling Price -->
+                <div>
+                    <label for="{{ form.selling_price.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Selling Price" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.selling_price }}
+                    {% if form.selling_price.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.selling_price.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Inventory" %}
+                </h3>
+            </div>
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Quantity -->
+                <div>
+                    <label for="{{ form.quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Quantity" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.quantity.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Min Quantity -->
+                <div>
+                    <label for="{{ form.min_quantity.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Minimum Quantity" %} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.min_quantity }}
+                    {% if form.min_quantity.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.min_quantity.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tracking -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Tracking & Identification" %}
+                </h3>
+            </div>
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Serial Number -->
+                <div>
+                    <label for="{{ form.serial_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Serial Number" %}
+                    </label>
+                    {{ form.serial_number }}
+                    {% if form.serial_number.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.serial_number.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Lot Number -->
+                <div>
+                    <label for="{{ form.lot_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Lot Number" %}
+                    </label>
+                    {{ form.lot_number }}
+                    {% if form.lot_number.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.lot_number.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Barcode -->
+                <div>
+                    <label for="{{ form.barcode.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Barcode" %}
+                    </label>
+                    {{ form.barcode }}
+                    {% if form.barcode.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.barcode.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Supplier SKU -->
+                <div>
+                    <label for="{{ form.supplier_sku.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Supplier SKU" %}
+                    </label>
+                    {{ form.supplier_sku }}
+                    {% if form.supplier_sku.errors %}
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.supplier_sku.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Active Status -->
+                <div class="flex items-center h-full pt-6">
+                    <div class="flex items-center h-5">
+                        {{ form.is_active }}
+                    </div>
+                    <div class="ml-3 text-sm">
+                        <label for="{{ form.is_active.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                            {% trans "Active" %}
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'inventory:inventory_list' %}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit"
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                {{ submit_text }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

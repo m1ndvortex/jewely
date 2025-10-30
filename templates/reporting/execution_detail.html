@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Report Execution" %} - {{ execution.report.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex justify-between items-start mb-6">
+        <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2">
+                <a href="{% url 'reporting:report_detail' execution.report.pk %}" class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Execution Results" %}</h1>
+                {% if execution.status == 'COMPLETED' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                        <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        {% trans "Completed" %}
+                    </span>
+                {% elif execution.status == 'RUNNING' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                        <svg class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {% trans "Running" %}
+                    </span>
+                {% elif execution.status == 'FAILED' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+                        <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        {% trans "Failed" %}
+                    </span>
+                {% elif execution.status == 'PENDING' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                        <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                        </svg>
+                        {% trans "Pending" %}
+                    </span>
+                {% elif execution.status == 'CANCELLED' %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                        {% trans "Cancelled" %}
+                    </span>
+                {% endif %}
+            </div>
+            <p class="text-gray-600 dark:text-gray-400">{{ execution.report.name }}</p>
+        </div>
+        <div class="flex gap-3">
+            {% if execution.status == 'COMPLETED' and execution.result_file_path %}
+                <a href="{% url 'reporting:execution_download' execution.pk %}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    {% trans "Download Report" %}
+                </a>
+            {% endif %}
+            <a href="{% url 'reporting:report_execute' execution.report.pk %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                {% trans "Run Again" %}
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Execution Statistics -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Execution Statistics" %}</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                            {{ execution.row_count|default:"0" }}
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{% trans "Rows" %}</div>
+                    </div>
+                    <div class="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                            {% if execution.duration_seconds %}
+                                {{ execution.duration_seconds }}s
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{% trans "Duration" %}</div>
+                    </div>
+                    <div class="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                            {% if execution.result_file_size %}
+                                {{ execution.result_file_size|filesizeformat }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{% trans "File Size" %}</div>
+                    </div>
+                    <div class="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                        <div class="text-3xl font-bold text-orange-600 dark:text-orange-400 uppercase">
+                            {{ execution.output_format }}
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">{% trans "Format" %}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parameters Used -->
+            {% if execution.parameters %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Parameters" %}</h2>
+                <div class="space-y-3">
+                    {% for key, value in execution.parameters.items %}
+                        <div class="flex justify-between items-start py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ key|title }}</span>
+                            <span class="text-sm text-gray-900 dark:text-white font-mono">{{ value }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Error Message -->
+            {% if execution.status == 'FAILED' and execution.error_message %}
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+                <div class="flex items-start">
+                    <svg class="w-6 h-6 text-red-600 dark:text-red-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-red-900 dark:text-red-300 mb-2">{% trans "Error Details" %}</h3>
+                        <pre class="text-sm text-red-800 dark:text-red-400 whitespace-pre-wrap font-mono">{{ execution.error_message }}</pre>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Email Delivery Status -->
+            {% if execution.email_recipients %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">{% trans "Email Delivery" %}</h2>
+                    {% if execution.email_sent %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            {% trans "Sent" %}
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                            {% trans "Pending" %}
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="space-y-2">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "Recipients:" %}</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for email in execution.email_recipients %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                            {{ email }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Execution Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Execution Details" %}</h3>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Execution ID" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{{ execution.id }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Trigger Type" %}</dt>
+                        <dd class="mt-1">
+                            {% if execution.trigger_type == 'MANUAL' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {% trans "Manual" %}
+                                </span>
+                            {% elif execution.trigger_type == 'SCHEDULED' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {% trans "Scheduled" %}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {% trans "API" %}
+                                </span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Started At" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ execution.started_at|date:"Y-m-d H:i:s" }}
+                        </dd>
+                    </div>
+                    {% if execution.completed_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Completed At" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ execution.completed_at|date:"Y-m-d H:i:s" }}
+                        </dd>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Executed By" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {{ execution.executed_by.get_full_name|default:execution.executed_by.username }}
+                        </dd>
+                    </div>
+                    {% if execution.celery_task_id %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Task ID" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white font-mono text-xs break-all">
+                            {{ execution.celery_task_id }}
+                        </dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Quick Actions" %}</h3>
+                <div class="space-y-2">
+                    <a href="{% url 'reporting:report_detail' execution.report.pk %}" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
+                        <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        {% trans "View Report Details" %}
+                    </a>
+                    <a href="{% url 'reporting:report_execute' execution.report.pk %}" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
+                        <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        {% trans "Execute Again" %}
+                    </a>
+                    <a href="{% url 'reporting:report_list' %}" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition">
+                        <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                        </svg>
+                        {% trans "All Reports" %}
+                    </a>
+                </div>
+            </div>
+
+            <!-- Report Info -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Report Information" %}</h3>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Report Name" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ execution.report.name }}</dd>
+                    </div>
+                    {% if execution.report.category %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Category" %}</dt>
+                        <dd class="mt-1">
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
+                                {{ execution.report.category.name }}
+                            </span>
+                        </dd>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Report Type" %}</dt>
+                        <dd class="mt-1">
+                            {% if execution.report.report_type == 'PREDEFINED' %}
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                                    {% trans "Pre-built" %}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300">
+                                    {% trans "Custom" %}
+                                </span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-refresh for pending/running executions -->
+    {% if execution.status == 'PENDING' or execution.status == 'RUNNING' %}
+    <script>
+        setTimeout(function() {
+            location.reload();
+        }, 5000); // Refresh every 5 seconds
+    </script>
+    {% endif %}
+</div>
+{% endblock %}

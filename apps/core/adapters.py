@@ -46,7 +46,7 @@ class AccountAdapter(DefaultAccountAdapter):
     def get_login_redirect_url(self, request):
         """
         Customize login redirect based on user role.
-        
+
         Platform admins go to: /platform/dashboard/
         Tenant users go to: /dashboard/
         """

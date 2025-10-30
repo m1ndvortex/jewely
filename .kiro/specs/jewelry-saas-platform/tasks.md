@@ -93,7 +93,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
 
 ## Phase 2: Tenant Panel - Core Business Features
 
-- [ ] 4. Inventory Management System
+- [x] 4. Inventory Management System
   - [x] 4.1 Create inventory data models
     - Create ProductCategory model with tenant FK, name, parent (self-referential)
     - Create InventoryItem model with all fields (sku, name, karat, weight, prices, quantity, branch, serial/lot numbers)

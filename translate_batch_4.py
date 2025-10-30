@@ -13,7 +13,6 @@ TRANSLATIONS = {
     "Track the performance of your email and SMS campaigns.": "عملکرد کمپین‌های ایمیل و پیامک خود را پیگیری کنید.",
     "Total Campaigns": "مجموع کمپین‌ها",
     "Messages Sent": "پیام‌های ارسال شده",
-    
     # Email metrics
     "Email Metrics": "معیارهای ایمیل",
     "Total Opened": "مجموع باز شده",
@@ -23,7 +22,6 @@ TRANSLATIONS = {
     "Total Cost": "هزینه کل",
     "Recent Campaigns": "کمپین‌های اخیر",
     "No campaigns found for the selected period.": "کمپینی برای دوره انتخاب شده یافت نشد.",
-    
     # Communication history
     "View all customer communications across all channels.": "مشاهده تمام ارتباطات مشتری در تمام کانال‌ها.",
     "Enter customer ID...": "شناسه مشتری را وارد کنید...",
@@ -37,12 +35,10 @@ TRANSLATIONS = {
     "Engagement": "تعامل",
     "Converted": "تبدیل شده",
     "No communications found.": "ارتباطی یافت نشد.",
-    
     # Customer segments
     "Create Segment": "ایجاد بخش",
     "All Segments": "تمام بخش‌ها",
     "No customer segments found.": "بخش مشتری یافت نشد.",
-    
     # Notification center
     "Notification Center": "مرکز اعلان‌ها",
     "Manage your notifications and stay updated": "اعلان‌های خود را مدیریت کنید و به‌روز بمانید",
@@ -59,12 +55,10 @@ TRANSLATIONS = {
     "View all notifications": "مشاهده تمام اعلان‌ها",
     "Error:": "خطا:",
     "Showing first %(showing)s of %(total)s": "نمایش %(showing)s اول از %(total)s",
-    
     # Customer fields
     "Total Purchases": "مجموع خریدها",
     "Loyalty Tier": "رده وفاداری",
     "No customers match the current criteria.": "هیچ مشتری با معیارهای فعلی مطابقت ندارد.",
-    
     # Notification preferences
     "Customize how and when you receive notifications": "نحوه و زمان دریافت اعلان‌ها را سفارشی کنید",
     "Back to Notifications": "بازگشت به اعلان‌ها",
@@ -75,7 +69,6 @@ TRANSLATIONS = {
     "Start Time": "زمان شروع",
     "End Time": "زمان پایان",
     "Save Preferences": "ذخیره ترجیحات",
-    
     # Segmentation
     "Create Customer Segment": "ایجاد بخش مشتری",
     "Segmentation Criteria": "معیارهای بخش‌بندی",
@@ -91,7 +84,6 @@ TRANSLATIONS = {
     "Has Not Made Purchase": "خرید انجام نداده",
     "Include Tags": "شامل برچسب‌ها",
     "Exclude Tags": "بدون برچسب‌ها",
-    
     # More UI strings
     "Calculate Segment": "محاسبه بخش",
     "Segment calculated successfully": "بخش با موفقیت محاسبه شد",
@@ -105,7 +97,6 @@ TRANSLATIONS = {
     "Edit Segment": "ویرایش بخش",
     "Clone Segment": "کلون بخش",
     "Export Segment": "خروجی بخش",
-    
     # Template strings
     "Template": "قالب",
     "Templates": "قالب‌ها",
@@ -122,7 +113,6 @@ TRANSLATIONS = {
     "Template updated successfully": "قالب با موفقیت به‌روزرسانی شد",
     "Template deleted successfully": "قالب با موفقیت حذف شد",
     "Test sent successfully": "تست با موفقیت ارسال شد",
-    
     # Notification strings
     "New Order": "سفارش جدید",
     "Order Update": "به‌روزرسانی سفارش",
@@ -135,7 +125,6 @@ TRANSLATIONS = {
     "Backup Failed": "پشتیبان ناموفق بود",
     "Update Available": "به‌روزرسانی موجود است",
     "Maintenance Scheduled": "نگهداری زمان‌بندی شده",
-    
     # Time-related strings
     "minutes": "دقیقه",
     "hours": "ساعت",
@@ -151,7 +140,6 @@ TRANSLATIONS = {
     "week": "هفته",
     "month": "ماه",
     "year": "سال",
-    
     # Action confirmations
     "Are you sure?": "آیا مطمئن هستید؟",
     "This action cannot be undone.": "این عمل قابل بازگشت نیست.",
@@ -162,7 +150,6 @@ TRANSLATIONS = {
     "No, cancel": "نه، لغو کن",
     "Yes": "بله",
     "No": "خیر",
-    
     # Success/Error messages
     "Operation successful": "عملیات موفق",
     "Operation failed": "عملیات ناموفق",
@@ -178,7 +165,6 @@ TRANSLATIONS = {
     "Request received": "درخواست دریافت شد",
     "Request processed": "درخواست پردازش شد",
     "Request failed": "درخواست ناموفق بود",
-    
     # Form validation
     "Required field": "فیلد الزامی",
     "Invalid value": "مقدار نامعتبر",
@@ -196,7 +182,6 @@ TRANSLATIONS = {
     "File too large": "فایل خیلی بزرگ",
     "Invalid file type": "نوع فایل نامعتبر",
     "Upload failed": "آپلود ناموفق بود",
-    
     # Pagination and sorting
     "Show": "نمایش",
     "per page": "در هر صفحه",
@@ -219,26 +204,27 @@ TRANSLATIONS = {
 
 def update_po_batch(filepath):
     """Apply batch translations."""
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
     translated = 0
     for en, fa in TRANSLATIONS.items():
         esc = re.escape(en)
         pattern = rf'(msgid "{esc}"\nmsgstr ")(")'
-        new, count = re.subn(pattern, rf'\1{fa}\2', content)
+        new, count = re.subn(pattern, rf"\1{fa}\2", content)
         if count:
             content = new
             translated += count
 
-    with open(filepath, 'w', encoding='utf-8') as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
     return translated
 
-if __name__ == '__main__':
-    po = 'locale/fa/LC_MESSAGES/django.po'
-    print('Translating batch 4: campaigns, notifications, segments...')
+
+if __name__ == "__main__":
+    po = "locale/fa/LC_MESSAGES/django.po"
+    print("Translating batch 4: campaigns, notifications, segments...")
     count = update_po_batch(po)
-    print(f'✅ Translated {count} entries')
-    print(f'Progress: 459 + {count} = {459 + count} total')
+    print(f"✅ Translated {count} entries")
+    print(f"Progress: 459 + {count} = {459 + count} total")

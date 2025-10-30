@@ -760,9 +760,15 @@ urlpatterns = [
     # Webhook Management
     path("webhooks/", include(("apps.core.webhook_urls", "webhooks"), namespace="webhooks")),
     # External Service Integration Management
-    path("integrations/", include(("apps.core.integration_urls", "integrations"), namespace="integrations")),
+    path(
+        "integrations/",
+        include(("apps.core.integration_urls", "integrations"), namespace="integrations"),
+    ),
     # Job Monitoring
     path("platform/jobs/", include(("apps.core.job_urls", "jobs"), namespace="jobs")),
     # Documentation and Knowledge Base
-    path("platform/documentation/", include(("apps.core.documentation_urls", "documentation"), namespace="documentation")),
+    path(
+        "platform/documentation/",
+        include(("apps.core.documentation_urls", "documentation"), namespace="documentation"),
+    ),
 ]
