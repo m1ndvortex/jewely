@@ -4,7 +4,7 @@ Django admin configuration for sales models.
 
 from django.contrib import admin
 
-from .models import Customer, Sale, SaleItem, Terminal
+from .models import Sale, SaleItem, Terminal
 
 
 @admin.register(Terminal)
@@ -38,51 +38,6 @@ class TerminalAdmin(admin.ModelAdmin):
             "Timestamps",
             {
                 "fields": ["created_at", "updated_at", "last_used_at"],
-            },
-        ),
-    ]
-
-
-@admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-    """Admin interface for Customer model."""
-
-    list_display = [
-        "customer_number",
-        "get_full_name",
-        "phone",
-        "email",
-        "loyalty_tier",
-        "loyalty_points",
-        "store_credit",
-        "total_purchases",
-    ]
-    list_filter = ["loyalty_tier", "created_at"]
-    search_fields = ["customer_number", "first_name", "last_name", "phone", "email"]
-    readonly_fields = ["id", "created_at", "updated_at"]
-    fieldsets = [
-        (
-            "Basic Information",
-            {
-                "fields": ["id", "tenant", "customer_number"],
-            },
-        ),
-        (
-            "Contact Information",
-            {
-                "fields": ["first_name", "last_name", "email", "phone"],
-            },
-        ),
-        (
-            "Loyalty & Credit",
-            {
-                "fields": ["loyalty_tier", "loyalty_points", "store_credit", "total_purchases"],
-            },
-        ),
-        (
-            "Timestamps",
-            {
-                "fields": ["created_at", "updated_at"],
             },
         ),
     ]
