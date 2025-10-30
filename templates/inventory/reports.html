@@ -118,20 +118,101 @@
         </div>
     </div>
 
+    <!-- Additional Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-orange-100 truncate">
+                                {% trans "Dead Stock Items" %}
+                            </dt>
+                            <dd class="text-2xl font-bold text-white">
+                                {{ dead_stock_count|intcomma }}
+                            </dd>
+                            <dd class="text-xs text-orange-100 mt-1">
+                                {% trans "No sales in 90 days" %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-500 to-green-600 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-green-100 truncate">
+                                {% trans "Turnover Ratio" %}
+                            </dt>
+                            <dd class="text-2xl font-bold text-white">
+                                {{ turnover_ratio }}x
+                            </dd>
+                            <dd class="text-xs text-green-100 mt-1">
+                                {% trans "Last 90 days" %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-indigo-100 truncate">
+                                {% trans "Items Sold" %}
+                            </dt>
+                            <dd class="text-2xl font-bold text-white">
+                                {{ total_sold_90_days|intcomma }}
+                            </dd>
+                            <dd class="text-xs text-indigo-100 mt-1">
+                                {% trans "Last 90 days" %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Reports Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Low Stock Alert -->
-        {% if low_stock_items %}
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                 <h2 class="text-lg font-medium text-gray-900 dark:text-white">
                     {% trans "Low Stock Alert" %}
                 </h2>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                    {{ low_stock_count }} {% trans "items" %}
+                </span>
             </div>
             <div class="p-6">
-                <div class="space-y-4">
+                {% if low_stock_items %}
+                <div class="space-y-4 max-h-96 overflow-y-auto">
                     {% for item in low_stock_items %}
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-900 dark:text-white">
                                 {{ item.name }}
@@ -151,22 +232,34 @@
                     </div>
                     {% endfor %}
                 </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "All items are well stocked!" %}
+                    </p>
+                </div>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
 
         <!-- Out of Stock -->
-        {% if out_of_stock_items %}
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                 <h2 class="text-lg font-medium text-gray-900 dark:text-white">
                     {% trans "Out of Stock Items" %}
                 </h2>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                    {{ out_of_stock_count }} {% trans "items" %}
+                </span>
             </div>
             <div class="p-6">
-                <div class="space-y-4">
+                {% if out_of_stock_items %}
+                <div class="space-y-4 max-h-96 overflow-y-auto">
                     {% for item in out_of_stock_items %}
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-900 dark:text-white">
                                 {{ item.name }}
@@ -183,9 +276,143 @@
                     </div>
                     {% endfor %}
                 </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "No items are out of stock!" %}
+                    </p>
+                </div>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
+
+        <!-- Dead Stock Analysis -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+                        {% trans "Dead Stock Analysis" %}
+                    </h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {% trans "Items with no sales in 90 days" %}
+                    </p>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                    {{ dead_stock_count }} {% trans "items" %}
+                </span>
+            </div>
+            <div class="p-6">
+                {% if dead_stock_items %}
+                <div class="space-y-4 max-h-96 overflow-y-auto">
+                    {% for item in dead_stock_items %}
+                    <div class="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                {{ item.name }}
+                            </p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                SKU: {{ item.sku }}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                                {{ item.quantity }} {% trans "in stock" %}
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                ${{ item.cost_price|floatformat:2 }} {% trans "each" %}
+                            </p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "No dead stock detected!" %}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Inventory Valuation Report -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+                    {% trans "Inventory Valuation Report" %}
+                </h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {% trans "Current inventory value breakdown" %}
+                </p>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {% trans "Total Inventory Value" %}
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                {% trans "Cost price basis" %}
+                            </p>
+                        </div>
+                        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            ${{ total_value|floatformat:2|intcomma }}
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                {% trans "Total Items" %}
+                            </p>
+                            <p class="text-xl font-semibold text-gray-900 dark:text-white mt-1">
+                                {{ total_items|intcomma }}
+                            </p>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                {% trans "Avg Value/Item" %}
+                            </p>
+                            <p class="text-xl font-semibold text-gray-900 dark:text-white mt-1">
+                                {% if total_items > 0 %}
+                                {% widthratio total_value total_items 1 as avg_value %}
+                                ${{ avg_value|floatformat:2|intcomma }}
+                                {% else %}
+                                $0.00
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Active Items" %}</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ total_items|intcomma }}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Low Stock" %}</span>
+                            <span class="text-sm font-medium text-yellow-600 dark:text-yellow-400">{{ low_stock_count|intcomma }}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Out of Stock" %}</span>
+                            <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ out_of_stock_count|intcomma }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600 dark:text-gray-400">{% trans "Dead Stock" %}</span>
+                            <span class="text-sm font-medium text-orange-600 dark:text-orange-400">{{ dead_stock_count|intcomma }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

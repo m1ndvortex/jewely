@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% load static %}
+{% load i18n %}
 
-{% block title %}Point of Sale - Jewelry Shop{% endblock %}
+{% block title %}{% trans "Point of Sale" %} - Jewelry Shop{% endblock %}
 
 {% block content %}
 <script>
@@ -15,7 +17,7 @@ function posApp() {
         selectedCustomer: null,
         customerSearch: '',
         customerResults: [],
-        selectedTerminalId: '',
+        selectedTerminalId: '{{terminals.0.id|default:""}}',
         selectedTerminal: null,
         paymentMethod: 'CASH',
         discount: 0,
@@ -27,17 +29,9 @@ function posApp() {
             phone: '',
             email: ''
         },
-        showReceiptSearch: false,
-        receiptSearchQuery: '',
-        receiptSearchResults: [],
-        showHeldSales: false,
-        heldSales: [],
         
-        // Offline mode state
+        // Connection status
         isOnline: navigator.onLine,
-        offlineManager: null,
-        pendingTransactions: 0,
-        showOfflineStatus: false,
         
         // Quick access state
         activeTab: 'favorites',
@@ -59,851 +53,28 @@ function posApp() {
         init() {
             console.log('[POS] Initializing POS system...');
             
-            // TODO: Load quick access data when methods are defined
-            // this.loadFavoriteProducts();
-            // this.loadRecentTransactions();
+            // Load initial data
+            if (this.selectedTerminalId) {
+                this.loadTerminal();
+            }
             
             // Focus on search input
             this.$nextTick(() => {
                 const searchInput = document.querySelector('input[type="text"]');
                 if (searchInput) searchInput.focus();
             });
-        },
-        
-        // Basic methods
-        loadHeldSales() {
-            console.log('[POS] Loading held sales...');
-            this.showHeldSales = true;
-            // TODO: Load from API when implemented
-            this.heldSales = [];
-        },
-        
-        searchProducts() {
-            console.log('[POS] Searching products:', this.searchQuery);
-            // TODO: Implement API call
-        },
-        
-        searchCustomers() {
-            console.log('[POS] Searching customers:', this.customerSearch);
-            // TODO: Implement API call
-        },
-        
-        // Other methods will be defined in extra_js block
-    };
-}
-</script>
-
-<div x-data="posApp()" x-init="init()" class="h-screen flex flex-col">
-    <!-- Header -->
-    <header class="bg-blue-600 text-white p-4 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold">
-                <i class="fas fa-cash-register mr-2"></i>
-                Point of Sale
-            </h1>
-            <div class="flex items-center space-x-4">
-                <!-- Connection Status Indicator -->
-                <div class="flex items-center space-x-2">
-                    <div 
-                        :class="isOnline ? 'bg-green-500' : 'bg-red-500'"
-                        class="w-3 h-3 rounded-full"
-                        :title="isOnline ? 'Online' : 'Offline'"
-                    ></div>
-                    <span class="text-xs" x-text="isOnline ? 'Online' : 'Offline'"></span>
-                    <span 
-                        x-show="pendingTransactions > 0" 
-                        class="bg-yellow-500 text-xs px-2 py-1 rounded"
-                        :title="`${pendingTransactions} transaction(s) pending sync`"
-                        x-text="`${pendingTransactions} pending`"
-                    ></span>
-                </div>
-                
-                <div class="text-sm">
-                    <i class="fas fa-user mr-1"></i>
-                    <span>{{ user.get_full_name }}</span>
-                </div>
-                <div class="text-sm">
-                    <i class="fas fa-store mr-1"></i>
-                    <span x-text="selectedTerminal ? selectedTerminal.terminal_id : 'Select Terminal'"></span>
-                </div>
-                
-                <!-- Manual Sync Button (only show when offline transactions exist) -->
-                <button 
-                    x-show="isOnline && pendingTransactions > 0"
-                    @click="manualSync()"
-                    class="bg-yellow-500 hover:bg-yellow-600 px-3 py-1 rounded text-sm"
-                    title="Sync pending transactions"
-                >
-                    <i class="fas fa-sync-alt mr-1"></i>
-                    Sync
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <div class="flex-1 flex overflow-hidden">
-        <!-- Left Panel: Product Search -->
-        <div class="w-1/2 bg-white border-r border-gray-300 flex flex-col">
-            <!-- Search Bar -->
-            <div class="p-4 border-b border-gray-200">
-                <div class="relative">
-                    <input 
-                        type="text" 
-                        x-model="searchQuery"
-                        @input.debounce.300ms="searchProducts()"
-                        @keydown.enter="searchProducts()"
-                        placeholder="Search by SKU, name, or scan barcode..."
-                        class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        autofocus
-                    >
-                    <i class="fas fa-search absolute left-3 top-4 text-gray-400"></i>
-                </div>
-            </div>
-
-
-            <!-- Quick Access Tabs -->
-            <div x-show="!searchQuery" class="border-b border-gray-200">
-                <div class="flex space-x-1 p-2">
-                    <button 
-                        @click="activeTab = 'favorites'"
-                        :class="activeTab === 'favorites' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'"
-                        class="px-3 py-2 rounded text-sm font-medium"
-                    >
-                        <i class="fas fa-star mr-1"></i>
-                        Favorites
-                    </button>
-                    <button 
-                        @click="activeTab = 'recent'"
-                        :class="activeTab === 'recent' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'"
-                        class="px-3 py-2 rounded text-sm font-medium"
-                    >
-                        <i class="fas fa-clock mr-1"></i>
-                        Recent
-                    </button>
-                </div>
-            </div>
-
-            <!-- Product Results -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <div x-show="loading" class="text-center py-8">
-                    <i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i>
-                    <p class="mt-2 text-gray-600">Searching...</p>
-                </div>
-
-                <div x-show="!loading && searchResults.length === 0 && searchQuery" class="text-center py-8">
-                    <i class="fas fa-search text-4xl text-gray-300"></i>
-                    <p class="mt-2 text-gray-600">No products found</p>
-                </div>
-
-                <!-- Quick Access Content -->
-                <div x-show="!loading && !searchQuery">
-                    <!-- Favorite Products -->
-                    <div x-show="activeTab === 'favorites'">
-                        <div x-show="favoriteProducts.length === 0" class="text-center py-8">
-                            <i class="fas fa-star text-4xl text-gray-300"></i>
-                            <p class="mt-2 text-gray-600">No favorite products yet</p>
-                            <p class="text-sm text-gray-500">Products will appear here based on sales frequency</p>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 gap-3">
-                            <template x-for="product in favoriteProducts" :key="product.id">
-                                <div 
-                                    @click="addToCart(product)"
-                                    class="border border-gray-200 rounded-lg p-4 hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition"
-                                >
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <div class="flex items-center">
-                                                <h3 class="font-semibold text-gray-800" x-text="product.name"></h3>
-                                                <i class="fas fa-star text-yellow-500 ml-2 text-sm"></i>
-                                            </div>
-                                            <p class="text-sm text-gray-600">
-                                                SKU: <span x-text="product.sku"></span>
-                                            </p>
-                                            <p class="text-xs text-gray-500">
-                                                <span x-text="product.karat + 'K'"></span> • 
-                                                <span x-text="product.weight_grams + 'g'"></span>
-                                                <span x-show="product.sales_count" class="ml-2">
-                                                    • <span x-text="product.sales_count"></span> sales
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-lg font-bold text-blue-600">
-                                                $<span x-text="parseFloat(product.selling_price).toFixed(2)"></span>
-                                            </p>
-                                            <p class="text-xs text-gray-500">
-                                                Stock: <span x-text="product.quantity"></span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <!-- Recent Transactions -->
-                    <div x-show="activeTab === 'recent'">
-                        <div x-show="recentTransactions.length === 0" class="text-center py-8">
-                            <i class="fas fa-clock text-4xl text-gray-300"></i>
-                            <p class="mt-2 text-gray-600">No recent transactions</p>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <template x-for="transaction in recentTransactions" :key="transaction.id">
-                                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex-1">
-                                            <div class="flex items-center">
-                                                <h3 class="font-semibold text-gray-800" x-text="transaction.sale_number"></h3>
-                                                <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-                                                    <span x-text="transaction.status"></span>
-                                                </span>
-                                            </div>
-                                            <p class="text-sm text-gray-600" x-text="transaction.customer_name || 'Walk-in Customer'"></p>
-                                            <p class="text-xs text-gray-500" x-text="new Date(transaction.created_at).toLocaleString()"></p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-lg font-bold text-blue-600">
-                                                $<span x-text="parseFloat(transaction.total).toFixed(2)"></span>
-                                            </p>
-                                            <p class="text-xs text-gray-500">
-                                                <span x-text="transaction.items_count"></span> items
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Search Results (when searching) -->
-
-                <div class="grid grid-cols-1 gap-3">
-                    <template x-for="product in searchResults" :key="product.id">
-                        <div 
-                            @click="addToCart(product)"
-                            class="border border-gray-200 rounded-lg p-4 hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition"
-                        >
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                    <h3 class="font-semibold text-gray-800" x-text="product.name"></h3>
-                                    <p class="text-sm text-gray-600">
-                                        SKU: <span x-text="product.sku"></span>
-                                    </p>
-                                    <p class="text-xs text-gray-500">
-                                        <span x-text="product.karat + 'K'"></span> • 
-                                        <span x-text="product.weight_grams + 'g'"></span>
-                                    </p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-lg font-bold text-blue-600">
-                                        $<span x-text="parseFloat(product.selling_price).toFixed(2)"></span>
-                                    </p>
-                                    <p class="text-xs text-gray-500">
-                                        Stock: <span x-text="product.quantity"></span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Panel: Cart & Checkout -->
-        <div class="w-1/2 bg-gray-50 flex flex-col">
-            <!-- Cart Header -->
-            <div class="p-4 bg-white border-b border-gray-200">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-xl font-bold text-gray-800">
-                        <i class="fas fa-shopping-cart mr-2"></i>
-                        Cart (<span x-text="cart.length"></span>)
-                    </h2>
-                    <button 
-                        @click="clearCart()"
-                        x-show="cart.length > 0"
-                        class="text-red-600 hover:text-red-800 text-sm"
-                    >
-                        <i class="fas fa-trash mr-1"></i>
-                        Clear
-                    </button>
-                </div>
-            </div>
-
-
-            <!-- Cart Items -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <div x-show="cart.length === 0" class="text-center py-12">
-                    <i class="fas fa-shopping-cart text-5xl text-gray-300"></i>
-                    <p class="mt-4 text-gray-600">Cart is empty</p>
-                    <p class="text-sm text-gray-500">Add products to begin</p>
-                </div>
-
-                <div class="space-y-3">
-                    <template x-for="(item, index) in cart" :key="index">
-                        <div class="bg-white border border-gray-200 rounded-lg p-4">
-                            <div class="flex justify-between items-start mb-2">
-                                <div class="flex-1">
-                                    <h4 class="font-semibold text-gray-800" x-text="item.name"></h4>
-                                    <p class="text-sm text-gray-600" x-text="item.sku"></p>
-                                </div>
-                                <button 
-                                    @click="removeFromCart(index)"
-                                    class="text-red-600 hover:text-red-800"
-                                >
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-2">
-                                    <button 
-                                        @click="updateQuantity(index, item.quantity - 1)"
-                                        class="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded"
-                                    >
-                                        <i class="fas fa-minus text-xs"></i>
-                                    </button>
-                                    <input 
-                                        type="number" 
-                                        x-model.number="item.quantity"
-                                        @change="updateQuantity(index, item.quantity)"
-                                        min="1"
-                                        :max="item.available_quantity"
-                                        class="w-16 text-center border border-gray-300 rounded py-1"
-                                    >
-                                    <button 
-                                        @click="updateQuantity(index, item.quantity + 1)"
-                                        class="w-8 h-8 bg-gray-200 hover:bg-gray-300 rounded"
-                                    >
-                                        <i class="fas fa-plus text-xs"></i>
-                                    </button>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-sm text-gray-600">
-                                        $<span x-text="parseFloat(item.unit_price).toFixed(2)"></span> each
-                                    </p>
-                                    <p class="font-bold text-blue-600">
-                                        $<span x-text="(item.unit_price * item.quantity).toFixed(2)"></span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
-
-
-            <!-- Checkout Section -->
-            <div class="bg-white border-t border-gray-200 p-4">
-                <!-- Customer Selection -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-user mr-1"></i>
-                        Customer (Optional)
-                    </label>
-                    <div class="flex space-x-2">
-                        <input 
-                            type="text" 
-                            x-model="customerSearch"
-                            @input.debounce.300ms="searchCustomers()"
-                            placeholder="Search customer..."
-                            class="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                        >
-                        <button 
-                            @click="showCustomerQuickAdd = true"
-                            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                        >
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    
-                    <!-- Customer Search Results -->
-                    <div x-show="customerResults.length > 0" class="mt-2 border border-gray-200 rounded max-h-40 overflow-y-auto">
-                        <template x-for="customer in customerResults" :key="customer.id">
-                            <div 
-                                @click="selectCustomer(customer)"
-                                class="p-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                            >
-                                <p class="font-medium text-sm" x-text="customer.full_name"></p>
-                                <p class="text-xs text-gray-600" x-text="customer.phone"></p>
-                            </div>
-                        </template>
-                    </div>
-                    
-                    <!-- Selected Customer -->
-                    <div x-show="selectedCustomer" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded flex justify-between items-center">
-                        <div>
-                            <p class="font-medium text-sm" x-text="selectedCustomer?.full_name"></p>
-                            <p class="text-xs text-gray-600" x-text="selectedCustomer?.phone"></p>
-                        </div>
-                        <button @click="selectedCustomer = null" class="text-red-600 hover:text-red-800">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Terminal Selection -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-desktop mr-1"></i>
-                        Terminal
-                    </label>
-                    <select 
-                        x-model="selectedTerminalId"
-                        @change="loadTerminal()"
-                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">Select Terminal</option>
-                        {% for terminal in terminals %}
-                        <option value="{{ terminal.id }}">{{ terminal.terminal_id }} - {{ terminal.branch.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-
-                <!-- Payment Method -->
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-credit-card mr-1"></i>
-                        Payment Method
-                    </label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button 
-                            @click="paymentMethod = 'CASH'"
-                            :class="paymentMethod === 'CASH' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'"
-                            class="py-2 rounded hover:bg-blue-700 hover:text-white transition"
-                        >
-                            <i class="fas fa-money-bill-wave"></i>
-                            <span class="block text-xs mt-1">Cash</span>
-                        </button>
-                        <button 
-                            @click="paymentMethod = 'CARD'"
-                            :class="paymentMethod === 'CARD' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'"
-                            class="py-2 rounded hover:bg-blue-700 hover:text-white transition"
-                        >
-                            <i class="fas fa-credit-card"></i>
-                            <span class="block text-xs mt-1">Card</span>
-                        </button>
-                        <button 
-                            @click="paymentMethod = 'STORE_CREDIT'"
-                            :class="paymentMethod === 'STORE_CREDIT' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'"
-                            class="py-2 rounded hover:bg-blue-700 hover:text-white transition"
-                        >
-                            <i class="fas fa-gift"></i>
-                            <span class="block text-xs mt-1">Credit</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Totals -->
-                <div class="space-y-2 mb-4 border-t border-gray-200 pt-4">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">Subtotal:</span>
-                        <span class="font-medium">$<span x-text="subtotal.toFixed(2)"></span></span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">Tax (10%):</span>
-                        <span class="font-medium">$<span x-text="tax.toFixed(2)"></span></span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">Discount:</span>
-                        <input 
-                            type="number" 
-                            x-model.number="discount"
-                            min="0"
-                            :max="subtotal"
-                            step="0.01"
-                            class="w-24 text-right px-2 py-1 border border-gray-300 rounded"
-                        >
-                    </div>
-                    <div class="flex justify-between text-lg font-bold border-t border-gray-300 pt-2">
-                        <span>Total:</span>
-                        <span class="text-blue-600">$<span x-text="total.toFixed(2)"></span></span>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button 
-                        @click="holdSale()"
-                        :disabled="cart.length === 0"
-                        class="py-3 bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    >
-                        <i class="fas fa-pause mr-2"></i>
-                        Hold
-                    </button>
-                    <button 
-                        @click="completeSale()"
-                        :disabled="cart.length === 0 || !selectedTerminalId || processing"
-                        class="py-3 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    >
-                        <i class="fas fa-check mr-2"></i>
-                        <span x-text="processing ? 'Processing...' : 'Complete Sale'"></span>
-                    </button>
-                </div>
-                
-                <!-- Receipt Actions -->
-                <div class="grid grid-cols-2 gap-2">
-                    <button 
-                        @click="showReceiptSearch = true"
-                        class="py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                    >
-                        <i class="fas fa-receipt mr-1"></i>
-                        Reprint Receipt
-                    </button>
-                    <button 
-                        @click="loadHeldSales()"
-                        class="py-2 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm"
-                    >
-                        <i class="fas fa-list mr-1"></i>
-                        Held Sales
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Customer Quick Add Modal -->
-<div 
-    x-show="showCustomerQuickAdd" 
-    x-cloak
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    @click.self="showCustomerQuickAdd = false"
->
-    <div class="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 class="text-xl font-bold mb-4">Quick Add Customer</h3>
-        <form @submit.prevent="quickAddCustomer()">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-                    <input 
-                        type="text" 
-                        x-model="newCustomer.first_name"
-                        required
-                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                    <input 
-                        type="text" 
-                        x-model="newCustomer.last_name"
-                        required
-                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-                    <input 
-                        type="tel" 
-                        x-model="newCustomer.phone"
-                        required
-                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input 
-                        type="email" 
-                        x-model="newCustomer.email"
-                        class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    >
-                </div>
-            </div>
-            <div class="flex justify-end space-x-2 mt-6">
-                <button 
-                    type="button"
-                    @click="showCustomerQuickAdd = false"
-                    class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
-                >
-                    Cancel
-                </button>
-                <button 
-                    type="submit"
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                    Add Customer
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-
-<!-- Receipt Search Modal -->
-<div 
-    x-show="showReceiptSearch" 
-    x-cloak
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    @click.self="showReceiptSearch = false"
->
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-96 overflow-hidden">
-        <h3 class="text-xl font-bold mb-4">Search Receipts</h3>
-        
-        <!-- Search Input -->
-        <div class="mb-4">
-            <input 
-                type="text" 
-                x-model="receiptSearchQuery"
-                @input.debounce.300ms="searchReceipts()"
-                placeholder="Search by sale number or customer name..."
-                class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                autofocus
-            >
-        </div>
-        
-        <!-- Search Results -->
-        <div class="max-h-64 overflow-y-auto mb-4">
-            <div x-show="receiptSearchResults.length === 0 && receiptSearchQuery" class="text-center py-8 text-gray-500">
-                No receipts found
-            </div>
             
-            <div class="space-y-2">
-                <template x-for="sale in receiptSearchResults" :key="sale.id">
-                    <div class="border border-gray-200 rounded p-3 hover:bg-gray-50">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="font-semibold" x-text="sale.sale_number"></div>
-                                <div class="text-sm text-gray-600" x-text="sale.customer_name || 'Walk-in'"></div>
-                                <div class="text-xs text-gray-500" x-text="new Date(sale.created_at).toLocaleString()"></div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold text-blue-600" x-text="'$' + parseFloat(sale.total).toFixed(2)"></div>
-                                <div class="flex space-x-1 mt-2">
-                                    <button 
-                                        @click="printReceipt(sale, 'standard')"
-                                        class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-                                        title="Print Standard Receipt"
-                                    >
-                                        <i class="fas fa-print"></i>
-                                    </button>
-                                    <button 
-                                        @click="printReceipt(sale, 'thermal')"
-                                        class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
-                                        title="Print Thermal Receipt"
-                                    >
-                                        <i class="fas fa-receipt"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-        </div>
-        
-        <!-- Close Button -->
-        <div class="flex justify-end">
-            <button 
-                @click="showReceiptSearch = false"
-                class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
-            >
-                Close
-            </button>
-        </div>
-    </div>
-</div>
-
-
-<!-- Held Sales Modal -->
-<div 
-    x-show="showHeldSales" 
-    x-cloak
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    @click.self="showHeldSales = false"
->
-    <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-96 overflow-hidden">
-        <h3 class="text-xl font-bold mb-4">Held Sales</h3>
-        
-        <!-- Held Sales List -->
-        <div class="max-h-64 overflow-y-auto mb-4">
-            <div x-show="heldSales.length === 0" class="text-center py-8 text-gray-500">
-                No held sales found
-            </div>
-            
-            <div class="space-y-2">
-                <template x-for="sale in heldSales" :key="sale.id">
-                    <div class="border border-gray-200 rounded p-3 hover:bg-gray-50">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="font-semibold" x-text="sale.sale_number"></div>
-                                <div class="text-sm text-gray-600" x-text="sale.customer_name || 'Walk-in'"></div>
-                                <div class="text-xs text-gray-500" x-text="new Date(sale.created_at).toLocaleString()"></div>
-                                <div class="text-xs text-yellow-600">
-                                    <i class="fas fa-pause mr-1"></i>
-                                    On Hold
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-bold text-blue-600" x-text="'$' + parseFloat(sale.total).toFixed(2)"></div>
-                                <button 
-                                    @click="resumeHeldSale(sale)"
-                                    class="mt-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
-                                >
-                                    Resume
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-        </div>
-        
-        <!-- Close Button -->
-        <div class="flex justify-end">
-            <button 
-                @click="showHeldSales = false"
-                class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
-            >
-                Close
-            </button>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function posApp() {
-    return {
-        // State
-        searchQuery: '',
-        searchResults: [],
-        loading: false,
-        cart: [],
-        selectedCustomer: null,
-        customerSearch: '',
-        customerResults: [],
-        selectedTerminalId: '',
-        selectedTerminal: null,
-        paymentMethod: 'CASH',
-        discount: 0,
-        processing: false,
-        showCustomerQuickAdd: false,
-        newCustomer: {
-            first_name: '',
-            last_name: '',
-            phone: '',
-            email: ''
-        },
-        showReceiptSearch: false,
-        receiptSearchQuery: '',
-        receiptSearchResults: [],
-        showHeldSales: false,
-        heldSales: [],
-        
-        // Offline mode state
-        isOnline: navigator.onLine,
-        offlineManager: null,
-        pendingTransactions: 0,
-        showOfflineStatus: false,
-        
-        // Quick access state
-        activeTab: 'favorites',
-        favoriteProducts: [],
-        recentTransactions: [],
-
-        // Computed
-        get subtotal() {
-            return this.cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-        },
-        get tax() {
-            return this.subtotal * 0.10; // 10% tax
-        },
-        get total() {
-            return this.subtotal + this.tax - this.discount;
-        },
-
-        // Methods
-        async init() {
-            // Initialize offline manager - DISABLED (files don't exist)
-            // try {
-            //     this.offlineManager = new POSOfflineManager();
-            //     await this.offlineManager.init();
-            //     
-            //     // Set up offline event listeners
-            //     this.setupOfflineEventListeners();
-            //     
-            //     console.log('[POS] Offline manager initialized successfully');
-            // } catch (error) {
-            //     console.error('[POS] Failed to initialize offline manager:', error);
-            //     // Continue without offline functionality
-            // }
-            
-            // Load quick access data
-            await this.loadFavoriteProducts();
-            await this.loadRecentTransactions();
-            
-            // Focus on search input
-            this.$nextTick(() => {
-                document.querySelector('input[type="text"]')?.focus();
-            });
-        },
-        
-        setupOfflineEventListeners() {
-            if (!this.offlineManager) return;
-            
-            // Listen for online/offline status changes
-            this.offlineManager.on('statusChange', (data) => {
-                this.isOnline = data.online;
-                console.log('[POS] Connection status changed:', data.online ? 'online' : 'offline');
+            // Listen for online/offline events
+            window.addEventListener('online', () => {
+                this.isOnline = true;
+                console.log('[POS] Connection restored');
             });
             
-            // Listen for offline transactions
-            this.offlineManager.on('offlineTransactionCreated', (transaction) => {
-                console.log('[POS] Offline transaction created:', transaction.id);
-                this.updatePendingTransactionCount();
-            });
-            
-            // Listen for sync completion
-            this.offlineManager.on('syncCompleted', (results) => {
-                console.log('[POS] Sync completed:', results);
-                this.updatePendingTransactionCount();
-                
-                if (results.success > 0) {
-                    this.showSyncSuccessNotification(results);
-                }
-            });
-            
-            // Listen for sync conflicts
-            this.offlineManager.on('conflictResolutionNeeded', (data) => {
-                console.log('[POS] Conflict resolution needed:', data);
-                this.handleSyncConflict(data);
+            window.addEventListener('offline', () => {
+                this.isOnline = false;
+                console.log('[POS] Connection lost');
             });
         },
-        
-        async updatePendingTransactionCount() {
-            if (this.offlineManager) {
-                const stats = await this.offlineManager.getStats();
-                this.pendingTransactions = stats.pendingTransactions;
-            }
-        },
-        
-        showSyncSuccessNotification(results) {
-            // Show a success notification
-            const message = `${results.success} transaction(s) synced successfully`;
-            if (results.conflicts > 0) {
-                message += `, ${results.conflicts} conflict(s) need attention`;
-            }
-            
-            // You could integrate with a toast notification system here
-            console.log('[POS] Sync notification:', message);
-        },
-        
-        handleSyncConflict(data) {
-            // Handle sync conflicts - could show a modal dialog
-            console.log('[POS] Handling sync conflict:', data);
-            
-            // For now, just alert the user
-            alert(`Sync conflict detected for offline transaction. Some items may no longer be available. Please check inventory and retry.`);
-        },
-
 
         async searchProducts() {
             if (!this.searchQuery.trim()) {
@@ -913,38 +84,25 @@ function posApp() {
 
             this.loading = true;
             try {
-                // Try online search first
-                if (this.isOnline) {
-                    const response = await fetch(`/api/pos/search/products/?q=${encodeURIComponent(this.searchQuery)}`, {
-                        headers: {
-                            'Authorization': 'Bearer ' + this.getToken()
-                        }
-                    });
-                    const data = await response.json();
-                    this.searchResults = data.results || [];
-                } else {
-                    // Use offline search if available
-                    if (this.offlineManager && this.offlineManager.db) {
-                        this.searchResults = await this.offlineManager.db.searchCachedInventory(this.searchQuery);
-                    } else {
-                        this.searchResults = [];
-                    }
-                }
-            } catch (error) {
-                console.error('Error searching products:', error);
+                const response = await fetch(`/api/pos/search/products/?q=${encodeURIComponent(this.searchQuery)}`, {
+                    headers: {
+                        'X-CSRFToken': this.getCsrfToken()
+                    },
+                    credentials: 'same-origin'
+                });
                 
-                // Try offline search as fallback
-                if (this.offlineManager && this.offlineManager.db) {
-                    try {
-                        this.searchResults = await this.offlineManager.db.searchCachedInventory(this.searchQuery);
-                        console.log('[POS] Using cached search results');
-                    } catch (offlineError) {
-                        console.error('Offline search also failed:', offlineError);
-                        this.searchResults = [];
-                        alert('Error searching products (offline mode unavailable)');
-                    }
-                } else {
-                    alert('Error searching products');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                this.searchResults = data.results || [];
+                console.log('[POS] Found products:', this.searchResults.length);
+            } catch (error) {
+                console.error('[POS] Error searching products:', error);
+                this.searchResults = [];
+                if (error.message.includes('Failed to fetch')) {
+                    alert('Network error. Please check your connection.');
                 }
             } finally {
                 this.loading = false;
@@ -1006,7 +164,6 @@ function posApp() {
             }
         },
 
-
         async searchCustomers() {
             if (!this.customerSearch.trim()) {
                 this.customerResults = [];
@@ -1014,36 +171,23 @@ function posApp() {
             }
 
             try {
-                // Try online search first
-                if (this.isOnline) {
-                    const response = await fetch(`/api/pos/search/customers/?q=${encodeURIComponent(this.customerSearch)}`, {
-                        headers: {
-                            'Authorization': 'Bearer ' + this.getToken()
-                        }
-                    });
-                    const data = await response.json();
-                    this.customerResults = data.results || [];
-                } else {
-                    // Use offline search if available
-                    if (this.offlineManager && this.offlineManager.db) {
-                        this.customerResults = await this.offlineManager.db.searchCachedCustomers(this.customerSearch);
-                    } else {
-                        this.customerResults = [];
-                    }
-                }
-            } catch (error) {
-                console.error('Error searching customers:', error);
+                const response = await fetch(`/api/pos/search/customers/?q=${encodeURIComponent(this.customerSearch)}`, {
+                    headers: {
+                        'X-CSRFToken': this.getCsrfToken()
+                    },
+                    credentials: 'same-origin'
+                });
                 
-                // Try offline search as fallback
-                if (this.offlineManager && this.offlineManager.db) {
-                    try {
-                        this.customerResults = await this.offlineManager.db.searchCachedCustomers(this.customerSearch);
-                        console.log('[POS] Using cached customer search results');
-                    } catch (offlineError) {
-                        console.error('Offline customer search failed:', offlineError);
-                        this.customerResults = [];
-                    }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
+                const data = await response.json();
+                this.customerResults = data.results || [];
+                console.log('[POS] Found customers:', this.customerResults.length);
+            } catch (error) {
+                console.error('[POS] Error searching customers:', error);
+                this.customerResults = [];
             }
         },
 
@@ -1059,9 +203,9 @@ function posApp() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + this.getToken(),
                         'X-CSRFToken': this.getCsrfToken()
                     },
+                    credentials: 'same-origin',
                     body: JSON.stringify(this.newCustomer)
                 });
 
@@ -1087,10 +231,17 @@ function posApp() {
         },
 
         loadTerminal() {
-            const terminals = {{ terminals|safe|default:"[]" }};
+            const terminals = [
+                {% for terminal in terminals %}
+                {
+                    id: '{{ terminal.id }}',
+                    terminal_id: '{{ terminal.terminal_id }}',
+                    branch_name: '{{ terminal.branch.name }}'
+                }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ];
             this.selectedTerminal = terminals.find(t => t.id === this.selectedTerminalId);
         },
-
 
         async completeSale() {
             if (this.cart.length === 0) {
@@ -1124,237 +275,445 @@ function posApp() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + this.getToken(),
                         'X-CSRFToken': this.getCsrfToken()
                     },
+                    credentials: 'same-origin',
                     body: JSON.stringify(saleData)
                 });
 
                 if (response.ok) {
                     const sale = await response.json();
-                    
-                    // Check if this was an offline transaction
-                    const isOfflineTransaction = response.headers.get('X-Offline-Mode') === 'true';
-                    
-                    if (isOfflineTransaction) {
-                        // Show offline transaction message
-                        alert(`Sale saved offline!\nSale Number: ${sale.sale_number}\nTotal: $${sale.total}\n\nTransaction will sync when connection is restored.`);
-                        
-                        // Update pending transaction count
-                        await this.updatePendingTransactionCount();
-                    } else {
-                        // Generate and show receipt for online transaction
-                        await this.generateReceipt(sale.id, sale.sale_number, sale.total);
-                    }
+                    alert(`Sale completed successfully!\nSale Number: ${sale.sale_number}\nTotal: $${sale.total}`);
                     
                     // Reset cart
-                    this.clearCart();
+                    this.cart = [];
+                    this.selectedCustomer = null;
+                    this.discount = 0;
                     this.paymentMethod = 'CASH';
                 } else {
                     const error = await response.json();
-                    
-                    // Handle offline mode errors
-                    if (error.error === 'Offline mode') {
-                        alert('Transaction saved for offline processing. Will sync when connection is restored.');
-                    } else {
-                        alert('Error completing sale: ' + (error.detail || JSON.stringify(error)));
-                    }
+                    alert('Error completing sale: ' + (error.detail || JSON.stringify(error)));
                 }
             } catch (error) {
                 console.error('Error completing sale:', error);
-                
-                // Check if we're offline and the service worker handled it
-                if (!this.isOnline) {
-                    alert('Connection lost. Transaction may have been saved offline and will sync when connection is restored.');
-                } else {
-                    alert('Error completing sale');
-                }
+                alert('Error completing sale. Please try again.');
             } finally {
                 this.processing = false;
             }
         },
 
         async holdSale() {
-            alert('Hold sale feature will be implemented in task 5.3');
-        },
-
-        getToken() {
-            // In production, this should get the JWT token from localStorage or cookie
-            // For now, we'll use session authentication
-            return '';
+            alert('Hold sale feature coming soon!');
         },
 
         getCsrfToken() {
             return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-        },
-
-        async generateReceipt(saleId, saleNumber, total) {
-            try {
-                // Generate receipt
-                const receiptResponse = await fetch(`/api/receipts/${saleId}/generate/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + this.getToken(),
-                        'X-CSRFToken': this.getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        format_type: 'standard',
-                        auto_print: false,
-                        save_receipt: true
-                    })
-                });
-
-                if (receiptResponse.ok) {
-                    const receiptData = await receiptResponse.json();
-                    
-                    // Show success message with receipt options
-                    const message = `Sale completed successfully!\nSale Number: ${saleNumber}\nTotal: $${total}\n\nReceipt generated successfully!`;
-                    
-                    if (confirm(message + '\n\nWould you like to print the receipt?')) {
-                        // Open receipt in new window for printing
-                        window.open(receiptData.receipt_url, '_blank', 'width=800,height=600');
-                    }
-                } else {
-                    // Fallback to simple success message
-                    alert(`Sale completed successfully!\nSale Number: ${saleNumber}\nTotal: $${total}\n\nNote: Receipt generation failed.`);
-                }
-            } catch (error) {
-                console.error('Receipt generation error:', error);
-                // Fallback to simple success message
-                alert(`Sale completed successfully!\nSale Number: ${saleNumber}\nTotal: $${total}\n\nNote: Receipt generation failed.`);
-            }
-        },
-
-        async searchReceipts() {
-            if (!this.receiptSearchQuery.trim()) {
-                this.receiptSearchResults = [];
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/sales/?search=${encodeURIComponent(this.receiptSearchQuery)}&limit=10`, {
-                    headers: {
-                        'Authorization': 'Bearer ' + this.getToken()
-                    }
-                });
-                const data = await response.json();
-                this.receiptSearchResults = data.results || [];
-            } catch (error) {
-                console.error('Error searching receipts:', error);
-                alert('Error searching receipts');
-            }
-        },
-
-        async printReceipt(sale, format = 'standard') {
-            try {
-                const receiptUrl = `/receipts/html/${sale.id}/${format}/?auto_print=true`;
-                window.open(receiptUrl, '_blank', 'width=800,height=600');
-            } catch (error) {
-                console.error('Error printing receipt:', error);
-                alert('Error printing receipt');
-            }
-        },
-
-        async loadHeldSales() {
-            try {
-                const response = await fetch('/api/pos/sales/held/', {
-                    headers: {
-                        'Authorization': 'Bearer ' + this.getToken()
-                    }
-                });
-                const data = await response.json();
-                this.heldSales = data.held_sales || [];
-                this.showHeldSales = true;
-            } catch (error) {
-                console.error('Error loading held sales:', error);
-                alert('Error loading held sales');
-            }
-        },
-
-        async resumeHeldSale(sale) {
-            // This would load the held sale back into the cart
-            // For now, just show the sale details
-            alert(`Resume sale: ${sale.sale_number}\nTotal: $${sale.total}\n\nNote: Resume functionality will be implemented in a future update.`);
-            this.showHeldSales = false;
-        },
-        
-        async manualSync() {
-            if (!this.offlineManager || !this.isOnline) {
-                return;
-            }
-            
-            try {
-                console.log('[POS] Manual sync triggered');
-                await this.offlineManager.forcSync();
-                await this.updatePendingTransactionCount();
-            } catch (error) {
-                console.error('[POS] Manual sync failed:', error);
-                alert('Sync failed: ' + error.message);
-            }
-        },
-        
-        async loadFavoriteProducts() {
-            try {
-                if (this.isOnline) {
-                    const response = await fetch('/api/pos/favorite-products/', {
-                        headers: {
-                            'Authorization': 'Bearer ' + this.getToken()
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.favoriteProducts = data.results || [];
-                    }
-                } else {
-                    // Use cached data when offline
-                    if (this.offlineManager && this.offlineManager.db) {
-                        // Get most frequently accessed items from cache
-                        const cachedItems = await this.offlineManager.db.searchCachedInventory('');
-                        this.favoriteProducts = cachedItems.slice(0, 10);
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading favorite products:', error);
-            }
-        },
-        
-        async loadRecentTransactions() {
-            try {
-                if (this.isOnline) {
-                    const response = await fetch('/api/pos/recent-transactions/', {
-                        headers: {
-                            'Authorization': 'Bearer ' + this.getToken()
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        this.recentTransactions = data.results || [];
-                    }
-                } else {
-                    // Show offline transactions when offline
-                    if (this.offlineManager && this.offlineManager.db) {
-                        const offlineTransactions = await this.offlineManager.db.getTransactionHistory(10);
-                        this.recentTransactions = offlineTransactions.map(tx => ({
-                            id: tx.id,
-                            sale_number: tx.data.sale_number || 'OFFLINE_' + tx.id.slice(-6),
-                            total: tx.data.total || '0.00',
-                            status: 'OFFLINE_PENDING',
-                            customer_name: tx.data.customer_name || null,
-                            created_at: new Date(tx.timestamp).toISOString(),
-                            items_count: tx.data.items ? tx.data.items.length : 0
-                        }));
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading recent transactions:', error);
-            }
         }
     }
 }
 </script>
+
+<!-- Main POS Container -->
+<div x-data="posApp()" x-init="init()" class="min-h-screen bg-gray-100 flex flex-col">
+    {% csrf_token %}
+    
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 px-8 py-6">
+        <div class="max-w-[1600px] mx-auto">
+            <div class="flex items-center justify-between">
+                <!-- Left: Title and Welcome -->
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 mb-1">Point of Sale</h1>
+                    <p class="text-gray-500">Welcome, {{ user.get_full_name|default:user.username }}</p>
+                </div>
+                
+                <!-- Right: Status Indicators -->
+                <div class="flex items-center space-x-6">
+                    <!-- Online Status -->
+                    <div class="flex items-center space-x-2">
+                        <div 
+                            :class="isOnline ? 'bg-green-500' : 'bg-red-500'"
+                            class="w-3 h-3 rounded-full"
+                        ></div>
+                        <span class="text-sm font-medium text-gray-700" x-text="isOnline ? 'Online' : 'Offline'"></span>
+                    </div>
+                    
+                    <!-- Terminal Info -->
+                    <div class="flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-lg">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        <span class="text-sm font-medium text-gray-700" x-text="selectedTerminal ? selectedTerminal.terminal_id : 'Terminal 1'"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Left Panel: Product Search -->
+        <div class="flex-1 bg-white p-8">
+            <div class="max-w-3xl">
+                <!-- Search Bar -->
+                <div class="relative mb-6">
+                    <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input 
+                        type="text" 
+                        x-model="searchQuery"
+                        @input.debounce.300ms="searchProducts()"
+                        @keydown.enter="searchProducts()"
+                        placeholder="Search products by SKU, name, or scan barcode..."
+                        class="w-full pl-12 pr-4 py-3 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autofocus
+                    >
+                </div>
+
+                <!-- Tabs -->
+                <div x-show="!searchQuery" class="flex space-x-4 border-b border-gray-200 mb-6">
+                    <button 
+                        @click="activeTab = 'favorites'"
+                        :class="activeTab === 'favorites' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        class="pb-3 px-1 border-b-2 font-medium transition-colors"
+                    >
+                        Favorites
+                    </button>
+                    <button 
+                        @click="activeTab = 'recent'"
+                        :class="activeTab === 'recent' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        class="pb-3 px-1 border-b-2 font-medium transition-colors"
+                    >
+                        Recent
+                    </button>
+                </div>
+
+                <!-- Content Area -->
+                <div>
+                    <!-- Loading State -->
+                    <div x-show="loading" class="text-center py-12">
+                        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+                        <p class="mt-4 text-gray-600">Searching...</p>
+                    </div>
+
+                    <!-- Search Results -->
+                    <div x-show="!loading && searchQuery && searchResults.length > 0" class="space-y-3">
+                        <template x-for="product in searchResults" :key="product.id">
+                            <div 
+                                @click="addToCart(product)"
+                                class="group p-4 bg-white border border-gray-200 rounded-lg hover:border-purple-300 hover:shadow-md cursor-pointer transition-all"
+                            >
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-gray-900 group-hover:text-purple-600" x-text="product.name"></h3>
+                                        <p class="text-sm text-gray-600 mt-1">
+                                            SKU: <span x-text="product.sku"></span>
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            <span x-text="product.karat + 'K'"></span> • 
+                                            <span x-text="product.weight_grams + 'g'"></span> •
+                                            Stock: <span x-text="product.quantity"></span>
+                                        </p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-bold text-gray-900">
+                                            $<span x-text="parseFloat(product.selling_price).toFixed(2)"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- No Results -->
+                    <div x-show="!loading && searchQuery && searchResults.length === 0" class="text-center py-12">
+                        <svg class="mx-auto h-24 w-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                        <p class="mt-4 text-gray-600 font-medium">No products found</p>
+                        <p class="text-sm text-gray-500 mt-1">Try a different search term</p>
+                    </div>
+
+                    <!-- Favorites Tab -->
+                    <div x-show="!loading && !searchQuery && activeTab === 'favorites'" class="text-center py-12">
+                        <svg class="mx-auto h-24 w-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                        <p class="mt-4 text-gray-600 font-medium">No favorite products yet</p>
+                        <p class="text-sm text-gray-500 mt-1">Products will appear here based on sales frequency</p>
+                    </div>
+
+                    <!-- Recent Tab -->
+                    <div x-show="!loading && !searchQuery && activeTab === 'recent'" class="text-center py-12">
+                        <svg class="mx-auto h-24 w-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="mt-4 text-gray-600 font-medium">No recent transactions</p>
+                        <p class="text-sm text-gray-500 mt-1">Your recent sales will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Cart & Checkout -->
+        <div class="w-[480px] bg-white border-l border-gray-200 flex flex-col">
+            <!-- Cart Header -->
+            <div class="px-8 py-6 border-b border-gray-200">
+                <h2 class="text-2xl font-bold text-gray-900">
+                    Cart (<span x-text="cart.length"></span>)
+                </h2>
+            </div>
+
+            <!-- Cart Items Area -->
+            <div class="flex-1 overflow-y-auto px-8 py-6">
+                <!-- Empty Cart -->
+                <div x-show="cart.length === 0" class="text-center py-16">
+                    <svg class="mx-auto h-24 w-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    <p class="mt-4 text-gray-600 font-medium">Your cart is empty</p>
+                    <p class="text-sm text-gray-500 mt-1">Add products to get started</p>
+                </div>
+
+                <!-- Cart Items -->
+                <div x-show="cart.length > 0" class="space-y-3">
+                    <template x-for="(item, index) in cart" :key="index">
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-gray-900" x-text="item.name"></h4>
+                                    <p class="text-sm text-gray-600" x-text="'SKU: ' + item.sku"></p>
+                                </div>
+                                <button 
+                                    @click="removeFromCart(index)"
+                                    class="text-gray-400 hover:text-red-600"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <button 
+                                        @click="updateQuantity(index, item.quantity - 1)"
+                                        class="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-50"
+                                    >
+                                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                                        </svg>
+                                    </button>
+                                    <input 
+                                        type="number" 
+                                        x-model.number="item.quantity"
+                                        @change="updateQuantity(index, item.quantity)"
+                                        min="1"
+                                        :max="item.available_quantity"
+                                        class="w-16 text-center border border-gray-300 rounded py-1.5 text-sm font-medium"
+                                    >
+                                    <button 
+                                        @click="updateQuantity(index, item.quantity + 1)"
+                                        class="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded hover:bg-gray-50"
+                                    >
+                                        <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-600">
+                                        $<span x-text="parseFloat(item.unit_price).toFixed(2)"></span> each
+                                    </p>
+                                    <p class="font-bold text-gray-900">
+                                        $<span x-text="(item.unit_price * item.quantity).toFixed(2)"></span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Checkout Section -->
+            <div class="px-8 py-6 border-t border-gray-200 space-y-6">
+                <!-- Customer Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Customer (Optional)
+                    </label>
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        <input 
+                            type="text" 
+                            x-model="customerSearch"
+                            @input.debounce.300ms="searchCustomers()"
+                            placeholder="Search customer..."
+                            class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        >
+                    </div>
+                    
+                    <!-- Customer Search Results Dropdown -->
+                    <div x-show="customerResults.length > 0" class="mt-2 border border-gray-200 rounded-lg max-h-40 overflow-y-auto shadow-lg">
+                        <template x-for="customer in customerResults" :key="customer.id">
+                            <div 
+                                @click="selectCustomer(customer)"
+                                class="p-3 hover:bg-purple-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            >
+                                <p class="font-medium text-sm text-gray-900" x-text="customer.full_name"></p>
+                                <p class="text-xs text-gray-600" x-text="customer.phone"></p>
+                            </div>
+                        </template>
+                    </div>
+                    
+                    <!-- Selected Customer Display -->
+                    <div x-show="selectedCustomer" class="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg flex justify-between items-center">
+                        <div>
+                            <p class="font-medium text-sm text-gray-900" x-text="selectedCustomer?.full_name"></p>
+                            <p class="text-xs text-gray-600" x-text="selectedCustomer?.phone"></p>
+                        </div>
+                        <button @click="selectedCustomer = null; customerSearch = ''" class="text-gray-400 hover:text-red-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Terminal Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Terminal
+                    </label>
+                    <select 
+                        x-model="selectedTerminalId"
+                        @change="loadTerminal()"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                        <option value="">Select Terminal</option>
+                        {% for terminal in terminals %}
+                        <option value="{{ terminal.id }}">{{ terminal.terminal_id }} - {{ terminal.branch.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Payment Method -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                        Payment Method
+                    </label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button 
+                            @click="paymentMethod = 'CASH'"
+                            :class="paymentMethod === 'CASH' ? 'bg-purple-500 text-white border-purple-500' : 'bg-white text-gray-700 border-gray-300'"
+                            class="py-3 px-4 rounded-lg border-2 hover:border-purple-400 transition-all font-medium"
+                        >
+                            <svg class="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            <span class="block text-sm">Cash</span>
+                        </button>
+                        <button 
+                            @click="paymentMethod = 'CARD'"
+                            :class="paymentMethod === 'CARD' ? 'bg-purple-500 text-white border-purple-500' : 'bg-white text-gray-700 border-gray-300'"
+                            class="py-3 px-4 rounded-lg border-2 hover:border-purple-400 transition-all font-medium"
+                        >
+                            <svg class="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                            </svg>
+                            <span class="block text-sm">Card</span>
+                        </button>
+                        <button 
+                            @click="paymentMethod = 'STORE_CREDIT'"
+                            :class="paymentMethod === 'STORE_CREDIT' ? 'bg-purple-500 text-white border-purple-500' : 'bg-white text-gray-700 border-gray-300'"
+                            class="py-3 px-4 rounded-lg border-2 hover:border-purple-400 transition-all font-medium"
+                        >
+                            <svg class="w-6 h-6 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="block text-sm">Credit</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Totals -->
+                <div class="space-y-3 pt-4 border-t border-gray-200">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Subtotal</span>
+                        <span class="font-semibold text-gray-900">$<span x-text="subtotal.toFixed(2)"></span></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">Tax (10%)</span>
+                        <span class="font-semibold text-gray-900">$<span x-text="tax.toFixed(2)"></span></span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-600">Discount</span>
+                        <input 
+                            type="number" 
+                            x-model.number="discount"
+                            min="0"
+                            :max="subtotal"
+                            step="0.01"
+                            placeholder="0"
+                            class="w-24 text-right px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-semibold"
+                        >
+                    </div>
+                    <div class="flex justify-between text-2xl font-bold pt-3 border-t border-gray-300">
+                        <span class="text-gray-900">Total</span>
+                        <span class="text-gray-900">$<span x-text="total.toFixed(2)"></span></span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button 
+                        @click="holdSale()"
+                        :disabled="cart.length === 0"
+                        class="py-3 px-4 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold transition-colors flex items-center justify-center"
+                    >
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Hold
+                    </button>
+                    <button 
+                        @click="completeSale()"
+                        :disabled="cart.length === 0 || !selectedTerminalId || processing"
+                        class="py-3 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed font-semibold transition-colors flex items-center justify-center"
+                    >
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span x-text="processing ? 'Processing...' : 'Complete Sale'"></span>
+                    </button>
+                </div>
+
+                <!-- Additional Actions -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button 
+                        class="py-2.5 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium transition-colors text-sm flex items-center justify-center"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Reprint Receipt
+                    </button>
+                    <button 
+                        class="py-2.5 px-4 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-medium transition-colors text-sm flex items-center justify-center"
+                    >
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Held Sales
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <style>
 [x-cloak] {

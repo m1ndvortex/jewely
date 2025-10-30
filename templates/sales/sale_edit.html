@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Edit Sale" %} - {{ sale.sale_number }} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'sales:sale_detail_view' sale.id %}" 
+               class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Edit Sale" %}</h1>
+        </div>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            {{ sale.sale_number }} - {{ sale.created_at|date:"F d, Y" }}
+        </p>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-6">
+        {% for message in messages %}
+        <div class="rounded-md p-4 {% if message.tags == 'error' %}bg-red-50 dark:bg-red-900{% else %}bg-green-50 dark:bg-green-900{% endif %}">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    {% if message.tags == 'error' %}
+                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    {% else %}
+                    <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    {% endif %}
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium {% if message.tags == 'error' %}text-red-800 dark:text-red-200{% else %}text-green-800 dark:text-green-200{% endif %}">
+                        {{ message }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Edit Form -->
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-6">{% trans "Sale Details" %}</h2>
+            
+            <!-- Note about editing limitations -->
+            <div class="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-md">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700 dark:text-yellow-200">
+                            {% trans "Note: You can only edit customer, payment method, discount, and notes. To change items, you must void this sale and create a new one." %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Customer (optional) -->
+                <div>
+                    <label for="customer_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Customer" %} <span class="text-gray-500">({% trans "optional" %})</span>
+                    </label>
+                    <input type="text" 
+                           id="customer_search" 
+                           placeholder="{% trans 'Search customer by name or phone...' %}"
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                           value="{% if sale.customer %}{{ sale.customer.get_full_name }}{% endif %}">
+                    <input type="hidden" 
+                           id="customer_id" 
+                           name="customer_id" 
+                           value="{% if sale.customer %}{{ sale.customer.id }}{% endif %}">
+                    <div id="customer_results" class="mt-2 hidden"></div>
+                </div>
+
+                <!-- Payment Method -->
+                <div>
+                    <label for="payment_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Payment Method" %}
+                    </label>
+                    <select id="payment_method" 
+                            name="payment_method" 
+                            required
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        {% for value, label in payment_methods %}
+                        <option value="{{ value }}" {% if sale.payment_method == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Discount -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Discount" %}
+                    </label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="discount_type" class="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                {% trans "Type" %}
+                            </label>
+                            <select id="discount_type" 
+                                    name="discount_type" 
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                <option value="FIXED" {% if sale.discount_type == 'FIXED' %}selected{% endif %}>
+                                    {% trans "Fixed Amount" %}
+                                </option>
+                                <option value="PERCENTAGE" {% if sale.discount_type == 'PERCENTAGE' %}selected{% endif %}>
+                                    {% trans "Percentage" %}
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="discount_value" class="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                {% trans "Value" %}
+                            </label>
+                            <input type="number" 
+                                   id="discount_value" 
+                                   name="discount_value" 
+                                   step="0.01" 
+                                   min="0"
+                                   value="{{ sale.discount_value }}"
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                        </div>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {% trans "Current discount" %}: ${{ sale.discount }}
+                    </p>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Notes" %}
+                    </label>
+                    <textarea id="notes" 
+                              name="notes" 
+                              rows="4" 
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                              placeholder="{% trans 'Add any notes about this sale...' %}">{{ sale.notes }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sale Summary (Read-only) -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Sale Summary" %}</h2>
+            <dl class="space-y-2">
+                <div class="flex justify-between">
+                    <dt class="text-sm text-gray-600 dark:text-gray-400">{% trans "Subtotal" %}:</dt>
+                    <dd class="text-sm font-medium text-gray-900 dark:text-white">${{ sale.subtotal }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-sm text-gray-600 dark:text-gray-400">{% trans "Tax" %}:</dt>
+                    <dd class="text-sm font-medium text-gray-900 dark:text-white">${{ sale.tax }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-sm text-gray-600 dark:text-gray-400">{% trans "Discount" %}:</dt>
+                    <dd class="text-sm font-medium text-red-600 dark:text-red-400">-${{ sale.discount }}</dd>
+                </div>
+                <div class="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <dt class="text-base font-medium text-gray-900 dark:text-white">{% trans "Total" %}:</dt>
+                    <dd class="text-base font-bold text-gray-900 dark:text-white">${{ sale.total }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'sales:sale_detail_view' sale.id %}" 
+               class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit" 
+                    class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                {% trans "Save Changes" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Customer search functionality
+let searchTimeout;
+const customerSearch = document.getElementById('customer_search');
+const customerResults = document.getElementById('customer_results');
+const customerIdInput = document.getElementById('customer_id');
+
+customerSearch.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
+    
+    if (query.length < 2) {
+        customerResults.classList.add('hidden');
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetch(`/api/pos/search/customers/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.results && data.results.length > 0) {
+                    let html = '<div class="border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 max-h-48 overflow-y-auto">';
+                    data.results.forEach(customer => {
+                        html += `
+                            <div class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer customer-result" 
+                                 data-id="${customer.id}" 
+                                 data-name="${customer.first_name} ${customer.last_name}">
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                    ${customer.first_name} ${customer.last_name}
+                                </div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                    ${customer.phone}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    customerResults.innerHTML = html;
+                    customerResults.classList.remove('hidden');
+                    
+                    // Add click handlers
+                    document.querySelectorAll('.customer-result').forEach(el => {
+                        el.addEventListener('click', function() {
+                            customerIdInput.value = this.dataset.id;
+                            customerSearch.value = this.dataset.name;
+                            customerResults.classList.add('hidden');
+                        });
+                    });
+                } else {
+                    customerResults.classList.add('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error searching customers:', error);
+                customerResults.classList.add('hidden');
+            });
+    }, 300);
+});
+
+// Hide results when clicking outside
+document.addEventListener('click', function(e) {
+    if (!customerSearch.contains(e.target) && !customerResults.contains(e.target)) {
+        customerResults.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

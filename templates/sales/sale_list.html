@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sales Management" %} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Sales Management" %}</h1>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    {% trans "View, manage, and export all sales transactions" %}
+                </p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'sales:pos_interface' %}" 
+                   class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    {% trans "New Sale" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6" x-data="{ showFilters: false }">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white">{% trans "Filters" %}</h2>
+            <button @click="showFilters = !showFilters" 
+                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+                <span x-text="showFilters ? '{% trans "Hide Filters" %}' : '{% trans "Show Filters" %}'"></span>
+            </button>
+        </div>
+        
+        <div x-show="showFilters" x-transition class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {% trans "Search" %}
+                </label>
+                <input type="text" 
+                       id="search" 
+                       placeholder="{% trans 'Sale number, customer...' %}"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {% trans "Status" %}
+                </label>
+                <select id="status" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                    <option value="">{% trans "All Statuses" %}</option>
+                    {% for value, label in statuses %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {% trans "Payment Method" %}
+                </label>
+                <select id="payment_method" 
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                    <option value="">{% trans "All Methods" %}</option>
+                    {% for value, label in payment_methods %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {% trans "Date From" %}
+                </label>
+                <input type="date" 
+                       id="date_from" 
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {% trans "Date To" %}
+                </label>
+                <input type="date" 
+                       id="date_to" 
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            
+            <div class="flex items-end">
+                <button onclick="applyFilters()" 
+                        class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    {% trans "Apply Filters" %}
+                </button>
+            </div>
+            
+            <div class="flex items-end">
+                <button onclick="clearFilters()" 
+                        class="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    {% trans "Clear Filters" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales Table -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white">{% trans "Sales" %}</h2>
+                <div class="flex space-x-2">
+                    <button onclick="exportSales('csv')" 
+                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        {% trans "Export CSV" %}
+                    </button>
+                    <button onclick="exportSales('pdf')" 
+                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        {% trans "Export PDF" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="sales-table-container">
+            <!-- Loading state -->
+            <div class="flex justify-center items-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilters = {};
+
+// Load sales on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSales();
+});
+
+function loadSales(page = 1) {
+    currentPage = page;
+    
+    // Build query parameters
+    const params = new URLSearchParams({
+        page: page,
+        ...currentFilters
+    });
+    
+    // Show loading state
+    document.getElementById('sales-table-container').innerHTML = `
+        <div class="flex justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+    `;
+    
+    // Fetch sales from API
+    fetch(`/api/sales/?${params.toString()}`, {
+        headers: {
+            'Accept': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        renderSalesTable(data);
+    })
+    .catch(error => {
+        console.error('Error loading sales:', error);
+        document.getElementById('sales-table-container').innerHTML = `
+            <div class="text-center py-12">
+                <p class="text-red-600 dark:text-red-400">{% trans "Error loading sales. Please try again." %}</p>
+            </div>
+        `;
+    });
+}
+
+function renderSalesTable(data) {
+    const sales = data.results || data;
+    
+    if (sales.length === 0) {
+        document.getElementById('sales-table-container').innerHTML = `
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">{% trans "No sales found" %}</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{% trans "Try adjusting your filters or create a new sale." %}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {% trans "Sale Number" %}
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {% trans "Date" %}
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {% trans "Customer" %}
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {% trans "Total" %}
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {% trans "Payment" %}
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {% trans "Status" %}
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        {% trans "Actions" %}
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+    `;
+    
+    sales.forEach(sale => {
+        const statusColors = {
+            'COMPLETED': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+            'REFUNDED': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            'CANCELLED': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+            'ON_HOLD': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+        };
+        
+        html += `
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <a href="/sales/${sale.id}/" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                        ${sale.sale_number}
+                    </a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                    ${new Date(sale.created_at).toLocaleDateString()}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                    ${sale.customer_name || '{% trans "Walk-in Customer" %}'}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-300">
+                    $${parseFloat(sale.total).toFixed(2)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                    ${sale.payment_method_display}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[sale.status]}">
+                        ${sale.status_display}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <a href="/sales/${sale.id}/" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 mr-3">
+                        {% trans "View" %}
+                    </a>
+                    <a href="/receipts/html/${sale.id}/" target="_blank" class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 mr-3">
+                        {% trans "Receipt" %}
+                    </a>
+                    ${sale.status === 'COMPLETED' ? `
+                        <a href="/sales/${sale.id}/edit/" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+                            {% trans "Edit" %}
+                        </a>
+                    ` : ''}
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    document.getElementById('sales-table-container').innerHTML = html;
+}
+
+function applyFilters() {
+    currentFilters = {
+        search: document.getElementById('search').value,
+        status: document.getElementById('status').value,
+        payment_method: document.getElementById('payment_method').value,
+        date_from: document.getElementById('date_from').value,
+        date_to: document.getElementById('date_to').value,
+    };
+    
+    // Remove empty filters
+    Object.keys(currentFilters).forEach(key => {
+        if (!currentFilters[key]) {
+            delete currentFilters[key];
+        }
+    });
+    
+    loadSales(1);
+}
+
+function clearFilters() {
+    document.getElementById('search').value = '';
+    document.getElementById('status').value = '';
+    document.getElementById('payment_method').value = '';
+    document.getElementById('date_from').value = '';
+    document.getElementById('date_to').value = '';
+    
+    currentFilters = {};
+    loadSales(1);
+}
+
+function exportSales(format) {
+    const params = new URLSearchParams(currentFilters);
+    params.append('export', format);
+    
+    window.location.href = `/api/sales/export/?${params.toString()}`;
+}
+</script>
+{% endblock %}

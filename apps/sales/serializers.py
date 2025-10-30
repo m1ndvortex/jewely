@@ -14,9 +14,10 @@ from django.db import transaction
 
 from rest_framework import serializers
 
+from apps.crm.models import Customer
 from apps.inventory.models import InventoryItem
 
-from .models import Customer, Sale, SaleItem, Terminal
+from .models import Sale, SaleItem, Terminal
 
 
 class CustomerQuickAddSerializer(serializers.ModelSerializer):

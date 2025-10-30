@@ -123,133 +123,6 @@ class Terminal(models.Model):
         self.save(update_fields=["last_used_at"])
 
 
-class Customer(models.Model):
-    """
-    Customer model for CRM functionality.
-
-    Tracks customer information, purchase history, loyalty points,
-    and store credit per Requirement 12.
-
-    Note: This is a simplified version for sales. Full CRM features
-    will be implemented in a separate CRM app.
-    """
-
-    # Loyalty tier choices
-    BRONZE = "BRONZE"
-    SILVER = "SILVER"
-    GOLD = "GOLD"
-    PLATINUM = "PLATINUM"
-
-    TIER_CHOICES = [
-        (BRONZE, "Bronze"),
-        (SILVER, "Silver"),
-        (GOLD, "Gold"),
-        (PLATINUM, "Platinum"),
-    ]
-
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
-        help_text="Unique identifier for the customer",
-    )
-
-    tenant = models.ForeignKey(
-        Tenant,
-        on_delete=models.CASCADE,
-        related_name="customers",
-        help_text="Tenant that owns this customer",
-    )
-
-    customer_number = models.CharField(
-        max_length=50,
-        help_text="Unique customer number within tenant",
-    )
-
-    # Contact information
-    first_name = models.CharField(
-        max_length=100,
-        help_text="Customer's first name",
-    )
-
-    last_name = models.CharField(
-        max_length=100,
-        help_text="Customer's last name",
-    )
-
-    email = models.EmailField(
-        null=True,
-        blank=True,
-        help_text="Customer's email address",
-    )
-
-    phone = models.CharField(
-        max_length=20,
-        help_text="Customer's phone number",
-    )
-
-    # Loyalty and credit
-    loyalty_tier = models.CharField(
-        max_length=20,
-        choices=TIER_CHOICES,
-        default=BRONZE,
-        help_text="Customer's loyalty tier",
-    )
-
-    loyalty_points = models.IntegerField(
-        default=0,
-        validators=[MinValueValidator(0)],
-        help_text="Current loyalty points balance",
-    )
-
-    store_credit = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal("0.00"),
-        validators=[MinValueValidator(Decimal("0.00"))],
-        help_text="Store credit balance",
-    )
-
-    # Purchase tracking
-    total_purchases = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal("0.00"),
-        validators=[MinValueValidator(Decimal("0.00"))],
-        help_text="Total lifetime purchase amount",
-    )
-
-    # Timestamps
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        help_text="When the customer was created",
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        help_text="When the customer was last updated",
-    )
-
-    class Meta:
-        db_table = "sales_customers"
-        ordering = ["-created_at"]
-        verbose_name = "Customer"
-        verbose_name_plural = "Customers"
-        unique_together = [["tenant", "customer_number"]]
-        indexes = [
-            models.Index(fields=["tenant", "phone"], name="cust_tenant_phone_idx"),
-            models.Index(fields=["tenant", "email"], name="cust_tenant_email_idx"),
-            models.Index(fields=["tenant", "loyalty_tier"], name="cust_tenant_tier_idx"),
-        ]
-
-    def __str__(self):
-        return f"{self.customer_number} - {self.first_name} {self.last_name}"
-
-    def get_full_name(self):
-        """Return the customer's full name."""
-        return f"{self.first_name} {self.last_name}"
-
-
 class Sale(models.Model):
     """
     Sale model for tracking point-of-sale transactions.
@@ -314,7 +187,7 @@ class Sale(models.Model):
 
     # Relationships
     customer = models.ForeignKey(
-        Customer,
+        "crm.Customer",  # Reference CRM Customer model
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

@@ -21,9 +21,10 @@ from rest_framework.response import Response
 
 from apps.core.permissions import HasTenantAccess
 from apps.core.tenant_context import set_tenant_context
+from apps.crm.models import Customer
 from apps.inventory.models import InventoryItem
 
-from .models import Customer, Sale, Terminal
+from .models import Sale, Terminal
 from .receipt_service import ReceiptService
 from .serializers import (
     CustomerListSerializer,
@@ -44,6 +45,237 @@ class TenantContextMixin:
         super().initial(request, *args, **kwargs)
         if hasattr(request, "user") and hasattr(request.user, "tenant") and request.user.tenant:
             set_tenant_context(request.user.tenant.id)
+
+
+# Sales Management Views (Frontend)
+
+
+@require_http_methods(["GET"])
+def sale_list_view(request):
+    """
+    Sales list view with filters and search.
+    
+    Displays all sales with ability to:
+    - Search by sale number, customer name
+    - Filter by date range, status, payment method, branch
+    - Sort by date, amount
+    - Export to CSV/PDF
+    - View/Edit/Delete sales
+    """
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("/accounts/login/")
+    
+    context = {
+        "user": request.user,
+        "payment_methods": Sale.PAYMENT_METHOD_CHOICES,
+        "statuses": Sale.STATUS_CHOICES,
+    }
+    
+    return render(request, "sales/sale_list.html", context)
+
+
+@require_http_methods(["GET"])
+def sale_detail_view(request, sale_id):
+    """
+    Sale detail view showing complete sale information.
+    
+    Displays:
+    - Sale header (number, date, customer, employee, terminal)
+    - Sale items with quantities and prices
+    - Payment information
+    - Totals (subtotal, tax, discount, total)
+    - Actions (print receipt, edit, void/refund)
+    """
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("/accounts/login/")
+    
+    try:
+        sale = Sale.objects.select_related(
+            "customer", "branch", "terminal", "employee", "tenant"
+        ).prefetch_related("items__inventory_item").get(
+            id=sale_id, tenant=request.user.tenant
+        )
+    except Sale.DoesNotExist:
+        raise Http404("Sale not found")
+    
+    context = {
+        "user": request.user,
+        "sale": sale,
+    }
+    
+    return render(request, "sales/sale_detail.html", context)
+
+
+@require_http_methods(["GET", "POST"])
+def sale_edit_view(request, sale_id):
+    """
+    Sale edit view for modifying existing sales.
+    
+    Allows editing:
+    - Customer
+    - Notes
+    - Discount
+    - Payment method
+    
+    Note: Cannot edit items after sale is completed (must void and create new sale)
+    """
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("/accounts/login/")
+    
+    try:
+        sale = Sale.objects.select_related(
+            "customer", "branch", "terminal", "employee"
+        ).prefetch_related("items__inventory_item").get(
+            id=sale_id, tenant=request.user.tenant
+        )
+    except Sale.DoesNotExist:
+        raise Http404("Sale not found")
+    
+    if request.method == "POST":
+        # Handle sale update
+        from django.contrib import messages
+        from django.shortcuts import redirect
+        
+        try:
+            # Update allowed fields
+            customer_id = request.POST.get("customer_id")
+            if customer_id:
+                sale.customer_id = customer_id
+            
+            sale.notes = request.POST.get("notes", "")
+            sale.payment_method = request.POST.get("payment_method", sale.payment_method)
+            
+            # Update discount if provided
+            discount_value = request.POST.get("discount_value")
+            if discount_value:
+                from decimal import Decimal
+                sale.discount_value = Decimal(discount_value)
+                sale.discount_type = request.POST.get("discount_type", "FIXED")
+                
+                # Recalculate discount amount
+                if sale.discount_type == "PERCENTAGE":
+                    sale.discount = (sale.subtotal * sale.discount_value) / Decimal("100.00")
+                else:
+                    sale.discount = sale.discount_value
+                
+                # Recalculate total
+                sale.total = sale.subtotal + sale.tax - sale.discount
+            
+            sale.save()
+            
+            messages.success(request, "Sale updated successfully.")
+            return redirect("sales:sale_detail_view", sale_id=sale.id)
+            
+        except Exception as e:
+            messages.error(request, f"Error updating sale: {str(e)}")
+    
+    context = {
+        "user": request.user,
+        "sale": sale,
+        "payment_methods": Sale.PAYMENT_METHOD_CHOICES,
+    }
+    
+    return render(request, "sales/sale_edit.html", context)
+
+
+@require_http_methods(["POST"])
+def sale_void(request, sale_id):
+    """
+    Void/cancel a sale.
+    
+    This marks the sale as cancelled and restores inventory.
+    """
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("/accounts/login/")
+    
+    from django.contrib import messages
+    from django.db import transaction
+    from django.shortcuts import redirect
+    
+    try:
+        sale = Sale.objects.select_related("tenant").prefetch_related(
+            "items__inventory_item"
+        ).get(id=sale_id, tenant=request.user.tenant)
+        
+        if not sale.can_be_cancelled():
+            messages.error(request, "This sale cannot be cancelled.")
+            return redirect("sales:sale_detail_view", sale_id=sale.id)
+        
+        with transaction.atomic():
+            # Restore inventory
+            for item in sale.items.all():
+                inventory_item = InventoryItem.objects.select_for_update().get(
+                    id=item.inventory_item.id
+                )
+                inventory_item.quantity += item.quantity
+                inventory_item.save()
+            
+            # Mark sale as cancelled
+            sale.mark_as_cancelled()
+            
+            messages.success(request, f"Sale {sale.sale_number} has been voided and inventory restored.")
+        
+        return redirect("sales:sale_detail_view", sale_id=sale.id)
+        
+    except Sale.DoesNotExist:
+        messages.error(request, "Sale not found.")
+        return redirect("sales:sale_list_view")
+    except Exception as e:
+        messages.error(request, f"Error voiding sale: {str(e)}")
+        return redirect("sales:sale_detail_view", sale_id=sale_id)
+
+
+@require_http_methods(["POST"])
+def sale_refund(request, sale_id):
+    """
+    Refund a sale.
+    
+    This marks the sale as refunded and restores inventory.
+    Similar to void but for completed sales.
+    """
+    if not request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("/accounts/login/")
+    
+    from django.contrib import messages
+    from django.db import transaction
+    from django.shortcuts import redirect
+    
+    try:
+        sale = Sale.objects.select_related("tenant").prefetch_related(
+            "items__inventory_item"
+        ).get(id=sale_id, tenant=request.user.tenant)
+        
+        if not sale.can_be_refunded():
+            messages.error(request, "This sale cannot be refunded.")
+            return redirect("sales:sale_detail_view", sale_id=sale.id)
+        
+        with transaction.atomic():
+            # Restore inventory
+            for item in sale.items.all():
+                inventory_item = InventoryItem.objects.select_for_update().get(
+                    id=item.inventory_item.id
+                )
+                inventory_item.quantity += item.quantity
+                inventory_item.save()
+            
+            # Mark sale as refunded
+            sale.mark_as_refunded()
+            
+            messages.success(request, f"Sale {sale.sale_number} has been refunded and inventory restored.")
+        
+        return redirect("sales:sale_detail_view", sale_id=sale.id)
+        
+    except Sale.DoesNotExist:
+        messages.error(request, "Sale not found.")
+        return redirect("sales:sale_list_view")
+    except Exception as e:
+        messages.error(request, f"Error refunding sale: {str(e)}")
+        return redirect("sales:sale_detail_view", sale_id=sale_id)
 
 
 # POS Interface Views

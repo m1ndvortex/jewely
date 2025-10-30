@@ -430,22 +430,43 @@ def inventory_reports_view(request):
 
         # Calculate report data
         total_value = sum(item.quantity * item.cost_price for item in items)
-        low_stock_items = items.filter(quantity__lte=F("reorder_level"), quantity__gt=0).count()
+        low_stock_items = items.filter(quantity__lte=F("min_quantity"), quantity__gt=0).count()
         out_of_stock_items = items.filter(quantity=0).count()
 
         # Dead stock (items not sold in 90 days)
-        # TODO: Add dead stock analysis
-        # from datetime import timedelta
-        # from django.utils import timezone
-        # ninety_days_ago = timezone.now() - timedelta(days=90)
+        from datetime import timedelta
+        from django.utils import timezone
+        ninety_days_ago = timezone.now() - timedelta(days=90)
+        
+        # Get items with no recent sales
+        from apps.sales.models import SaleItem
+        recent_sale_item_ids = SaleItem.objects.filter(
+            sale__created_at__gte=ninety_days_ago,
+            inventory_item__tenant=user.tenant
+        ).values_list('inventory_item_id', flat=True).distinct()
+        
+        dead_stock_items = items.exclude(id__in=recent_sale_item_ids).filter(quantity__gt=0)
+        
+        # Inventory turnover calculation (last 90 days)
+        total_sold = SaleItem.objects.filter(
+            sale__created_at__gte=ninety_days_ago,
+            inventory_item__tenant=user.tenant
+        ).aggregate(total=Sum('quantity'))['total'] or 0
+        
+        avg_inventory = items.aggregate(avg=Sum('quantity'))['avg'] or 1
+        turnover_ratio = (total_sold / avg_inventory) if avg_inventory > 0 else 0
 
         context = {
             "total_items": items.count(),
             "total_value": total_value,
             "low_stock_count": low_stock_items,
             "out_of_stock_count": out_of_stock_items,
-            "low_stock_items": items.filter(quantity__lte=F("reorder_level"), quantity__gt=0)[:20],
+            "dead_stock_count": dead_stock_items.count(),
+            "turnover_ratio": round(turnover_ratio, 2),
+            "low_stock_items": items.filter(quantity__lte=F("min_quantity"), quantity__gt=0)[:20],
             "out_of_stock_items": items.filter(quantity=0)[:20],
+            "dead_stock_items": dead_stock_items[:20],
+            "total_sold_90_days": total_sold,
         }
 
     return render(request, "inventory/reports.html", context)

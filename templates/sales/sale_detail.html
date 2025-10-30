@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ sale.sale_number }} - {% trans "Sale Detail" %} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex justify-between items-center">
+            <div>
+                <div class="flex items-center space-x-3">
+                    <a href="{% url 'sales:sale_list_view' %}" 
+                       class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ sale.sale_number }}</h1>
+                    <span class="px-3 py-1 text-sm font-semibold rounded-full 
+                        {% if sale.status == 'COMPLETED' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                        {% elif sale.status == 'REFUNDED' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                        {% elif sale.status == 'CANCELLED' %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300
+                        {% else %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200{% endif %}">
+                        {{ sale.get_status_display }}
+                    </span>
+                </div>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    {% trans "Created" %}: {{ sale.created_at|date:"F d, Y g:i A" }}
+                </p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'sales:receipt_html_standard' sale.id %}" 
+                   target="_blank"
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                    {% trans "Print Receipt" %}
+                </a>
+                <a href="{% url 'sales:receipt_pdf_standard' sale.id %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    {% trans "Download PDF" %}
+                </a>
+                {% if sale.status == 'COMPLETED' %}
+                <a href="{% url 'sales:sale_edit_view' sale.id %}" 
+                   class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    {% trans "Edit" %}
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Sale Items -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-medium text-gray-900 dark:text-white">{% trans "Items" %}</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Item" %}
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Qty" %}
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Unit Price" %}
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Discount" %}
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Subtotal" %}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for item in sale.items.all %}
+                            <tr>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ item.inventory_item.name }}
+                                    </div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                                        SKU: {{ item.inventory_item.sku }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm text-gray-900 dark:text-gray-300">
+                                    {{ item.quantity }}
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm text-gray-900 dark:text-gray-300">
+                                    ${{ item.unit_price }}
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm text-gray-900 dark:text-gray-300">
+                                    {% if item.discount > 0 %}
+                                        -${{ item.discount }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm font-medium text-gray-900 dark:text-gray-300">
+                                    ${{ item.subtotal }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <td colspan="4" class="px-6 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">
+                                    {% trans "Subtotal" %}:
+                                </td>
+                                <td class="px-6 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">
+                                    ${{ sale.subtotal }}
+                                </td>
+                            </tr>
+                            {% if sale.discount > 0 %}
+                            <tr>
+                                <td colspan="4" class="px-6 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">
+                                    {% trans "Discount" %} 
+                                    {% if sale.discount_type == 'PERCENTAGE' %}
+                                        ({{ sale.discount_value }}%)
+                                    {% endif %}:
+                                </td>
+                                <td class="px-6 py-3 text-right text-sm font-medium text-red-600 dark:text-red-400">
+                                    -${{ sale.discount }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% if sale.tax > 0 %}
+                            <tr>
+                                <td colspan="4" class="px-6 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">
+                                    {% trans "Tax" %}:
+                                </td>
+                                <td class="px-6 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">
+                                    ${{ sale.tax }}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr class="border-t-2 border-gray-300 dark:border-gray-600">
+                                <td colspan="4" class="px-6 py-4 text-right text-lg font-bold text-gray-900 dark:text-white">
+                                    {% trans "Total" %}:
+                                </td>
+                                <td class="px-6 py-4 text-right text-lg font-bold text-gray-900 dark:text-white">
+                                    ${{ sale.total }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            {% if sale.notes %}
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Notes" %}</h2>
+                <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ sale.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Sale Information -->
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Sale Information" %}</h2>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Customer" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                            {% if sale.customer %}
+                                <a href="{% url 'crm:customer_detail' sale.customer.id %}" 
+                                   class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                                    {{ sale.customer.get_full_name }}
+                                </a>
+                            {% else %}
+                                {% trans "Walk-in Customer" %}
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Branch" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ sale.branch.name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Terminal" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ sale.terminal.terminal_id }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Employee" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ sale.employee.get_full_name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Payment Method" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ sale.get_payment_method_display }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Created At" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ sale.created_at|date:"F d, Y g:i A" }}</dd>
+                    </div>
+                    {% if sale.completed_at %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Completed At" %}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ sale.completed_at|date:"F d, Y g:i A" }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+
+            <!-- Actions -->
+            {% if sale.status == 'COMPLETED' %}
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Actions" %}</h2>
+                <div class="space-y-3">
+                    <form method="post" action="{% url 'sales:sale_refund' sale.id %}" 
+                          onsubmit="return confirm('{% trans "Are you sure you want to refund this sale? This will restore inventory." %}');">
+                        {% csrf_token %}
+                        <button type="submit" 
+                                class="w-full inline-flex justify-center items-center px-4 py-2 border border-red-300 dark:border-red-600 rounded-md shadow-sm text-sm font-medium text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900">
+                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                            </svg>
+                            {% trans "Refund Sale" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% elif sale.status == 'ON_HOLD' %}
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Actions" %}</h2>
+                <div class="space-y-3">
+                    <form method="post" action="{% url 'sales:sale_void' sale.id %}" 
+                          onsubmit="return confirm('{% trans "Are you sure you want to void this sale? This will restore inventory." %}');">
+                        {% csrf_token %}
+                        <button type="submit" 
+                                class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                            {% trans "Void Sale" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
