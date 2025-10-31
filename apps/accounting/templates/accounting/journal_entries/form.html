@@ -1,20 +1,339 @@
 {% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ page_title }} - {% trans "Accounting" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .formset-row {
+        transition: all 0.3s ease;
+    }
+    .formset-row.removing {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    .balance-indicator {
+        transition: all 0.3s ease;
+    }
+    .balance-indicator.balanced {
+        color: #10b981;
+    }
+    .balance-indicator.unbalanced {
+        color: #ef4444;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <h1 class="text-2xl font-bold mb-4">{{ page_title }}</h1>
-    
-    <!-- Placeholder template for backend testing -->
-    <div class="bg-white shadow rounded-lg p-6">
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            {{ formset.management_form }}
-            {% for form in formset %}
-                {{ form.as_p }}
-            {% endfor %}
-            <button type="submit" class="btn btn-primary">Save</button>
-        </form>
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {% trans "Create a manual journal entry with balanced debits and credits" %}
+            </p>
+        </div>
+        <a href="{% url 'accounting:journal_entry_list' %}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg shadow-sm transition-colors duration-150">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            {% trans "Back to List" %}
+        </a>
     </div>
+
+    <form method="post" id="journal-entry-form" x-data="journalEntryForm()">
+        {% csrf_token %}
+        
+        <!-- Entry Details -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Entry Details" %}</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Description -->
+                <div class="md:col-span-2">
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {{ form.description.label }} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.description.errors.0 }}</p>
+                    {% endif %}
+                    {% if form.description.help_text %}
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.description.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Date -->
+                <div>
+                    <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {{ form.date.label }} <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.date }}
+                    {% if form.date.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.date.errors.0 }}</p>
+                    {% endif %}
+                    {% if form.date.help_text %}
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.date.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Reference -->
+                <div>
+                    <label for="{{ form.reference.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {{ form.reference.label }}
+                    </label>
+                    {{ form.reference }}
+                    {% if form.reference.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.reference.errors.0 }}</p>
+                    {% endif %}
+                    {% if form.reference.help_text %}
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.reference.help_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Journal Entry Lines -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Journal Entry Lines" %}</h2>
+                <button type="button" 
+                        @click="addLine()"
+                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors duration-150">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    {% trans "Add Line" %}
+                </button>
+            </div>
+
+            {{ formset.management_form }}
+            
+            <!-- Formset Errors -->
+            {% if formset.non_form_errors %}
+                <div class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                    <div class="flex">
+                        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800 dark:text-red-200">{% trans "Validation Error" %}</h3>
+                            <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                                {{ formset.non_form_errors }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Lines Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                {% trans "Account" %}
+                            </th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                {% trans "Description" %}
+                            </th>
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                {% trans "Debit" %}
+                            </th>
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                {% trans "Credit" %}
+                            </th>
+                            <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                {% trans "Actions" %}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="formset-body">
+                        {% for line_form in formset %}
+                            <tr class="formset-row" data-form-index="{{ forloop.counter0 }}">
+                                <td class="px-3 py-4">
+                                    {{ line_form.id }}
+                                    {{ line_form.account }}
+                                    {% if line_form.account.errors %}
+                                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ line_form.account.errors.0 }}</p>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-4">
+                                    {{ line_form.description }}
+                                    {% if line_form.description.errors %}
+                                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ line_form.description.errors.0 }}</p>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-4">
+                                    {{ line_form.debit }}
+                                    {% if line_form.debit.errors %}
+                                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ line_form.debit.errors.0 }}</p>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-4">
+                                    {{ line_form.credit }}
+                                    {% if line_form.credit.errors %}
+                                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ line_form.credit.errors.0 }}</p>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <button type="button" 
+                                            @click="removeLine($event)"
+                                            class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                            title="{% trans 'Remove Line' %}">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                    {{ line_form.DELETE }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-gray-50 dark:bg-gray-900">
+                        <tr>
+                            <td colspan="2" class="px-3 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                                {% trans "Totals:" %}
+                            </td>
+                            <td class="px-3 py-3 text-right text-sm font-semibold" :class="isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                $<span x-text="totalDebits.toFixed(2)">0.00</span>
+                            </td>
+                            <td class="px-3 py-3 text-right text-sm font-semibold" :class="isBalanced ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                                $<span x-text="totalCredits.toFixed(2)">0.00</span>
+                            </td>
+                            <td class="px-3 py-3 text-center">
+                                <span x-show="isBalanced" class="inline-flex items-center text-green-600 dark:text-green-400">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                </span>
+                                <span x-show="!isBalanced" class="inline-flex items-center text-red-600 dark:text-red-400">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                </span>
+                            </td>
+                        </tr>
+                        <tr x-show="!isBalanced">
+                            <td colspan="5" class="px-3 py-2 text-center text-sm text-red-600 dark:text-red-400">
+                                {% trans "Difference:" %} $<span x-text="Math.abs(totalDebits - totalCredits).toFixed(2)">0.00</span>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end gap-3">
+            <a href="{% url 'accounting:journal_entry_list' %}" 
+               class="inline-flex items-center px-6 py-2.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg shadow-sm transition-colors duration-150">
+                {% trans "Cancel" %}
+            </a>
+            <button type="submit" 
+                    class="inline-flex items-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-sm transition-colors duration-150"
+                    :disabled="!isBalanced">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                {% if entry %}
+                    {% trans "Update Entry" %}
+                {% else %}
+                    {% trans "Save Entry" %}
+                {% endif %}
+            </button>
+        </div>
+    </form>
 </div>
+
+<script>
+function journalEntryForm() {
+    return {
+        totalDebits: 0,
+        totalCredits: 0,
+        isBalanced: false,
+        
+        init() {
+            this.calculateTotals();
+            // Add event listeners to all debit/credit inputs
+            this.$el.querySelectorAll('.debit-input, .credit-input').forEach(input => {
+                input.addEventListener('input', () => this.calculateTotals());
+            });
+        },
+        
+        calculateTotals() {
+            this.totalDebits = 0;
+            this.totalCredits = 0;
+            
+            // Sum all debit inputs
+            this.$el.querySelectorAll('.debit-input').forEach(input => {
+                const value = parseFloat(input.value) || 0;
+                this.totalDebits += value;
+            });
+            
+            // Sum all credit inputs
+            this.$el.querySelectorAll('.credit-input').forEach(input => {
+                const value = parseFloat(input.value) || 0;
+                this.totalCredits += value;
+            });
+            
+            // Check if balanced
+            this.isBalanced = Math.abs(this.totalDebits - this.totalCredits) < 0.01 && this.totalDebits > 0;
+        },
+        
+        addLine() {
+            const formsetBody = document.getElementById('formset-body');
+            const totalForms = document.getElementById('id_transactionmodel_set-TOTAL_FORMS');
+            const formIndex = parseInt(totalForms.value);
+            
+            // Clone the first row as a template
+            const firstRow = formsetBody.querySelector('.formset-row');
+            if (!firstRow) return;
+            
+            const newRow = firstRow.cloneNode(true);
+            newRow.setAttribute('data-form-index', formIndex);
+            
+            // Update form field names and IDs
+            newRow.querySelectorAll('input, select, textarea').forEach(field => {
+                if (field.name) {
+                    field.name = field.name.replace(/-\d+-/, `-${formIndex}-`);
+                    field.id = field.id.replace(/-\d+-/, `-${formIndex}-`);
+                    // Clear values
+                    if (field.type === 'checkbox') {
+                        field.checked = false;
+                    } else if (field.type !== 'hidden') {
+                        field.value = '';
+                    }
+                }
+            });
+            
+            // Add event listeners to new inputs
+            newRow.querySelectorAll('.debit-input, .credit-input').forEach(input => {
+                input.addEventListener('input', () => this.calculateTotals());
+            });
+            
+            formsetBody.appendChild(newRow);
+            totalForms.value = formIndex + 1;
+            
+            this.calculateTotals();
+        },
+        
+        removeLine(event) {
+            const row = event.target.closest('.formset-row');
+            const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+            
+            if (deleteCheckbox) {
+                deleteCheckbox.checked = true;
+                row.classList.add('removing');
+                setTimeout(() => {
+                    row.style.display = 'none';
+                    this.calculateTotals();
+                }, 300);
+            }
+        }
+    }
+}
+</script>
 {% endblock %}

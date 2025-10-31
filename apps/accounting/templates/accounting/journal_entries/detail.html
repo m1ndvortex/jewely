@@ -1,16 +1,272 @@
 {% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ page_title }} - {% trans "Accounting" %}{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <h1 class="text-2xl font-bold mb-4">{{ page_title }}</h1>
-    
-    <!-- Placeholder template for backend testing -->
-    <div class="bg-white shadow rounded-lg p-6">
-        <p>Journal Entry Detail</p>
-        <p>Description: {{ entry.description }}</p>
-        <p>Total Debits: {{ total_debits }}</p>
-        <p>Total Credits: {{ total_credits }}</p>
-        <p>Balanced: {{ is_balanced }}</p>
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ page_title }}</h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {% trans "Journal Entry Details" %}
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'accounting:journal_entry_list' %}" 
+               class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg shadow-sm transition-colors duration-150">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                {% trans "Back to List" %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Badge -->
+    <div class="mb-6">
+        {% if entry.posted %}
+            <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                {% trans "Posted - Entry is Immutable" %}
+            </span>
+        {% else %}
+            <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                {% trans "Unposted - Entry Can Be Edited" %}
+            </span>
+        {% endif %}
+    </div>
+
+    <!-- Entry Information -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Entry Information" %}</h2>
+        
+        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Description" %}</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ entry.description }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Date" %}</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ entry.timestamp|date:"F d, Y" }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Entry ID" %}</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 font-mono">{{ entry.uuid }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Status" %}</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                    {% if entry.posted %}
+                        <span class="text-green-600 dark:text-green-400 font-medium">{% trans "Posted" %}</span>
+                    {% else %}
+                        <span class="text-yellow-600 dark:text-yellow-400 font-medium">{% trans "Unposted" %}</span>
+                    {% endif %}
+                </dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Journal Entry Lines -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Journal Entry Lines" %}</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {% trans "Account" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {% trans "Description" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {% trans "Debit" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {% trans "Credit" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for txn in entry.transactionmodel_set.all %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {{ txn.account.code }}
+                                </div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">
+                                    {{ txn.account.name }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                                {{ txn.description|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100">
+                                {% if txn.tx_type == 'debit' %}
+                                    <span class="font-medium">${{ txn.amount|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-gray-400 dark:text-gray-600">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-gray-100">
+                                {% if txn.tx_type == 'credit' %}
+                                    <span class="font-medium">${{ txn.amount|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-gray-400 dark:text-gray-600">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <td colspan="2" class="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                            {% trans "Totals:" %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold" 
+                            :class="{% if is_balanced %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                            ${{ total_debits|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold"
+                            :class="{% if is_balanced %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                            ${{ total_credits|floatformat:2 }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" class="px-6 py-3 text-center">
+                            {% if is_balanced %}
+                                <span class="inline-flex items-center text-sm font-medium text-green-600 dark:text-green-400">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {% trans "Entry is Balanced" %}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center text-sm font-medium text-red-600 dark:text-red-400">
+                                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {% trans "Entry is Not Balanced" %}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Audit Trail -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Audit Trail" %}</h2>
+        
+        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Created" %}</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                    {{ entry.timestamp|date:"F d, Y g:i A" }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Last Modified" %}</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                    {{ entry.updated|date:"F d, Y g:i A"|default:"-" }}
+                </dd>
+            </div>
+            {% if entry.posted %}
+            <div>
+                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Posted Date" %}</dt>
+                <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                    {{ entry.timestamp|date:"F d, Y g:i A" }}
+                </dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex justify-end gap-3">
+        {% if not entry.posted %}
+            <form method="post" action="{% url 'accounting:journal_entry_delete' entry.uuid %}" 
+                  onsubmit="return confirm('{% trans "Are you sure you want to delete this journal entry?" %}');">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    {% trans "Delete" %}
+                </button>
+            </form>
+            
+            <a href="{% url 'accounting:journal_entry_edit' entry.uuid %}" 
+               class="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                {% trans "Edit" %}
+            </a>
+            
+            <button type="button" 
+                    onclick="document.getElementById('post-modal').classList.remove('hidden')"
+                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150"
+                    {% if not is_balanced %}disabled title="{% trans 'Entry must be balanced before posting' %}"{% endif %}>
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {% trans "Post Entry" %}
+            </button>
+        {% else %}
+            <a href="{% url 'accounting:journal_entry_reverse' entry.uuid %}" 
+               class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                </svg>
+                {% trans "Create Reversing Entry" %}
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Post Confirmation Modal -->
+<div id="post-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onclick="if(event.target === this) this.classList.add('hidden')">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900">
+                <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mt-4">{% trans "Post Journal Entry" %}</h3>
+            <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "Are you sure you want to post this journal entry? Once posted, the entry becomes immutable and will affect account balances." %}
+                </p>
+            </div>
+            <div class="items-center px-4 py-3">
+                <form method="post" action="{% url 'accounting:journal_entry_post' entry.uuid %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" 
+                            class="px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        {% trans "Yes, Post Entry" %}
+                    </button>
+                </form>
+                <button onclick="document.getElementById('post-modal').classList.add('hidden')" 
+                        class="mt-3 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    {% trans "Cancel" %}
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
