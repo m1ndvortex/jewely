@@ -9,7 +9,7 @@
   - Add JavaScript validation to ensure debits equal credits
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 1.2 Create journal entry views (backend)
+- [-] 1.2 Create journal entry views (backend)
   - Implement journal_entry_list view with filtering by date, status, account
   - Implement journal_entry_create view with formset handling
   - Implement journal_entry_detail view (read-only)

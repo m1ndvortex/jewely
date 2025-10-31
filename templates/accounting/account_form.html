@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% if account %}{% trans "Edit Account" %}{% else %}{% trans "Add Account" %}{% endif %} - {% trans "Accounting" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                {% if account %}{% trans "Edit Account" %}{% else %}{% trans "Add New Account" %}{% endif %}
+            </h1>
+            <nav class="flex mt-2" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-2">
+                    <li>
+                        <a href="{% url 'accounting:dashboard' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400">
+                            {% trans "Accounting" %}
+                        </a>
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <a href="{% url 'accounting:chart_of_accounts' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400">
+                            {% trans "Chart of Accounts" %}
+                        </a>
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-gray-800 dark:text-gray-200">
+                            {% if account %}{% trans "Edit" %}{% else %}{% trans "Add" %}{% endif %}
+                        </span>
+                    </li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Form -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="p-4 rounded-lg {% if message.tags == 'error' %}bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400{% else %}bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Account Code -->
+                    <div>
+                        <label for="code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Account Code" %} <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="code" id="code" required
+                               value="{{ account.code|default:'' }}"
+                               {% if account %}readonly{% endif %}
+                               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white {% if account %}bg-gray-100 dark:bg-gray-600{% endif %}"
+                               placeholder="e.g., 1004">
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {% trans "Unique account code (e.g., 1004 for bank accounts)" %}
+                        </p>
+                    </div>
+
+                    <!-- Account Name -->
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Account Name" %} <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="name" id="name" required
+                               value="{{ account.name|default:'' }}"
+                               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                               placeholder="e.g., Savings Account">
+                    </div>
+
+                    <!-- Account Type (Role) -->
+                    <div>
+                        <label for="role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Account Type" %} <span class="text-red-500">*</span>
+                        </label>
+                        <select name="role" id="role" required
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                            <option value="">{% trans "Select account type..." %}</option>
+                            <optgroup label="{% trans 'Assets' %}">
+                                <option value="ASSET_CA_CASH" {% if account.role == 'ASSET_CA_CASH' %}selected{% endif %}>{% trans "Cash" %}</option>
+                                <option value="ASSET_CA_CHECKING" {% if account.role == 'ASSET_CA_CHECKING' %}selected{% endif %}>{% trans "Checking Account" %}</option>
+                                <option value="ASSET_CA_SAVINGS" {% if account.role == 'ASSET_CA_SAVINGS' %}selected{% endif %}>{% trans "Savings Account" %}</option>
+                                <option value="ASSET_CA_PREPAID" {% if account.role == 'ASSET_CA_PREPAID' %}selected{% endif %}>{% trans "Prepaid Expenses" %}</option>
+                                <option value="ASSET_CA_INVENTORY" {% if account.role == 'ASSET_CA_INVENTORY' %}selected{% endif %}>{% trans "Inventory" %}</option>
+                                <option value="ASSET_CA_RECEIVABLES" {% if account.role == 'ASSET_CA_RECEIVABLES' %}selected{% endif %}>{% trans "Accounts Receivable" %}</option>
+                                <option value="ASSET_LTI_EQUIPMENT" {% if account.role == 'ASSET_LTI_EQUIPMENT' %}selected{% endif %}>{% trans "Equipment" %}</option>
+                            </optgroup>
+                            <optgroup label="{% trans 'Liabilities' %}">
+                                <option value="LIABILITY_CL_ACC_PAYABLE" {% if account.role == 'LIABILITY_CL_ACC_PAYABLE' %}selected{% endif %}>{% trans "Accounts Payable" %}</option>
+                                <option value="LIABILITY_CL_TAXES_PAYABLE" {% if account.role == 'LIABILITY_CL_TAXES_PAYABLE' %}selected{% endif %}>{% trans "Taxes Payable" %}</option>
+                                <option value="LIABILITY_CL_OTHER" {% if account.role == 'LIABILITY_CL_OTHER' %}selected{% endif %}>{% trans "Other Current Liabilities" %}</option>
+                                <option value="LIABILITY_LTL_NOTES_PAYABLE" {% if account.role == 'LIABILITY_LTL_NOTES_PAYABLE' %}selected{% endif %}>{% trans "Notes Payable" %}</option>
+                            </optgroup>
+                            <optgroup label="{% trans 'Equity' %}">
+                                <option value="EQUITY_CAPITAL" {% if account.role == 'EQUITY_CAPITAL' %}selected{% endif %}>{% trans "Owner's Equity" %}</option>
+                                <option value="EQUITY_ADJUSTMENT" {% if account.role == 'EQUITY_ADJUSTMENT' %}selected{% endif %}>{% trans "Retained Earnings" %}</option>
+                            </optgroup>
+                            <optgroup label="{% trans 'Revenue' %}">
+                                <option value="INCOME_OPERATIONAL" {% if account.role == 'INCOME_OPERATIONAL' %}selected{% endif %}>{% trans "Sales Revenue" %}</option>
+                                <option value="INCOME_OTHER" {% if account.role == 'INCOME_OTHER' %}selected{% endif %}>{% trans "Other Income" %}</option>
+                            </optgroup>
+                            <optgroup label="{% trans 'Expenses' %}">
+                                <option value="COGS" {% if account.role == 'COGS' %}selected{% endif %}>{% trans "Cost of Goods Sold" %}</option>
+                                <option value="EXPENSE_OPERATIONAL" {% if account.role == 'EXPENSE_OPERATIONAL' %}selected{% endif %}>{% trans "Operating Expenses" %}</option>
+                                <option value="EXPENSE_DEPRECIATION" {% if account.role == 'EXPENSE_DEPRECIATION' %}selected{% endif %}>{% trans "Depreciation" %}</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Balance Type -->
+                    <div>
+                        <label for="balance_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Balance Type" %} <span class="text-red-500">*</span>
+                        </label>
+                        <select name="balance_type" id="balance_type" required
+                                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                            <option value="debit" {% if account.balance_type == 'debit' %}selected{% endif %}>{% trans "Debit" %}</option>
+                            <option value="credit" {% if account.balance_type == 'credit' %}selected{% endif %}>{% trans "Credit" %}</option>
+                        </select>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {% trans "Assets & Expenses: Debit | Liabilities, Equity & Revenue: Credit" %}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Description" %}
+                    </label>
+                    <textarea name="description" id="description" rows="3"
+                              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                              placeholder="{% trans 'Optional description of this account' %}">{{ account.description|default:'' }}</textarea>
+                </div>
+
+                <!-- Active Status -->
+                <div class="flex items-center">
+                    <input type="checkbox" name="active" id="active" value="1"
+                           {% if not account or account.active %}checked{% endif %}
+                           class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <label for="active" class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {% trans "Active" %}
+                    </label>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <a href="{% url 'accounting:chart_of_accounts' %}" 
+                       class="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                        {% trans "Cancel" %}
+                    </a>
+                    <button type="submit" 
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                        {% if account %}{% trans "Update Account" %}{% else %}{% trans "Create Account" %}{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Help Text -->
+        <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div class="flex">
+                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div class="text-sm text-blue-800 dark:text-blue-300">
+                    <p class="font-semibold mb-1">{% trans "Account Code Guidelines:" %}</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>{% trans "1000-1999: Assets (1000-1099 for bank accounts)" %}</li>
+                        <li>{% trans "2000-2999: Liabilities" %}</li>
+                        <li>{% trans "3000-3999: Equity" %}</li>
+                        <li>{% trans "4000-4999: Revenue" %}</li>
+                        <li>{% trans "5000-5999: Expenses" %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

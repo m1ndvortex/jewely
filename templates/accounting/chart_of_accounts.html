@@ -4,9 +4,20 @@
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
     <div class="p-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Chart of Accounts</h3>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Chart of Accounts</h3>
+                {% if entity %}
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Entity: {{ entity.name }}</span>
+                {% endif %}
+            </div>
             {% if entity %}
-                <span class="text-sm text-gray-600 dark:text-gray-400">Entity: {{ entity.name }}</span>
+                <a href="{% url 'accounting:add_account' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Add Account
+                </a>
             {% endif %}
         </div>
     </div>
@@ -23,6 +34,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Balance Type</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Current Balance</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -55,6 +67,14 @@
                                         Inactive
                                     </span>
                                 {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <a href="{% url 'accounting:edit_account' account_code=account.code %}" 
+                                   class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">
+                                    <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
