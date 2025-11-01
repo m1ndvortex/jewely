@@ -273,33 +273,39 @@ function journalEntryForm() {
         lineCount: {{ formset.total_form_count }},
         
         init() {
-            this.calculateTotals();
-            // Watch for input changes
-            this.$watch('$el', () => {
+            // Initial calculation
+            setTimeout(() => {
                 this.calculateTotals();
-            });
-            
-            // Add event listeners to all debit/credit inputs
+                this.attachInputListeners();
+            }, 100);
+        },
+        
+        attachInputListeners() {
+            const self = this;
             document.querySelectorAll('input[name$="-debit"], input[name$="-credit"]').forEach(input => {
-                input.addEventListener('input', () => this.calculateTotals());
+                input.addEventListener('input', function() {
+                    self.calculateTotals();
+                });
             });
         },
         
         calculateTotals() {
-            this.totalDebit = 0;
-            this.totalCredit = 0;
+            let debitTotal = 0;
+            let creditTotal = 0;
             
             document.querySelectorAll('input[name$="-debit"]').forEach(input => {
                 const value = parseFloat(input.value) || 0;
-                this.totalDebit += value;
+                debitTotal += value;
             });
             
             document.querySelectorAll('input[name$="-credit"]').forEach(input => {
                 const value = parseFloat(input.value) || 0;
-                this.totalCredit += value;
+                creditTotal += value;
             });
             
-            this.difference = this.totalDebit - this.totalCredit;
+            this.totalDebit = debitTotal;
+            this.totalCredit = creditTotal;
+            this.difference = debitTotal - creditTotal;
         },
         
         addLine() {
@@ -326,10 +332,8 @@ function journalEntryForm() {
             totalForms.value = newIndex + 1;
             this.lineCount = newIndex + 1;
             
-            // Add event listeners to new inputs
-            template.querySelectorAll('input[name$="-debit"], input[name$="-credit"]').forEach(input => {
-                input.addEventListener('input', () => this.calculateTotals());
-            });
+            // Re-attach all event listeners
+            this.attachInputListeners();
             
             this.calculateTotals();
         },
@@ -347,14 +351,15 @@ function journalEntryForm() {
             // Add removing animation
             row.classList.add('removing');
             
+            const self = this;
             setTimeout(() => {
                 row.remove();
-                this.calculateTotals();
+                self.calculateTotals();
                 
                 // Update form count
                 const totalForms = document.getElementById('id_form-TOTAL_FORMS');
                 totalForms.value = tbody.querySelectorAll('tr').length;
-                this.lineCount = tbody.querySelectorAll('tr').length;
+                self.lineCount = tbody.querySelectorAll('tr').length;
             }, 300);
         }
     }
