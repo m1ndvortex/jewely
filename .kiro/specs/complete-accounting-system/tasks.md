@@ -144,7 +144,7 @@
   - NOTE: Basic customer CRUD already exists in CRM app
   - _Requirements: 3.7, 15.1, 15.2, 15.3, 15.4, 15.7, 15.8_
 
-- [ ] 3.4 Create customer accounting templates (frontend)
+- [x] 3.4 Create customer accounting templates (frontend)
   - Create templates/accounting/customers/ directory
   - Create accounting_detail.html (shows invoices, payments, balance, credit limit)
   - Create statement.html template

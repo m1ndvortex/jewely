@@ -430,6 +430,34 @@
                 </div>
             </a>
 
+            <!-- Customers Module -->
+            <a href="{% url 'crm:customer_list' %}" class="nav-card group bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 hover:border-cyan-500 dark:hover:border-cyan-400 transition-all">
+                <div class="flex flex-col h-full">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg p-3 shadow-lg">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 text-xs font-bold px-3 py-1 rounded-full">
+                            {% trans "CUSTOMERS" %}
+                        </span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                        {% trans "Customers" %}
+                    </h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 flex-grow mb-4">
+                        {% trans "View customer accounting details, invoices, statements, and credit limits" %}
+                    </p>
+                    <div class="flex items-center text-cyan-600 dark:text-cyan-400 text-sm font-medium">
+                        <span>{% trans "View Customers" %}</span>
+                        <svg class="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </div>
+            </a>
+
             <!-- Accounts Receivable Module -->
             <a href="{% url 'accounting:accounts_receivable' %}" class="nav-card group bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 hover:border-teal-500 dark:hover:border-teal-400 transition-all">
                 <div class="flex flex-col h-full">

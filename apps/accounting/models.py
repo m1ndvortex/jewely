@@ -16,7 +16,7 @@ from apps.core.models import Tenant
 from .bill_models import Bill, BillLine, BillPayment  # noqa: F401
 
 # Import invoice models for Django to recognize them
-from .invoice_models import Invoice, InvoiceLine, InvoicePayment, CreditMemo  # noqa: F401
+from .invoice_models import CreditMemo, Invoice, InvoiceLine, InvoicePayment  # noqa: F401
 
 # Import transaction models for Django to recognize them
 from .transaction_models import Expense, Payment, PurchaseOrder  # noqa: F401

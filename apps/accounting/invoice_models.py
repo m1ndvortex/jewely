@@ -777,7 +777,15 @@ class CreditMemo(models.Model):
         self.applied_to_invoice = invoice
         self.applied_by = user
         self.applied_at = timezone.now()
-        self.save(update_fields=["amount_used", "status", "applied_to_invoice", "applied_by", "applied_at"])
+        self.save(
+            update_fields=[
+                "amount_used",
+                "status",
+                "applied_to_invoice",
+                "applied_by",
+                "applied_at",
+            ]
+        )
 
         # Update invoice
         invoice.apply_credit(amount)
