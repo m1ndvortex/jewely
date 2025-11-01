@@ -19,7 +19,7 @@
   - Add audit logging for all operations
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8_
 
-- [ ] 1.3 Create journal entry templates (frontend)
+- [x] 1.3 Create journal entry templates (frontend)
   - Create templates/accounting/journal_entries/list.html with filters and status badges
   - Create templates/accounting/journal_entries/form.html with dynamic line addition (HTMX)
   - Create templates/accounting/journal_entries/detail.html with audit trail display
@@ -27,7 +27,7 @@
   - Add TailwindCSS styling for all templates
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 1.4 Add journal entry URLs
+- [x] 1.4 Add journal entry URLs
   - Add URL patterns for all journal entry views
   - Update accounting app urls.py
   - _Requirements: 1.1_
@@ -43,7 +43,7 @@
 ## Phase 2: Supplier Management and Bills (Accounts Payable)
 
 - [ ] 2. Extend Supplier model and create Bill models with migrations
-- [ ] 2.1 Extend existing Supplier model with accounting fields
+- [x] 2.1 Extend existing Supplier model with accounting fields
   - Create migration to add fields to apps/procurement/models.Supplier:
     - default_expense_account (CharField, max_length=20, blank=True)
     - is_1099_vendor (BooleanField, default=False)

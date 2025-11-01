@@ -52,6 +52,14 @@ class Supplier(models.Model):
         max_length=100, blank=True, help_text="Payment terms (e.g., Net 30, COD)"
     )
 
+    # Accounting Fields
+    default_expense_account = models.CharField(
+        max_length=20, blank=True, help_text="Default GL account code for expenses from this supplier"
+    )
+    is_1099_vendor = models.BooleanField(
+        default=False, help_text="Whether this supplier requires 1099 tax reporting"
+    )
+
     # Performance Tracking
     rating = models.IntegerField(
         default=0,
