@@ -311,10 +311,22 @@ function journalEntryForm() {
         addLine() {
             const tbody = document.getElementById('line-items-tbody');
             const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+            
+            if (!tbody || !totalForms) {
+                console.error('Required elements not found');
+                return;
+            }
+            
             const newIndex = parseInt(totalForms.value);
             
             // Clone the first row as template
-            const template = tbody.querySelector('tr').cloneNode(true);
+            const firstRow = tbody.querySelector('tr');
+            if (!firstRow) {
+                console.error('No template row found');
+                return;
+            }
+            
+            const template = firstRow.cloneNode(true);
             
             // Update form index in all fields
             template.querySelectorAll('input, select, textarea').forEach(field => {
@@ -342,6 +354,11 @@ function journalEntryForm() {
             const row = event.target.closest('tr');
             const tbody = document.getElementById('line-items-tbody');
             
+            if (!row || !tbody) {
+                console.error('Required elements not found');
+                return;
+            }
+            
             // Don't remove if it's the last row
             if (tbody.querySelectorAll('tr').length <= 1) {
                 alert('{% trans "You must have at least one line item." %}');
@@ -353,13 +370,17 @@ function journalEntryForm() {
             
             const self = this;
             setTimeout(() => {
-                row.remove();
+                if (row.parentNode) {
+                    row.remove();
+                }
                 self.calculateTotals();
                 
                 // Update form count
                 const totalForms = document.getElementById('id_form-TOTAL_FORMS');
-                totalForms.value = tbody.querySelectorAll('tr').length;
-                self.lineCount = tbody.querySelectorAll('tr').length;
+                if (totalForms) {
+                    totalForms.value = tbody.querySelectorAll('tr').length;
+                    self.lineCount = tbody.querySelectorAll('tr').length;
+                }
             }, 300);
         }
     }
