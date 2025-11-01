@@ -55,7 +55,8 @@ urlpatterns = [
     path(
         "reports/export/excel/", views.export_financial_reports_excel, name="export_reports_excel"
     ),
-    # Supplier Accounting Views (Task 2.3)
+    # Supplier Accounting Views (Task 2.3, 2.8)
+    path("suppliers/", views.supplier_list, name="supplier_list"),
     path(
         "suppliers/<uuid:supplier_id>/accounting/",
         views.supplier_accounting_detail,
@@ -65,6 +66,11 @@ urlpatterns = [
         "suppliers/<uuid:supplier_id>/statement/",
         views.supplier_statement,
         name="supplier_statement",
+    ),
+    path(
+        "suppliers/<uuid:supplier_id>/statement/pdf/",
+        views.supplier_statement_pdf,
+        name="supplier_statement_pdf",
     ),
     # Bill Management Views (Task 2.5)
     path("bills/", views.bill_list, name="bill_list"),

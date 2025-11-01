@@ -9,7 +9,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -1317,6 +1317,105 @@ def supplier_accounting_detail(request, supplier_id):
 
 @login_required
 @tenant_access_required
+def supplier_list(request):
+    """
+    Display list of suppliers with accounting summary information.
+
+    Provides quick access to supplier accounting details and statements
+    from within the accounting module.
+
+    Requirements: 14.1, 14.2, 14.7, 14.8
+    """
+    from apps.procurement.models import Supplier
+
+    from .bill_models import Bill
+
+    try:
+        # Get all suppliers for the tenant
+        suppliers = Supplier.objects.filter(tenant=request.user.tenant).select_related("tenant")
+
+        # Get search and filter parameters
+        search_query = request.GET.get("search", "")
+        status_filter = request.GET.get("status", "")
+
+        # Apply search filter
+        if search_query:
+            suppliers = suppliers.filter(
+                models.Q(name__icontains=search_query)
+                | models.Q(contact_person__icontains=search_query)
+                | models.Q(email__icontains=search_query)
+            )
+
+        # Apply status filter
+        if status_filter:
+            suppliers = suppliers.filter(is_active=(status_filter == "active"))
+
+        # Calculate accounting summary for each supplier
+        supplier_data = []
+        for supplier in suppliers:
+            # Get total bills
+            bills = Bill.objects.filter(tenant=request.user.tenant, supplier=supplier)
+            total_purchases = bills.aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+
+            # Get outstanding balance (unpaid bills)
+            outstanding_bills = bills.exclude(status="paid")
+            outstanding_balance = outstanding_bills.aggregate(total=models.Sum("total"))[
+                "total"
+            ] or Decimal("0.00")
+
+            # Get paid amount
+            paid_bills = bills.filter(status="paid")
+            total_paid = paid_bills.aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+
+            # Count bills
+            bill_count = bills.count()
+
+            supplier_data.append(
+                {
+                    "supplier": supplier,
+                    "total_purchases": total_purchases,
+                    "outstanding_balance": outstanding_balance,
+                    "total_paid": total_paid,
+                    "bill_count": bill_count,
+                }
+            )
+
+        # Sort by outstanding balance (highest first)
+        supplier_data.sort(key=lambda x: x["outstanding_balance"], reverse=True)
+
+        # Audit logging
+        from apps.core.audit_models import AuditLog
+
+        AuditLog.objects.create(
+            tenant=request.user.tenant,
+            user=request.user,
+            category=AuditLog.CATEGORY_DATA,
+            action=AuditLog.ACTION_API_GET,
+            severity=AuditLog.SEVERITY_INFO,
+            description="Viewed supplier list from accounting module",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
+        context = {
+            "supplier_data": supplier_data,
+            "search_query": search_query,
+            "status_filter": status_filter,
+            "page_title": "Suppliers - Accounting",
+        }
+
+        return render(request, "accounting/suppliers/list.html", context)
+
+    except Exception as e:
+        logger.error(f"Error in supplier_list: {str(e)}")
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("accounting:dashboard")
+
+
+@login_required
+@tenant_access_required
 def supplier_statement(request, supplier_id):
     """
     Generate supplier statement showing all transactions and current balance.
@@ -1468,6 +1567,360 @@ def supplier_statement(request, supplier_id):
         logger.error(f"Error in supplier_statement: {str(e)}")
         messages.error(request, f"An error occurred: {str(e)}")
         return redirect("procurement:supplier_list")
+
+
+@login_required
+@tenant_access_required
+def supplier_statement_pdf(request, supplier_id):
+    """
+    Generate supplier statement as PDF export.
+
+    Creates a PDF document showing all bills and payments for a supplier
+    within a date range, with opening and closing balances.
+
+    Requirements: 2.8, 14.3
+    """
+    from io import BytesIO
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    from apps.procurement.models import Supplier
+
+    from .bill_models import Bill, BillPayment
+
+    try:
+        # Get supplier with tenant filtering
+        supplier = (
+            Supplier.objects.filter(tenant=request.user.tenant, id=supplier_id)
+            .select_related("tenant")
+            .first()
+        )
+
+        if not supplier:
+            messages.error(request, "Supplier not found.")
+            return redirect("procurement:supplier_list")
+
+        # Get date range from request or default to current month
+        end_date = date.today()
+        start_date = date(end_date.year, end_date.month, 1)
+
+        if request.GET.get("start_date"):
+            start_date = datetime.strptime(request.GET["start_date"], "%Y-%m-%d").date()
+        if request.GET.get("end_date"):
+            end_date = datetime.strptime(request.GET["end_date"], "%Y-%m-%d").date()
+
+        # Get bills within date range with tenant filtering
+        bills = (
+            Bill.objects.filter(
+                tenant=request.user.tenant,
+                supplier=supplier,
+                bill_date__range=[start_date, end_date],
+            )
+            .select_related("supplier", "created_by")
+            .prefetch_related("lines", "payments")
+            .order_by("bill_date")
+        )
+
+        # Get payments within date range with tenant filtering
+        payments = (
+            BillPayment.objects.filter(
+                tenant=request.user.tenant,
+                bill__supplier=supplier,
+                payment_date__range=[start_date, end_date],
+            )
+            .select_related("bill", "created_by")
+            .order_by("payment_date")
+        )
+
+        # Calculate opening balance
+        opening_bills = Bill.objects.filter(
+            tenant=request.user.tenant, supplier=supplier, bill_date__lt=start_date
+        ).aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+
+        opening_payments = BillPayment.objects.filter(
+            tenant=request.user.tenant, bill__supplier=supplier, payment_date__lt=start_date
+        ).aggregate(total=models.Sum("amount"))["total"] or Decimal("0.00")
+
+        opening_balance = opening_bills - opening_payments
+
+        # Calculate period totals
+        period_bills_total = bills.aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+        period_payments_total = payments.aggregate(total=models.Sum("amount"))["total"] or Decimal(
+            "0.00"
+        )
+
+        # Calculate closing balance
+        closing_balance = opening_balance + period_bills_total - period_payments_total
+
+        # Combine bills and payments into a single transaction list
+        transactions = []
+
+        for bill in bills:
+            transactions.append(
+                {
+                    "date": bill.bill_date,
+                    "type": "Bill",
+                    "reference": bill.bill_number,
+                    "description": f"Bill #{bill.bill_number}",
+                    "debit": bill.total,
+                    "credit": Decimal("0.00"),
+                    "balance": None,
+                }
+            )
+
+        for payment in payments:
+            transactions.append(
+                {
+                    "date": payment.payment_date,
+                    "type": "Payment",
+                    "reference": payment.reference_number or f"Payment #{payment.id}",
+                    "description": f"Payment for Bill #{payment.bill.bill_number}",
+                    "debit": Decimal("0.00"),
+                    "credit": payment.amount,
+                    "balance": None,
+                }
+            )
+
+        # Sort by date
+        transactions.sort(key=lambda x: x["date"])
+
+        # Calculate running balance
+        running_balance = opening_balance
+        for txn in transactions:
+            running_balance += txn["debit"] - txn["credit"]
+            txn["balance"] = running_balance
+
+        # Create PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch
+        )
+        elements = []
+
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "CustomTitle",
+            parent=styles["Heading1"],
+            fontSize=18,
+            textColor=colors.HexColor("#1f2937"),
+        )
+        heading_style = ParagraphStyle(
+            "CustomHeading",
+            parent=styles["Heading2"],
+            fontSize=14,
+            textColor=colors.HexColor("#374151"),
+        )
+        normal_style = styles["Normal"]
+
+        # Title
+        elements.append(Paragraph("Supplier Statement", title_style))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Supplier Information and Period
+        supplier_info = f"""
+        <b>{supplier.name}</b><br/>
+        {supplier.contact_person or ''}<br/>
+        {supplier.address or ''}<br/>
+        {supplier.email or ''}<br/>
+        {supplier.phone or ''}
+        """
+
+        period_info = f"""
+        <b>{start_date.strftime('%B %d, %Y')} - {end_date.strftime('%B %d, %Y')}</b><br/>
+        Generated on {date.today().strftime('%B %d, %Y')}
+        """
+
+        info_data = [
+            ["Supplier Information", "Statement Period"],
+            [
+                Paragraph(supplier_info, normal_style),
+                Paragraph(period_info, normal_style),
+            ],
+        ]
+
+        info_table = Table(info_data, colWidths=[3.5 * inch, 3.5 * inch])
+        info_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
+                    ("ALIGN", (0, 0), (-1, 0), "LEFT"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 12),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("TOPPADDING", (0, 0), (-1, 0), 12),
+                    ("VALIGN", (0, 1), (-1, -1), "TOP"),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ]
+            )
+        )
+        elements.append(info_table)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Balance Summary
+        balance_data = [
+            ["Opening Balance", "Period Bills", "Period Payments", "Closing Balance"],
+            [
+                f"${opening_balance:,.2f}",
+                f"${period_bills_total:,.2f}",
+                f"${period_payments_total:,.2f}",
+                f"${closing_balance:,.2f}",
+            ],
+        ]
+
+        balance_table = Table(balance_data, colWidths=[1.75 * inch] * 4)
+        balance_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3b82f6")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+                    ("TOPPADDING", (0, 0), (-1, -1), 12),
+                    ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 1), (-1, 1), 12),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ]
+            )
+        )
+        elements.append(balance_table)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Transaction Details
+        elements.append(Paragraph("Transaction Details", heading_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+        if transactions:
+            # Transaction table header
+            txn_data = [
+                ["Date", "Type", "Reference", "Description", "Charges", "Payments", "Balance"]
+            ]
+
+            # Opening balance row
+            txn_data.append(
+                [
+                    start_date.strftime("%Y-%m-%d"),
+                    "",
+                    "",
+                    "Opening Balance",
+                    "",
+                    "",
+                    f"${opening_balance:,.2f}",
+                ]
+            )
+
+            # Transaction rows
+            for txn in transactions:
+                txn_data.append(
+                    [
+                        txn["date"].strftime("%Y-%m-%d"),
+                        txn["type"],
+                        txn["reference"],
+                        txn["description"],
+                        f"${txn['debit']:,.2f}" if txn["debit"] > 0 else "-",
+                        f"${txn['credit']:,.2f}" if txn["credit"] > 0 else "-",
+                        f"${txn['balance']:,.2f}",
+                    ]
+                )
+
+            # Closing balance row
+            txn_data.append(
+                [
+                    end_date.strftime("%Y-%m-%d"),
+                    "",
+                    "",
+                    "Closing Balance",
+                    f"${period_bills_total:,.2f}",
+                    f"${period_payments_total:,.2f}",
+                    f"${closing_balance:,.2f}",
+                ]
+            )
+
+            txn_table = Table(
+                txn_data,
+                colWidths=[
+                    0.8 * inch,
+                    0.6 * inch,
+                    0.9 * inch,
+                    1.8 * inch,
+                    0.9 * inch,
+                    0.9 * inch,
+                    0.9 * inch,
+                ],
+            )
+            txn_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
+                        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 9),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                        ("TOPPADDING", (0, 0), (-1, 0), 8),
+                        ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#dbeafe")),
+                        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f3f4f6")),
+                        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                        ("ALIGN", (4, 1), (-1, -1), "RIGHT"),
+                        ("FONTSIZE", (0, 1), (-1, -1), 8),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ]
+                )
+            )
+            elements.append(txn_table)
+        else:
+            elements.append(
+                Paragraph("No transactions found for the selected period.", normal_style)
+            )
+
+        # Footer
+        elements.append(Spacer(1, 0.5 * inch))
+        footer_text = (
+            "This is a computer-generated statement and does not require a signature.<br/>"
+            "For questions about this statement, please contact your accounting department."
+        )
+        elements.append(Paragraph(footer_text, normal_style))
+
+        # Build PDF
+        doc.build(elements)
+
+        # Audit logging
+        from apps.core.audit_models import AuditLog
+
+        AuditLog.objects.create(
+            tenant=request.user.tenant,
+            user=request.user,
+            category=AuditLog.CATEGORY_DATA,
+            action=AuditLog.ACTION_API_GET,
+            severity=AuditLog.SEVERITY_INFO,
+            description=f"Exported supplier statement PDF: {supplier.name} ({start_date} to {end_date})",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
+        # Return PDF response
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="supplier_statement_{supplier.name.replace(" ", "_")}_'
+            f'{start_date.strftime("%Y%m%d")}_{end_date.strftime("%Y%m%d")}.pdf"'
+        )
+        return response
+
+    except Exception as e:
+        logger.error(f"Error in supplier_statement_pdf: {str(e)}")
+        messages.error(request, f"An error occurred generating PDF: {str(e)}")
+        return redirect("accounting:supplier_statement", supplier_id=supplier_id)
 
 
 # ============================================================================
@@ -2195,7 +2648,7 @@ def _export_aged_payables_pdf(tenant, supplier_list, grand_totals, as_of_date):
 
     # Title
     title = Paragraph(
-        f"<b>{tenant.name}</b><br/>Aged Payables Report<br/>As of {as_of_date.strftime('%B %d, %Y')}",
+        f"<b>{tenant.company_name}</b><br/>Aged Payables Report<br/>As of {as_of_date.strftime('%B %d, %Y')}",
         styles["Title"],
     )
     elements.append(title)
@@ -2289,7 +2742,7 @@ def _export_aged_payables_excel(tenant, supplier_list, grand_totals, as_of_date)
 
     # Title
     ws.merge_cells("A1:G1")
-    ws["A1"] = f"{tenant.name} - Aged Payables Report"
+    ws["A1"] = f"{tenant.company_name} - Aged Payables Report"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A1"].alignment = Alignment(horizontal="center")
 

@@ -99,7 +99,7 @@
   - Add PDF/Excel export functionality
   - _Requirements: 2.5_
 
-- [-] 2.8 Create supplier statement report (backend + frontend)
+- [x] 2.8 Create supplier statement report (backend + frontend)
   - Implement supplier_statement view
   - Create templates/accounting/reports/supplier_statement.html
   - Add PDF export functionality
