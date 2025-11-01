@@ -1571,7 +1571,7 @@ def supplier_statement(request, supplier_id):
 
 @login_required
 @tenant_access_required
-def supplier_statement_pdf(request, supplier_id):
+def supplier_statement_pdf(request, supplier_id):  # noqa: C901
     """
     Generate supplier statement as PDF export.
 
@@ -2501,7 +2501,7 @@ def _create_payment_journal_entry(payment, bill, tenant, entity, coa):
 
 @login_required
 @tenant_access_required
-def aged_payables_report(request):
+def aged_payables_report(request):  # noqa: C901
     """
     Display aged payables report with 30/60/90/90+ day buckets.
 

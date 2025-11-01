@@ -8,14 +8,14 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-from datetime import date, timedelta
-from decimal import Decimal
+from datetime import date, timedelta  # noqa: E402
+from decimal import Decimal  # noqa: E402
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model  # noqa: E402
 
-from apps.accounting.bill_models import Bill
-from apps.core.models import Tenant
-from apps.procurement.models import Supplier
+from apps.accounting.bill_models import Bill  # noqa: E402
+from apps.core.models import Tenant  # noqa: E402
+from apps.procurement.models import Supplier  # noqa: E402
 
 User = get_user_model()
 

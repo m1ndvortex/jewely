@@ -6,7 +6,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-from apps.accounting.bill_models import Bill
+from apps.accounting.bill_models import Bill  # noqa: E402
 
 bills = Bill.objects.all()
 print(f"Total bills: {bills.count()}")
