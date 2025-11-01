@@ -29,6 +29,18 @@ class TenantManager(models.Manager):
 
     def get_queryset(self):
         """Override to filter by tenant if available in context."""
+        try:
+            # Import here to avoid circular imports at module load time
+            from apps.core.tenant_context import get_current_tenant
+
+            current = get_current_tenant()
+            if current:
+                return super().get_queryset().filter(tenant=current)
+        except Exception:
+            # If anything goes wrong (no DB connection, missing function, etc.),
+            # fall back to the unfiltered queryset to avoid breaking callers.
+            pass
+
         return super().get_queryset()
 
     def for_tenant(self, tenant):
@@ -401,16 +413,28 @@ class BillLine(models.Model):
         """Validate line item data."""
         super().clean()
 
-        # Validate amount calculation
-        expected_amount = self.quantity * self.unit_price
-        if abs(self.amount - expected_amount) > Decimal("0.01"):  # Allow for rounding
+        # Validate amount calculation. Be defensive: formsets may call clean()
+        # when some numeric fields are not yet provided (None). Treat None as 0.00
+        # for the purposes of validation to avoid TypeErrors.
+        qty = self.quantity if self.quantity is not None else Decimal("0.00")
+        up = self.unit_price if self.unit_price is not None else Decimal("0.00")
+        amt = self.amount if self.amount is not None else Decimal("0.00")
+
+        expected_amount = qty * up
+        if abs(amt - expected_amount) > Decimal("0.01"):  # Allow for rounding
             raise ValidationError(
                 {"amount": f"Amount must equal quantity × unit_price ({expected_amount})"}
             )
 
     def save(self, *args, **kwargs):
         """Auto-calculate amount on save."""
-        self.amount = self.quantity * self.unit_price
+        from decimal import Decimal
+
+        # Handle None values
+        quantity = self.quantity if self.quantity is not None else Decimal("0.00")
+        unit_price = self.unit_price if self.unit_price is not None else Decimal("0.00")
+
+        self.amount = quantity * unit_price
         super().save(*args, **kwargs)
 
     @property

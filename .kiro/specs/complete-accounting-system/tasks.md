@@ -67,7 +67,7 @@
   - NOTE: Basic supplier CRUD already exists in procurement app
   - _Requirements: 2.7, 14.1, 14.2, 14.3, 14.7, 14.8_
 
-- [-] 2.4 Create supplier accounting templates (frontend)
+- [x] 2.4 Create supplier accounting templates (frontend)
   - Create templates/accounting/suppliers/ directory
   - Create accounting_detail.html (shows bills, payments, balance)
   - Create statement.html template
@@ -75,7 +75,7 @@
   - Add TailwindCSS styling
   - _Requirements: 14.1, 14.2, 14.3, 14.8_
 
-- [ ] 2.5 Create bill management forms and views (backend)
+- [x] 2.5 Create bill management forms and views (backend)
   - Create BillForm and BillLineFormSet in forms.py (reference apps.procurement.models.Supplier)
   - Create BillPaymentForm in forms.py
   - Implement bill_list, bill_create, bill_detail, bill_pay views
@@ -84,7 +84,7 @@
   - Add tenant filtering and audit logging
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6, 2.7, 2.8_
 
-- [ ] 2.6 Create bill management templates (frontend)
+- [x] 2.6 Create bill management templates (frontend)
   - Create templates/accounting/bills/ directory
   - Create list.html with aging columns and status badges
   - Create form.html with dynamic line items (HTMX)
@@ -93,13 +93,13 @@
   - Add TailwindCSS styling
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.8_
 
-- [ ] 2.7 Create aged payables report (backend + frontend)
+- [x] 2.7 Create aged payables report (backend + frontend)
   - Implement aged_payables_report view with 30/60/90/90+ day buckets
   - Create templates/accounting/reports/aged_payables.html
   - Add PDF/Excel export functionality
   - _Requirements: 2.5_
 
-- [ ] 2.8 Create supplier statement report (backend + frontend)
+- [-] 2.8 Create supplier statement report (backend + frontend)
   - Implement supplier_statement view
   - Create templates/accounting/reports/supplier_statement.html
   - Add PDF export functionality

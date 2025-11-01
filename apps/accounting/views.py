@@ -4,13 +4,17 @@ Views for the accounting module.
 
 import logging
 from datetime import date, datetime
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+
+from django_ledger.models import AccountModel
 
 from apps.core.decorators import tenant_access_required
 
@@ -1464,3 +1468,903 @@ def supplier_statement(request, supplier_id):
         logger.error(f"Error in supplier_statement: {str(e)}")
         messages.error(request, f"An error occurred: {str(e)}")
         return redirect("procurement:supplier_list")
+
+
+# ============================================================================
+# Bill Management Views (Task 2.5)
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def bill_list(request):
+    """
+    Display bills list with filtering by supplier, date range, status, and amount.
+
+    Shows all bills for the tenant with aging information and status badges.
+    Supports search and filtering.
+
+    Requirements: 2.3, 2.7, 2.8
+    """
+    from decimal import Decimal
+
+    from apps.procurement.models import Supplier
+
+    from .bill_models import Bill
+
+    try:
+        # Get filter parameters
+        supplier_filter = request.GET.get("supplier", "")
+        status_filter = request.GET.get("status", "")
+        start_date = request.GET.get("start_date", "")
+        end_date = request.GET.get("end_date", "")
+        min_amount = request.GET.get("min_amount", "")
+        max_amount = request.GET.get("max_amount", "")
+        search_query = request.GET.get("search", "")
+
+        # Get all bills for this tenant
+        bills = (
+            Bill.objects.filter(tenant=request.user.tenant)
+            .select_related("supplier", "created_by", "approved_by")
+            .prefetch_related("lines", "payments")
+        )
+
+        # Apply filters
+        if supplier_filter:
+            bills = bills.filter(supplier_id=supplier_filter)
+
+        if status_filter:
+            bills = bills.filter(status=status_filter)
+
+        if start_date:
+            bills = bills.filter(bill_date__gte=datetime.strptime(start_date, "%Y-%m-%d").date())
+
+        if end_date:
+            bills = bills.filter(bill_date__lte=datetime.strptime(end_date, "%Y-%m-%d").date())
+
+        if min_amount:
+            bills = bills.filter(total__gte=Decimal(min_amount))
+
+        if max_amount:
+            bills = bills.filter(total__lte=Decimal(max_amount))
+
+        if search_query:
+            bills = bills.filter(
+                models.Q(bill_number__icontains=search_query)
+                | models.Q(supplier__name__icontains=search_query)
+                | models.Q(notes__icontains=search_query)
+            )
+
+        bills = bills.order_by("-bill_date", "-created_at")
+
+        # Calculate summary statistics
+        total_bills = bills.count()
+        total_amount = bills.aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+        total_outstanding = bills.aggregate(
+            outstanding=models.Sum(models.F("total") - models.F("amount_paid"))
+        )["outstanding"] or Decimal("0.00")
+
+        # Get unpaid bills count
+        unpaid_bills_count = bills.filter(status__in=["APPROVED", "PARTIALLY_PAID"]).count()
+
+        # Get overdue bills count
+        overdue_bills_count = bills.filter(
+            status__in=["APPROVED", "PARTIALLY_PAID"], due_date__lt=date.today()
+        ).count()
+
+        # Get suppliers for filter dropdown
+        suppliers = Supplier.objects.filter(tenant=request.user.tenant, is_active=True).order_by(
+            "name"
+        )
+
+        # Audit logging
+        from apps.core.audit_models import AuditLog
+
+        AuditLog.objects.create(
+            tenant=request.user.tenant,
+            user=request.user,
+            category=AuditLog.CATEGORY_DATA,
+            action=AuditLog.ACTION_API_GET,
+            severity=AuditLog.SEVERITY_INFO,
+            description=f"Viewed bills list (filters: supplier={supplier_filter}, status={status_filter})",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
+        context = {
+            "bills": bills,
+            "suppliers": suppliers,
+            "supplier_filter": supplier_filter,
+            "status_filter": status_filter,
+            "start_date": start_date,
+            "end_date": end_date,
+            "min_amount": min_amount,
+            "max_amount": max_amount,
+            "search_query": search_query,
+            "total_bills": total_bills,
+            "total_amount": total_amount,
+            "total_outstanding": total_outstanding,
+            "unpaid_bills_count": unpaid_bills_count,
+            "overdue_bills_count": overdue_bills_count,
+            "status_choices": Bill.STATUS_CHOICES,
+            "page_title": "Bills",
+        }
+
+        return render(request, "accounting/bills/list.html", context)
+
+    except Exception as e:
+        logger.error(f"Error in bill_list: {str(e)}")
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("accounting:dashboard")
+
+
+@login_required
+@tenant_access_required
+def bill_create(request):  # noqa: C901
+    """
+    Create a new bill with automatic journal entry creation.
+
+    Handles dynamic line items and creates journal entry debiting
+    expense/asset accounts and crediting accounts payable.
+
+    Requirements: 2.1, 2.2, 2.6, 2.7, 2.8
+    """
+    try:
+        jewelry_entity = JewelryEntity.objects.get(tenant=request.user.tenant)
+        entity = jewelry_entity.ledger_entity
+
+        # Get chart of accounts (optional - can create bills without COA)
+        coa = entity.chartofaccountmodel_set.first()
+        if not coa:
+            messages.warning(
+                request,
+                "Chart of Accounts not set up. Bills can be created but account codes won't be available.",
+            )
+
+        from .forms import BillForm, BillLineInlineFormSet
+
+        if request.method == "POST":
+            form = BillForm(request.POST, tenant=request.user.tenant, user=request.user)
+
+            if form.is_valid():
+                with transaction.atomic():
+                    # Create bill
+                    bill = form.save(commit=False)
+                    bill.tenant = request.user.tenant
+                    bill.created_by = request.user
+                    bill.status = "DRAFT"
+                    bill.subtotal = Decimal("0.00")
+                    bill.total = Decimal("0.00")
+                    bill.amount_paid = Decimal("0.00")
+                    bill.save()
+
+                    # Handle formset
+                    formset = BillLineInlineFormSet(
+                        request.POST, instance=bill, tenant=request.user.tenant, coa=coa
+                    )
+
+                    if formset.is_valid():
+                        # Save the lines
+                        lines = formset.save(commit=False)
+
+                        for line in lines:
+                            line.bill = bill
+                            line.save()
+
+                        # Delete removed lines
+                        for obj in formset.deleted_objects:
+                            obj.delete()
+
+                        # Calculate totals
+                        bill.calculate_totals()
+
+                        # Create journal entry only if COA is set up
+                        if coa:
+                            try:
+                                journal_entry = _create_bill_journal_entry(
+                                    bill, request.user.tenant, entity, coa
+                                )
+                                bill.journal_entry = journal_entry
+                            except Exception as je_error:
+                                logger.warning(f"Could not create journal entry: {str(je_error)}")
+                                messages.warning(
+                                    request,
+                                    "Bill created but journal entry could not be created. Please check account setup.",
+                                )
+
+                        bill.status = "APPROVED"  # Auto-approve for now
+                        bill.approved_by = request.user
+                        bill.approved_at = timezone.now()
+                        bill.save()
+
+                        # Audit logging
+                        from apps.core.audit_models import AuditLog
+
+                        AuditLog.objects.create(
+                            tenant=request.user.tenant,
+                            user=request.user,
+                            category=AuditLog.CATEGORY_DATA,
+                            action=AuditLog.ACTION_CREATE,
+                            severity=AuditLog.SEVERITY_INFO,
+                            description=f"Created bill: {bill.bill_number} for supplier {bill.supplier.name}",
+                            metadata={
+                                "bill_id": str(bill.id),
+                                "bill_number": bill.bill_number,
+                                "supplier": bill.supplier.name,
+                                "total": str(bill.total),
+                            },
+                            ip_address=request.META.get("REMOTE_ADDR"),
+                            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                            request_method=request.method,
+                            request_path=request.path,
+                        )
+
+                        messages.success(
+                            request,
+                            f"Bill {bill.bill_number} created successfully with journal entry.",
+                        )
+                        return redirect("accounting:bill_detail", pk=bill.id)
+                    else:
+                        # Formset validation failed
+                        messages.error(request, "Please correct the errors in the bill lines.")
+                        # Delete the bill since formset failed
+                        bill.delete()
+            else:
+                # Form validation failed
+                from .bill_models import Bill as BillModel
+
+                temp_bill = BillModel()
+                formset = BillLineInlineFormSet(
+                    request.POST, instance=temp_bill, tenant=request.user.tenant, coa=coa
+                )
+        else:
+            form = BillForm(tenant=request.user.tenant, user=request.user)
+            # Create a temporary unsaved Bill instance for the formset
+            from .bill_models import Bill as BillModel
+
+            temp_bill = BillModel()
+            formset = BillLineInlineFormSet(instance=temp_bill, tenant=request.user.tenant, coa=coa)
+
+        context = {
+            "form": form,
+            "formset": formset,
+            "page_title": "Create Bill",
+        }
+
+        return render(request, "accounting/bills/form.html", context)
+
+    except JewelryEntity.DoesNotExist:
+        messages.error(request, "Accounting not set up for this tenant.")
+        return redirect("accounting:dashboard")
+    except Exception as e:
+        logger.error(f"Error in bill_create: {str(e)}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("accounting:bill_list")
+
+
+@login_required
+@tenant_access_required
+def bill_detail(request, pk):
+    """
+    Display bill details with payment history.
+
+    Shows all line items, payments, and current balance.
+
+    Requirements: 2.1, 2.2, 2.4, 2.7, 2.8
+    """
+    from .bill_models import Bill
+
+    try:
+        # Get bill with tenant filtering
+        bill = (
+            Bill.objects.filter(tenant=request.user.tenant, id=pk)
+            .select_related("supplier", "created_by", "approved_by", "journal_entry")
+            .prefetch_related("lines", "payments__created_by")
+            .first()
+        )
+
+        if not bill:
+            messages.error(request, "Bill not found.")
+            return redirect("accounting:bill_list")
+
+        # Audit logging
+        from apps.core.audit_models import AuditLog
+
+        AuditLog.objects.create(
+            tenant=request.user.tenant,
+            user=request.user,
+            category=AuditLog.CATEGORY_DATA,
+            action=AuditLog.ACTION_API_GET,
+            severity=AuditLog.SEVERITY_INFO,
+            description=f"Viewed bill detail: {bill.bill_number}",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
+        context = {
+            "bill": bill,
+            "page_title": f"Bill: {bill.bill_number}",
+        }
+
+        return render(request, "accounting/bills/detail.html", context)
+
+    except Exception as e:
+        logger.error(f"Error in bill_detail: {str(e)}")
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("accounting:bill_list")
+
+
+@login_required
+@tenant_access_required
+def bill_pay(request, pk):
+    """
+    Record a payment against a bill with automatic journal entry creation.
+
+    Creates journal entry debiting accounts payable and crediting cash/bank.
+
+    Requirements: 2.4, 2.6, 2.7, 2.8
+    """
+    from .bill_models import Bill
+
+    try:
+        jewelry_entity = JewelryEntity.objects.get(tenant=request.user.tenant)
+        entity = jewelry_entity.ledger_entity
+
+        # Get chart of accounts
+        coa = entity.chartofaccountmodel_set.first()
+        if not coa:
+            messages.error(request, "Chart of Accounts not found. Please set up accounting first.")
+            return redirect("accounting:dashboard")
+
+        # Get bill with tenant filtering
+        bill = (
+            Bill.objects.filter(tenant=request.user.tenant, id=pk)
+            .select_related("supplier")
+            .first()
+        )
+
+        if not bill:
+            messages.error(request, "Bill not found.")
+            return redirect("accounting:bill_list")
+
+        # Check if bill is already paid
+        if bill.status == "PAID":
+            messages.warning(request, "This bill is already fully paid.")
+            return redirect("accounting:bill_detail", pk=pk)
+
+        # Check if bill is void
+        if bill.status == "VOID":
+            messages.error(request, "Cannot pay a void bill.")
+            return redirect("accounting:bill_detail", pk=pk)
+
+        from .forms import BillPaymentForm
+
+        if request.method == "POST":
+            form = BillPaymentForm(
+                request.POST, tenant=request.user.tenant, user=request.user, bill=bill
+            )
+
+            if form.is_valid():
+                with transaction.atomic():
+                    # Create payment
+                    payment = form.save(commit=False)
+                    payment.tenant = request.user.tenant
+                    payment.bill = bill
+                    payment.created_by = request.user
+
+                    # Create journal entry (debit AP, credit cash)
+                    journal_entry = _create_payment_journal_entry(
+                        payment, bill, request.user.tenant, entity, coa
+                    )
+                    payment.journal_entry = journal_entry
+                    payment.save()
+
+                    # Update bill's amount_paid and status
+                    # This is handled automatically by BillPayment.save() which calls bill.add_payment()
+
+                    # Audit logging
+                    from apps.core.audit_models import AuditLog
+
+                    AuditLog.objects.create(
+                        tenant=request.user.tenant,
+                        user=request.user,
+                        category=AuditLog.CATEGORY_DATA,
+                        action=AuditLog.ACTION_CREATE,
+                        severity=AuditLog.SEVERITY_INFO,
+                        description=f"Recorded payment of ${payment.amount:,.2f} for bill {bill.bill_number}",
+                        metadata={
+                            "payment_id": str(payment.id),
+                            "bill_id": str(bill.id),
+                            "bill_number": bill.bill_number,
+                            "amount": str(payment.amount),
+                            "payment_method": payment.payment_method,
+                        },
+                        ip_address=request.META.get("REMOTE_ADDR"),
+                        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                        request_method=request.method,
+                        request_path=request.path,
+                    )
+
+                    messages.success(
+                        request,
+                        f"Payment of ${payment.amount:,.2f} recorded successfully with journal entry.",
+                    )
+                    return redirect("accounting:bill_detail", pk=pk)
+        else:
+            form = BillPaymentForm(tenant=request.user.tenant, user=request.user, bill=bill)
+
+        context = {
+            "form": form,
+            "bill": bill,
+            "page_title": f"Record Payment: {bill.bill_number}",
+        }
+
+        return render(request, "accounting/bills/payment_form.html", context)
+
+    except JewelryEntity.DoesNotExist:
+        messages.error(request, "Accounting not set up for this tenant.")
+        return redirect("accounting:dashboard")
+    except Exception as e:
+        logger.error(f"Error in bill_pay: {str(e)}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("accounting:bill_detail", pk=pk)
+
+
+# ============================================================================
+# Helper Functions for Journal Entry Creation
+# ============================================================================
+
+
+def _create_bill_journal_entry(bill, tenant, entity, coa):
+    """
+    Create journal entry for a bill.
+
+    Debits: Expense/Asset accounts (from line items)
+    Credits: Accounts Payable
+
+    Requirements: 2.2, 2.7
+    """
+    from django_ledger.models import JournalEntryModel, TransactionModel
+
+    # Get the ledger
+    ledger = entity.ledgermodel_set.first()
+
+    # Get accounts payable account
+    ap_account = AccountModel.objects.filter(
+        coa_model=coa, role__in=["LIABILITY_CL_ACC_PAYABLE", "LIABILITY_CL"], active=True
+    ).first()
+
+    if not ap_account:
+        raise ValueError("Accounts Payable account not found in chart of accounts")
+
+    # Create journal entry
+    journal_entry = JournalEntryModel.objects.create(
+        ledger=ledger,
+        description=f"Bill {bill.bill_number} from {bill.supplier.name}",
+        posted=True,  # Auto-post bill entries
+    )
+
+    # Create debit transactions for each line item (expense/asset)
+    for line in bill.lines.all():
+        # Get the account from the line's account code
+        account = AccountModel.objects.filter(coa_model=coa, code=line.account, active=True).first()
+
+        if not account:
+            raise ValueError(f"Account {line.account} not found in chart of accounts")
+
+        TransactionModel.objects.create(
+            journal_entry=journal_entry,
+            account=account,
+            amount=line.amount,
+            tx_type="debit",
+            description=line.description,
+        )
+
+    # Create credit transaction for accounts payable
+    TransactionModel.objects.create(
+        journal_entry=journal_entry,
+        account=ap_account,
+        amount=bill.total,
+        tx_type="credit",
+        description=f"Bill {bill.bill_number} - {bill.supplier.name}",
+    )
+
+    return journal_entry
+
+
+def _create_payment_journal_entry(payment, bill, tenant, entity, coa):
+    """
+    Create journal entry for a bill payment.
+
+    Debits: Accounts Payable
+    Credits: Cash/Bank account
+
+    Requirements: 2.4, 2.6, 2.7
+    """
+    from django_ledger.models import JournalEntryModel, TransactionModel
+
+    # Get the ledger
+    ledger = entity.ledgermodel_set.first()
+
+    # Get accounts payable account
+    ap_account = AccountModel.objects.filter(
+        coa_model=coa, role__in=["LIABILITY_CL_ACC_PAYABLE", "LIABILITY_CL"], active=True
+    ).first()
+
+    if not ap_account:
+        raise ValueError("Accounts Payable account not found in chart of accounts")
+
+    # Get cash/bank account based on payment method
+    if payment.payment_method in ["CASH"]:
+        cash_account = AccountModel.objects.filter(
+            coa_model=coa, role="ASSET_CA_CASH", active=True
+        ).first()
+    else:
+        # For checks, cards, transfers, use checking account
+        cash_account = AccountModel.objects.filter(
+            coa_model=coa, role__in=["ASSET_CA_CHECKING", "ASSET_CA"], active=True
+        ).first()
+
+    if not cash_account:
+        raise ValueError("Cash/Bank account not found in chart of accounts")
+
+    # Create journal entry
+    journal_entry = JournalEntryModel.objects.create(
+        ledger=ledger,
+        description=f"Payment for Bill {bill.bill_number} - {bill.supplier.name}",
+        posted=True,  # Auto-post payment entries
+    )
+
+    # Create debit transaction for accounts payable
+    TransactionModel.objects.create(
+        journal_entry=journal_entry,
+        account=ap_account,
+        amount=payment.amount,
+        tx_type="debit",
+        description=f"Payment for Bill {bill.bill_number}",
+    )
+
+    # Create credit transaction for cash/bank
+    TransactionModel.objects.create(
+        journal_entry=journal_entry,
+        account=cash_account,
+        amount=payment.amount,
+        tx_type="credit",
+        description=f"Payment to {bill.supplier.name} - {payment.payment_method}",
+    )
+
+    return journal_entry
+
+
+@login_required
+@tenant_access_required
+def aged_payables_report(request):
+    """
+    Display aged payables report with 30/60/90/90+ day buckets.
+
+    Shows amounts owed to suppliers grouped by aging buckets.
+    Supports PDF and Excel export.
+
+    Requirements: 2.5
+    """
+    from collections import defaultdict
+    from datetime import date
+
+    from .bill_models import Bill
+
+    # Get as_of_date from request or default to today
+    as_of_date_str = request.GET.get("as_of_date")
+    if as_of_date_str:
+        try:
+            as_of_date = datetime.strptime(as_of_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            as_of_date = date.today()
+    else:
+        as_of_date = date.today()
+
+    # Get all unpaid bills for the tenant
+    bills = (
+        Bill.objects.filter(
+            tenant=request.user.tenant,
+            status__in=["APPROVED", "PARTIALLY_PAID"],
+        )
+        .select_related("supplier")
+        .order_by("supplier__name", "due_date")
+    )
+
+    # Group bills by supplier and calculate aging buckets
+    supplier_data = defaultdict(
+        lambda: {
+            "supplier": None,
+            "current": 0,
+            "days_1_30": 0,
+            "days_31_60": 0,
+            "days_61_90": 0,
+            "days_90_plus": 0,
+            "total": 0,
+            "bills": [],
+        }
+    )
+
+    for bill in bills:
+        supplier_id = bill.supplier.id
+        amount_due = bill.amount_due
+
+        # Store supplier reference
+        if supplier_data[supplier_id]["supplier"] is None:
+            supplier_data[supplier_id]["supplier"] = bill.supplier
+
+        # Calculate days overdue based on as_of_date
+        days_overdue = (as_of_date - bill.due_date).days if as_of_date > bill.due_date else 0
+
+        # Categorize into aging buckets
+        if days_overdue <= 0:
+            supplier_data[supplier_id]["current"] += amount_due
+        elif days_overdue <= 30:
+            supplier_data[supplier_id]["days_1_30"] += amount_due
+        elif days_overdue <= 60:
+            supplier_data[supplier_id]["days_31_60"] += amount_due
+        elif days_overdue <= 90:
+            supplier_data[supplier_id]["days_61_90"] += amount_due
+        else:
+            supplier_data[supplier_id]["days_90_plus"] += amount_due
+
+        supplier_data[supplier_id]["total"] += amount_due
+        supplier_data[supplier_id]["bills"].append(
+            {
+                "bill_number": bill.bill_number,
+                "bill_date": bill.bill_date,
+                "due_date": bill.due_date,
+                "amount_due": amount_due,
+                "days_overdue": days_overdue,
+            }
+        )
+
+    # Convert to list and sort by supplier name
+    supplier_list = sorted(
+        supplier_data.values(), key=lambda x: x["supplier"].name if x["supplier"] else ""
+    )
+
+    # Calculate grand totals
+    grand_totals = {
+        "current": sum(s["current"] for s in supplier_list),
+        "days_1_30": sum(s["days_1_30"] for s in supplier_list),
+        "days_31_60": sum(s["days_31_60"] for s in supplier_list),
+        "days_61_90": sum(s["days_61_90"] for s in supplier_list),
+        "days_90_plus": sum(s["days_90_plus"] for s in supplier_list),
+        "total": sum(s["total"] for s in supplier_list),
+    }
+
+    # Check for export format
+    export_format = request.GET.get("export")
+
+    if export_format == "pdf":
+        return _export_aged_payables_pdf(
+            request.user.tenant, supplier_list, grand_totals, as_of_date
+        )
+    elif export_format == "excel":
+        return _export_aged_payables_excel(
+            request.user.tenant, supplier_list, grand_totals, as_of_date
+        )
+
+    context = {
+        "supplier_list": supplier_list,
+        "grand_totals": grand_totals,
+        "as_of_date": as_of_date,
+        "page_title": "Aged Payables Report",
+    }
+
+    return render(request, "accounting/reports/aged_payables.html", context)
+
+
+def _export_aged_payables_pdf(tenant, supplier_list, grand_totals, as_of_date):
+    """
+    Export aged payables report as PDF.
+    """
+    from io import BytesIO
+
+    from django.http import HttpResponse
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    # Create response
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="aged_payables_{as_of_date.strftime("%Y%m%d")}.pdf"'
+    )
+
+    # Create PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=0.5 * inch)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Title
+    title = Paragraph(
+        f"<b>{tenant.name}</b><br/>Aged Payables Report<br/>As of {as_of_date.strftime('%B %d, %Y')}",
+        styles["Title"],
+    )
+    elements.append(title)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    # Table data
+    table_data = [
+        ["Supplier", "Current", "1-30 Days", "31-60 Days", "61-90 Days", "90+ Days", "Total"]
+    ]
+
+    for supplier_data in supplier_list:
+        table_data.append(
+            [
+                supplier_data["supplier"].name,
+                f"${supplier_data['current']:,.2f}",
+                f"${supplier_data['days_1_30']:,.2f}",
+                f"${supplier_data['days_31_60']:,.2f}",
+                f"${supplier_data['days_61_90']:,.2f}",
+                f"${supplier_data['days_90_plus']:,.2f}",
+                f"${supplier_data['total']:,.2f}",
+            ]
+        )
+
+    # Add grand totals row
+    table_data.append(
+        [
+            "TOTAL",
+            f"${grand_totals['current']:,.2f}",
+            f"${grand_totals['days_1_30']:,.2f}",
+            f"${grand_totals['days_31_60']:,.2f}",
+            f"${grand_totals['days_61_90']:,.2f}",
+            f"${grand_totals['days_90_plus']:,.2f}",
+            f"${grand_totals['total']:,.2f}",
+        ]
+    )
+
+    # Create table
+    table = Table(
+        table_data,
+        colWidths=[
+            2.5 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+        ],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
+
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements)
+    pdf = buffer.getvalue()
+    buffer.close()
+    response.write(pdf)
+
+    return response
+
+
+def _export_aged_payables_excel(tenant, supplier_list, grand_totals, as_of_date):
+    """
+    Export aged payables report as Excel.
+    """
+    from django.http import HttpResponse
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Aged Payables"
+
+    # Title
+    ws.merge_cells("A1:G1")
+    ws["A1"] = f"{tenant.name} - Aged Payables Report"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells("A2:G2")
+    ws["A2"] = f"As of {as_of_date.strftime('%B %d, %Y')}"
+    ws["A2"].alignment = Alignment(horizontal="center")
+
+    # Headers
+    headers = ["Supplier", "Current", "1-30 Days", "31-60 Days", "61-90 Days", "90+ Days", "Total"]
+    ws.append([])  # Empty row
+    ws.append(headers)
+
+    # Style headers
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col_num)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # Data rows
+    for supplier_data in supplier_list:
+        ws.append(
+            [
+                supplier_data["supplier"].name,
+                supplier_data["current"],
+                supplier_data["days_1_30"],
+                supplier_data["days_31_60"],
+                supplier_data["days_61_90"],
+                supplier_data["days_90_plus"],
+                supplier_data["total"],
+            ]
+        )
+
+    # Grand totals row
+    total_row = ws.max_row + 1
+    ws.append(
+        [
+            "TOTAL",
+            grand_totals["current"],
+            grand_totals["days_1_30"],
+            grand_totals["days_31_60"],
+            grand_totals["days_61_90"],
+            grand_totals["days_90_plus"],
+            grand_totals["total"],
+        ]
+    )
+
+    # Style totals row
+    total_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    total_font = Font(bold=True)
+    for col_num in range(1, 8):
+        cell = ws.cell(row=total_row, column=col_num)
+        cell.fill = total_fill
+        cell.font = total_font
+
+    # Format currency columns
+    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, min_col=2, max_col=7):
+        for cell in row:
+            cell.number_format = "$#,##0.00"
+            cell.alignment = Alignment(horizontal="right")
+
+    # Adjust column widths
+    ws.column_dimensions["A"].width = 30
+    for col in ["B", "C", "D", "E", "F", "G"]:
+        ws.column_dimensions[col].width = 15
+
+    # Create response
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="aged_payables_{as_of_date.strftime("%Y%m%d")}.xlsx"'
+    )
+
+    wb.save(response)
+    return response

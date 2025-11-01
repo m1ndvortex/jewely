@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Aged Payables Report" %} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {% trans "Aged Payables Report" %}
+                </h1>
+                <p class="text-gray-600 dark:text-gray-400 mt-1">
+                    {% trans "As of" %} {{ as_of_date|date:"F d, Y" }}
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'accounting:bill_list' %}" 
+                   class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                    {% trans "Back to Bills" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <form method="get" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <label for="as_of_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {% trans "As of Date" %}
+                </label>
+                <input type="date" 
+                       id="as_of_date" 
+                       name="as_of_date" 
+                       value="{{ as_of_date|date:'Y-m-d' }}"
+                       class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    {% trans "Update Report" %}
+                </button>
+                <a href="?as_of_date={{ as_of_date|date:'Y-m-d' }}&export=pdf" 
+                   class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors inline-flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    {% trans "Export PDF" %}
+                </a>
+                <a href="?as_of_date={{ as_of_date|date:'Y-m-d' }}&export=excel" 
+                   class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    {% trans "Export Excel" %}
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "Current" %}</div>
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+                ${{ grand_totals.current|floatformat:2 }}
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "1-30 Days" %}</div>
+            <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                ${{ grand_totals.days_1_30|floatformat:2 }}
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "31-60 Days" %}</div>
+            <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                ${{ grand_totals.days_31_60|floatformat:2 }}
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "61-90 Days" %}</div>
+            <div class="text-2xl font-bold text-red-600 dark:text-red-400">
+                ${{ grand_totals.days_61_90|floatformat:2 }}
+            </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "90+ Days" %}</div>
+            <div class="text-2xl font-bold text-red-800 dark:text-red-600">
+                ${{ grand_totals.days_90_plus|floatformat:2 }}
+            </div>
+        </div>
+        <div class="bg-blue-600 dark:bg-blue-700 rounded-lg shadow-md p-4">
+            <div class="text-sm text-blue-100 mb-1">{% trans "Total Payables" %}</div>
+            <div class="text-2xl font-bold text-white">
+                ${{ grand_totals.total|floatformat:2 }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        {% if supplier_list %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Supplier" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Current" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "1-30 Days" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "31-60 Days" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "61-90 Days" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "90+ Days" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Total" %}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for supplier_data in supplier_list %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                            {{ supplier_data.supplier.name }}
+                                        </div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {{ supplier_data.bills|length }} {% trans "bill(s)" %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
+                                {% if supplier_data.current > 0 %}
+                                    <span class="text-green-600 dark:text-green-400 font-medium">
+                                        ${{ supplier_data.current|floatformat:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-400">$0.00</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
+                                {% if supplier_data.days_1_30 > 0 %}
+                                    <span class="text-yellow-600 dark:text-yellow-400 font-medium">
+                                        ${{ supplier_data.days_1_30|floatformat:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-400">$0.00</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
+                                {% if supplier_data.days_31_60 > 0 %}
+                                    <span class="text-orange-600 dark:text-orange-400 font-medium">
+                                        ${{ supplier_data.days_31_60|floatformat:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-400">$0.00</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
+                                {% if supplier_data.days_61_90 > 0 %}
+                                    <span class="text-red-600 dark:text-red-400 font-medium">
+                                        ${{ supplier_data.days_61_90|floatformat:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-400">$0.00</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
+                                {% if supplier_data.days_90_plus > 0 %}
+                                    <span class="text-red-800 dark:text-red-600 font-bold">
+                                        ${{ supplier_data.days_90_plus|floatformat:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-400">$0.00</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-900 dark:text-white">
+                                ${{ supplier_data.total|floatformat:2 }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- Grand Totals Row -->
+                        <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {% trans "TOTAL" %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-green-600 dark:text-green-400">
+                                ${{ grand_totals.current|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-yellow-600 dark:text-yellow-400">
+                                ${{ grand_totals.days_1_30|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-orange-600 dark:text-orange-400">
+                                ${{ grand_totals.days_31_60|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-red-600 dark:text-red-400">
+                                ${{ grand_totals.days_61_90|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-red-800 dark:text-red-600">
+                                ${{ grand_totals.days_90_plus|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
+                                ${{ grand_totals.total|floatformat:2 }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="p-8 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                    {% trans "No unpaid bills" %}
+                </h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "There are no unpaid bills to display in the aged payables report." %}
+                </p>
+                <div class="mt-6">
+                    <a href="{% url 'accounting:bill_create' %}" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        {% trans "Create Bill" %}
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Help Text -->
+    <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    {% trans "About This Report" %}
+                </h3>
+                <div class="mt-2 text-sm text-blue-700 dark:text-blue-400">
+                    <p>
+                        {% trans "This report shows amounts owed to suppliers grouped by how many days past due they are. Use this report to:" %}
+                    </p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li>{% trans "Identify overdue payments that need immediate attention" %}</li>
+                        <li>{% trans "Monitor cash flow and payment obligations" %}</li>
+                        <li>{% trans "Maintain good supplier relationships by paying on time" %}</li>
+                        <li>{% trans "Plan for upcoming cash requirements" %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

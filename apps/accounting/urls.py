@@ -66,4 +66,11 @@ urlpatterns = [
         views.supplier_statement,
         name="supplier_statement",
     ),
+    # Bill Management Views (Task 2.5)
+    path("bills/", views.bill_list, name="bill_list"),
+    path("bills/create/", views.bill_create, name="bill_create"),
+    path("bills/<uuid:pk>/", views.bill_detail, name="bill_detail"),
+    path("bills/<uuid:pk>/pay/", views.bill_pay, name="bill_pay"),
+    # Aged Payables Report (Task 2.7)
+    path("reports/aged-payables/", views.aged_payables_report, name="aged_payables_report"),
 ]

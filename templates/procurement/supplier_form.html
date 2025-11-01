@@ -6,238 +6,327 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <!-- Header -->
-            <div class="mb-4">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_list' %}">Suppliers</a></li>
-                        {% if object %}
-                            <li class="breadcrumb-item"><a href="{% url 'procurement:supplier_detail' object.pk %}">{{ object.name }}</a></li>
-                            <li class="breadcrumb-item active">Edit</li>
-                        {% else %}
-                            <li class="breadcrumb-item active">Add New Supplier</li>
-                        {% endif %}
-                    </ol>
-                </nav>
-                <h1 class="h3 mb-0">
-                    {% if object %}Edit {{ object.name }}{% else %}Add New Supplier{% endif %}
-                </h1>
-            </div>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Breadcrumb Navigation -->
+        <nav class="mb-6" aria-label="breadcrumb">
+            <ol class="flex items-center space-x-2 text-sm">
+                <li>
+                    <a href="{% url 'procurement:supplier_list' %}" class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-200">
+                        <i class="fas fa-truck-loading mr-1"></i>
+                        Suppliers
+                    </a>
+                </li>
+                <li class="text-gray-400">
+                    <i class="fas fa-chevron-right text-xs"></i>
+                </li>
+                {% if object %}
+                    <li>
+                        <a href="{% url 'procurement:supplier_detail' object.pk %}" class="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-200">
+                            {{ object.name }}
+                        </a>
+                    </li>
+                    <li class="text-gray-400">
+                        <i class="fas fa-chevron-right text-xs"></i>
+                    </li>
+                    <li class="text-gray-600 font-medium">Edit</li>
+                {% else %}
+                    <li class="text-gray-600 font-medium">Add New Supplier</li>
+                {% endif %}
+            </ol>
+        </nav>
 
-            <!-- Form -->
-            <div class="card">
-                <div class="card-body">
-                    <form method="post" novalidate>
-                        {% csrf_token %}
-                        
-                        <!-- Basic Information -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="border-bottom pb-2 mb-3">Basic Information</h5>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.name.id_for_label }}" class="form-label">
-                                        Supplier Name <span class="text-danger">*</span>
-                                    </label>
-                                    {{ form.name }}
-                                    {% if form.name.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.name.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.contact_person.id_for_label }}" class="form-label">
-                                        Contact Person
-                                    </label>
-                                    {{ form.contact_person }}
-                                    {% if form.contact_person.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.contact_person.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Contact Information -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="border-bottom pb-2 mb-3">Contact Information</h5>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.email.id_for_label }}" class="form-label">
-                                        Email Address
-                                    </label>
-                                    {{ form.email }}
-                                    {% if form.email.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.email.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.phone.id_for_label }}" class="form-label">
-                                        Phone Number
-                                    </label>
-                                    {{ form.phone }}
-                                    {% if form.phone.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.phone.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="mb-3">
-                                    <label for="{{ form.address.id_for_label }}" class="form-label">
-                                        Address
-                                    </label>
-                                    {{ form.address }}
-                                    {% if form.address.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.address.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Business Information -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="border-bottom pb-2 mb-3">Business Information</h5>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.tax_id.id_for_label }}" class="form-label">
-                                        Tax ID
-                                    </label>
-                                    {{ form.tax_id }}
-                                    {% if form.tax_id.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.tax_id.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.payment_terms.id_for_label }}" class="form-label">
-                                        Payment Terms
-                                    </label>
-                                    {{ form.payment_terms }}
-                                    {% if form.payment_terms.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.payment_terms.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                    <div class="form-text">e.g., Net 30, COD, 2/10 Net 30</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.rating.id_for_label }}" class="form-label">
-                                        Rating (0-5 stars)
-                                    </label>
-                                    {{ form.rating }}
-                                    {% if form.rating.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.rating.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% if object %}
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Status</label>
-                                    <div class="form-check">
-                                        {{ form.is_active }}
-                                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
-                                            Active Supplier
-                                        </label>
-                                    </div>
-                                    {% if form.is_active.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.is_active.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="border-bottom pb-2 mb-3">Additional Information</h5>
-                                <div class="mb-3">
-                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
-                                        Notes
-                                    </label>
-                                    {{ form.notes }}
-                                    {% if form.notes.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.notes.errors.0 }}
-                                        </div>
-                                    {% endif %}
-                                    <div class="form-text">Internal notes about this supplier</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Form Actions -->
-                        <div class="d-flex justify-content-between">
-                            <a href="{% if object %}{% url 'procurement:supplier_detail' object.pk %}{% else %}{% url 'procurement:supplier_list' %}{% endif %}" 
-                               class="btn btn-secondary">
-                                <i class="fas fa-times me-2"></i>Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>
-                                {% if object %}Update Supplier{% else %}Create Supplier{% endif %}
-                            </button>
-                        </div>
-                    </form>
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center gap-4">
+                <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-{% if object %}edit{% else %}plus{% endif %} text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">
+                        {% if object %}Edit Supplier{% else %}Add New Supplier{% endif %}
+                    </h1>
+                    <p class="mt-1 text-sm text-gray-600">
+                        {% if object %}Update supplier information and details{% else %}Fill in the details to add a new supplier to your network{% endif %}
+                    </p>
                 </div>
             </div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-200">
+            <form method="post" novalidate class="divide-y divide-gray-200">
+                {% csrf_token %}
+
+                <!-- Basic Information Section -->
+                <div class="p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-info-circle text-indigo-600"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold text-gray-900">Basic Information</h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Supplier Name -->
+                        <div class="md:col-span-1">
+                            <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-building text-gray-400 mr-1"></i>
+                                Supplier Name <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.name.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Contact Person -->
+                        <div class="md:col-span-1">
+                            <label for="{{ form.contact_person.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-user text-gray-400 mr-1"></i>
+                                Contact Person
+                            </label>
+                            {{ form.contact_person }}
+                            {% if form.contact_person.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.contact_person.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information Section -->
+                <div class="p-8 bg-gray-50">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-address-book text-green-600"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold text-gray-900">Contact Information</h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Email -->
+                        <div>
+                            <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-envelope text-gray-400 mr-1"></i>
+                                Email Address
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.email.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Phone -->
+                        <div>
+                            <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-phone text-gray-400 mr-1"></i>
+                                Phone Number
+                            </label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.phone.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Address -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.address.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-map-marker-alt text-gray-400 mr-1"></i>
+                                Address
+                            </label>
+                            {{ form.address }}
+                            {% if form.address.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.address.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Information Section -->
+                <div class="p-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-briefcase text-blue-600"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold text-gray-900">Business Information</h2>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Tax ID -->
+                        <div>
+                            <label for="{{ form.tax_id.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-file-invoice text-gray-400 mr-1"></i>
+                                Tax ID
+                            </label>
+                            {{ form.tax_id }}
+                            {% if form.tax_id.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.tax_id.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Payment Terms -->
+                        <div>
+                            <label for="{{ form.payment_terms.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-credit-card text-gray-400 mr-1"></i>
+                                Payment Terms
+                            </label>
+                            {{ form.payment_terms }}
+                            <p class="mt-1 text-xs text-gray-500">e.g., Net 30, COD, 2/10 Net 30</p>
+                            {% if form.payment_terms.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.payment_terms.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Rating -->
+                        <div>
+                            <label for="{{ form.rating.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-star text-gray-400 mr-1"></i>
+                                Rating (0-5 stars)
+                            </label>
+                            {{ form.rating }}
+                            {% if form.rating.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.rating.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Status (only for edit) -->
+                        {% if object %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                <i class="fas fa-toggle-on text-gray-400 mr-1"></i>
+                                Status
+                            </label>
+                            <div class="flex items-center">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    {{ form.is_active }}
+                                    <span class="ml-3 text-sm font-medium text-gray-700">Active Supplier</span>
+                                </label>
+                            </div>
+                            {% if form.is_active.errors %}
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ form.is_active.errors.0 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Additional Information Section -->
+                <div class="p-8 bg-gray-50">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-sticky-note text-purple-600"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold text-gray-900">Additional Information</h2>
+                    </div>
+                    
+                    <div>
+                        <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-comment-alt text-gray-400 mr-1"></i>
+                            Notes
+                        </label>
+                        {{ form.notes }}
+                        <p class="mt-1 text-xs text-gray-500">Internal notes about this supplier</p>
+                        {% if form.notes.errors %}
+                            <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ form.notes.errors.0 }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="px-8 py-6 bg-gray-100 flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <a href="{% if object %}{% url 'procurement:supplier_detail' object.pk %}{% else %}{% url 'procurement:supplier_list' %}{% endif %}" 
+                       class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm hover:shadow transition-all duration-200">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                            class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200">
+                        <i class="fas fa-save mr-2"></i>
+                        {% if object %}Update Supplier{% else %}Create Supplier{% endif %}
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
-// Add Bootstrap classes to form fields
+// Add Tailwind classes to form fields
 document.addEventListener('DOMContentLoaded', function() {
-    // Add form-control class to text inputs, textareas, and selects
-    const formControls = document.querySelectorAll('input[type="text"], input[type="email"], input[type="number"], textarea, select');
-    formControls.forEach(function(control) {
-        if (!control.classList.contains('form-check-input')) {
-            control.classList.add('form-control');
+    // Style text inputs, email inputs, and textareas
+    const textInputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="number"]:not([type="checkbox"]), textarea');
+    textInputs.forEach(function(input) {
+        input.classList.add('w-full', 'px-4', 'py-2.5', 'border', 'border-gray-300', 'rounded-lg', 'focus:ring-2', 'focus:ring-indigo-500', 'focus:border-transparent', 'transition-all', 'duration-200', 'placeholder-gray-400');
+        
+        // Add error styling if there are errors
+        const errorMsg = input.parentElement.querySelector('.text-red-600');
+        if (errorMsg) {
+            input.classList.add('border-red-500', 'focus:ring-red-500');
         }
     });
     
-    // Add form-check-input class to checkboxes
+    // Style select dropdowns
+    const selects = document.querySelectorAll('select');
+    selects.forEach(function(select) {
+        select.classList.add('w-full', 'px-4', 'py-2.5', 'border', 'border-gray-300', 'rounded-lg', 'focus:ring-2', 'focus:ring-indigo-500', 'focus:border-transparent', 'transition-all', 'duration-200', 'bg-white');
+        
+        const errorMsg = select.parentElement.querySelector('.text-red-600');
+        if (errorMsg) {
+            select.classList.add('border-red-500', 'focus:ring-red-500');
+        }
+    });
+    
+    // Style textareas specifically
+    const textareas = document.querySelectorAll('textarea');
+    textareas.forEach(function(textarea) {
+        textarea.classList.add('min-h-[120px]', 'resize-y');
+    });
+    
+    // Style checkboxes
     const checkboxes = document.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach(function(checkbox) {
-        checkbox.classList.add('form-check-input');
+        checkbox.classList.add('w-5', 'h-5', 'text-indigo-600', 'border-gray-300', 'rounded', 'focus:ring-indigo-500', 'focus:ring-2', 'cursor-pointer');
     });
     
-    // Mark required fields with error styling
-    const errorFields = document.querySelectorAll('.invalid-feedback');
-    errorFields.forEach(function(errorDiv) {
-        const field = errorDiv.previousElementSibling;
-        if (field) {
-            field.classList.add('is-invalid');
-        }
+    // Add focus effects
+    const allInputs = document.querySelectorAll('input, textarea, select');
+    allInputs.forEach(function(input) {
+        input.addEventListener('focus', function() {
+            this.parentElement.classList.add('ring-2', 'ring-indigo-100', 'rounded-lg');
+        });
+        input.addEventListener('blur', function() {
+            this.parentElement.classList.remove('ring-2', 'ring-indigo-100');
+        });
     });
 });
 </script>
