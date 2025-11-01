@@ -51,7 +51,7 @@
   - NOTE: Supplier model already exists with tenant FK, name, contact_person, email, phone, address, tax_id, payment_terms, is_active, notes
   - _Requirements: 2.1, 2.7, 14.1, 14.2_
 
-- [ ] 2.2 Create Bill models
+- [x] 2.2 Create Bill models
   - Add Bill model with tenant FK, supplier FK (to apps.procurement.models.Supplier), bill_number, dates, amounts, status
   - Add BillLine model for line items
   - Add BillPayment model for payment tracking
@@ -59,7 +59,7 @@
   - Create and run migrations
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.7_
 
-- [ ] 2.3 Create supplier accounting views (backend)
+- [x] 2.3 Create supplier accounting views (backend)
   - Implement supplier_accounting_detail view (extends existing supplier detail with accounting info)
   - Implement supplier_statement view
   - Add tenant filtering to all queries
@@ -67,7 +67,7 @@
   - NOTE: Basic supplier CRUD already exists in procurement app
   - _Requirements: 2.7, 14.1, 14.2, 14.3, 14.7, 14.8_
 
-- [ ] 2.4 Create supplier accounting templates (frontend)
+- [x] 2.4 Create supplier accounting templates (frontend)
   - Create templates/accounting/suppliers/ directory
   - Create accounting_detail.html (shows bills, payments, balance)
   - Create statement.html template

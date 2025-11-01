@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import models, transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
@@ -1202,3 +1202,265 @@ def journal_entry_delete(request, pk):
         return redirect("accounting:dashboard")
 
     return redirect("accounting:journal_entry_list")
+
+
+# ============================================================================
+# Supplier Accounting Views (Task 2.3)
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def supplier_accounting_detail(request, supplier_id):
+    """
+    Display supplier accounting details with bills, payments, and balance.
+
+    Extends existing supplier detail with accounting information including
+    total purchases, outstanding balance, and payment history.
+
+    Requirements: 2.7, 14.1, 14.2, 14.3, 14.7, 14.8
+    """
+    from decimal import Decimal
+
+    from apps.procurement.models import Supplier
+
+    from .bill_models import Bill, BillPayment
+
+    try:
+        # Get supplier with tenant filtering
+        supplier = (
+            Supplier.objects.filter(tenant=request.user.tenant, id=supplier_id)
+            .select_related("tenant")
+            .first()
+        )
+
+        if not supplier:
+            messages.error(request, "Supplier not found.")
+            return redirect("procurement:supplier_list")
+
+        # Get all bills for this supplier with tenant filtering
+        bills = (
+            Bill.objects.filter(tenant=request.user.tenant, supplier=supplier)
+            .select_related("supplier", "created_by", "approved_by")
+            .prefetch_related("lines", "payments")
+            .order_by("-bill_date")
+        )
+
+        # Calculate totals
+        total_purchases = Decimal("0.00")
+        outstanding_balance = Decimal("0.00")
+        total_paid = Decimal("0.00")
+
+        for bill in bills:
+            total_purchases += bill.total
+            outstanding_balance += bill.amount_due
+            total_paid += bill.amount_paid
+
+        # Get payment history (all payments for this supplier's bills)
+        payment_history = (
+            BillPayment.objects.filter(tenant=request.user.tenant, bill__supplier=supplier)
+            .select_related("bill", "created_by")
+            .order_by("-payment_date")[:20]  # Last 20 payments
+        )
+
+        # Get aging breakdown
+        aging_buckets = {
+            "Current": Decimal("0.00"),
+            "1-30 days": Decimal("0.00"),
+            "31-60 days": Decimal("0.00"),
+            "61-90 days": Decimal("0.00"),
+            "90+ days": Decimal("0.00"),
+        }
+
+        for bill in bills:
+            if bill.amount_due > 0:
+                aging_buckets[bill.aging_bucket] += bill.amount_due
+
+        # Audit logging
+        from apps.core.audit_models import AuditLog
+
+        AuditLog.objects.create(
+            tenant=request.user.tenant,
+            user=request.user,
+            category=AuditLog.CATEGORY_DATA,
+            action=AuditLog.ACTION_API_GET,
+            severity=AuditLog.SEVERITY_INFO,
+            description=f"Viewed supplier accounting detail: {supplier.name}",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
+        context = {
+            "supplier": supplier,
+            "bills": bills,
+            "payment_history": payment_history,
+            "total_purchases": total_purchases,
+            "outstanding_balance": outstanding_balance,
+            "total_paid": total_paid,
+            "aging_buckets": aging_buckets,
+            "page_title": f"Supplier Accounting: {supplier.name}",
+        }
+
+        return render(request, "accounting/suppliers/accounting_detail.html", context)
+
+    except Exception as e:
+        logger.error(f"Error in supplier_accounting_detail: {str(e)}")
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("procurement:supplier_list")
+
+
+@login_required
+@tenant_access_required
+def supplier_statement(request, supplier_id):
+    """
+    Generate supplier statement showing all transactions and current balance.
+
+    Displays all bills and payments for a supplier within a date range,
+    with opening and closing balances.
+
+    Requirements: 2.8, 14.3, 14.7, 14.8
+    """
+    from decimal import Decimal
+
+    from apps.procurement.models import Supplier
+
+    from .bill_models import Bill, BillPayment
+
+    try:
+        # Get supplier with tenant filtering
+        supplier = (
+            Supplier.objects.filter(tenant=request.user.tenant, id=supplier_id)
+            .select_related("tenant")
+            .first()
+        )
+
+        if not supplier:
+            messages.error(request, "Supplier not found.")
+            return redirect("procurement:supplier_list")
+
+        # Get date range from request or default to current month
+        end_date = date.today()
+        start_date = date(end_date.year, end_date.month, 1)
+
+        if request.GET.get("start_date"):
+            start_date = datetime.strptime(request.GET["start_date"], "%Y-%m-%d").date()
+        if request.GET.get("end_date"):
+            end_date = datetime.strptime(request.GET["end_date"], "%Y-%m-%d").date()
+
+        # Get bills within date range with tenant filtering
+        bills = (
+            Bill.objects.filter(
+                tenant=request.user.tenant,
+                supplier=supplier,
+                bill_date__range=[start_date, end_date],
+            )
+            .select_related("supplier", "created_by")
+            .prefetch_related("lines", "payments")
+            .order_by("bill_date")
+        )
+
+        # Get payments within date range with tenant filtering
+        payments = (
+            BillPayment.objects.filter(
+                tenant=request.user.tenant,
+                bill__supplier=supplier,
+                payment_date__range=[start_date, end_date],
+            )
+            .select_related("bill", "created_by")
+            .order_by("payment_date")
+        )
+
+        # Calculate opening balance (bills before start_date minus payments before start_date)
+        opening_bills = Bill.objects.filter(
+            tenant=request.user.tenant, supplier=supplier, bill_date__lt=start_date
+        ).aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+
+        opening_payments = BillPayment.objects.filter(
+            tenant=request.user.tenant, bill__supplier=supplier, payment_date__lt=start_date
+        ).aggregate(total=models.Sum("amount"))["total"] or Decimal("0.00")
+
+        opening_balance = opening_bills - opening_payments
+
+        # Calculate period totals
+        period_bills_total = bills.aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+        period_payments_total = payments.aggregate(total=models.Sum("amount"))["total"] or Decimal(
+            "0.00"
+        )
+
+        # Calculate closing balance
+        closing_balance = opening_balance + period_bills_total - period_payments_total
+
+        # Combine bills and payments into a single transaction list
+        transactions = []
+
+        for bill in bills:
+            transactions.append(
+                {
+                    "date": bill.bill_date,
+                    "type": "Bill",
+                    "reference": bill.bill_number,
+                    "description": f"Bill #{bill.bill_number}",
+                    "debit": bill.total,
+                    "credit": Decimal("0.00"),
+                    "balance": None,  # Will calculate running balance below
+                }
+            )
+
+        for payment in payments:
+            transactions.append(
+                {
+                    "date": payment.payment_date,
+                    "type": "Payment",
+                    "reference": payment.reference_number or f"Payment #{payment.id}",
+                    "description": f"Payment for Bill #{payment.bill.bill_number}",
+                    "debit": Decimal("0.00"),
+                    "credit": payment.amount,
+                    "balance": None,
+                }
+            )
+
+        # Sort by date
+        transactions.sort(key=lambda x: x["date"])
+
+        # Calculate running balance
+        running_balance = opening_balance
+        for txn in transactions:
+            running_balance += txn["debit"] - txn["credit"]
+            txn["balance"] = running_balance
+
+        # Audit logging
+        from apps.core.audit_models import AuditLog
+
+        AuditLog.objects.create(
+            tenant=request.user.tenant,
+            user=request.user,
+            category=AuditLog.CATEGORY_DATA,
+            action=AuditLog.ACTION_API_GET,
+            severity=AuditLog.SEVERITY_INFO,
+            description=f"Generated supplier statement: {supplier.name} ({start_date} to {end_date})",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
+        context = {
+            "supplier": supplier,
+            "start_date": start_date,
+            "end_date": end_date,
+            "opening_balance": opening_balance,
+            "closing_balance": closing_balance,
+            "period_bills_total": period_bills_total,
+            "period_payments_total": period_payments_total,
+            "transactions": transactions,
+            "page_title": f"Supplier Statement: {supplier.name}",
+        }
+
+        return render(request, "accounting/suppliers/statement.html", context)
+
+    except Exception as e:
+        logger.error(f"Error in supplier_statement: {str(e)}")
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("procurement:supplier_list")
