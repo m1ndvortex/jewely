@@ -736,3 +736,645 @@ class BillPaymentForm(forms.ModelForm):
                 )
 
         return amount
+
+
+# ============================================================================
+# Invoice Management Forms (Task 3.5)
+# ============================================================================
+
+
+class InvoiceForm(forms.ModelForm):
+    """
+    Form for creating and editing customer invoices.
+
+    Includes customer selection, dates, and financial information.
+    Line items are handled by InvoiceLineFormSet.
+
+    Requirements: 3.1, 3.2, 3.7
+    """
+
+    customer = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Select the customer for this invoice",
+    )
+
+    invoice_number = forms.CharField(
+        max_length=50,
+        required=False,  # Auto-generated if not provided
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Auto-generated if left blank",
+            }
+        ),
+        help_text="Invoice number (auto-generated if blank)",
+    )
+
+    invoice_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Date when invoice was issued",
+    )
+
+    due_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Date when payment is due",
+    )
+
+    tax = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        initial=Decimal("0.00"),
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "0.00",
+                "step": "0.01",
+                "min": "0",
+            }
+        ),
+        help_text="Tax amount",
+    )
+
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Internal notes about this invoice...",
+            }
+        ),
+        help_text="Internal notes (not visible to customer)",
+    )
+
+    customer_notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Notes visible to customer...",
+            }
+        ),
+        help_text="Notes visible to customer on invoice",
+    )
+
+    reference_number = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "PO number or other reference",
+            }
+        ),
+        help_text="Purchase order number or other reference (optional)",
+    )
+
+    class Meta:
+        from .invoice_models import Invoice
+
+        model = Invoice
+        fields = [
+            "customer",
+            "invoice_number",
+            "invoice_date",
+            "due_date",
+            "tax",
+            "notes",
+            "customer_notes",
+            "reference_number",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Filter customers by tenant
+        if self.tenant:
+            from apps.crm.models import Customer
+
+            self.fields["customer"].queryset = Customer.objects.filter(
+                tenant=self.tenant, is_active=True
+            ).order_by("first_name", "last_name")
+
+            # Update label to show full name
+            self.fields["customer"].label_from_instance = (
+                lambda obj: f"{obj.first_name} {obj.last_name} ({obj.customer_number})"
+            )
+
+        # Set initial dates if creating new invoice
+        if not self.instance.pk:
+            from datetime import date, timedelta
+
+            today = date.today()
+            self.initial["invoice_date"] = today
+            # Default due date based on customer payment terms or 30 days
+            self.initial["due_date"] = today + timedelta(days=30)
+
+    def clean(self):
+        """Validate invoice data."""
+        cleaned_data = super().clean()
+        invoice_date = cleaned_data.get("invoice_date")
+        due_date = cleaned_data.get("due_date")
+        customer = cleaned_data.get("customer")
+
+        # Validate dates
+        if invoice_date and due_date and due_date < invoice_date:
+            raise ValidationError({"due_date": "Due date cannot be before invoice date"})
+
+        # Check credit limit if customer is provided
+        if customer and hasattr(customer, "credit_limit"):
+            # Calculate total outstanding including this invoice
+            from .invoice_models import Invoice
+
+            outstanding = Invoice.objects.filter(
+                customer=customer, status__in=["SENT", "PARTIALLY_PAID", "OVERDUE"]
+            ).exclude(pk=self.instance.pk if self.instance.pk else None).aggregate(
+                total=models.Sum("amount_due")
+            )[
+                "total"
+            ] or Decimal(
+                "0.00"
+            )
+
+            # Add current invoice total (will be calculated from lines)
+            # For now, just warn if they're close to limit
+            if customer.credit_limit > 0 and outstanding >= customer.credit_limit:
+                self.add_error(
+                    "customer",
+                    f"Warning: Customer has ${outstanding:,.2f} outstanding "
+                    f"against credit limit of ${customer.credit_limit:,.2f}",
+                )
+
+        return cleaned_data
+
+
+class InvoiceLineForm(forms.ModelForm):
+    """
+    Form for individual invoice line items.
+
+    Includes item, description, quantity, unit price, and amount.
+    """
+
+    item = forms.CharField(
+        max_length=255,
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Product or service name",
+            }
+        ),
+        help_text="Product or service name",
+    )
+
+    description = forms.CharField(
+        max_length=500,
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 2,
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Detailed description...",
+            }
+        ),
+        help_text="Detailed description of the item or service",
+    )
+
+    quantity = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=True,
+        initial=Decimal("1.00"),
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white quantity-input",
+                "placeholder": "1.00",
+                "step": "0.01",
+                "min": "0.01",
+            }
+        ),
+        help_text="Quantity",
+    )
+
+    unit_price = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=True,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white unit-price-input",
+                "placeholder": "0.00",
+                "step": "0.01",
+                "min": "0",
+            }
+        ),
+        help_text="Price per unit",
+    )
+
+    amount = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,  # Auto-calculated
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-600 dark:text-white amount-display",
+                "readonly": "readonly",
+                "placeholder": "0.00",
+            }
+        ),
+        help_text="Total amount (auto-calculated)",
+    )
+
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 2,
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Additional notes...",
+            }
+        ),
+        help_text="Additional notes about this line item",
+    )
+
+    class Meta:
+        from .invoice_models import InvoiceLine
+
+        model = InvoiceLine
+        fields = ["item", "description", "quantity", "unit_price", "amount", "notes"]
+
+    def clean(self):
+        """Validate line item data."""
+        cleaned_data = super().clean()
+        quantity = cleaned_data.get("quantity")
+        unit_price = cleaned_data.get("unit_price")
+
+        # Convert None to Decimal zero
+        if quantity is None:
+            quantity = Decimal("0.00")
+        if unit_price is None:
+            unit_price = Decimal("0.00")
+
+        # Calculate amount
+        cleaned_data["amount"] = quantity * unit_price
+
+        # Validate positive values only if form is not being deleted
+        if not cleaned_data.get("DELETE", False):
+            if quantity <= Decimal("0.00"):
+                raise ValidationError({"quantity": "Quantity must be greater than zero."})
+
+            if unit_price < Decimal("0.00"):
+                raise ValidationError({"unit_price": "Unit price cannot be negative."})
+
+        return cleaned_data
+
+
+class InvoiceLineFormSet(BaseInlineFormSet):
+    """
+    Formset for managing multiple invoice line items.
+
+    Validates that at least one line item exists and calculates totals.
+    """
+
+    def clean(self):
+        """Validate that at least one line item exists."""
+        if any(self.errors):
+            return
+
+        valid_lines = 0
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
+                valid_lines += 1
+
+        if valid_lines < 1:
+            raise ValidationError("An invoice must have at least one line item.")
+
+
+# Factory for creating the inline formset
+# Import models here to avoid circular import at module level
+def get_invoice_line_formset():
+    """Factory function to create InvoiceLineInlineFormSet."""
+    from .invoice_models import Invoice, InvoiceLine
+
+    return inlineformset_factory(
+        Invoice,
+        InvoiceLine,
+        form=InvoiceLineForm,
+        formset=InvoiceLineFormSet,
+        extra=1,  # Show 1 empty form by default
+        min_num=0,  # Don't require minimum (we validate in formset.clean())
+        validate_min=False,
+        can_delete=True,
+        fields=["item", "description", "quantity", "unit_price", "amount", "notes"],
+    )
+
+
+# Create the formset class
+InvoiceLineInlineFormSet = get_invoice_line_formset()
+
+
+class InvoicePaymentForm(forms.ModelForm):
+    """
+    Form for recording payments against invoices.
+
+    Includes payment date, amount, method, and reference information.
+
+    Requirements: 3.4, 3.6
+    """
+
+    payment_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+            }
+        ),
+        help_text="Date when payment was received",
+    )
+
+    amount = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=True,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                "placeholder": "0.00",
+                "step": "0.01",
+                "min": "0.01",
+            }
+        ),
+        help_text="Payment amount",
+    )
+
+    payment_method = forms.ChoiceField(
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+            }
+        ),
+        help_text="Method of payment",
+    )
+
+    bank_account = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                "placeholder": "Bank account where payment was deposited",
+            }
+        ),
+        help_text="Bank account where payment was deposited (optional)",
+    )
+
+    reference_number = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                "placeholder": "Check number, transaction ID, etc.",
+            }
+        ),
+        help_text="Check number, transaction ID, or other reference",
+    )
+
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                "placeholder": "Notes about this payment...",
+            }
+        ),
+        help_text="Additional notes about this payment",
+    )
+
+    class Meta:
+        from .invoice_models import InvoicePayment
+
+        model = InvoicePayment
+        fields = [
+            "payment_date",
+            "amount",
+            "payment_method",
+            "bank_account",
+            "reference_number",
+            "notes",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        self.user = kwargs.pop("user", None)
+        self.invoice = kwargs.pop("invoice", None)
+        super().__init__(*args, **kwargs)
+
+        # Set payment method choices from model
+        from .invoice_models import InvoicePayment
+
+        self.fields["payment_method"].choices = InvoicePayment.PAYMENT_METHOD_CHOICES
+
+        # Set initial payment date to today
+        if not self.instance.pk:
+            from datetime import date
+
+            self.initial["payment_date"] = date.today()
+
+            # Set initial amount to remaining balance if invoice is provided
+            if self.invoice:
+                self.initial["amount"] = self.invoice.amount_due
+
+    def clean_amount(self):
+        """Validate payment amount doesn't exceed remaining balance."""
+        amount = self.cleaned_data.get("amount")
+
+        if amount and amount <= Decimal("0.00"):
+            raise ValidationError("Payment amount must be greater than zero.")
+
+        if self.invoice and amount:
+            remaining_balance = self.invoice.amount_due
+            if amount > remaining_balance:
+                raise ValidationError(
+                    f"Payment amount (${amount:,.2f}) exceeds remaining balance (${remaining_balance:,.2f})"
+                )
+
+        return amount
+
+
+class CreditMemoForm(forms.ModelForm):
+    """
+    Form for creating credit memos for customers.
+
+    Includes customer, amount, reason, and optional original invoice reference.
+
+    Requirements: 3.6
+    """
+
+    customer = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Select the customer for this credit memo",
+    )
+
+    credit_memo_number = forms.CharField(
+        max_length=50,
+        required=False,  # Auto-generated if not provided
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Auto-generated if left blank",
+            }
+        ),
+        help_text="Credit memo number (auto-generated if blank)",
+    )
+
+    credit_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Date when credit was issued",
+    )
+
+    amount = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=True,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "0.00",
+                "step": "0.01",
+                "min": "0.01",
+            }
+        ),
+        help_text="Credit amount",
+    )
+
+    reason = forms.CharField(
+        max_length=255,
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Reason for issuing this credit...",
+            }
+        ),
+        help_text="Reason for issuing this credit",
+    )
+
+    original_invoice = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=False,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Original invoice this credit is related to (optional)",
+    )
+
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Internal notes about this credit memo...",
+            }
+        ),
+        help_text="Internal notes (not visible to customer)",
+    )
+
+    class Meta:
+        from .invoice_models import CreditMemo
+
+        model = CreditMemo
+        fields = [
+            "customer",
+            "credit_memo_number",
+            "credit_date",
+            "amount",
+            "reason",
+            "original_invoice",
+            "notes",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Filter customers by tenant
+        if self.tenant:
+            from apps.crm.models import Customer
+
+            self.fields["customer"].queryset = Customer.objects.filter(
+                tenant=self.tenant, is_active=True
+            ).order_by("first_name", "last_name")
+
+            # Update label to show full name
+            self.fields["customer"].label_from_instance = (
+                lambda obj: f"{obj.first_name} {obj.last_name} ({obj.customer_number})"
+            )
+
+            # Filter invoices by tenant for original_invoice field
+            from .invoice_models import Invoice
+
+            self.fields["original_invoice"].queryset = Invoice.objects.filter(
+                tenant=self.tenant
+            ).order_by("-invoice_date")
+
+            # Update label to show invoice number and date
+            self.fields["original_invoice"].label_from_instance = (
+                lambda obj: f"{obj.invoice_number} - {obj.invoice_date} (${obj.total:,.2f})"
+            )
+
+        # Set initial credit date to today
+        if not self.instance.pk:
+            from datetime import date
+
+            self.initial["credit_date"] = date.today()
+
+    def clean_amount(self):
+        """Validate credit amount is positive."""
+        amount = self.cleaned_data.get("amount")
+
+        if amount and amount <= Decimal("0.00"):
+            raise ValidationError("Credit amount must be greater than zero.")
+
+        return amount

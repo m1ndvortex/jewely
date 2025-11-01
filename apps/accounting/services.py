@@ -11,7 +11,7 @@ from decimal import Decimal
 from typing import Dict, Optional
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import models, transaction
 
 from django_ledger.models import (
     AccountModel,
@@ -1932,4 +1932,646 @@ class AccountingService:
 
         except Exception as e:
             logger.error(f"Failed to export financial reports to Excel: {str(e)}")
+            raise
+
+
+# ============================================================================
+# Invoice Service (Task 3.5)
+# ============================================================================
+
+
+class InvoiceService:
+    """
+    Service class for handling invoice operations and automatic journal entries.
+
+    Provides methods for creating invoices, recording payments, applying credit memos,
+    and generating automatic journal entries for accounts receivable.
+
+    Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 3.7, 3.8
+    """
+
+    @staticmethod
+    @transaction.atomic
+    def create_invoice_journal_entry(invoice, user: User) -> Optional[JournalEntryModel]:
+        """
+        Create automatic journal entry when invoice is created.
+
+        Journal Entry:
+        DR Accounts Receivable (Asset)    invoice.total
+        CR Revenue (Revenue)               invoice.subtotal
+        CR Sales Tax Payable (Liability)   invoice.tax
+
+        Requirements: 3.2
+        """
+        try:
+            # Get the entity for this tenant
+            jewelry_entity = JewelryEntity.objects.get(tenant=invoice.tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get the chart of accounts
+            coa = ChartOfAccountModel.objects.filter(entity=entity).first()
+            if not coa:
+                logger.error(f"No chart of accounts found for tenant: {invoice.tenant}")
+                return None
+
+            # Get required accounts
+            # Accounts Receivable (Asset)
+            ar_account = AccountModel.objects.filter(
+                coa_model=coa,
+                role__istartswith="asset_ca_",
+                name__icontains="receivable",
+                active=True,
+            ).first()
+
+            # Revenue account
+            revenue_account = AccountModel.objects.filter(
+                coa_model=coa, role__istartswith="in_sales", active=True
+            ).first()
+
+            # Sales Tax Payable (Liability)
+            tax_account = AccountModel.objects.filter(
+                coa_model=coa, role__istartswith="lia_cl_", name__icontains="tax", active=True
+            ).first()
+
+            if not ar_account or not revenue_account:
+                logger.error(
+                    f"Required accounts not found for invoice journal entry. "
+                    f"AR: {ar_account}, Revenue: {revenue_account}"
+                )
+                return None
+
+            # Get the ledger
+            ledger = entity.ledgermodel_set.first()
+            if not ledger:
+                logger.error(f"No ledger found for entity: {entity}")
+                return None
+
+            # Create journal entry
+            je = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description=f"Invoice {invoice.invoice_number} - {invoice.customer}",
+                date=invoice.invoice_date,
+                activity="op",  # Operating activity
+                origin="invoice",
+                posted=True,  # Auto-post invoice journal entries
+            )
+
+            # Create transactions
+            # DR Accounts Receivable
+            TransactionModel.objects.create(
+                journal_entry=je,
+                account=ar_account,
+                tx_type="debit",
+                amount=invoice.total,
+                description=f"Invoice {invoice.invoice_number}",
+            )
+
+            # CR Revenue
+            TransactionModel.objects.create(
+                journal_entry=je,
+                account=revenue_account,
+                tx_type="credit",
+                amount=invoice.subtotal,
+                description=f"Sales revenue - Invoice {invoice.invoice_number}",
+            )
+
+            # CR Sales Tax Payable (if tax > 0)
+            if invoice.tax > Decimal("0.00") and tax_account:
+                TransactionModel.objects.create(
+                    journal_entry=je,
+                    account=tax_account,
+                    tx_type="credit",
+                    amount=invoice.tax,
+                    description=f"Sales tax - Invoice {invoice.invoice_number}",
+                )
+
+            # Link journal entry to invoice
+            invoice.journal_entry = je
+            invoice.save(update_fields=["journal_entry"])
+
+            # Log to audit trail
+            from apps.core.audit_models import AuditLog
+
+            AuditLog.objects.create(
+                tenant=invoice.tenant,
+                user=user,
+                category="ACCOUNTING",
+                action="CREATE_INVOICE_JE",
+                severity="INFO",
+                description=f"Created journal entry for invoice {invoice.invoice_number}",
+                before_value=None,
+                after_value=f"JE: {je.uuid}, Amount: ${invoice.total:,.2f}",
+            )
+
+            logger.info(
+                f"Created journal entry {je.uuid} for invoice {invoice.invoice_number} "
+                f"(${invoice.total:,.2f})"
+            )
+
+            return je
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create journal entry for invoice {invoice.invoice_number}: {str(e)}"
+            )
+            raise
+
+    @staticmethod
+    @transaction.atomic
+    def create_payment_journal_entry(payment, user: User) -> Optional[JournalEntryModel]:
+        """
+        Create automatic journal entry when payment is received.
+
+        Journal Entry:
+        DR Cash/Bank (Asset)                payment.amount
+        CR Accounts Receivable (Asset)     payment.amount
+
+        Requirements: 3.4
+        """
+        try:
+            invoice = payment.invoice
+            tenant = payment.tenant
+
+            # Get the entity for this tenant
+            jewelry_entity = JewelryEntity.objects.get(tenant=tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get the chart of accounts
+            coa = ChartOfAccountModel.objects.filter(entity=entity).first()
+            if not coa:
+                logger.error(f"No chart of accounts found for tenant: {tenant}")
+                return None
+
+            # Get required accounts
+            # Cash/Bank account (Asset)
+            cash_account = AccountModel.objects.filter(
+                coa_model=coa, role__istartswith="asset_ca_cash", active=True
+            ).first()
+
+            # Accounts Receivable (Asset)
+            ar_account = AccountModel.objects.filter(
+                coa_model=coa,
+                role__istartswith="asset_ca_",
+                name__icontains="receivable",
+                active=True,
+            ).first()
+
+            if not cash_account or not ar_account:
+                logger.error(
+                    f"Required accounts not found for payment journal entry. "
+                    f"Cash: {cash_account}, AR: {ar_account}"
+                )
+                return None
+
+            # Get the ledger
+            ledger = entity.ledgermodel_set.first()
+            if not ledger:
+                logger.error(f"No ledger found for entity: {entity}")
+                return None
+
+            # Create journal entry
+            je = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description=f"Payment for Invoice {invoice.invoice_number} - {invoice.customer}",
+                date=payment.payment_date,
+                activity="op",  # Operating activity
+                origin="payment",
+                posted=True,  # Auto-post payment journal entries
+            )
+
+            # Create transactions
+            # DR Cash/Bank
+            TransactionModel.objects.create(
+                journal_entry=je,
+                account=cash_account,
+                tx_type="debit",
+                amount=payment.amount,
+                description=f"Payment received - Invoice {invoice.invoice_number}",
+            )
+
+            # CR Accounts Receivable
+            TransactionModel.objects.create(
+                journal_entry=je,
+                account=ar_account,
+                tx_type="credit",
+                amount=payment.amount,
+                description=f"Payment applied - Invoice {invoice.invoice_number}",
+            )
+
+            # Link journal entry to payment
+            payment.journal_entry = je
+            payment.save(update_fields=["journal_entry"])
+
+            # Log to audit trail
+            from apps.core.audit_models import AuditLog
+
+            AuditLog.objects.create(
+                tenant=tenant,
+                user=user,
+                category="ACCOUNTING",
+                action="CREATE_PAYMENT_JE",
+                severity="INFO",
+                description=f"Created journal entry for payment on invoice {invoice.invoice_number}",
+                before_value=None,
+                after_value=f"JE: {je.uuid}, Amount: ${payment.amount:,.2f}",
+            )
+
+            logger.info(
+                f"Created journal entry {je.uuid} for payment on invoice {invoice.invoice_number} "
+                f"(${payment.amount:,.2f})"
+            )
+
+            return je
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create journal entry for payment on invoice {payment.invoice.invoice_number}: {str(e)}"
+            )
+            raise
+
+    @staticmethod
+    @transaction.atomic
+    def create_credit_memo_journal_entry(credit_memo, user: User) -> Optional[JournalEntryModel]:
+        """
+        Create automatic journal entry when credit memo is created.
+
+        Journal Entry:
+        DR Sales Returns/Allowances (Contra-Revenue)    credit_memo.amount
+        CR Accounts Receivable (Asset)                  credit_memo.amount
+
+        Requirements: 3.6
+        """
+        try:
+            tenant = credit_memo.tenant
+
+            # Get the entity for this tenant
+            jewelry_entity = JewelryEntity.objects.get(tenant=tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get the chart of accounts
+            coa = ChartOfAccountModel.objects.filter(entity=entity).first()
+            if not coa:
+                logger.error(f"No chart of accounts found for tenant: {tenant}")
+                return None
+
+            # Get required accounts
+            # Sales Returns/Allowances (Contra-Revenue) - try to find or use revenue account
+            returns_account = AccountModel.objects.filter(
+                coa_model=coa, name__icontains="return", active=True
+            ).first()
+
+            if not returns_account:
+                # Fallback to revenue account if no returns account exists
+                returns_account = AccountModel.objects.filter(
+                    coa_model=coa, role__istartswith="in_sales", active=True
+                ).first()
+
+            # Accounts Receivable (Asset)
+            ar_account = AccountModel.objects.filter(
+                coa_model=coa,
+                role__istartswith="asset_ca_",
+                name__icontains="receivable",
+                active=True,
+            ).first()
+
+            if not returns_account or not ar_account:
+                logger.error(
+                    f"Required accounts not found for credit memo journal entry. "
+                    f"Returns: {returns_account}, AR: {ar_account}"
+                )
+                return None
+
+            # Get the ledger
+            ledger = entity.ledgermodel_set.first()
+            if not ledger:
+                logger.error(f"No ledger found for entity: {entity}")
+                return None
+
+            # Create journal entry
+            je = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description=f"Credit Memo {credit_memo.credit_memo_number} - {credit_memo.customer}",
+                date=credit_memo.credit_date,
+                activity="op",  # Operating activity
+                origin="credit_memo",
+                posted=True,  # Auto-post credit memo journal entries
+            )
+
+            # Create transactions
+            # DR Sales Returns/Allowances
+            TransactionModel.objects.create(
+                journal_entry=je,
+                account=returns_account,
+                tx_type="debit",
+                amount=credit_memo.amount,
+                description=f"Credit memo {credit_memo.credit_memo_number} - {credit_memo.reason}",
+            )
+
+            # CR Accounts Receivable
+            TransactionModel.objects.create(
+                journal_entry=je,
+                account=ar_account,
+                tx_type="credit",
+                amount=credit_memo.amount,
+                description=f"Credit memo {credit_memo.credit_memo_number}",
+            )
+
+            # Link journal entry to credit memo
+            credit_memo.journal_entry = je
+            credit_memo.save(update_fields=["journal_entry"])
+
+            # Log to audit trail
+            from apps.core.audit_models import AuditLog
+
+            AuditLog.objects.create(
+                tenant=tenant,
+                user=user,
+                category="ACCOUNTING",
+                action="CREATE_CREDIT_MEMO_JE",
+                severity="INFO",
+                description=f"Created journal entry for credit memo {credit_memo.credit_memo_number}",
+                before_value=None,
+                after_value=f"JE: {je.uuid}, Amount: ${credit_memo.amount:,.2f}",
+            )
+
+            logger.info(
+                f"Created journal entry {je.uuid} for credit memo {credit_memo.credit_memo_number} "
+                f"(${credit_memo.amount:,.2f})"
+            )
+
+            return je
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create journal entry for credit memo {credit_memo.credit_memo_number}: {str(e)}"
+            )
+            raise
+
+    @staticmethod
+    def check_customer_credit_limit(customer, additional_amount: Decimal = Decimal("0.00")) -> Dict:
+        """
+        Check if customer is within credit limit.
+
+        Returns dict with:
+        - within_limit: bool
+        - current_outstanding: Decimal
+        - credit_limit: Decimal
+        - available_credit: Decimal
+        - warning_message: str (if applicable)
+
+        Requirements: 3.7
+        """
+        from .invoice_models import Invoice
+
+        try:
+            # Get customer's credit limit
+            credit_limit = getattr(customer, "credit_limit", Decimal("0.00"))
+
+            # If no credit limit set, allow unlimited credit
+            if credit_limit <= Decimal("0.00"):
+                return {
+                    "within_limit": True,
+                    "current_outstanding": Decimal("0.00"),
+                    "credit_limit": Decimal("0.00"),
+                    "available_credit": None,  # Unlimited
+                    "warning_message": None,
+                }
+
+            # Calculate current outstanding balance
+            outstanding = Invoice.objects.filter(
+                customer=customer, status__in=["SENT", "PARTIALLY_PAID", "OVERDUE"]
+            ).aggregate(total=models.Sum(models.F("total") - models.F("amount_paid")))[
+                "total"
+            ] or Decimal(
+                "0.00"
+            )
+
+            # Add the additional amount (for new invoice)
+            total_outstanding = outstanding + additional_amount
+
+            # Calculate available credit
+            available_credit = credit_limit - total_outstanding
+
+            # Determine if within limit
+            within_limit = total_outstanding <= credit_limit
+
+            # Generate warning message if needed
+            warning_message = None
+            if not within_limit:
+                warning_message = (
+                    f"Customer exceeds credit limit. "
+                    f"Outstanding: ${total_outstanding:,.2f}, "
+                    f"Limit: ${credit_limit:,.2f}, "
+                    f"Over by: ${abs(available_credit):,.2f}"
+                )
+            elif available_credit < credit_limit * Decimal("0.1"):  # Less than 10% available
+                warning_message = (
+                    f"Customer approaching credit limit. "
+                    f"Available credit: ${available_credit:,.2f} "
+                    f"of ${credit_limit:,.2f}"
+                )
+
+            return {
+                "within_limit": within_limit,
+                "current_outstanding": outstanding,
+                "credit_limit": credit_limit,
+                "available_credit": available_credit,
+                "warning_message": warning_message,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to check credit limit for customer {customer}: {str(e)}")
+            return {
+                "within_limit": True,  # Allow on error
+                "current_outstanding": Decimal("0.00"),
+                "credit_limit": Decimal("0.00"),
+                "available_credit": None,
+                "warning_message": f"Error checking credit limit: {str(e)}",
+            }
+
+    @staticmethod
+    def get_aged_receivables(tenant: Tenant, as_of_date: Optional[date] = None) -> Dict:
+        """
+        Generate aged receivables report.
+
+        Groups outstanding invoices by aging buckets:
+        - Current (not yet due)
+        - 1-30 days overdue
+        - 31-60 days overdue
+        - 61-90 days overdue
+        - 90+ days overdue
+
+        Requirements: 3.5
+        """
+        from .invoice_models import Invoice
+
+        if as_of_date is None:
+            as_of_date = date.today()
+
+        try:
+            # Get all unpaid invoices for tenant
+            invoices = Invoice.objects.filter(
+                tenant=tenant, status__in=["SENT", "PARTIALLY_PAID", "OVERDUE"]
+            ).select_related("customer")
+
+            # Initialize buckets
+            buckets = {
+                "current": {"invoices": [], "total": Decimal("0.00")},
+                "1_30": {"invoices": [], "total": Decimal("0.00")},
+                "31_60": {"invoices": [], "total": Decimal("0.00")},
+                "61_90": {"invoices": [], "total": Decimal("0.00")},
+                "90_plus": {"invoices": [], "total": Decimal("0.00")},
+            }
+
+            # Categorize invoices
+            for invoice in invoices:
+                amount_due = invoice.amount_due
+                days_overdue = (as_of_date - invoice.due_date).days
+
+                invoice_data = {
+                    "invoice": invoice,
+                    "invoice_number": invoice.invoice_number,
+                    "customer": invoice.customer,
+                    "invoice_date": invoice.invoice_date,
+                    "due_date": invoice.due_date,
+                    "amount_due": amount_due,
+                    "days_overdue": max(0, days_overdue),
+                }
+
+                if days_overdue < 0:
+                    # Not yet due
+                    buckets["current"]["invoices"].append(invoice_data)
+                    buckets["current"]["total"] += amount_due
+                elif days_overdue <= 30:
+                    buckets["1_30"]["invoices"].append(invoice_data)
+                    buckets["1_30"]["total"] += amount_due
+                elif days_overdue <= 60:
+                    buckets["31_60"]["invoices"].append(invoice_data)
+                    buckets["31_60"]["total"] += amount_due
+                elif days_overdue <= 90:
+                    buckets["61_90"]["invoices"].append(invoice_data)
+                    buckets["61_90"]["total"] += amount_due
+                else:
+                    buckets["90_plus"]["invoices"].append(invoice_data)
+                    buckets["90_plus"]["total"] += amount_due
+
+            # Calculate grand total
+            grand_total = sum(bucket["total"] for bucket in buckets.values())
+
+            return {
+                "as_of_date": as_of_date,
+                "buckets": buckets,
+                "grand_total": grand_total,
+                "invoice_count": invoices.count(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to generate aged receivables report: {str(e)}")
+            raise
+
+    @staticmethod
+    def get_customer_statement(customer, start_date: date, end_date: date) -> Dict:
+        """
+        Generate customer statement showing all transactions.
+
+        Requirements: 3.8
+        """
+        from .invoice_models import CreditMemo, Invoice, InvoicePayment
+
+        try:
+            # Get all invoices for customer in date range
+            invoices = Invoice.objects.filter(
+                customer=customer, invoice_date__range=[start_date, end_date]
+            ).order_by("invoice_date")
+
+            # Get all payments in date range
+            payments = (
+                InvoicePayment.objects.filter(
+                    invoice__customer=customer, payment_date__range=[start_date, end_date]
+                )
+                .select_related("invoice")
+                .order_by("payment_date")
+            )
+
+            # Get all credit memos in date range
+            credit_memos = CreditMemo.objects.filter(
+                customer=customer, credit_date__range=[start_date, end_date]
+            ).order_by("credit_date")
+
+            # Calculate beginning balance (invoices before start_date)
+            beginning_balance = Invoice.objects.filter(
+                customer=customer, invoice_date__lt=start_date
+            ).aggregate(total=models.Sum(models.F("total") - models.F("amount_paid")))[
+                "total"
+            ] or Decimal(
+                "0.00"
+            )
+
+            # Build transaction list
+            transactions = []
+
+            for invoice in invoices:
+                transactions.append(
+                    {
+                        "date": invoice.invoice_date,
+                        "type": "Invoice",
+                        "reference": invoice.invoice_number,
+                        "description": f"Invoice {invoice.invoice_number}",
+                        "amount": invoice.total,
+                        "balance_change": invoice.total,
+                    }
+                )
+
+            for payment in payments:
+                transactions.append(
+                    {
+                        "date": payment.payment_date,
+                        "type": "Payment",
+                        "reference": payment.reference_number or "-",
+                        "description": f"Payment for Invoice {payment.invoice.invoice_number}",
+                        "amount": payment.amount,
+                        "balance_change": -payment.amount,
+                    }
+                )
+
+            for credit_memo in credit_memos:
+                transactions.append(
+                    {
+                        "date": credit_memo.credit_date,
+                        "type": "Credit Memo",
+                        "reference": credit_memo.credit_memo_number,
+                        "description": f"Credit: {credit_memo.reason}",
+                        "amount": credit_memo.amount,
+                        "balance_change": -credit_memo.amount,
+                    }
+                )
+
+            # Sort transactions by date
+            transactions.sort(key=lambda x: x["date"])
+
+            # Calculate running balance
+            running_balance = beginning_balance
+            for txn in transactions:
+                running_balance += txn["balance_change"]
+                txn["running_balance"] = running_balance
+
+            # Calculate ending balance
+            ending_balance = running_balance
+
+            return {
+                "customer": customer,
+                "start_date": start_date,
+                "end_date": end_date,
+                "beginning_balance": beginning_balance,
+                "transactions": transactions,
+                "ending_balance": ending_balance,
+                "total_invoiced": sum(t["amount"] for t in transactions if t["type"] == "Invoice"),
+                "total_paid": sum(t["amount"] for t in transactions if t["type"] == "Payment"),
+                "total_credits": sum(
+                    t["amount"] for t in transactions if t["type"] == "Credit Memo"
+                ),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to generate customer statement: {str(e)}")
             raise

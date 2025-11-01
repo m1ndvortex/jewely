@@ -153,7 +153,7 @@
   - Add TailwindCSS styling
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.8_
 
-- [ ] 3.5 Create invoice management forms and views (backend)
+- [x] 3.5 Create invoice management forms and views (backend)
   - Create InvoiceForm and InvoiceLineFormSet in forms.py (reference apps.crm.models.Customer)
   - Create InvoicePaymentForm and CreditMemoForm in forms.py
   - Implement invoice_list, invoice_create, invoice_detail, invoice_receive_payment views

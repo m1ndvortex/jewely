@@ -95,4 +95,25 @@ urlpatterns = [
         views.check_customer_credit_limit_api,
         name="check_customer_credit_limit_api",
     ),
+    # Invoice Management Views (Task 3.5)
+    path("invoices/", views.invoice_list, name="invoice_list"),
+    path("invoices/create/", views.invoice_create, name="invoice_create"),
+    path("invoices/<uuid:invoice_id>/", views.invoice_detail, name="invoice_detail"),
+    path(
+        "invoices/<uuid:invoice_id>/receive-payment/",
+        views.invoice_receive_payment,
+        name="invoice_receive_payment",
+    ),
+    # Credit Memo Views (Task 3.5)
+    path("credit-memos/create/", views.credit_memo_create, name="credit_memo_create"),
+    path(
+        "credit-memos/<uuid:credit_memo_id>/",
+        views.credit_memo_detail,
+        name="credit_memo_detail",
+    ),
+    path(
+        "credit-memos/<uuid:credit_memo_id>/apply/<uuid:invoice_id>/",
+        views.credit_memo_apply,
+        name="credit_memo_apply",
+    ),
 ]

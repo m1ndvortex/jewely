@@ -3205,3 +3205,596 @@ def check_customer_credit_limit_api(request, customer_id):
             "credit_available": str(credit_available) if credit_available is not None else None,
         }
     )
+
+
+# ============================================================================
+# Invoice Management Views (Task 3.5)
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def invoice_list(request):
+    """
+    List all invoices for the tenant with filtering and aging information.
+
+    Implements Requirements: 3.3, 3.7
+    """
+    from .invoice_models import Invoice
+
+    # Get filter parameters
+    status_filter = request.GET.get("status", "")
+    customer_filter = request.GET.get("customer", "")
+    date_from = request.GET.get("date_from", "")
+    date_to = request.GET.get("date_to", "")
+    search = request.GET.get("search", "")
+
+    # Base queryset with tenant filtering
+    invoices = Invoice.objects.filter(tenant=request.user.tenant).select_related("customer")
+
+    # Apply filters
+    if status_filter:
+        invoices = invoices.filter(status=status_filter)
+
+    if customer_filter:
+        invoices = invoices.filter(customer_id=customer_filter)
+
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
+            invoices = invoices.filter(invoice_date__gte=date_from_obj)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
+            invoices = invoices.filter(invoice_date__lte=date_to_obj)
+        except ValueError:
+            pass
+
+    if search:
+        invoices = invoices.filter(
+            models.Q(invoice_number__icontains=search)
+            | models.Q(customer__first_name__icontains=search)
+            | models.Q(customer__last_name__icontains=search)
+            | models.Q(reference_number__icontains=search)
+        )
+
+    # Order by date (newest first)
+    invoices = invoices.order_by("-invoice_date", "-created_at")
+
+    # Calculate summary statistics
+    total_invoices = invoices.count()
+    total_amount = invoices.aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+    total_outstanding = invoices.aggregate(
+        total=models.Sum(models.F("total") - models.F("amount_paid"))
+    )["total"] or Decimal("0.00")
+
+    # Get customers for filter dropdown
+    from apps.crm.models import Customer
+
+    customers = Customer.objects.filter(tenant=request.user.tenant, is_active=True).order_by(
+        "first_name", "last_name"
+    )
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_VIEW,
+        severity=AuditLog.SEVERITY_INFO,
+        description=f"Viewed invoice list ({total_invoices} invoices)",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    context = {
+        "invoices": invoices,
+        "total_invoices": total_invoices,
+        "total_amount": total_amount,
+        "total_outstanding": total_outstanding,
+        "customers": customers,
+        "status_filter": status_filter,
+        "customer_filter": customer_filter,
+        "date_from": date_from,
+        "date_to": date_to,
+        "search": search,
+        "status_choices": Invoice.STATUS_CHOICES,
+        "page_title": "Invoices",
+    }
+
+    return render(request, "accounting/invoices/list.html", context)
+
+
+@login_required
+@tenant_access_required
+def invoice_create(request):  # noqa: C901
+    """
+    Create a new customer invoice with line items.
+
+    Automatically creates journal entry: DR AR, CR Revenue, CR Tax
+
+    Implements Requirements: 3.1, 3.2, 3.7
+    """
+    from .forms import InvoiceForm, InvoiceLineInlineFormSet
+    from .services import InvoiceService
+
+    # Check if accounting is set up
+    try:
+        JewelryEntity.objects.get(tenant=request.user.tenant)
+    except JewelryEntity.DoesNotExist:
+        messages.error(request, "Accounting is not set up for your tenant. Please contact support.")
+        return redirect("accounting:dashboard")
+
+    if request.method == "POST":
+        form = InvoiceForm(request.POST, tenant=request.user.tenant, user=request.user)
+        formset = InvoiceLineInlineFormSet(request.POST, instance=None)
+
+        if form.is_valid() and formset.is_valid():
+            try:
+                with transaction.atomic():
+                    # Create invoice
+                    invoice = form.save(commit=False)
+                    invoice.tenant = request.user.tenant
+                    invoice.created_by = request.user
+
+                    # Calculate payment terms and due date from customer if not set
+                    customer = invoice.customer
+                    if hasattr(customer, "payment_terms") and customer.payment_terms:
+                        # Parse payment terms (e.g., "NET30" -> 30 days)
+                        try:
+                            days = int(customer.payment_terms.replace("NET", "").strip())
+                            from datetime import timedelta
+
+                            invoice.due_date = invoice.invoice_date + timedelta(days=days)
+                        except (ValueError, AttributeError):
+                            pass
+
+                    invoice.save()
+
+                    # Save line items
+                    formset.instance = invoice
+                    lines = formset.save(commit=False)
+                    for line in lines:
+                        line.save()
+
+                    # Calculate totals from line items
+                    invoice.calculate_totals()
+
+                    # Check credit limit
+                    credit_check = InvoiceService.check_customer_credit_limit(
+                        customer, invoice.total
+                    )
+                    if not credit_check["within_limit"]:
+                        messages.warning(request, credit_check["warning_message"])
+
+                    # Create automatic journal entry
+                    try:
+                        je = InvoiceService.create_invoice_journal_entry(invoice, request.user)
+                        if je:
+                            messages.success(
+                                request,
+                                f"Invoice {invoice.invoice_number} created successfully with journal entry.",
+                            )
+                        else:
+                            messages.warning(
+                                request,
+                                f"Invoice {invoice.invoice_number} created but journal entry failed. "
+                                "Please create manually.",
+                            )
+                    except Exception as e:
+                        logger.error(f"Failed to create journal entry for invoice: {str(e)}")
+                        messages.warning(
+                            request,
+                            f"Invoice created but journal entry failed: {str(e)}. "
+                            "Please create manually.",
+                        )
+
+                    # Audit logging
+                    from apps.core.audit_models import AuditLog
+
+                    AuditLog.objects.create(
+                        tenant=request.user.tenant,
+                        user=request.user,
+                        category=AuditLog.CATEGORY_DATA,
+                        action=AuditLog.ACTION_CREATE,
+                        severity=AuditLog.SEVERITY_INFO,
+                        description=f"Created invoice {invoice.invoice_number} for {customer}",
+                        after_value=f"Total: ${invoice.total:,.2f}",
+                        ip_address=request.META.get("REMOTE_ADDR"),
+                        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                        request_method=request.method,
+                        request_path=request.path,
+                    )
+
+                    return redirect("accounting:invoice_detail", invoice_id=invoice.id)
+
+            except Exception as e:
+                logger.error(f"Failed to create invoice: {str(e)}")
+                messages.error(request, f"Failed to create invoice: {str(e)}")
+    else:
+        form = InvoiceForm(tenant=request.user.tenant, user=request.user)
+        formset = InvoiceLineInlineFormSet(instance=None)
+
+    context = {
+        "form": form,
+        "formset": formset,
+        "page_title": "Create Invoice",
+        "submit_text": "Create Invoice",
+    }
+
+    return render(request, "accounting/invoices/form.html", context)
+
+
+@login_required
+@tenant_access_required
+def invoice_detail(request, invoice_id):
+    """
+    View invoice details with payment history and line items.
+
+    Implements Requirements: 3.3, 3.7
+    """
+    from .invoice_models import Invoice
+
+    # Get invoice with tenant filtering
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("customer", "created_by", "journal_entry"),
+        id=invoice_id,
+        tenant=request.user.tenant,
+    )
+
+    # Get line items
+    lines = invoice.lines.all()
+
+    # Get payments
+    payments = invoice.payments.select_related("created_by").order_by("-payment_date")
+
+    # Get applied credit memos
+    applied_credits = invoice.applied_credits.select_related("customer").order_by("-credit_date")
+
+    # Calculate summary
+    total_payments = payments.aggregate(total=models.Sum("amount"))["total"] or Decimal("0.00")
+    total_credits = applied_credits.aggregate(total=models.Sum("amount_used"))["total"] or Decimal(
+        "0.00"
+    )
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_VIEW,
+        severity=AuditLog.SEVERITY_INFO,
+        description=f"Viewed invoice {invoice.invoice_number}",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    context = {
+        "invoice": invoice,
+        "lines": lines,
+        "payments": payments,
+        "applied_credits": applied_credits,
+        "total_payments": total_payments,
+        "total_credits": total_credits,
+        "page_title": f"Invoice {invoice.invoice_number}",
+    }
+
+    return render(request, "accounting/invoices/detail.html", context)
+
+
+@login_required
+@tenant_access_required
+def invoice_receive_payment(request, invoice_id):
+    """
+    Record a payment against an invoice.
+
+    Automatically creates journal entry: DR Cash, CR AR
+
+    Implements Requirements: 3.4, 3.7
+    """
+    from .forms import InvoicePaymentForm
+    from .invoice_models import Invoice
+    from .services import InvoiceService
+
+    # Get invoice with tenant filtering
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("customer"),
+        id=invoice_id,
+        tenant=request.user.tenant,
+    )
+
+    # Check if invoice can receive payment
+    if invoice.status == "VOID":
+        messages.error(request, "Cannot record payment for a void invoice.")
+        return redirect("accounting:invoice_detail", invoice_id=invoice.id)
+
+    if invoice.amount_due <= Decimal("0.00"):
+        messages.error(request, "Invoice is already fully paid.")
+        return redirect("accounting:invoice_detail", invoice_id=invoice.id)
+
+    if request.method == "POST":
+        form = InvoicePaymentForm(
+            request.POST, tenant=request.user.tenant, user=request.user, invoice=invoice
+        )
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Create payment
+                    payment = form.save(commit=False)
+                    payment.tenant = request.user.tenant
+                    payment.invoice = invoice
+                    payment.created_by = request.user
+                    payment.save()
+
+                    # Invoice amount_paid is updated automatically by the model's save method
+
+                    # Create automatic journal entry
+                    try:
+                        je = InvoiceService.create_payment_journal_entry(payment, request.user)
+                        if je:
+                            messages.success(
+                                request,
+                                f"Payment of ${payment.amount:,.2f} recorded successfully with journal entry.",
+                            )
+                        else:
+                            messages.warning(
+                                request,
+                                "Payment recorded but journal entry failed. Please create manually.",
+                            )
+                    except Exception as e:
+                        logger.error(f"Failed to create journal entry for payment: {str(e)}")
+                        messages.warning(
+                            request,
+                            f"Payment recorded but journal entry failed: {str(e)}. "
+                            "Please create manually.",
+                        )
+
+                    # Audit logging
+                    from apps.core.audit_models import AuditLog
+
+                    AuditLog.objects.create(
+                        tenant=request.user.tenant,
+                        user=request.user,
+                        category=AuditLog.CATEGORY_DATA,
+                        action=AuditLog.ACTION_CREATE,
+                        severity=AuditLog.SEVERITY_INFO,
+                        description=f"Recorded payment of ${payment.amount:,.2f} for invoice {invoice.invoice_number}",
+                        after_value=f"Remaining balance: ${invoice.amount_due:,.2f}",
+                        ip_address=request.META.get("REMOTE_ADDR"),
+                        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                        request_method=request.method,
+                        request_path=request.path,
+                    )
+
+                    return redirect("accounting:invoice_detail", invoice_id=invoice.id)
+
+            except Exception as e:
+                logger.error(f"Failed to record payment: {str(e)}")
+                messages.error(request, f"Failed to record payment: {str(e)}")
+    else:
+        form = InvoicePaymentForm(tenant=request.user.tenant, user=request.user, invoice=invoice)
+
+    context = {
+        "form": form,
+        "invoice": invoice,
+        "page_title": f"Record Payment - Invoice {invoice.invoice_number}",
+        "submit_text": "Record Payment",
+    }
+
+    return render(request, "accounting/invoices/payment_form.html", context)
+
+
+@login_required
+@tenant_access_required
+def credit_memo_create(request):
+    """
+    Create a credit memo for a customer.
+
+    Automatically creates journal entry: DR Sales Returns, CR AR
+
+    Implements Requirements: 3.6, 3.7
+    """
+    from .forms import CreditMemoForm
+    from .services import InvoiceService
+
+    if request.method == "POST":
+        form = CreditMemoForm(request.POST, tenant=request.user.tenant, user=request.user)
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Create credit memo
+                    credit_memo = form.save(commit=False)
+                    credit_memo.tenant = request.user.tenant
+                    credit_memo.created_by = request.user
+                    credit_memo.save()
+
+                    # Create automatic journal entry
+                    try:
+                        je = InvoiceService.create_credit_memo_journal_entry(
+                            credit_memo, request.user
+                        )
+                        if je:
+                            messages.success(
+                                request,
+                                f"Credit memo {credit_memo.credit_memo_number} created successfully with journal entry.",
+                            )
+                        else:
+                            messages.warning(
+                                request,
+                                "Credit memo created but journal entry failed. Please create manually.",
+                            )
+                    except Exception as e:
+                        logger.error(f"Failed to create journal entry for credit memo: {str(e)}")
+                        messages.warning(
+                            request,
+                            f"Credit memo created but journal entry failed: {str(e)}. "
+                            "Please create manually.",
+                        )
+
+                    # Audit logging
+                    from apps.core.audit_models import AuditLog
+
+                    AuditLog.objects.create(
+                        tenant=request.user.tenant,
+                        user=request.user,
+                        category=AuditLog.CATEGORY_DATA,
+                        action=AuditLog.ACTION_CREATE,
+                        severity=AuditLog.SEVERITY_INFO,
+                        description=f"Created credit memo {credit_memo.credit_memo_number} for {credit_memo.customer}",
+                        after_value=f"Amount: ${credit_memo.amount:,.2f}, Reason: {credit_memo.reason}",
+                        ip_address=request.META.get("REMOTE_ADDR"),
+                        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                        request_method=request.method,
+                        request_path=request.path,
+                    )
+
+                    return redirect("accounting:credit_memo_detail", credit_memo_id=credit_memo.id)
+
+            except Exception as e:
+                logger.error(f"Failed to create credit memo: {str(e)}")
+                messages.error(request, f"Failed to create credit memo: {str(e)}")
+    else:
+        form = CreditMemoForm(tenant=request.user.tenant, user=request.user)
+
+    context = {
+        "form": form,
+        "page_title": "Create Credit Memo",
+        "submit_text": "Create Credit Memo",
+    }
+
+    return render(request, "accounting/credit_memos/form.html", context)
+
+
+@login_required
+@tenant_access_required
+def credit_memo_detail(request, credit_memo_id):
+    """
+    View credit memo details.
+
+    Implements Requirements: 3.6, 3.7
+    """
+    from .invoice_models import CreditMemo
+
+    # Get credit memo with tenant filtering
+    credit_memo = get_object_or_404(
+        CreditMemo.objects.select_related(
+            "customer", "created_by", "original_invoice", "applied_to_invoice", "journal_entry"
+        ),
+        id=credit_memo_id,
+        tenant=request.user.tenant,
+    )
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_VIEW,
+        severity=AuditLog.SEVERITY_INFO,
+        description=f"Viewed credit memo {credit_memo.credit_memo_number}",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    context = {
+        "credit_memo": credit_memo,
+        "page_title": f"Credit Memo {credit_memo.credit_memo_number}",
+    }
+
+    return render(request, "accounting/credit_memos/detail.html", context)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def credit_memo_apply(request, credit_memo_id, invoice_id):
+    """
+    Apply a credit memo to an invoice.
+
+    Implements Requirements: 3.6, 3.7
+    """
+    from .invoice_models import CreditMemo, Invoice
+
+    # Get credit memo and invoice with tenant filtering
+    credit_memo = get_object_or_404(
+        CreditMemo.objects.select_related("customer"),
+        id=credit_memo_id,
+        tenant=request.user.tenant,
+    )
+
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("customer"),
+        id=invoice_id,
+        tenant=request.user.tenant,
+    )
+
+    # Validate
+    if credit_memo.customer != invoice.customer:
+        messages.error(request, "Credit memo and invoice must be for the same customer.")
+        return redirect("accounting:credit_memo_detail", credit_memo_id=credit_memo.id)
+
+    if credit_memo.status == "VOID":
+        messages.error(request, "Cannot apply a void credit memo.")
+        return redirect("accounting:credit_memo_detail", credit_memo_id=credit_memo.id)
+
+    if invoice.status == "VOID":
+        messages.error(request, "Cannot apply credit to a void invoice.")
+        return redirect("accounting:invoice_detail", invoice_id=invoice.id)
+
+    # Get amount to apply (use remaining credit or invoice balance, whichever is smaller)
+    amount_to_apply = min(credit_memo.amount_available, invoice.amount_due)
+
+    if amount_to_apply <= Decimal("0.00"):
+        messages.error(request, "No credit available to apply or invoice is fully paid.")
+        return redirect("accounting:credit_memo_detail", credit_memo_id=credit_memo.id)
+
+    try:
+        with transaction.atomic():
+            # Apply credit memo to invoice
+            credit_memo.apply_to_invoice(invoice, amount_to_apply, request.user)
+
+            messages.success(
+                request,
+                f"Applied ${amount_to_apply:,.2f} from credit memo {credit_memo.credit_memo_number} "
+                f"to invoice {invoice.invoice_number}.",
+            )
+
+            # Audit logging
+            from apps.core.audit_models import AuditLog
+
+            AuditLog.objects.create(
+                tenant=request.user.tenant,
+                user=request.user,
+                category=AuditLog.CATEGORY_DATA,
+                action=AuditLog.ACTION_UPDATE,
+                severity=AuditLog.SEVERITY_INFO,
+                description=f"Applied credit memo {credit_memo.credit_memo_number} to invoice {invoice.invoice_number}",
+                after_value=f"Amount: ${amount_to_apply:,.2f}",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                request_method=request.method,
+                request_path=request.path,
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to apply credit memo: {str(e)}")
+        messages.error(request, f"Failed to apply credit memo: {str(e)}")
+
+    return redirect("accounting:invoice_detail", invoice_id=invoice.id)
