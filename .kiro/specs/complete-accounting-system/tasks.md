@@ -117,7 +117,7 @@
 ## Phase 3: Customer Management and Invoices (Accounts Receivable)
 
 - [ ] 3. Extend Customer model and create Invoice models with migrations
-- [ ] 3.1 Extend existing Customer model with accounting fields
+- [x] 3.1 Extend existing Customer model with accounting fields
   - Create migration to add fields to apps/crm/models.Customer:
     - credit_limit (DecimalField, max_digits=12, decimal_places=2, default=0)
     - payment_terms (CharField, max_length=50, default='NET30')

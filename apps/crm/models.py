@@ -319,6 +319,31 @@ class Customer(models.Model):
         help_text="Tags for customer segmentation (e.g., ['VIP', 'Wedding', 'Corporate'])",
     )
 
+    # Accounting fields (for AR integration)
+    credit_limit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0.00"))],
+        help_text="Maximum credit allowed for this customer",
+    )
+
+    payment_terms = models.CharField(
+        max_length=50,
+        default="NET30",
+        help_text="Default payment terms (e.g., NET30, NET60, COD)",
+    )
+
+    tax_exempt = models.BooleanField(
+        default=False, help_text="Whether customer is exempt from sales tax"
+    )
+
+    exemption_certificate = models.FileField(
+        upload_to="customer_tax_exemptions/",
+        blank=True,
+        help_text="Tax exemption certificate document",
+    )
+
     # Customer status
     is_active = models.BooleanField(
         default=True, help_text="Whether the customer account is active"
