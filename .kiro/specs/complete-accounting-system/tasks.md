@@ -40,40 +40,43 @@
   - Verify audit trail
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.7, 1.8_
 
-## Phase 2: Vendor Management and Bills (Accounts Payable)
+## Phase 2: Supplier Management and Bills (Accounts Payable)
 
-- [ ] 2. Create Vendor and Bill models with migrations
-- [ ] 2.1 Create Vendor model
-  - Add Vendor model to apps/accounting/models.py
-  - Include tenant FK, name, contact info, payment terms, tax_id, is_1099_vendor
-  - Add custom manager for tenant filtering
-  - Create and run migration
+- [ ] 2. Extend Supplier model and create Bill models with migrations
+- [ ] 2.1 Extend existing Supplier model with accounting fields
+  - Create migration to add fields to apps/procurement/models.Supplier:
+    - default_expense_account (CharField, max_length=20, blank=True)
+    - is_1099_vendor (BooleanField, default=False)
+  - Run migration
+  - NOTE: Supplier model already exists with tenant FK, name, contact_person, email, phone, address, tax_id, payment_terms, is_active, notes
   - _Requirements: 2.1, 2.7, 14.1, 14.2_
 
 - [ ] 2.2 Create Bill models
-  - Add Bill model with tenant FK, vendor FK, bill_number, dates, amounts, status
+  - Add Bill model with tenant FK, supplier FK (to apps.procurement.models.Supplier), bill_number, dates, amounts, status
   - Add BillLine model for line items
   - Add BillPayment model for payment tracking
   - Add custom managers for tenant filtering
   - Create and run migrations
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.7_
 
-- [ ] 2.3 Create vendor management forms and views (backend)
-  - Create VendorForm in forms.py
-  - Implement vendor_list, vendor_create, vendor_edit, vendor_detail views
+- [ ] 2.3 Create supplier accounting views (backend)
+  - Implement supplier_accounting_detail view (extends existing supplier detail with accounting info)
+  - Implement supplier_statement view
   - Add tenant filtering to all queries
   - Add audit logging
+  - NOTE: Basic supplier CRUD already exists in procurement app
   - _Requirements: 2.7, 14.1, 14.2, 14.3, 14.7, 14.8_
 
-- [ ] 2.4 Create vendor management templates (frontend)
-  - Create templates/accounting/vendors/ directory
-  - Create list.html, form.html, detail.html templates
+- [ ] 2.4 Create supplier accounting templates (frontend)
+  - Create templates/accounting/suppliers/ directory
+  - Create accounting_detail.html (shows bills, payments, balance)
+  - Create statement.html template
   - Add search and filter functionality
   - Add TailwindCSS styling
   - _Requirements: 14.1, 14.2, 14.3, 14.8_
 
 - [ ] 2.5 Create bill management forms and views (backend)
-  - Create BillForm and BillLineFormSet in forms.py
+  - Create BillForm and BillLineFormSet in forms.py (reference apps.procurement.models.Supplier)
   - Create BillPaymentForm in forms.py
   - Implement bill_list, bill_create, bill_detail, bill_pay views
   - Implement automatic journal entry creation on bill save
@@ -96,15 +99,15 @@
   - Add PDF/Excel export functionality
   - _Requirements: 2.5_
 
-- [ ] 2.8 Create vendor statement report (backend + frontend)
-  - Implement vendor_statement view
-  - Create templates/accounting/reports/vendor_statement.html
+- [ ] 2.8 Create supplier statement report (backend + frontend)
+  - Implement supplier_statement view
+  - Create templates/accounting/reports/supplier_statement.html
   - Add PDF export functionality
   - _Requirements: 2.8, 14.3_
 
 - [ ] 2.9 Add AP URLs and test end-to-end
-  - Add URL patterns for vendors and bills
-  - Test: Create vendor → Create bill → Record payment → View aging report
+  - Add URL patterns for supplier accounting and bills
+  - Test: View supplier → Create bill → Record payment → View aging report
   - Verify journal entries created correctly
   - Verify tenant isolation
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.7_
@@ -113,16 +116,19 @@
 
 ## Phase 3: Customer Management and Invoices (Accounts Receivable)
 
-- [ ] 3. Create Customer and Invoice models with migrations
-- [ ] 3.1 Create Customer model
-  - Add Customer model to apps/accounting/models.py
-  - Include tenant FK, name, contact info, payment terms, credit_limit, tax_exempt
-  - Add custom manager for tenant filtering
-  - Create and run migration
+- [ ] 3. Extend Customer model and create Invoice models with migrations
+- [ ] 3.1 Extend existing Customer model with accounting fields
+  - Create migration to add fields to apps/crm/models.Customer:
+    - credit_limit (DecimalField, max_digits=12, decimal_places=2, default=0)
+    - payment_terms (CharField, max_length=50, default='NET30')
+    - tax_exempt (BooleanField, default=False)
+    - exemption_certificate (FileField, upload_to='customer_tax_exemptions/', blank=True)
+  - Run migration
+  - NOTE: Customer model already exists with tenant FK, customer_number, first_name, last_name, email, phone, address, loyalty_tier, store_credit, tags, notes, is_active
   - _Requirements: 3.1, 3.7, 15.1, 15.2_
 
 - [ ] 3.2 Create Invoice models
-  - Add Invoice model with tenant FK, customer FK, invoice_number, dates, amounts, status
+  - Add Invoice model with tenant FK, customer FK (to apps.crm.models.Customer), invoice_number, dates, amounts, status
   - Add InvoiceLine model for line items
   - Add InvoicePayment model for payment tracking
   - Add CreditMemo model for customer credits
@@ -130,23 +136,25 @@
   - Create and run migrations
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 3.7_
 
-- [ ] 3.3 Create customer management forms and views (backend)
-  - Create CustomerForm in forms.py
-  - Implement customer_list, customer_create, customer_edit, customer_detail views
+- [ ] 3.3 Create customer accounting views (backend)
+  - Implement customer_accounting_detail view (extends existing customer detail with accounting info)
+  - Implement customer_statement view
   - Add credit limit validation
   - Add tenant filtering and audit logging
+  - NOTE: Basic customer CRUD already exists in CRM app
   - _Requirements: 3.7, 15.1, 15.2, 15.3, 15.4, 15.7, 15.8_
 
-- [ ] 3.4 Create customer management templates (frontend)
+- [ ] 3.4 Create customer accounting templates (frontend)
   - Create templates/accounting/customers/ directory
-  - Create list.html, form.html, detail.html templates
+  - Create accounting_detail.html (shows invoices, payments, balance, credit limit)
+  - Create statement.html template
   - Add search and filter functionality
   - Display credit limit and current balance
   - Add TailwindCSS styling
   - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.8_
 
 - [ ] 3.5 Create invoice management forms and views (backend)
-  - Create InvoiceForm and InvoiceLineFormSet in forms.py
+  - Create InvoiceForm and InvoiceLineFormSet in forms.py (reference apps.crm.models.Customer)
   - Create InvoicePaymentForm and CreditMemoForm in forms.py
   - Implement invoice_list, invoice_create, invoice_detail, invoice_receive_payment views
   - Implement automatic journal entry creation on invoice save
@@ -179,8 +187,8 @@
   - _Requirements: 3.8, 15.3_
 
 - [ ] 3.9 Add AR URLs and test end-to-end
-  - Add URL patterns for customers and invoices
-  - Test: Create customer → Create invoice → Record payment → Apply credit → View aging report
+  - Add URL patterns for customer accounting and invoices
+  - Test: View customer → Create invoice → Record payment → Apply credit → View aging report
   - Verify journal entries created correctly
   - Verify credit limit enforcement
   - Verify tenant isolation
@@ -536,19 +544,20 @@
 
 ## Phase 10: Audit Trail and Compliance
 
-- [ ] 10. Create audit trail models with migrations
-- [ ] 10.1 Create AuditLog model
-  - Add AuditLog model to apps/accounting/models.py
-  - Include tenant FK, user, timestamp, IP address, model_name, object_id, action
-  - Include before_value, after_value JSON fields
-  - Add SensitiveOperation model for operations requiring approval
-  - Add custom managers for tenant filtering
-  - Create and run migrations
+- [ ] 10. Use existing audit trail system and create compliance models
+- [ ] 10.1 Verify existing AuditLog usage
+  - IMPORTANT: AuditLog already exists in apps/core/audit_models.py
+  - DO NOT create new AuditLog model
+  - Verify existing AuditLog has all needed fields (tenant, user, timestamp, ip_address, category, action, severity, description, before_value, after_value)
+  - Create SensitiveOperation model for operations requiring approval
+  - Add custom manager for tenant filtering to SensitiveOperation
+  - Create and run migration for SensitiveOperation only
   - _Requirements: 12.1, 12.2, 12.6, 12.7_
 
 - [ ] 10.2 Create audit service (backend)
   - Create AuditService in services.py
-  - Implement log_change method
+  - Use apps.core.audit_models.AuditLog (import from core)
+  - Implement log_change method (wrapper around existing AuditLog)
   - Implement get_audit_trail method with filtering
   - Implement export_audit_trail method
   - Implement detect_suspicious_activity method
@@ -557,13 +566,15 @@
 
 - [ ] 10.3 Integrate audit logging into all models
   - Add signal handlers to log all create/update/delete operations
+  - Use apps.core.audit_models.AuditLog for logging
   - Capture before and after values
   - Capture user and IP address
   - Add to all financial models (JournalEntry, Bill, Invoice, etc.)
+  - NOTE: Some audit logging already exists in views (see journal_entry views)
   - _Requirements: 12.1, 12.7_
 
 - [ ] 10.4 Create audit trail views (backend)
-  - Implement audit_trail view with filtering
+  - Implement audit_trail view with filtering (query apps.core.audit_models.AuditLog)
   - Implement audit_trail_export view
   - Implement suspicious_activity view
   - Add tenant filtering
@@ -580,7 +591,7 @@
 - [ ] 10.6 Add audit URLs and test end-to-end
   - Add URL patterns for audit trail
   - Test: Perform various operations → View audit trail → Filter by user/date → Export
-  - Verify all operations logged
+  - Verify all operations logged to apps.core.audit_models.AuditLog
   - Verify before/after values captured
   - Verify tenant isolation
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.7_
