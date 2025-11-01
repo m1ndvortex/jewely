@@ -118,20 +118,21 @@ All new models will follow these patterns:
 - `journal_entries/detail.html`: Read-only view with audit trail
 - `journal_entries/confirm_post.html`: Confirmation modal
 
-### 2. Vendor Bill Management (AP)
+### 2. Supplier Bill Management (AP)
 
 #### Models
 
-**Vendor**
-- tenant, name, contact_info, payment_terms, tax_id
-- default_expense_account, is_1099_vendor
-- Integrates with django-ledger's VendorModel
+**Supplier** (extends existing apps.procurement.models.Supplier)
+- Existing fields: tenant, name, contact_person, email, phone, address, tax_id, payment_terms, rating, is_active, notes
+- NEW accounting fields to add via migration:
+  - default_expense_account (CharField) - default GL account for expenses
+  - is_1099_vendor (BooleanField) - whether supplier requires 1099 reporting
 
 **Bill**
-- tenant, vendor, bill_number, bill_date, due_date
+- tenant, supplier (FK to apps.procurement.models.Supplier), bill_number, bill_date, due_date
 - subtotal, tax, total, amount_paid, amount_due
 - status: DRAFT, APPROVED, PARTIALLY_PAID, PAID, VOID
-- Links to django-ledger's BillModel
+- journal_entry (FK to django-ledger's JournalEntryModel)
 
 **BillLine**
 - bill, account, description, quantity, unit_price, amount
@@ -168,16 +169,19 @@ All new models will follow these patterns:
 
 #### Models
 
-**Customer**
-- tenant, name, contact_info, payment_terms, credit_limit
-- tax_exempt, exemption_certificate
-- Integrates with django-ledger's CustomerModel
+**Customer** (extends existing apps.crm.models.Customer)
+- Existing fields: tenant, customer_number, first_name, last_name, email, phone, address, loyalty_tier, store_credit, marketing_opt_in, tags, notes, is_active
+- NEW accounting fields to add via migration:
+  - credit_limit (DecimalField) - maximum credit allowed
+  - payment_terms (CharField) - default payment terms (e.g., "NET30")
+  - tax_exempt (BooleanField) - whether customer is tax-exempt
+  - exemption_certificate (FileField) - tax exemption certificate document
 
 **Invoice**
-- tenant, customer, invoice_number, invoice_date, due_date
+- tenant, customer (FK to apps.crm.models.Customer), invoice_number, invoice_date, due_date
 - subtotal, tax, total, amount_paid, amount_due
 - status: DRAFT, SENT, PARTIALLY_PAID, PAID, VOID, OVERDUE
-- Links to django-ledger's InvoiceModel
+- journal_entry (FK to django-ledger's JournalEntryModel)
 
 **InvoiceLine**
 - invoice, item, description, quantity, unit_price, amount
@@ -187,7 +191,7 @@ All new models will follow these patterns:
 - bank_account, reference_number, notes
 
 **CreditMemo**
-- tenant, customer, amount, reason, applied_to_invoice
+- tenant, customer (FK to apps.crm.models.Customer), amount, reason, applied_to_invoice
 
 #### Services
 
@@ -514,10 +518,10 @@ All new models will follow these patterns:
 
 #### Models
 
-**AuditLog**
-- tenant, user, timestamp, ip_address
-- model_name, object_id, action: CREATE, UPDATE, DELETE
-- before_value, after_value, reason
+**AuditLog** (uses existing apps.core.audit_models.AuditLog)
+- Existing fields: tenant, user, timestamp, ip_address, category, action, severity, description
+- NO NEW MODEL NEEDED - use existing AuditLog from core app
+- Already tracks: user_agent, request_method, request_path, before_value, after_value
 
 **SensitiveOperation**
 - tenant, user, operation_type, timestamp
@@ -577,13 +581,13 @@ All new models will follow these patterns:
 
 ### 14-20. Additional Components
 
-#### Vendor Management
-- Vendor CRUD with payment terms
-- Vendor statements and history
-- 1099 tracking
+#### Supplier Management (Accounting Extensions)
+- Extend existing Supplier model with accounting fields
+- Supplier statements and history
+- 1099 tracking via is_1099_vendor field
 
-#### Customer Management
-- Customer CRUD with credit limits
+#### Customer Management (Accounting Extensions)
+- Extend existing Customer model with accounting fields (credit_limit, payment_terms, tax_exempt)
 - Customer statements and history
 - Tax exemption tracking
 
@@ -627,31 +631,24 @@ All new models will follow these patterns:
 ```python
 # apps/accounting/models.py additions
 
-class Vendor(models.Model):
-    """Vendor master record"""
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255)
-    contact_name = models.CharField(max_length=255, blank=True)
-    email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=50, blank=True)
-    address = models.TextField(blank=True)
-    payment_terms = models.CharField(max_length=50, default='NET30')
-    tax_id = models.CharField(max_length=50, blank=True)
-    is_1099_vendor = models.BooleanField(default=False)
-    default_expense_account = models.ForeignKey(AccountModel, ...)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(User, ...)
-    
-    class Meta:
-        db_table = 'accounting_vendors'
-        unique_together = [['tenant', 'name']]
+# NOTE: Supplier and Customer models already exist in other apps
+# We will extend them via migrations, not create new models
+
+# Migration to add accounting fields to existing Supplier model (apps.procurement.models.Supplier):
+# - default_expense_account = models.CharField(max_length=20, blank=True)
+# - is_1099_vendor = models.BooleanField(default=False)
+
+# Migration to add accounting fields to existing Customer model (apps.crm.models.Customer):
+# - credit_limit = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+# - payment_terms = models.CharField(max_length=50, default='NET30')
+# - tax_exempt = models.BooleanField(default=False)
+# - exemption_certificate = models.FileField(upload_to='customer_tax_exemptions/', blank=True)
 
 class Bill(models.Model):
-    """Vendor bill/invoice"""
+    """Supplier bill/invoice"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
-    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT)
+    supplier = models.ForeignKey('procurement.Supplier', on_delete=models.PROTECT)  # Use existing Supplier
     bill_number = models.CharField(max_length=50)
     bill_date = models.DateField()
     due_date = models.DateField()
@@ -669,11 +666,31 @@ class Bill(models.Model):
         db_table = 'accounting_bills'
         unique_together = [['tenant', 'bill_number']]
 
+class Invoice(models.Model):
+    """Customer invoice"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE)
+    customer = models.ForeignKey('crm.Customer', on_delete=models.PROTECT)  # Use existing Customer
+    invoice_number = models.CharField(max_length=50)
+    invoice_date = models.DateField()
+    due_date = models.DateField()
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    journal_entry = models.ForeignKey(JournalEntryModel, null=True, ...)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, ...)
+    
+    class Meta:
+        db_table = 'accounting_invoices'
+        unique_together = [['tenant', 'invoice_number']]
+
 # Similar models for:
 # - BillLine
 # - BillPayment
-# - Customer
-# - Invoice
 # - InvoiceLine
 # - InvoicePayment
 # - CreditMemo
@@ -686,11 +703,12 @@ class Bill(models.Model):
 # - AccountingPeriod
 # - Budget
 # - BudgetLine
-# - AuditLog
 # - ApprovalRule
 # - ApprovalRequest
 # - RecurringTransaction
 # - DocumentAttachment
+
+# NOTE: AuditLog already exists in apps.core.audit_models - use that instead of creating new one
 ```
 
 ## Error Handling

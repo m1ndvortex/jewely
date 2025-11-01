@@ -55,4 +55,15 @@ urlpatterns = [
     path(
         "reports/export/excel/", views.export_financial_reports_excel, name="export_reports_excel"
     ),
+    # Supplier Accounting Views (Task 2.3)
+    path(
+        "suppliers/<uuid:supplier_id>/accounting/",
+        views.supplier_accounting_detail,
+        name="supplier_accounting_detail",
+    ),
+    path(
+        "suppliers/<uuid:supplier_id>/statement/",
+        views.supplier_statement,
+        name="supplier_statement",
+    ),
 ]

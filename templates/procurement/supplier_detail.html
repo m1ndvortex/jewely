@@ -239,6 +239,9 @@
                         </div>
                         <div class="card-body">
                             <div class="d-grid gap-2">
+                                <a href="{% url 'accounting:supplier_accounting_detail' supplier.pk %}" class="btn btn-outline-success">
+                                    <i class="fas fa-calculator me-2"></i>View Accounting
+                                </a>
                                 <a href="{% url 'procurement:communication_create' supplier.pk %}" class="btn btn-outline-primary">
                                     <i class="fas fa-comment me-2"></i>Add Communication
                                 </a>

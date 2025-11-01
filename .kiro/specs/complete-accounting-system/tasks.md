@@ -67,7 +67,7 @@
   - NOTE: Basic supplier CRUD already exists in procurement app
   - _Requirements: 2.7, 14.1, 14.2, 14.3, 14.7, 14.8_
 
-- [x] 2.4 Create supplier accounting templates (frontend)
+- [-] 2.4 Create supplier accounting templates (frontend)
   - Create templates/accounting/suppliers/ directory
   - Create accounting_detail.html (shows bills, payments, balance)
   - Create statement.html template

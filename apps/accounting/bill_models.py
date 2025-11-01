@@ -196,15 +196,11 @@ class Bill(models.Model):
         # Validate amounts
         expected_total = self.subtotal + self.tax
         if abs(self.total - expected_total) > Decimal("0.01"):  # Allow for rounding
-            raise ValidationError(
-                {"total": f"Total must equal subtotal + tax ({expected_total})"}
-            )
+            raise ValidationError({"total": f"Total must equal subtotal + tax ({expected_total})"})
 
         # Validate payment amount
         if self.amount_paid > self.total:
-            raise ValidationError(
-                {"amount_paid": "Amount paid cannot exceed total bill amount"}
-            )
+            raise ValidationError({"amount_paid": "Amount paid cannot exceed total bill amount"})
 
     @property
     def amount_due(self):

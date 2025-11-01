@@ -15,10 +15,12 @@ The system must maintain strict tenant isolation, support multi-branch operation
 - **COA**: Chart of Accounts - the complete list of accounts used by a tenant
 - **Journal Entry**: A double-entry bookkeeping transaction with debits and credits
 - **GL**: General Ledger - the complete record of all financial transactions
-- **AP**: Accounts Payable - money owed to vendors/suppliers
+- **AP**: Accounts Payable - money owed to suppliers
 - **AR**: Accounts Receivable - money owed by customers
-- **Bill**: A vendor invoice for goods or services purchased
+- **Bill**: A supplier invoice for goods or services purchased
 - **Invoice**: A customer invoice for goods or services sold
+- **Supplier**: A vendor/supplier (uses existing Supplier model from apps.procurement.models)
+- **Customer**: A customer (uses existing Customer model from apps.crm.models)
 - **Reconciliation**: The process of matching bank statement transactions with accounting records
 - **Fixed Asset**: Long-term tangible property used in business operations
 - **Depreciation**: The systematic allocation of an asset's cost over its useful life
@@ -42,28 +44,32 @@ The system must maintain strict tenant isolation, support multi-branch operation
 7. WHEN a User views journal entries, THE System SHALL display only entries belonging to their tenant
 8. WHEN a User creates a journal entry, THE System SHALL record the creating user, timestamp, and tenant for audit purposes
 
-### Requirement 2: Vendor Bill Management (Accounts Payable)
+### Requirement 2: Supplier Bill Management (Accounts Payable)
 
-**User Story:** As an accounts payable clerk, I want to record vendor bills and track payments, so that I can manage what the business owes to suppliers.
+**User Story:** As an accounts payable clerk, I want to record supplier bills and track payments, so that I can manage what the business owes to suppliers.
+
+**Note:** This requirement extends the existing Supplier model from apps.procurement.models with accounting-specific fields.
 
 #### Acceptance Criteria
 
-1. WHEN a User accesses the bill creation page, THE System SHALL display a form to enter vendor, date, due date, amount, and line items
+1. WHEN a User accesses the bill creation page, THE System SHALL display a form to enter supplier (from existing Supplier model), date, due date, amount, and line items
 2. WHEN a User creates a bill, THE System SHALL automatically create a journal entry debiting expense/asset accounts and crediting accounts payable
 3. WHEN a User views the bills list, THE System SHALL display all unpaid bills for their tenant with aging information
 4. WHEN a User records a payment against a bill, THE System SHALL create a journal entry debiting accounts payable and crediting cash/bank
-5. WHEN a User views vendor aging report, THE System SHALL display amounts owed grouped by 30/60/90/90+ days overdue
+5. WHEN a User views supplier aging report, THE System SHALL display amounts owed grouped by 30/60/90/90+ days overdue
 6. WHEN a User marks a bill as paid, THE System SHALL update the bill status and reduce the accounts payable balance
 7. WHEN a User creates a bill, THE System SHALL enforce tenant isolation and record audit trail information
-8. WHEN a User searches for bills, THE System SHALL filter results by vendor, date range, status, and amount
+8. WHEN a User searches for bills, THE System SHALL filter results by supplier, date range, status, and amount
 
 ### Requirement 3: Customer Invoice Management (Accounts Receivable)
 
 **User Story:** As an accounts receivable clerk, I want to create customer invoices and track payments, so that I can manage what customers owe the business.
 
+**Note:** This requirement uses the existing Customer model from apps.crm.models and extends it with accounting-specific fields (credit_limit, payment_terms, tax_exempt).
+
 #### Acceptance Criteria
 
-1. WHEN a User creates a customer invoice, THE System SHALL display a form with customer, date, due date, line items, and tax calculation
+1. WHEN a User creates a customer invoice, THE System SHALL display a form with customer (from existing Customer model), date, due date, line items, and tax calculation
 2. WHEN a User saves an invoice, THE System SHALL automatically create a journal entry debiting accounts receivable and crediting revenue
 3. WHEN a User views the invoices list, THE System SHALL display all unpaid invoices for their tenant with aging information
 4. WHEN a User records a payment against an invoice, THE System SHALL create a journal entry debiting cash/bank and crediting accounts receivable
@@ -222,28 +228,32 @@ The system must maintain strict tenant isolation, support multi-branch operation
 7. WHEN approval workflows execute, THE System SHALL enforce tenant isolation and maintain complete audit trail
 8. WHEN a User bypasses approval (with permission), THE System SHALL require justification and log the override
 
-### Requirement 14: Vendor Management
+### Requirement 14: Supplier Management (Accounting Extensions)
 
-**User Story:** As a procurement manager, I want to maintain vendor master records and track vendor performance, so that I can manage supplier relationships effectively.
+**User Story:** As a procurement manager, I want to maintain supplier master records with accounting features and track supplier performance, so that I can manage supplier relationships effectively.
 
-#### Acceptance Criteria
-
-1. WHEN a User creates a vendor record, THE System SHALL capture vendor name, contact information, payment terms, and tax ID
-2. WHEN a User views vendor details, THE System SHALL display total purchases, outstanding balance, and payment history
-3. WHEN a User generates a vendor statement, THE System SHALL show all transactions and current balance
-4. WHEN a User tracks 1099 information, THE System SHALL record 1099-eligible payments for year-end reporting
-5. WHEN a User sets vendor payment terms, THE System SHALL automatically calculate due dates on bills
-6. WHEN a User inactivates a vendor, THE System SHALL prevent new transactions but preserve historical data
-7. WHEN a User manages vendors, THE System SHALL enforce tenant isolation and maintain audit trail
-8. WHEN a User searches vendors, THE System SHALL filter by name, status, balance, and custom fields
-
-### Requirement 15: Customer Management
-
-**User Story:** As a sales manager, I want to maintain customer master records and track customer payment behavior, so that I can manage credit risk and customer relationships.
+**Note:** This requirement extends the existing Supplier model from apps.procurement.models with accounting-specific fields (is_1099_vendor, default_expense_account).
 
 #### Acceptance Criteria
 
-1. WHEN a User creates a customer record, THE System SHALL capture customer name, contact information, credit limit, and payment terms
+1. WHEN a User views a supplier record, THE System SHALL display supplier name, contact information, payment terms, and tax ID (from existing Supplier model)
+2. WHEN a User views supplier details, THE System SHALL display total purchases, outstanding balance, and payment history
+3. WHEN a User generates a supplier statement, THE System SHALL show all transactions and current balance
+4. WHEN a User tracks 1099 information, THE System SHALL record 1099-eligible payments for year-end reporting using the is_1099_vendor field
+5. WHEN a User sets supplier payment terms, THE System SHALL automatically calculate due dates on bills
+6. WHEN a User inactivates a supplier, THE System SHALL prevent new transactions but preserve historical data
+7. WHEN a User manages suppliers, THE System SHALL enforce tenant isolation and maintain audit trail
+8. WHEN a User searches suppliers, THE System SHALL filter by name, status, balance, and custom fields
+
+### Requirement 15: Customer Management (Accounting Extensions)
+
+**User Story:** As a sales manager, I want to maintain customer master records with accounting features and track customer payment behavior, so that I can manage credit risk and customer relationships.
+
+**Note:** This requirement extends the existing Customer model from apps.crm.models with accounting-specific fields (credit_limit, payment_terms, tax_exempt, exemption_certificate).
+
+#### Acceptance Criteria
+
+1. WHEN a User views a customer record, THE System SHALL display customer name, contact information (from existing Customer model), credit limit, and payment terms
 2. WHEN a User views customer details, THE System SHALL display total sales, outstanding balance, and payment history
 3. WHEN a User generates a customer statement, THE System SHALL show all transactions and current balance
 4. WHEN a User sets customer credit limit, THE System SHALL warn when creating invoices that exceed the limit

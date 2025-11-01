@@ -54,7 +54,9 @@ class Supplier(models.Model):
 
     # Accounting Fields
     default_expense_account = models.CharField(
-        max_length=20, blank=True, help_text="Default GL account code for expenses from this supplier"
+        max_length=20,
+        blank=True,
+        help_text="Default GL account code for expenses from this supplier",
     )
     is_1099_vendor = models.BooleanField(
         default=False, help_text="Whether this supplier requires 1099 tax reporting"
