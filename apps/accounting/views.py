@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -2821,3 +2821,387 @@ def _export_aged_payables_excel(tenant, supplier_list, grand_totals, as_of_date)
 
     wb.save(response)
     return response
+
+
+# ============================================================================
+# Customer Accounting Views (Task 3.3)
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def customer_accounting_detail(request, customer_id):  # noqa: C901
+    """
+    Customer accounting detail view with invoices, payments, and balance.
+
+    Extends existing customer detail with accounting information:
+    - Outstanding invoices
+    - Payment history
+    - Current balance
+    - Credit limit status
+    - Total sales
+
+    Implements Requirements: 3.7, 15.1, 15.2, 15.3, 15.4, 15.7, 15.8
+    """
+    from apps.crm.models import Customer
+
+    from .invoice_models import Invoice, InvoicePayment
+
+    # Get customer with tenant filtering
+    customer = get_object_or_404(
+        Customer.objects.select_related("loyalty_tier"),
+        id=customer_id,
+        tenant=request.user.tenant,
+    )
+
+    # Get all invoices for this customer
+    invoices = (
+        Invoice.objects.filter(customer=customer, tenant=request.user.tenant)
+        .select_related("journal_entry")
+        .order_by("-invoice_date")
+    )
+
+    # Calculate outstanding balance
+    outstanding_invoices = invoices.exclude(status__in=["PAID", "VOID"])
+    outstanding_balance = sum(
+        invoice.total - invoice.amount_paid for invoice in outstanding_invoices
+    )
+
+    # Get recent payments
+    recent_payments = (
+        InvoicePayment.objects.filter(invoice__customer=customer, tenant=request.user.tenant)
+        .select_related("invoice", "created_by")
+        .order_by("-payment_date")[:20]
+    )
+
+    # Calculate total sales
+    total_sales = sum(
+        invoice.total for invoice in invoices.filter(status__in=["SENT", "PARTIALLY_PAID", "PAID"])
+    )
+
+    # Calculate credit utilization
+    credit_utilization_pct = 0
+    if customer.credit_limit > 0:
+        credit_utilization_pct = (outstanding_balance / customer.credit_limit) * 100
+
+    # Check if customer is over credit limit
+    over_credit_limit = (
+        outstanding_balance > customer.credit_limit if customer.credit_limit > 0 else False
+    )
+
+    # Calculate payment statistics
+    paid_invoices = invoices.filter(status="PAID")
+    if paid_invoices.exists():
+        # Calculate average days to pay
+        total_days = 0
+        count = 0
+        for invoice in paid_invoices:
+            if invoice.amount_paid >= invoice.total:
+                # Find the last payment that completed the invoice
+                last_payment = (
+                    InvoicePayment.objects.filter(invoice=invoice).order_by("-payment_date").first()
+                )
+                if last_payment:
+                    days_to_pay = (last_payment.payment_date - invoice.invoice_date).days
+                    total_days += days_to_pay
+                    count += 1
+
+        avg_days_to_pay = total_days / count if count > 0 else 0
+    else:
+        avg_days_to_pay = 0
+
+    # Calculate payment reliability score (0-100)
+    # Based on: on-time payments, average days to pay, credit utilization
+    payment_reliability_score = 100
+    if paid_invoices.exists():
+        # Deduct points for late payments
+        overdue_count = invoices.filter(status="OVERDUE").count()
+        if overdue_count > 0:
+            payment_reliability_score -= min(overdue_count * 10, 40)
+
+        # Deduct points for slow payment
+        if avg_days_to_pay > 30:
+            payment_reliability_score -= min((avg_days_to_pay - 30) / 2, 30)
+
+        # Deduct points for high credit utilization
+        if credit_utilization_pct > 80:
+            payment_reliability_score -= 20
+        elif credit_utilization_pct > 50:
+            payment_reliability_score -= 10
+
+    payment_reliability_score = max(0, payment_reliability_score)
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_API_GET,
+        severity=AuditLog.SEVERITY_INFO,
+        description=f"Viewed customer accounting detail for {customer.get_full_name()} (ID: {customer_id})",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    context = {
+        "customer": customer,
+        "invoices": invoices[:50],  # Limit to 50 most recent
+        "outstanding_invoices": outstanding_invoices,
+        "outstanding_balance": outstanding_balance,
+        "recent_payments": recent_payments,
+        "total_sales": total_sales,
+        "credit_utilization_pct": credit_utilization_pct,
+        "over_credit_limit": over_credit_limit,
+        "avg_days_to_pay": avg_days_to_pay,
+        "payment_reliability_score": payment_reliability_score,
+        "page_title": f"Customer Accounting: {customer.get_full_name()}",
+    }
+
+    return render(request, "accounting/customers/accounting_detail.html", context)
+
+
+@login_required
+@tenant_access_required
+def customer_statement(request, customer_id):
+    """
+    Generate customer statement showing all transactions and current balance.
+
+    Shows:
+    - Customer information
+    - All invoices with dates and amounts
+    - All payments with dates and amounts
+    - Running balance
+    - Current outstanding balance
+
+    Implements Requirements: 15.3, 15.8
+    """
+    from apps.crm.models import Customer
+
+    from .invoice_models import Invoice, InvoicePayment
+
+    # Get customer with tenant filtering
+    customer = get_object_or_404(
+        Customer.objects.select_related("loyalty_tier"),
+        id=customer_id,
+        tenant=request.user.tenant,
+    )
+
+    # Get date range from request or default to last 90 days
+    from datetime import timedelta
+
+    end_date = date.today()
+    start_date = end_date - timedelta(days=90)
+
+    if request.GET.get("start_date"):
+        start_date = datetime.strptime(request.GET["start_date"], "%Y-%m-%d").date()
+    if request.GET.get("end_date"):
+        end_date = datetime.strptime(request.GET["end_date"], "%Y-%m-%d").date()
+
+    # Get invoices in date range
+    invoices = (
+        Invoice.objects.filter(
+            customer=customer,
+            tenant=request.user.tenant,
+            invoice_date__gte=start_date,
+            invoice_date__lte=end_date,
+        )
+        .exclude(status="VOID")
+        .order_by("invoice_date")
+    )
+
+    # Get payments in date range
+    payments = (
+        InvoicePayment.objects.filter(
+            invoice__customer=customer,
+            tenant=request.user.tenant,
+            payment_date__gte=start_date,
+            payment_date__lte=end_date,
+        )
+        .select_related("invoice")
+        .order_by("payment_date")
+    )
+
+    # Combine invoices and payments into a single transaction list
+    transactions = []
+
+    for invoice in invoices:
+        transactions.append(
+            {
+                "date": invoice.invoice_date,
+                "type": "invoice",
+                "reference": invoice.invoice_number,
+                "description": f"Invoice #{invoice.invoice_number}",
+                "debit": invoice.total,
+                "credit": Decimal("0.00"),
+                "invoice": invoice,
+            }
+        )
+
+    for payment in payments:
+        transactions.append(
+            {
+                "date": payment.payment_date,
+                "type": "payment",
+                "reference": payment.reference_number or f"Payment #{payment.id}",
+                "description": f"Payment for Invoice #{payment.invoice.invoice_number}",
+                "debit": Decimal("0.00"),
+                "credit": payment.amount,
+                "payment": payment,
+            }
+        )
+
+    # Sort by date
+    transactions.sort(key=lambda x: x["date"])
+
+    # Calculate running balance
+    balance = Decimal("0.00")
+    for txn in transactions:
+        balance += txn["debit"] - txn["credit"]
+        txn["balance"] = balance
+
+    # Calculate current outstanding balance (all unpaid invoices)
+    current_outstanding = sum(
+        invoice.total - invoice.amount_paid
+        for invoice in Invoice.objects.filter(
+            customer=customer, tenant=request.user.tenant
+        ).exclude(status__in=["PAID", "VOID"])
+    )
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_API_GET,
+        severity=AuditLog.SEVERITY_INFO,
+        description=f"Generated customer statement for {customer.get_full_name()} (ID: {customer_id})",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    context = {
+        "customer": customer,
+        "transactions": transactions,
+        "start_date": start_date,
+        "end_date": end_date,
+        "current_outstanding": current_outstanding,
+        "page_title": f"Statement: {customer.get_full_name()}",
+    }
+
+    return render(request, "accounting/customers/statement.html", context)
+
+
+def validate_customer_credit_limit(customer, additional_amount):
+    """
+    Validate if a customer can take on additional credit.
+
+    Checks if the customer's outstanding balance plus the additional amount
+    would exceed their credit limit.
+
+    Args:
+        customer: Customer instance
+        additional_amount: Decimal amount to add to outstanding balance
+
+    Returns:
+        tuple: (is_valid, message, current_balance, credit_available)
+
+    Implements Requirement: 15.4
+    """
+    from .invoice_models import Invoice
+
+    # Calculate current outstanding balance
+    outstanding_invoices = Invoice.objects.filter(
+        customer=customer, tenant=customer.tenant
+    ).exclude(status__in=["PAID", "VOID"])
+
+    current_outstanding = sum(
+        invoice.total - invoice.amount_paid for invoice in outstanding_invoices
+    )
+
+    # Check credit limit
+    if customer.credit_limit <= 0:
+        # No credit limit set, allow any amount
+        return (True, "No credit limit set", current_outstanding, None)
+
+    new_balance = current_outstanding + additional_amount
+    credit_available = customer.credit_limit - current_outstanding
+
+    if new_balance > customer.credit_limit:
+        over_limit = new_balance - customer.credit_limit
+        message = (
+            f"Credit limit exceeded. "
+            f"Current balance: ${current_outstanding:.2f}, "
+            f"Credit limit: ${customer.credit_limit:.2f}, "
+            f"Available credit: ${credit_available:.2f}, "
+            f"Would exceed by: ${over_limit:.2f}"
+        )
+        return (False, message, current_outstanding, credit_available)
+
+    message = f"Credit check passed. Available credit: ${credit_available:.2f}"
+    return (True, message, current_outstanding, credit_available)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def check_customer_credit_limit_api(request, customer_id):
+    """
+    API endpoint to check customer credit limit.
+
+    Used by invoice creation forms to validate credit before creating invoice.
+
+    Implements Requirement: 15.4
+    """
+    from apps.crm.models import Customer
+
+    # Get customer with tenant filtering
+    customer = get_object_or_404(
+        Customer,
+        id=customer_id,
+        tenant=request.user.tenant,
+    )
+
+    # Get amount from request
+    try:
+        amount = Decimal(request.POST.get("amount", "0"))
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Invalid amount"}, status=400)
+
+    # Validate credit limit
+    is_valid, message, current_balance, credit_available = validate_customer_credit_limit(
+        customer, amount
+    )
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_API_GET,
+        severity=AuditLog.SEVERITY_WARNING if not is_valid else AuditLog.SEVERITY_INFO,
+        description=f"Credit limit check for {customer.get_full_name()}: {message}",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    return JsonResponse(
+        {
+            "is_valid": is_valid,
+            "message": message,
+            "current_balance": str(current_balance),
+            "credit_limit": str(customer.credit_limit),
+            "credit_available": str(credit_available) if credit_available is not None else None,
+        }
+    )

@@ -136,7 +136,7 @@
   - Create and run migrations
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 3.7_
 
-- [ ] 3.3 Create customer accounting views (backend)
+- [x] 3.3 Create customer accounting views (backend)
   - Implement customer_accounting_detail view (extends existing customer detail with accounting info)
   - Implement customer_statement view
   - Add credit limit validation

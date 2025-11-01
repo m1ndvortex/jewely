@@ -79,4 +79,20 @@ urlpatterns = [
     path("bills/<uuid:pk>/pay/", views.bill_pay, name="bill_pay"),
     # Aged Payables Report (Task 2.7)
     path("reports/aged-payables/", views.aged_payables_report, name="aged_payables_report"),
+    # Customer Accounting Views (Task 3.3)
+    path(
+        "customers/<uuid:customer_id>/accounting/",
+        views.customer_accounting_detail,
+        name="customer_accounting_detail",
+    ),
+    path(
+        "customers/<uuid:customer_id>/statement/",
+        views.customer_statement,
+        name="customer_statement",
+    ),
+    path(
+        "api/customers/<uuid:customer_id>/check-credit-limit/",
+        views.check_customer_credit_limit_api,
+        name="check_customer_credit_limit_api",
+    ),
 ]
