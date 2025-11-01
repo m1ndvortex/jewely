@@ -127,7 +127,7 @@
   - NOTE: Customer model already exists with tenant FK, customer_number, first_name, last_name, email, phone, address, loyalty_tier, store_credit, tags, notes, is_active
   - _Requirements: 3.1, 3.7, 15.1, 15.2_
 
-- [ ] 3.2 Create Invoice models
+- [x] 3.2 Create Invoice models
   - Add Invoice model with tenant FK, customer FK (to apps.crm.models.Customer), invoice_number, dates, amounts, status
   - Add InvoiceLine model for line items
   - Add InvoicePayment model for payment tracking
