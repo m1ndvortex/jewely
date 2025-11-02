@@ -4624,7 +4624,13 @@ def bank_account_create(request):
                         action=AuditLog.ACTION_CREATE,
                         severity=AuditLog.SEVERITY_INFO,
                         description=f"Created bank account: {bank_account.account_name}",
-                        after_value=f"Account: {bank_account.masked_account_number}, Bank: {bank_account.bank_name}, Balance: ${bank_account.current_balance:,.2f}",
+                        new_values={
+                            "account_name": bank_account.account_name,
+                            "account_number": bank_account.masked_account_number,
+                            "bank_name": bank_account.bank_name,
+                            "opening_balance": str(bank_account.opening_balance),
+                            "current_balance": str(bank_account.current_balance),
+                        },
                         ip_address=request.META.get("REMOTE_ADDR"),
                         user_agent=request.META.get("HTTP_USER_AGENT", ""),
                         request_method=request.method,
@@ -4968,3 +4974,395 @@ def bank_account_set_default(request, account_id):
         messages.error(request, f"Failed to set default bank account: {str(e)}")
 
     return redirect("accounting:bank_account_detail", account_id=bank_account.id)
+
+
+# ============================================================================
+# Bank Reconciliation Views
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def bank_reconciliation_start(request):
+    """
+    Start a new bank reconciliation session.
+
+    GET: Display form to select bank account and enter statement details
+    POST: Create reconciliation and redirect to detail view
+
+    Implements Requirements: 4.1, 4.7
+    """
+    from .bank_models import BankAccount
+    from .forms import BankReconciliationStartForm
+    from .services import BankReconciliationService
+
+    if request.method == "POST":
+        form = BankReconciliationStartForm(request.POST, tenant=request.user.tenant)
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    bank_account = form.cleaned_data["bank_account"]
+                    statement_date = form.cleaned_data["statement_date"]
+                    ending_balance = form.cleaned_data["ending_balance"]
+                    beginning_balance = form.cleaned_data.get("beginning_balance")
+
+                    # Start reconciliation
+                    reconciliation = BankReconciliationService.start_reconciliation(
+                        bank_account=bank_account,
+                        statement_date=statement_date,
+                        ending_balance=ending_balance,
+                        user=request.user,
+                        beginning_balance=beginning_balance,
+                    )
+
+                    messages.success(
+                        request, f"Bank reconciliation started for {bank_account.account_name}"
+                    )
+
+                    return redirect("accounting:bank_reconciliation_detail", pk=reconciliation.id)
+
+            except Exception as e:
+                logger.error(f"Failed to start reconciliation: {str(e)}")
+                messages.error(request, f"Failed to start reconciliation: {str(e)}")
+    else:
+        form = BankReconciliationStartForm(tenant=request.user.tenant)
+
+    # Get bank accounts for context
+    bank_accounts = BankAccount.objects.filter(tenant=request.user.tenant, is_active=True)
+
+    context = {
+        "form": form,
+        "bank_accounts": bank_accounts,
+        "page_title": "Start Bank Reconciliation",
+    }
+
+    return render(request, "accounting/bank_reconciliation/start.html", context)
+
+
+@login_required
+@tenant_access_required
+def bank_reconciliation_detail(request, pk):
+    """
+    Display bank reconciliation interface with transactions to reconcile.
+
+    GET: Show reconciliation interface
+    POST: Handle marking transactions as reconciled
+
+    Implements Requirements: 4.1, 4.2, 4.4, 4.7
+    """
+    from .bank_models import BankReconciliation, BankTransaction
+    from .services import BankReconciliationService
+
+    # Get reconciliation with tenant filtering
+    reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "mark_reconciled":
+            # Get selected transaction IDs
+            transaction_ids = request.POST.getlist("transaction_ids")
+
+            if transaction_ids:
+                try:
+                    count = BankReconciliationService.mark_reconciled(
+                        transaction_ids=transaction_ids,
+                        reconciliation=reconciliation,
+                        user=request.user,
+                    )
+
+                    messages.success(request, f"Marked {count} transaction(s) as reconciled")
+
+                except Exception as e:
+                    logger.error(f"Failed to mark transactions as reconciled: {str(e)}")
+                    messages.error(request, f"Failed to mark transactions: {str(e)}")
+            else:
+                messages.warning(request, "No transactions selected")
+
+        elif action == "unreconcile":
+            transaction_id = request.POST.get("transaction_id")
+            reason = request.POST.get("reason", "User requested unreconcile")
+
+            if transaction_id:
+                try:
+                    txn = BankTransaction.objects.get(id=transaction_id, tenant=request.user.tenant)
+
+                    BankReconciliationService.unreconcile_transaction(
+                        transaction=txn, reason=reason, user=request.user
+                    )
+
+                    messages.success(request, "Transaction unreconciled")
+
+                except Exception as e:
+                    logger.error(f"Failed to unreconcile transaction: {str(e)}")
+                    messages.error(request, f"Failed to unreconcile: {str(e)}")
+
+        return redirect("accounting:bank_reconciliation_detail", pk=pk)
+
+    # Get unreconciled transactions
+    unreconciled_transactions = BankTransaction.objects.filter(
+        bank_account=reconciliation.bank_account,
+        is_reconciled=False,
+        transaction_date__lte=reconciliation.reconciliation_date,
+    ).order_by("transaction_date")
+
+    # Get reconciled transactions for this reconciliation
+    reconciled_transactions = BankTransaction.objects.filter(
+        reconciliation=reconciliation, is_reconciled=True
+    ).order_by("transaction_date")
+
+    # Calculate summary
+    unreconciled_deposits = sum(
+        txn.amount for txn in unreconciled_transactions if txn.transaction_type == "CREDIT"
+    )
+    unreconciled_withdrawals = sum(
+        txn.amount for txn in unreconciled_transactions if txn.transaction_type == "DEBIT"
+    )
+
+    context = {
+        "reconciliation": reconciliation,
+        "unreconciled_transactions": unreconciled_transactions,
+        "reconciled_transactions": reconciled_transactions,
+        "unreconciled_deposits": unreconciled_deposits,
+        "unreconciled_withdrawals": unreconciled_withdrawals,
+        "page_title": f"Bank Reconciliation - {reconciliation.bank_account.account_name}",
+    }
+
+    return render(request, "accounting/bank_reconciliation/detail.html", context)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def bank_reconciliation_complete(request, pk):
+    """
+    Complete a bank reconciliation.
+
+    Implements Requirements: 4.4, 4.7
+    """
+    from .bank_models import BankReconciliation
+    from .services import BankReconciliationService
+
+    # Get reconciliation with tenant filtering
+    reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
+
+    try:
+        BankReconciliationService.complete_reconciliation(
+            reconciliation=reconciliation, user=request.user
+        )
+
+        if reconciliation.is_balanced:
+            messages.success(
+                request, "Reconciliation completed successfully. Account is balanced."
+            )
+        else:
+            messages.warning(
+                request,
+                f"Reconciliation completed with variance of {reconciliation.variance}. "
+                f"Please review and create adjusting entries if needed.",
+            )
+
+        return redirect("accounting:bank_reconciliation_report", pk=pk)
+
+    except ValidationError as e:
+        messages.error(request, str(e))
+    except Exception as e:
+        logger.error(f"Failed to complete reconciliation: {str(e)}")
+        messages.error(request, f"Failed to complete reconciliation: {str(e)}")
+
+    return redirect("accounting:bank_reconciliation_detail", pk=pk)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def bank_reconciliation_cancel(request, pk):
+    """
+    Cancel a bank reconciliation.
+
+    Implements Requirements: 4.7, 4.8
+    """
+    from .bank_models import BankReconciliation
+    from .services import BankReconciliationService
+
+    # Get reconciliation with tenant filtering
+    reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
+
+    reason = request.POST.get("reason", "User cancelled reconciliation")
+
+    try:
+        BankReconciliationService.cancel_reconciliation(
+            reconciliation=reconciliation, reason=reason, user=request.user
+        )
+
+        messages.success(request, "Reconciliation cancelled")
+        return redirect("accounting:bank_account_detail", account_id=reconciliation.bank_account.id)
+
+    except ValidationError as e:
+        messages.error(request, str(e))
+    except Exception as e:
+        logger.error(f"Failed to cancel reconciliation: {str(e)}")
+        messages.error(request, f"Failed to cancel reconciliation: {str(e)}")
+
+    return redirect("accounting:bank_reconciliation_detail", pk=pk)
+
+
+@login_required
+@tenant_access_required
+def bank_reconciliation_report(request, pk):
+    """
+    Display completed bank reconciliation report.
+
+    Implements Requirements: 4.4, 4.6
+    """
+    from .bank_models import BankReconciliation, BankTransaction
+
+    # Get reconciliation with tenant filtering
+    reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
+
+    # Get all reconciled transactions
+    reconciled_transactions = BankTransaction.objects.filter(
+        reconciliation=reconciliation, is_reconciled=True
+    ).order_by("transaction_date")
+
+    # Separate deposits and withdrawals
+    deposits = [txn for txn in reconciled_transactions if txn.transaction_type == "CREDIT"]
+    withdrawals = [txn for txn in reconciled_transactions if txn.transaction_type == "DEBIT"]
+
+    context = {
+        "reconciliation": reconciliation,
+        "deposits": deposits,
+        "withdrawals": withdrawals,
+        "page_title": f"Reconciliation Report - {reconciliation.bank_account.account_name}",
+    }
+
+    return render(request, "accounting/bank_reconciliation/report.html", context)
+
+
+@login_required
+@tenant_access_required
+def bank_reconciliation_list(request):
+    """
+    Display list of all bank reconciliations.
+
+    Implements Requirements: 4.6, 4.7
+    """
+    from .bank_models import BankAccount, BankReconciliation
+
+    # Get filter parameters
+    bank_account_id = request.GET.get("bank_account")
+    status = request.GET.get("status")
+
+    # Base queryset with tenant filtering
+    reconciliations = BankReconciliation.objects.filter(tenant=request.user.tenant).select_related(
+        "bank_account", "created_by", "completed_by"
+    )
+
+    # Apply filters
+    if bank_account_id:
+        reconciliations = reconciliations.filter(bank_account_id=bank_account_id)
+
+    if status:
+        reconciliations = reconciliations.filter(status=status)
+
+    # Order by date (most recent first)
+    reconciliations = reconciliations.order_by("-reconciliation_date", "-created_at")
+
+    # Get bank accounts for filter dropdown
+    bank_accounts = BankAccount.objects.filter(tenant=request.user.tenant, is_active=True)
+
+    context = {
+        "reconciliations": reconciliations,
+        "bank_accounts": bank_accounts,
+        "selected_bank_account": bank_account_id,
+        "selected_status": status,
+        "page_title": "Bank Reconciliations",
+    }
+
+    return render(request, "accounting/bank_reconciliation/list.html", context)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def bank_reconciliation_create_adjustment(request, pk):
+    """
+    Create an adjusting journal entry during reconciliation.
+
+    Implements Requirements: 4.5, 4.7
+    """
+    from .bank_models import BankReconciliation
+    from .services import BankReconciliationService
+
+    # Get reconciliation with tenant filtering
+    reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
+
+    # Get form data
+    description = request.POST.get("description")
+    amount = request.POST.get("amount")
+    account_code = request.POST.get("account_code")
+    is_debit = request.POST.get("is_debit") == "true"
+
+    if not all([description, amount, account_code]):
+        messages.error(request, "All fields are required")
+        return redirect("accounting:bank_reconciliation_detail", pk=pk)
+
+    try:
+        amount = Decimal(amount)
+
+        BankReconciliationService.create_adjusting_entry(
+            reconciliation=reconciliation,
+            description=description,
+            amount=amount,
+            account_code=account_code,
+            is_debit=is_debit,
+            user=request.user,
+        )
+
+        messages.success(request, f"Adjusting entry created: {description} for {amount}")
+
+    except ValueError:
+        messages.error(request, "Invalid amount")
+    except Exception as e:
+        logger.error(f"Failed to create adjusting entry: {str(e)}")
+        messages.error(request, f"Failed to create adjusting entry: {str(e)}")
+
+    return redirect("accounting:bank_reconciliation_detail", pk=pk)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def bank_reconciliation_auto_match(request, pk):
+    """
+    Automatically match bank transactions with journal entries.
+
+    Implements Requirements: 4.3
+    """
+    from .bank_models import BankReconciliation
+    from .services import BankReconciliationService
+
+    # Get reconciliation with tenant filtering
+    reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
+
+    try:
+        result = BankReconciliationService.auto_match_transactions(reconciliation)
+
+        matched_count = result["matched_count"]
+        suggestions_count = len(result["suggestions"])
+
+        if matched_count > 0:
+            messages.success(request, f"Automatically matched {matched_count} transaction(s)")
+
+        if suggestions_count > 0:
+            messages.info(request, f"Found {suggestions_count} potential matches for manual review")
+
+        if matched_count == 0 and suggestions_count == 0:
+            messages.info(request, "No automatic matches found")
+
+    except Exception as e:
+        logger.error(f"Failed to auto-match transactions: {str(e)}")
+        messages.error(request, f"Failed to auto-match transactions: {str(e)}")
+
+    return redirect("accounting:bank_reconciliation_detail", pk=pk)

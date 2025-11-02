@@ -1440,6 +1440,18 @@ class BankAccountForm(forms.ModelForm):
         help_text="Type of bank account",
     )
 
+    gl_account = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=False,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Link this bank account to a General Ledger account (Cash/Bank accounts)",
+        label="GL Account (Chart of Accounts)",
+    )
+
     opening_balance = forms.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -1535,6 +1547,7 @@ class BankAccountForm(forms.ModelForm):
             "account_number",
             "bank_name",
             "account_type",
+            "gl_account",
             "opening_balance",
             "routing_number",
             "swift_code",
@@ -1549,10 +1562,43 @@ class BankAccountForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
+        # Set tenant on new instances immediately to ensure validation works
+        if not self.instance.pk and self.tenant:
+            self.instance.tenant = self.tenant
+
         # Set account type choices from model
         from .bank_models import BankAccount
 
         self.fields["account_type"].choices = BankAccount.ACCOUNT_TYPE_CHOICES
+
+        # Set GL account queryset - only show cash/bank accounts
+        if self.tenant:
+            from apps.accounting.models import JewelryEntity
+
+            try:
+                jewelry_entity = JewelryEntity.objects.get(tenant=self.tenant)
+                entity = jewelry_entity.ledger_entity
+                coa = entity.chartofaccountmodel_set.first()
+
+                if coa:
+                    # Get cash/bank accounts (typically codes starting with 100x or role ASSET_CA_*)
+                    self.fields["gl_account"].queryset = (
+                        AccountModel.objects.filter(coa_model=coa, active=True)
+                        .filter(
+                            models.Q(code__startswith="100")
+                            | models.Q(  # Cash accounts
+                                role__startswith="ASSET_CA"
+                            )  # Current Asset - Cash accounts
+                        )
+                        .order_by("code")
+                    )
+
+                    # Set label to show code and name
+                    self.fields["gl_account"].label_from_instance = (
+                        lambda obj: f"{obj.code} - {obj.name}"
+                    )
+            except JewelryEntity.DoesNotExist:
+                self.fields["gl_account"].queryset = AccountModel.objects.none()
 
         # Set initial currency if not provided
         if not self.instance.pk and "currency" not in self.initial:
@@ -1573,23 +1619,151 @@ class BankAccountForm(forms.ModelForm):
 
         return cleaned_data
 
+    def _post_clean(self):
+        """
+        Set tenant on instance before model validation.
+
+        This is called by Django after the form's clean() but before the model's
+        full_clean(). We need to set the tenant here so the model's clean() method
+        can access it for validation.
+        """
+        # Set tenant before calling parent _post_clean which triggers model validation
+        if not self.instance.pk and self.tenant:
+            self.instance.tenant = self.tenant
+            if self.user:
+                self.instance.created_by = self.user
+
+        super()._post_clean()
+
     def save(self, commit=True):
         """Save bank account with tenant and user information."""
         instance = super().save(commit=False)
 
-        # Set tenant if creating new account
-        if not instance.pk and self.tenant:
-            instance.tenant = self.tenant
+        # Use _state.adding to check if this is a new instance (UUID PKs are generated immediately)
+        if instance._state.adding:
+            if self.tenant:
+                instance.tenant = self.tenant
+            else:
+                raise ValidationError("Tenant is required for creating bank accounts")
 
-        # Set created_by if creating new account
-        if not instance.pk and self.user:
-            instance.created_by = self.user
+            if self.user:
+                instance.created_by = self.user
+            else:
+                raise ValidationError("User is required for creating bank accounts")
 
-        # Set current_balance to opening_balance for new accounts
-        if not instance.pk:
+            # Set current_balance to opening_balance for new accounts
             instance.current_balance = instance.opening_balance
 
         if commit:
             instance.save()
 
         return instance
+
+
+class BankReconciliationStartForm(forms.Form):
+    """
+    Form for starting a new bank reconciliation.
+
+    Allows user to select bank account and enter statement details.
+    """
+
+    bank_account = forms.ModelChoiceField(
+        queryset=None,
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            }
+        ),
+        help_text="Select the bank account to reconcile",
+    )
+
+    statement_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+            }
+        ),
+        help_text="Date of the bank statement",
+    )
+
+    beginning_balance = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                "step": "0.01",
+                "placeholder": "0.00",
+            }
+        ),
+        help_text="Beginning balance from bank statement (optional, will use last reconciled balance if not provided)",
+    )
+
+    ending_balance = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=True,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
+                "step": "0.01",
+                "placeholder": "0.00",
+            }
+        ),
+        help_text="Ending balance from bank statement",
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        super().__init__(*args, **kwargs)
+
+        # Set bank account queryset with tenant filtering
+        if self.tenant:
+            from .bank_models import BankAccount
+
+            self.fields["bank_account"].queryset = BankAccount.objects.filter(
+                tenant=self.tenant, is_active=True
+            ).order_by("account_name")
+
+        # Set initial statement date to today if not provided
+        if "statement_date" not in self.initial:
+            from datetime import date
+
+            self.initial["statement_date"] = date.today()
+
+    def clean(self):
+        """Validate reconciliation start data."""
+        cleaned_data = super().clean()
+
+        bank_account = cleaned_data.get("bank_account")
+        statement_date = cleaned_data.get("statement_date")
+
+        if bank_account and statement_date:
+            # Check if there's already an in-progress reconciliation for this account
+            from .bank_models import BankReconciliation
+
+            existing = BankReconciliation.objects.filter(
+                bank_account=bank_account, status="IN_PROGRESS"
+            ).first()
+
+            if existing:
+                raise ValidationError(
+                    f"There is already an in-progress reconciliation for {bank_account.account_name}. "
+                    f"Please complete or cancel it before starting a new one."
+                )
+
+            # Warn if statement date is before last reconciliation date
+            if (
+                bank_account.last_reconciled_date
+                and statement_date < bank_account.last_reconciled_date
+            ):
+                raise ValidationError(
+                    f"Statement date cannot be before the last reconciliation date "
+                    f"({bank_account.last_reconciled_date})"
+                )
+
+        return cleaned_data

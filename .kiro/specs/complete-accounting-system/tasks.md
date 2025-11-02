@@ -218,14 +218,14 @@
   - Add tenant filtering and audit logging
   - _Requirements: 6.1, 6.3, 6.6, 6.7_
 
-- [-] 4.4 Create bank account management templates (frontend)
+- [x] 4.4 Create bank account management templates (frontend)
   - Create templates/accounting/bank_accounts/ directory
   - Create list.html, form.html, detail.html templates
   - Display current balance, reconciled balance, unreconciled transactions
   - Add TailwindCSS styling
   - _Requirements: 6.1, 6.3, 6.6_
 
-- [ ] 4.5 Create bank reconciliation service and views (backend)
+- [x] 4.5 Create bank reconciliation service and views (backend)
   - Create BankReconciliationService in services.py
   - Implement start_reconciliation, mark_reconciled, complete_reconciliation methods
   - Implement bank_reconciliation_start, bank_reconciliation_detail views

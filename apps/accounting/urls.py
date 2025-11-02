@@ -129,18 +129,56 @@ urlpatterns = [
     path("bank-accounts/", views.bank_account_list, name="bank_account_list"),
     path("bank-accounts/create/", views.bank_account_create, name="bank_account_create"),
     path("bank-accounts/<uuid:account_id>/", views.bank_account_detail, name="bank_account_detail"),
-    path("bank-accounts/<uuid:account_id>/edit/", views.bank_account_edit, name="bank_account_edit"),
+    path(
+        "bank-accounts/<uuid:account_id>/edit/", views.bank_account_edit, name="bank_account_edit"
+    ),
     path(
         "bank-accounts/<uuid:account_id>/set-default/",
         views.bank_account_set_default,
         name="bank_account_set_default",
     ),
-    # Bank Reconciliation Views (placeholders for future tasks)
+    # Bank Reconciliation Views (Task 4.5)
     path(
-        "bank-accounts/<uuid:account_id>/reconcile/",
-        views.bank_reconciliation,
+        "bank-reconciliation/start/",
+        views.bank_reconciliation_start,
         name="bank_reconciliation_start",
     ),
+    path(
+        "bank-reconciliation/<uuid:pk>/",
+        views.bank_reconciliation_detail,
+        name="bank_reconciliation_detail",
+    ),
+    path(
+        "bank-reconciliation/<uuid:pk>/complete/",
+        views.bank_reconciliation_complete,
+        name="bank_reconciliation_complete",
+    ),
+    path(
+        "bank-reconciliation/<uuid:pk>/cancel/",
+        views.bank_reconciliation_cancel,
+        name="bank_reconciliation_cancel",
+    ),
+    path(
+        "bank-reconciliation/<uuid:pk>/report/",
+        views.bank_reconciliation_report,
+        name="bank_reconciliation_report",
+    ),
+    path(
+        "bank-reconciliation/list/",
+        views.bank_reconciliation_list,
+        name="bank_reconciliation_list",
+    ),
+    path(
+        "bank-reconciliation/<uuid:pk>/create-adjustment/",
+        views.bank_reconciliation_create_adjustment,
+        name="bank_reconciliation_create_adjustment",
+    ),
+    path(
+        "bank-reconciliation/<uuid:pk>/auto-match/",
+        views.bank_reconciliation_auto_match,
+        name="bank_reconciliation_auto_match",
+    ),
+    # Bank Statement Import (placeholder for Task 4.7)
     path(
         "bank-accounts/<uuid:account_id>/import-statement/",
         views.bank_reconciliation,

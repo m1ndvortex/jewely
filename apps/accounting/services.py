@@ -2575,3 +2575,555 @@ class InvoiceService:
         except Exception as e:
             logger.error(f"Failed to generate customer statement: {str(e)}")
             raise
+
+
+class BankReconciliationService:
+    """
+    Service class for handling bank reconciliation operations.
+
+    Provides methods for starting reconciliations, marking transactions as reconciled,
+    auto-matching transactions, and completing reconciliations with proper audit trails.
+    """
+
+    @staticmethod
+    def get_unreconciled_transactions(bank_account, as_of_date=None):
+        """
+        Get all unreconciled transactions for a bank account.
+
+        Args:
+            bank_account: BankAccount instance
+            as_of_date: Optional date to filter transactions up to
+
+        Returns:
+            QuerySet of unreconciled BankTransaction objects
+        """
+        from .bank_models import BankTransaction
+
+        queryset = BankTransaction.objects.filter(bank_account=bank_account, is_reconciled=False)
+
+        if as_of_date:
+            queryset = queryset.filter(transaction_date__lte=as_of_date)
+
+        return queryset.order_by("transaction_date")
+
+    @staticmethod
+    def calculate_book_balance(bank_account, as_of_date):
+        """
+        Calculate the book balance for a bank account as of a specific date.
+
+        Args:
+            bank_account: BankAccount instance
+            as_of_date: Date to calculate balance as of
+
+        Returns:
+            Decimal: Book balance as of the date
+        """
+        from .bank_models import BankTransaction
+
+        # Start with opening balance
+        balance = bank_account.opening_balance
+
+        # Add all transactions up to the date
+        transactions = BankTransaction.objects.filter(
+            bank_account=bank_account, transaction_date__lte=as_of_date
+        )
+
+        for txn in transactions:
+            if txn.transaction_type == "CREDIT":
+                balance += txn.amount
+            else:  # DEBIT
+                balance -= txn.amount
+
+        return balance
+
+    @staticmethod
+    def start_reconciliation(
+        bank_account,
+        statement_date,
+        ending_balance,
+        user,
+        beginning_balance=None,
+        period_start_date=None,
+        period_end_date=None,
+    ):
+        """
+        Start a new bank reconciliation session.
+
+        Args:
+            bank_account: BankAccount instance to reconcile
+            statement_date: Date of the bank statement
+            ending_balance: Ending balance from bank statement
+            user: User starting the reconciliation
+            beginning_balance: Optional beginning balance from statement
+            period_start_date: Optional start date of reconciliation period
+            period_end_date: Optional end date of reconciliation period
+
+        Returns:
+            BankReconciliation instance
+        """
+        from apps.core.audit_models import AuditLog
+
+        from .bank_models import BankReconciliation
+
+        try:
+            with transaction.atomic():
+                # Calculate book balances
+                book_ending_balance = BankReconciliationService.calculate_book_balance(
+                    bank_account, statement_date
+                )
+
+                # Use last reconciled balance as beginning balance if not provided
+                if beginning_balance is None:
+                    beginning_balance = bank_account.reconciled_balance
+
+                book_beginning_balance = bank_account.reconciled_balance
+
+                # Create reconciliation
+                reconciliation = BankReconciliation.objects.create(
+                    tenant=bank_account.tenant,
+                    bank_account=bank_account,
+                    reconciliation_date=statement_date,
+                    period_start_date=period_start_date,
+                    period_end_date=period_end_date or statement_date,
+                    statement_beginning_balance=beginning_balance,
+                    statement_ending_balance=ending_balance,
+                    book_beginning_balance=book_beginning_balance,
+                    book_ending_balance=book_ending_balance,
+                    status="IN_PROGRESS",
+                    created_by=user,
+                )
+
+                # Calculate initial variance
+                reconciliation.calculate_variance()
+
+                # Log audit trail
+                AuditLog.objects.create(
+                    tenant=bank_account.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="RECONCILIATION_STARTED",
+                    severity="INFO",
+                    description=f"Started bank reconciliation for {bank_account.account_name} as of {statement_date}",
+                    after_value=str(reconciliation.id),
+                )
+
+                logger.info(
+                    f"Reconciliation started for {bank_account.account_name} by {user.username}"
+                )
+
+                return reconciliation
+
+        except Exception as e:
+            logger.error(f"Failed to start reconciliation: {str(e)}")
+            raise
+
+    @staticmethod
+    def mark_reconciled(transaction_ids, reconciliation, user):
+        """
+        Mark transactions as reconciled.
+
+        Args:
+            transaction_ids: List of transaction IDs to mark as reconciled
+            reconciliation: BankReconciliation instance
+            user: User performing the reconciliation
+
+        Returns:
+            int: Number of transactions marked as reconciled
+        """
+        from apps.core.audit_models import AuditLog
+
+        from .bank_models import BankTransaction
+
+        try:
+            with transaction.atomic():
+                # Get transactions with tenant filtering
+                transactions = BankTransaction.objects.filter(
+                    id__in=transaction_ids,
+                    tenant=reconciliation.tenant,
+                    bank_account=reconciliation.bank_account,
+                    is_reconciled=False,
+                )
+
+                count = 0
+                for txn in transactions:
+                    txn.mark_reconciled(reconciliation, user)
+                    count += 1
+
+                    # Log audit trail for each transaction
+                    AuditLog.objects.create(
+                        tenant=reconciliation.tenant,
+                        user=user,
+                        category="ACCOUNTING",
+                        action="TRANSACTION_RECONCILED",
+                        severity="INFO",
+                        description=f"Marked transaction {txn.description} as reconciled",
+                        before_value="unreconciled",
+                        after_value="reconciled",
+                    )
+
+                # Update reconciliation totals
+                reconciliation.calculate_totals()
+                reconciliation.calculate_variance()
+
+                logger.info(
+                    f"Marked {count} transactions as reconciled for reconciliation {reconciliation.id}"
+                )
+
+                return count
+
+        except Exception as e:
+            logger.error(f"Failed to mark transactions as reconciled: {str(e)}")
+            raise
+
+    @staticmethod
+    def unreconcile_transaction(transaction, reason, user):
+        """
+        Unreconcile a transaction.
+
+        Args:
+            transaction: BankTransaction instance to unreconcile
+            reason: Reason for unreconciling
+            user: User performing the unreconciliation
+        """
+        from apps.core.audit_models import AuditLog
+
+        try:
+            with transaction.atomic():
+                reconciliation = transaction.reconciliation
+
+                # Unreconcile the transaction
+                transaction.unreconcile(reason, user)
+
+                # Update reconciliation totals if still in progress
+                if reconciliation and reconciliation.status == "IN_PROGRESS":
+                    reconciliation.calculate_totals()
+                    reconciliation.calculate_variance()
+
+                # Log audit trail
+                AuditLog.objects.create(
+                    tenant=transaction.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="TRANSACTION_UNRECONCILED",
+                    severity="WARNING",
+                    description=f"Unreconciled transaction: {transaction.description}. Reason: {reason}",
+                    before_value="reconciled",
+                    after_value="unreconciled",
+                )
+
+                logger.info(
+                    f"Transaction {transaction.id} unreconciled by {user.username}. Reason: {reason}"
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to unreconcile transaction: {str(e)}")
+            raise
+
+    @staticmethod
+    def complete_reconciliation(reconciliation, user):
+        """
+        Complete a bank reconciliation.
+
+        Args:
+            reconciliation: BankReconciliation instance to complete
+            user: User completing the reconciliation
+
+        Returns:
+            BankReconciliation: Completed reconciliation
+        """
+        from apps.core.audit_models import AuditLog
+
+        try:
+            with transaction.atomic():
+                # Complete the reconciliation
+                reconciliation.complete(user)
+
+                # Log audit trail
+                AuditLog.objects.create(
+                    tenant=reconciliation.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="RECONCILIATION_COMPLETED",
+                    severity="INFO",
+                    description=f"Completed bank reconciliation for {reconciliation.bank_account.account_name} as of {reconciliation.reconciliation_date}. Variance: {reconciliation.variance}",
+                    after_value=f"balanced={reconciliation.is_balanced}, variance={reconciliation.variance}",
+                )
+
+                logger.info(
+                    f"Reconciliation {reconciliation.id} completed by {user.username}. Balanced: {reconciliation.is_balanced}"
+                )
+
+                return reconciliation
+
+        except Exception as e:
+            logger.error(f"Failed to complete reconciliation: {str(e)}")
+            raise
+
+    @staticmethod
+    def cancel_reconciliation(reconciliation, reason, user):
+        """
+        Cancel a bank reconciliation.
+
+        Args:
+            reconciliation: BankReconciliation instance to cancel
+            reason: Reason for cancellation
+            user: User cancelling the reconciliation
+        """
+        from apps.core.audit_models import AuditLog
+
+        try:
+            with transaction.atomic():
+                # Cancel the reconciliation
+                reconciliation.cancel(reason)
+
+                # Log audit trail
+                AuditLog.objects.create(
+                    tenant=reconciliation.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="RECONCILIATION_CANCELLED",
+                    severity="WARNING",
+                    description=f"Cancelled bank reconciliation for {reconciliation.bank_account.account_name}. Reason: {reason}",
+                    before_value=f"status={reconciliation.status}",
+                    after_value="status=CANCELLED",
+                )
+
+                logger.info(
+                    f"Reconciliation {reconciliation.id} cancelled by {user.username}. Reason: {reason}"
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to cancel reconciliation: {str(e)}")
+            raise
+
+    @staticmethod
+    def auto_match_transactions(reconciliation):
+        """
+        Automatically match bank transactions with journal entries.
+
+        Args:
+            reconciliation: BankReconciliation instance
+
+        Returns:
+            dict: Statistics about matching (matched_count, suggestions)
+        """
+        from .bank_models import BankTransaction
+
+        try:
+            matched_count = 0
+            suggestions = []
+
+            # Get unreconciled transactions for this reconciliation
+            unreconciled = BankTransaction.objects.filter(
+                bank_account=reconciliation.bank_account,
+                is_reconciled=False,
+                transaction_date__lte=reconciliation.reconciliation_date,
+            )
+
+            for txn in unreconciled:
+                # Try to find matching journal entries
+                matches = BankReconciliationService.suggest_matches(txn)
+
+                if matches:
+                    # If we have a high-confidence match (score > 0.9), auto-match
+                    best_match = matches[0]
+                    if best_match["confidence"] > 0.9:
+                        txn.match_journal_entry(best_match["journal_entry"])
+                        matched_count += 1
+                    else:
+                        # Add to suggestions for manual review
+                        suggestions.append({"transaction": txn, "matches": matches})
+
+            logger.info(
+                f"Auto-matched {matched_count} transactions for reconciliation {reconciliation.id}"
+            )
+
+            return {"matched_count": matched_count, "suggestions": suggestions}
+
+        except Exception as e:
+            logger.error(f"Failed to auto-match transactions: {str(e)}")
+            return {"matched_count": 0, "suggestions": []}
+
+    @staticmethod
+    def suggest_matches(transaction):
+        """
+        Suggest potential journal entry matches for a bank transaction.
+
+        Args:
+            transaction: BankTransaction instance
+
+        Returns:
+            list: List of potential matches with confidence scores
+        """
+        from datetime import timedelta
+
+        try:
+            matches = []
+
+            # Search for journal entries within ±3 days of transaction date
+            date_range_start = transaction.transaction_date - timedelta(days=3)
+            date_range_end = transaction.transaction_date + timedelta(days=3)
+
+            # Get journal entries from django-ledger
+            # Note: This is a simplified version - in production, you'd want to
+            # search through TransactionModel entries that match the amount
+            from django_ledger.models import TransactionModel
+
+            # Find transactions with matching amount
+            potential_matches = TransactionModel.objects.filter(
+                journal_entry__ledger__entity__jewelryentity__tenant=transaction.tenant,
+                journal_entry__timestamp__date__gte=date_range_start,
+                journal_entry__timestamp__date__lte=date_range_end,
+                amount=transaction.amount,
+            ).select_related("journal_entry", "account")
+
+            for je_txn in potential_matches:
+                confidence = 0.5  # Base confidence for amount match
+
+                # Increase confidence for exact date match
+                if je_txn.journal_entry.timestamp.date() == transaction.transaction_date:
+                    confidence += 0.3
+
+                # Increase confidence for description similarity
+                if (
+                    transaction.description.lower() in je_txn.description.lower()
+                    or je_txn.description.lower() in transaction.description.lower()
+                ):
+                    confidence += 0.2
+
+                matches.append(
+                    {
+                        "journal_entry": je_txn.journal_entry,
+                        "transaction": je_txn,
+                        "confidence": min(confidence, 1.0),
+                        "reason": f"Amount match: {transaction.amount}, Date: {je_txn.journal_entry.timestamp.date()}",
+                    }
+                )
+
+            # Sort by confidence (highest first)
+            matches.sort(key=lambda x: x["confidence"], reverse=True)
+
+            return matches[:5]  # Return top 5 matches
+
+        except Exception as e:
+            logger.error(f"Failed to suggest matches: {str(e)}")
+            return []
+
+    @staticmethod
+    def create_adjusting_entry(reconciliation, description, amount, account_code, is_debit, user):
+        """
+        Create an adjusting journal entry during reconciliation.
+
+        Args:
+            reconciliation: BankReconciliation instance
+            description: Description of the adjustment
+            amount: Amount of the adjustment
+            account_code: Account code for the offsetting entry
+            is_debit: True if bank account should be debited, False if credited
+            user: User creating the adjustment
+
+        Returns:
+            JournalEntryModel: Created journal entry
+        """
+        from apps.core.audit_models import AuditLog
+
+        try:
+            with transaction.atomic():
+                # Get tenant's accounting entity
+                jewelry_entity = JewelryEntity.objects.get(tenant=reconciliation.tenant)
+                entity = jewelry_entity.ledger_entity
+                ledger = entity.ledgermodel_set.first()
+
+                if not ledger:
+                    raise ValueError(f"No ledger found for entity {entity}")
+
+                # Create journal entry
+                journal_entry = JournalEntryModel.objects.create(
+                    ledger=ledger,
+                    description=f"Bank Reconciliation Adjustment: {description}",
+                    posted=False,
+                )
+
+                # Get bank account from chart of accounts
+                # Note: This assumes the bank account has a corresponding GL account
+                bank_gl_account = AccountModel.objects.filter(
+                    coa_model__entity=entity,
+                    name__icontains=reconciliation.bank_account.account_name,
+                ).first()
+
+                if not bank_gl_account:
+                    # Fallback to default cash account
+                    config = AccountingConfiguration.objects.get(tenant=reconciliation.tenant)
+                    bank_gl_account = AccountModel.objects.get(
+                        coa_model__entity=entity, code=config.default_cash_account
+                    )
+
+                # Get offsetting account
+                offset_account = AccountModel.objects.get(
+                    coa_model__entity=entity, code=account_code
+                )
+
+                # Create transactions
+                if is_debit:
+                    # Debit bank account
+                    TransactionModel.objects.create(
+                        journal_entry=journal_entry,
+                        account=bank_gl_account,
+                        amount=amount,
+                        tx_type="debit",
+                        description=description,
+                    )
+                    # Credit offset account
+                    TransactionModel.objects.create(
+                        journal_entry=journal_entry,
+                        account=offset_account,
+                        amount=amount,
+                        tx_type="credit",
+                        description=description,
+                    )
+                else:
+                    # Credit bank account
+                    TransactionModel.objects.create(
+                        journal_entry=journal_entry,
+                        account=bank_gl_account,
+                        amount=amount,
+                        tx_type="credit",
+                        description=description,
+                    )
+                    # Debit offset account
+                    TransactionModel.objects.create(
+                        journal_entry=journal_entry,
+                        account=offset_account,
+                        amount=amount,
+                        tx_type="debit",
+                        description=description,
+                    )
+
+                # Post the journal entry
+                journal_entry.posted = True
+                journal_entry.save()
+
+                # Update reconciliation adjustment total
+                reconciliation.total_adjustments += amount
+                reconciliation.save(update_fields=["total_adjustments", "updated_at"])
+
+                # Log audit trail
+                AuditLog.objects.create(
+                    tenant=reconciliation.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="ADJUSTING_ENTRY_CREATED",
+                    severity="INFO",
+                    description=f"Created adjusting entry during reconciliation: {description}",
+                    after_value=f"amount={amount}, journal_entry={journal_entry.id}",
+                )
+
+                logger.info(
+                    f"Adjusting entry created for reconciliation {reconciliation.id} by {user.username}"
+                )
+
+                return journal_entry
+
+        except Exception as e:
+            logger.error(f"Failed to create adjusting entry: {str(e)}")
+            raise
