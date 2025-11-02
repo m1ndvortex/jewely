@@ -4,6 +4,7 @@ Admin configuration for accounting models.
 
 from django.contrib import admin
 
+from .bank_models import BankAccount
 from .bill_models import Bill, BillLine, BillPayment
 
 
@@ -162,3 +163,111 @@ class BillPaymentAdmin(admin.ModelAdmin):
             {"fields": ["created_at", "created_by", "updated_at"], "classes": ["collapse"]},
         ),
     ]
+
+
+@admin.register(BankAccount)
+class BankAccountAdmin(admin.ModelAdmin):
+    """Admin interface for BankAccount model."""
+
+    list_display = [
+        "account_name",
+        "bank_name",
+        "masked_account_number",
+        "account_type",
+        "current_balance",
+        "is_active",
+        "is_default",
+        "needs_reconciliation",
+    ]
+    list_filter = ["account_type", "is_active", "is_default", "tenant"]
+    search_fields = ["account_name", "bank_name", "account_number"]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "created_by",
+        "masked_account_number",
+        "unreconciled_balance",
+        "days_since_reconciliation",
+        "needs_reconciliation",
+    ]
+    fieldsets = [
+        (
+            "Bank Account Information",
+            {
+                "fields": [
+                    "tenant",
+                    "account_name",
+                    "account_number",
+                    "masked_account_number",
+                    "bank_name",
+                    "account_type",
+                ]
+            },
+        ),
+        (
+            "Balance Information",
+            {
+                "fields": [
+                    "opening_balance",
+                    "current_balance",
+                    "reconciled_balance",
+                    "unreconciled_balance",
+                    "last_reconciled_date",
+                    "days_since_reconciliation",
+                    "needs_reconciliation",
+                ]
+            },
+        ),
+        (
+            "Additional Details",
+            {
+                "fields": [
+                    "routing_number",
+                    "swift_code",
+                    "currency",
+                    "notes",
+                ]
+            },
+        ),
+        (
+            "Integration",
+            {"fields": ["ledger_account"]},
+        ),
+        (
+            "Status",
+            {"fields": ["is_active", "is_default"]},
+        ),
+        (
+            "Audit Information",
+            {
+                "fields": ["created_at", "created_by", "updated_at"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
+    def masked_account_number(self, obj):
+        """Display masked account number."""
+        return obj.masked_account_number
+
+    masked_account_number.short_description = "Account Number"
+
+    def unreconciled_balance(self, obj):
+        """Display unreconciled balance."""
+        return obj.unreconciled_balance
+
+    unreconciled_balance.short_description = "Unreconciled Balance"
+
+    def days_since_reconciliation(self, obj):
+        """Display days since last reconciliation."""
+        days = obj.days_since_reconciliation
+        return days if days is not None else "Never"
+
+    days_since_reconciliation.short_description = "Days Since Reconciliation"
+
+    def needs_reconciliation(self, obj):
+        """Display if account needs reconciliation."""
+        return obj.needs_reconciliation
+
+    needs_reconciliation.boolean = True
+    needs_reconciliation.short_description = "Needs Reconciliation"

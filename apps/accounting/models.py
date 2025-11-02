@@ -21,6 +21,9 @@ from .invoice_models import CreditMemo, Invoice, InvoiceLine, InvoicePayment  # 
 # Import transaction models for Django to recognize them
 from .transaction_models import Expense, Payment, PurchaseOrder  # noqa: F401
 
+# Import bank models for Django to recognize them
+from .bank_models import BankAccount  # noqa: F401
+
 User = get_user_model()
 
 

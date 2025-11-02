@@ -180,7 +180,7 @@
   - Add PDF/Excel export functionality
   - _Requirements: 3.5_
 
-- [-] 3.8 Create customer statement report (backend + frontend)
+- [x] 3.8 Create customer statement report (backend + frontend)
   - Implement customer_statement view
   - Create templates/accounting/reports/customer_statement.html
   - Add PDF export functionality
@@ -197,7 +197,7 @@
 ## Phase 4: Bank Reconciliation System
 
 - [ ] 4. Create bank reconciliation models with migrations
-- [ ] 4.1 Create BankAccount model
+- [x] 4.1 Create BankAccount model
   - Add BankAccount model extending django-ledger's BankAccountModel
   - Include tenant FK, account details, balances
   - Add custom manager for tenant filtering
