@@ -204,7 +204,7 @@
   - Create and run migration
   - _Requirements: 4.1, 6.1, 6.7_
 
-- [ ] 4.2 Create bank reconciliation models
+- [x] 4.2 Create bank reconciliation models
   - Add BankTransaction model with reconciliation status
   - Add BankReconciliation model for reconciliation sessions
   - Add BankStatementImport model for import tracking

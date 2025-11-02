@@ -4,7 +4,12 @@ Admin configuration for accounting models.
 
 from django.contrib import admin
 
-from .bank_models import BankAccount
+from .bank_models import (
+    BankAccount,
+    BankReconciliation,
+    BankStatementImport,
+    BankTransaction,
+)
 from .bill_models import Bill, BillLine, BillPayment
 
 
@@ -271,3 +276,339 @@ class BankAccountAdmin(admin.ModelAdmin):
 
     needs_reconciliation.boolean = True
     needs_reconciliation.short_description = "Needs Reconciliation"
+
+
+
+@admin.register(BankTransaction)
+class BankTransactionAdmin(admin.ModelAdmin):
+    """Admin interface for BankTransaction model."""
+
+    list_display = [
+        "transaction_date",
+        "bank_account",
+        "description",
+        "transaction_type",
+        "amount",
+        "is_reconciled",
+        "reconciled_date",
+    ]
+    list_filter = [
+        "transaction_type",
+        "is_reconciled",
+        "transaction_date",
+        "reconciled_date",
+        "tenant",
+    ]
+    search_fields = [
+        "description",
+        "reference_number",
+        "bank_account__account_name",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "created_by",
+        "reconciled_by",
+        "signed_amount",
+    ]
+    fieldsets = [
+        (
+            "Transaction Information",
+            {
+                "fields": [
+                    "tenant",
+                    "bank_account",
+                    "transaction_date",
+                    "description",
+                    "amount",
+                    "signed_amount",
+                    "transaction_type",
+                    "reference_number",
+                ]
+            },
+        ),
+        (
+            "Reconciliation Status",
+            {
+                "fields": [
+                    "is_reconciled",
+                    "reconciled_date",
+                    "reconciled_by",
+                    "reconciliation",
+                    "unreconcile_reason",
+                ]
+            },
+        ),
+        (
+            "Matching",
+            {"fields": ["matched_journal_entry"]},
+        ),
+        (
+            "Import Tracking",
+            {"fields": ["statement_import"]},
+        ),
+        (
+            "Additional Information",
+            {"fields": ["notes"]},
+        ),
+        (
+            "Audit Information",
+            {
+                "fields": ["created_at", "created_by", "updated_at"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
+    def signed_amount(self, obj):
+        """Display signed amount."""
+        return obj.signed_amount
+
+    signed_amount.short_description = "Signed Amount"
+
+
+@admin.register(BankReconciliation)
+class BankReconciliationAdmin(admin.ModelAdmin):
+    """Admin interface for BankReconciliation model."""
+
+    list_display = [
+        "reconciliation_date",
+        "bank_account",
+        "status",
+        "is_balanced",
+        "variance",
+        "statement_ending_balance",
+        "completed_date",
+    ]
+    list_filter = [
+        "status",
+        "is_balanced",
+        "reconciliation_date",
+        "completed_date",
+        "tenant",
+    ]
+    search_fields = [
+        "bank_account__account_name",
+        "notes",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "created_by",
+        "completed_by",
+        "variance",
+        "is_balanced",
+        "reconciled_transaction_count",
+        "unreconciled_transaction_count",
+    ]
+    fieldsets = [
+        (
+            "Reconciliation Information",
+            {
+                "fields": [
+                    "tenant",
+                    "bank_account",
+                    "reconciliation_date",
+                    "period_start_date",
+                    "period_end_date",
+                    "status",
+                ]
+            },
+        ),
+        (
+            "Statement Balances",
+            {
+                "fields": [
+                    "statement_beginning_balance",
+                    "statement_ending_balance",
+                ]
+            },
+        ),
+        (
+            "Book Balances",
+            {
+                "fields": [
+                    "book_beginning_balance",
+                    "book_ending_balance",
+                ]
+            },
+        ),
+        (
+            "Reconciliation Totals",
+            {
+                "fields": [
+                    "total_deposits",
+                    "total_withdrawals",
+                    "total_adjustments",
+                    "variance",
+                    "is_balanced",
+                ]
+            },
+        ),
+        (
+            "Transaction Counts",
+            {
+                "fields": [
+                    "reconciled_transaction_count",
+                    "unreconciled_transaction_count",
+                ]
+            },
+        ),
+        (
+            "Completion Information",
+            {
+                "fields": [
+                    "completed_date",
+                    "completed_by",
+                ]
+            },
+        ),
+        (
+            "Additional Information",
+            {
+                "fields": [
+                    "notes",
+                    "statement_file",
+                ]
+            },
+        ),
+        (
+            "Audit Information",
+            {
+                "fields": ["created_at", "created_by", "updated_at"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
+    def reconciled_transaction_count(self, obj):
+        """Display count of reconciled transactions."""
+        return obj.reconciled_transaction_count
+
+    reconciled_transaction_count.short_description = "Reconciled Transactions"
+
+    def unreconciled_transaction_count(self, obj):
+        """Display count of unreconciled transactions."""
+        return obj.unreconciled_transaction_count
+
+    unreconciled_transaction_count.short_description = "Unreconciled Transactions"
+
+
+@admin.register(BankStatementImport)
+class BankStatementImportAdmin(admin.ModelAdmin):
+    """Admin interface for BankStatementImport model."""
+
+    list_display = [
+        "import_date",
+        "bank_account",
+        "file_name",
+        "file_format",
+        "status",
+        "transactions_imported",
+        "transactions_matched",
+        "success_rate_display",
+    ]
+    list_filter = [
+        "status",
+        "file_format",
+        "import_date",
+        "tenant",
+    ]
+    search_fields = [
+        "file_name",
+        "bank_account__account_name",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "imported_by",
+        "import_date",
+        "processing_started_at",
+        "processing_completed_at",
+        "processing_duration",
+        "success_rate",
+        "match_rate",
+    ]
+    fieldsets = [
+        (
+            "Import Information",
+            {
+                "fields": [
+                    "tenant",
+                    "bank_account",
+                    "import_date",
+                    "file_name",
+                    "file_format",
+                    "file",
+                ]
+            },
+        ),
+        (
+            "Import Statistics",
+            {
+                "fields": [
+                    "transactions_imported",
+                    "transactions_matched",
+                    "transactions_duplicates",
+                    "transactions_errors",
+                    "success_rate",
+                    "match_rate",
+                ]
+            },
+        ),
+        (
+            "Statement Period",
+            {
+                "fields": [
+                    "statement_start_date",
+                    "statement_end_date",
+                    "statement_balance",
+                ]
+            },
+        ),
+        (
+            "Import Status",
+            {
+                "fields": [
+                    "status",
+                    "error_message",
+                ]
+            },
+        ),
+        (
+            "Processing Information",
+            {
+                "fields": [
+                    "processing_started_at",
+                    "processing_completed_at",
+                    "processing_duration",
+                ]
+            },
+        ),
+        (
+            "Additional Information",
+            {"fields": ["notes"]},
+        ),
+        (
+            "Audit Information",
+            {
+                "fields": ["created_at", "imported_by", "updated_at"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
+    def success_rate_display(self, obj):
+        """Display success rate as percentage."""
+        return f"{obj.success_rate:.1f}%"
+
+    success_rate_display.short_description = "Success Rate"
+
+    def processing_duration(self, obj):
+        """Display processing duration."""
+        duration = obj.processing_duration
+        if duration is not None:
+            return f"{duration:.2f} seconds"
+        return "N/A"
+
+    processing_duration.short_description = "Processing Duration"
