@@ -3099,6 +3099,394 @@ def customer_statement(request, customer_id):
     return render(request, "accounting/customers/statement.html", context)
 
 
+@login_required
+@tenant_access_required
+@require_http_methods(["GET"])
+def customer_statement_pdf(request, customer_id):  # noqa: C901
+    """
+    Export customer statement as PDF.
+
+    Generates a PDF version of the customer statement showing all transactions
+    and current balance for the specified date range.
+
+    Implements Requirements: 3.8, 15.3
+    """
+    from io import BytesIO
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    from apps.crm.models import Customer
+
+    from .invoice_models import Invoice, InvoicePayment
+
+    try:
+        # Get customer with tenant filtering
+        customer = get_object_or_404(
+            Customer.objects.select_related("loyalty_tier"),
+            id=customer_id,
+            tenant=request.user.tenant,
+        )
+
+        # Get date range from request or default to last 90 days
+        from datetime import timedelta
+
+        end_date = date.today()
+        start_date = end_date - timedelta(days=90)
+
+        if request.GET.get("start_date"):
+            start_date = datetime.strptime(request.GET["start_date"], "%Y-%m-%d").date()
+        if request.GET.get("end_date"):
+            end_date = datetime.strptime(request.GET["end_date"], "%Y-%m-%d").date()
+
+        # Get invoices in date range
+        invoices = (
+            Invoice.objects.filter(
+                customer=customer,
+                tenant=request.user.tenant,
+                invoice_date__gte=start_date,
+                invoice_date__lte=end_date,
+            )
+            .exclude(status="VOID")
+            .order_by("invoice_date")
+        )
+
+        # Get payments in date range
+        payments = (
+            InvoicePayment.objects.filter(
+                invoice__customer=customer,
+                tenant=request.user.tenant,
+                payment_date__gte=start_date,
+                payment_date__lte=end_date,
+            )
+            .select_related("invoice")
+            .order_by("payment_date")
+        )
+
+        # Calculate opening balance (all invoices and payments before start_date)
+        opening_invoices = Invoice.objects.filter(
+            customer=customer, tenant=request.user.tenant, invoice_date__lt=start_date
+        ).exclude(status="VOID").aggregate(total=models.Sum("total"))["total"] or Decimal("0.00")
+
+        opening_payments = InvoicePayment.objects.filter(
+            invoice__customer=customer, tenant=request.user.tenant, payment_date__lt=start_date
+        ).aggregate(total=models.Sum("amount"))["total"] or Decimal("0.00")
+
+        opening_balance = opening_invoices - opening_payments
+
+        # Calculate period totals
+        period_invoices_total = invoices.aggregate(total=models.Sum("total"))["total"] or Decimal(
+            "0.00"
+        )
+        period_payments_total = payments.aggregate(total=models.Sum("amount"))["total"] or Decimal(
+            "0.00"
+        )
+
+        # Calculate closing balance
+        closing_balance = opening_balance + period_invoices_total - period_payments_total
+
+        # Combine invoices and payments into a single transaction list
+        transactions = []
+
+        for invoice in invoices:
+            transactions.append(
+                {
+                    "date": invoice.invoice_date,
+                    "type": "Invoice",
+                    "reference": invoice.invoice_number,
+                    "description": f"Invoice #{invoice.invoice_number}",
+                    "debit": invoice.total,
+                    "credit": Decimal("0.00"),
+                    "balance": None,
+                }
+            )
+
+        for payment in payments:
+            transactions.append(
+                {
+                    "date": payment.payment_date,
+                    "type": "Payment",
+                    "reference": payment.reference_number or f"Payment #{payment.id}",
+                    "description": f"Payment for Invoice #{payment.invoice.invoice_number}",
+                    "debit": Decimal("0.00"),
+                    "credit": payment.amount,
+                    "balance": None,
+                }
+            )
+
+        # Sort by date
+        transactions.sort(key=lambda x: x["date"])
+
+        # Calculate running balance
+        running_balance = opening_balance
+        for txn in transactions:
+            running_balance += txn["debit"] - txn["credit"]
+            txn["balance"] = running_balance
+
+        # Calculate current outstanding balance (all unpaid invoices)
+        current_outstanding = sum(
+            invoice.total - invoice.amount_paid
+            for invoice in Invoice.objects.filter(
+                customer=customer, tenant=request.user.tenant
+            ).exclude(status__in=["PAID", "VOID"])
+        )
+
+        # Create PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer, pagesize=letter, topMargin=0.5 * inch, bottomMargin=0.5 * inch
+        )
+        elements = []
+
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "CustomTitle",
+            parent=styles["Heading1"],
+            fontSize=18,
+            textColor=colors.HexColor("#1f2937"),
+        )
+        heading_style = ParagraphStyle(
+            "CustomHeading",
+            parent=styles["Heading2"],
+            fontSize=14,
+            textColor=colors.HexColor("#374151"),
+        )
+        normal_style = styles["Normal"]
+
+        # Title
+        elements.append(Paragraph("Customer Statement", title_style))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Customer Information and Period
+        # Build address from customer fields
+        address_parts = []
+        if customer.address_line_1:
+            address_parts.append(customer.address_line_1)
+        if customer.address_line_2:
+            address_parts.append(customer.address_line_2)
+        if customer.city or customer.state or customer.postal_code:
+            city_state_zip = ", ".join(
+                filter(None, [customer.city, customer.state, customer.postal_code])
+            )
+            if city_state_zip:
+                address_parts.append(city_state_zip)
+        if customer.country:
+            address_parts.append(customer.country)
+        address_str = "<br/>".join(address_parts) if address_parts else ""
+
+        customer_info = f"""
+        <b>{customer.get_full_name()}</b><br/>
+        {customer.customer_number}<br/>
+        {address_str}<br/>
+        {customer.email or ''}<br/>
+        {customer.phone or ''}
+        """
+
+        period_info = f"""
+        <b>{start_date.strftime('%B %d, %Y')} - {end_date.strftime('%B %d, %Y')}</b><br/>
+        Generated on {date.today().strftime('%B %d, %Y')}
+        """
+
+        info_data = [
+            ["Customer Information", "Statement Period"],
+            [
+                Paragraph(customer_info, normal_style),
+                Paragraph(period_info, normal_style),
+            ],
+        ]
+
+        info_table = Table(info_data, colWidths=[3.5 * inch, 3.5 * inch])
+        info_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
+                    ("ALIGN", (0, 0), (-1, 0), "LEFT"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 12),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("TOPPADDING", (0, 0), (-1, 0), 12),
+                    ("VALIGN", (0, 1), (-1, -1), "TOP"),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ]
+            )
+        )
+        elements.append(info_table)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Balance Summary
+        balance_data = [
+            ["Opening Balance", "Period Charges", "Period Payments", "Closing Balance"],
+            [
+                f"${opening_balance:,.2f}",
+                f"${period_invoices_total:,.2f}",
+                f"${period_payments_total:,.2f}",
+                f"${closing_balance:,.2f}",
+            ],
+        ]
+
+        balance_table = Table(balance_data, colWidths=[1.75 * inch] * 4)
+        balance_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3b82f6")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+                    ("TOPPADDING", (0, 0), (-1, -1), 12),
+                    ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 1), (-1, 1), 12),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ]
+            )
+        )
+        elements.append(balance_table)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Transaction Details
+        elements.append(Paragraph("Transaction Details", heading_style))
+        elements.append(Spacer(1, 0.2 * inch))
+
+        if transactions:
+            # Transaction table header
+            txn_data = [
+                ["Date", "Type", "Reference", "Description", "Charges", "Payments", "Balance"]
+            ]
+
+            # Opening balance row
+            txn_data.append(
+                [
+                    start_date.strftime("%Y-%m-%d"),
+                    "",
+                    "",
+                    "Opening Balance",
+                    "",
+                    "",
+                    f"${opening_balance:,.2f}",
+                ]
+            )
+
+            # Transaction rows
+            for txn in transactions:
+                txn_data.append(
+                    [
+                        txn["date"].strftime("%Y-%m-%d"),
+                        txn["type"],
+                        txn["reference"],
+                        txn["description"],
+                        f"${txn['debit']:,.2f}" if txn["debit"] > 0 else "-",
+                        f"${txn['credit']:,.2f}" if txn["credit"] > 0 else "-",
+                        f"${txn['balance']:,.2f}",
+                    ]
+                )
+
+            # Closing balance row
+            txn_data.append(
+                [
+                    end_date.strftime("%Y-%m-%d"),
+                    "",
+                    "",
+                    "Closing Balance",
+                    f"${period_invoices_total:,.2f}",
+                    f"${period_payments_total:,.2f}",
+                    f"${closing_balance:,.2f}",
+                ]
+            )
+
+            txn_table = Table(
+                txn_data,
+                colWidths=[
+                    0.8 * inch,
+                    0.6 * inch,
+                    0.9 * inch,
+                    1.8 * inch,
+                    0.9 * inch,
+                    0.9 * inch,
+                    0.9 * inch,
+                ],
+            )
+            txn_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
+                        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 9),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                        ("TOPPADDING", (0, 0), (-1, 0), 8),
+                        ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#dbeafe")),
+                        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f3f4f6")),
+                        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                        ("ALIGN", (4, 1), (-1, -1), "RIGHT"),
+                        ("FONTSIZE", (0, 1), (-1, -1), 8),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ]
+                )
+            )
+            elements.append(txn_table)
+        else:
+            elements.append(
+                Paragraph("No transactions found for the selected period.", normal_style)
+            )
+
+        # Footer
+        elements.append(Spacer(1, 0.5 * inch))
+        if current_outstanding > 0:
+            footer_text = (
+                f"<b>Current Amount Due: ${current_outstanding:,.2f}</b><br/><br/>"
+                "This is a computer-generated statement and does not require a signature.<br/>"
+                "For questions about this statement, please contact your accounting department."
+            )
+        else:
+            footer_text = (
+                "This is a computer-generated statement and does not require a signature.<br/>"
+                "For questions about this statement, please contact your accounting department."
+            )
+        elements.append(Paragraph(footer_text, normal_style))
+
+        # Build PDF
+        doc.build(elements)
+
+        # Audit logging
+        from apps.core.audit_models import AuditLog
+
+        AuditLog.objects.create(
+            tenant=request.user.tenant,
+            user=request.user,
+            category=AuditLog.CATEGORY_DATA,
+            action=AuditLog.ACTION_API_GET,
+            severity=AuditLog.SEVERITY_INFO,
+            description=f"Exported customer statement PDF: {customer.get_full_name()} ({start_date} to {end_date})",
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            request_method=request.method,
+            request_path=request.path,
+        )
+
+        # Return PDF response
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+        customer_name = customer.get_full_name().replace(" ", "_")
+        response["Content-Disposition"] = (
+            f'attachment; filename="customer_statement_{customer_name}_'
+            f'{start_date.strftime("%Y%m%d")}_{end_date.strftime("%Y%m%d")}.pdf"'
+        )
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to generate customer statement PDF: {str(e)}")
+        messages.error(request, f"Failed to generate PDF: {str(e)}")
+        return redirect("accounting:customer_accounting_detail", customer_id=customer_id)
+
+
 def validate_customer_credit_limit(customer, additional_amount):
     """
     Validate if a customer can take on additional credit.

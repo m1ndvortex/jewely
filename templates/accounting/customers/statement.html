@@ -48,6 +48,13 @@
                     </nav>
                 </div>
                 <div class="flex gap-2">
+                    <a href="{% url 'accounting:customer_statement_pdf' customer.id %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+                       class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        {% trans "Export PDF" %}
+                    </a>
                     <button onclick="window.print()" 
                             class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,8 +115,19 @@
                     <div class="space-y-2">
                         <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ customer.get_full_name }}</p>
                         <p class="text-sm text-gray-600 dark:text-gray-400">{{ customer.customer_number }}</p>
-                        {% if customer.address %}
-                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ customer.address }}</p>
+                        {% if customer.address_line_1 %}
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ customer.address_line_1 }}</p>
+                        {% endif %}
+                        {% if customer.address_line_2 %}
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ customer.address_line_2 }}</p>
+                        {% endif %}
+                        {% if customer.city or customer.state or customer.postal_code %}
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                {% if customer.city %}{{ customer.city }}{% endif %}{% if customer.city and customer.state %}, {% endif %}{% if customer.state %}{{ customer.state }}{% endif %}{% if customer.postal_code %} {{ customer.postal_code }}{% endif %}
+                            </p>
+                        {% endif %}
+                        {% if customer.country %}
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ customer.country }}</p>
                         {% endif %}
                         {% if customer.email %}
                             <p class="text-sm text-gray-600 dark:text-gray-400">{{ customer.email }}</p>

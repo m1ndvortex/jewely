@@ -180,7 +180,7 @@
   - Add PDF/Excel export functionality
   - _Requirements: 3.5_
 
-- [ ] 3.8 Create customer statement report (backend + frontend)
+- [-] 3.8 Create customer statement report (backend + frontend)
   - Implement customer_statement view
   - Create templates/accounting/reports/customer_statement.html
   - Add PDF export functionality

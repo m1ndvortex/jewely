@@ -80,8 +80,10 @@ urlpatterns = [
     # Aged Payables Report (Task 2.7)
     path("reports/aged-payables/", views.aged_payables_report, name="aged_payables_report"),
     # Aged Receivables Report (Task 3.7)
-    path("reports/aged-receivables/", views.aged_receivables_report, name="aged_receivables_report"),
-    # Customer Accounting Views (Task 3.3)
+    path(
+        "reports/aged-receivables/", views.aged_receivables_report, name="aged_receivables_report"
+    ),
+    # Customer Accounting Views (Task 3.3, 3.8)
     path(
         "customers/<uuid:customer_id>/accounting/",
         views.customer_accounting_detail,
@@ -91,6 +93,11 @@ urlpatterns = [
         "customers/<uuid:customer_id>/statement/",
         views.customer_statement,
         name="customer_statement",
+    ),
+    path(
+        "customers/<uuid:customer_id>/statement/pdf/",
+        views.customer_statement_pdf,
+        name="customer_statement_pdf",
     ),
     path(
         "api/customers/<uuid:customer_id>/check-credit-limit/",
