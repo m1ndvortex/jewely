@@ -164,7 +164,7 @@
   - Add tenant filtering and audit logging
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 3.7, 3.8_
 
-- [ ] 3.6 Create invoice management templates (frontend)
+- [x] 3.6 Create invoice management templates (frontend)
   - Create templates/accounting/invoices/ directory
   - Create list.html with aging columns and status badges
   - Create form.html with dynamic line items and tax calculation (HTMX)
@@ -174,7 +174,7 @@
   - Add TailwindCSS styling
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.6, 3.8_
 
-- [ ] 3.7 Create aged receivables report (backend + frontend)
+- [x] 3.7 Create aged receivables report (backend + frontend)
   - Implement aged_receivables_report view with 30/60/90/90+ day buckets
   - Create templates/accounting/reports/aged_receivables.html
   - Add PDF/Excel export functionality
