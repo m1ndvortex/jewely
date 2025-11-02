@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{{ page_title }} - {% trans "Accounting" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Page Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                        {% trans "Create Credit Memo" %}
+                    </h1>
+                    <nav class="flex mt-2" aria-label="Breadcrumb">
+                        <ol class="inline-flex items-center space-x-2">
+                            <li>
+                                <a href="{% url 'accounting:dashboard' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">
+                                    {% trans "Accounting" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <a href="{% url 'accounting:invoice_list' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">
+                                    {% trans "Invoices" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span class="text-gray-800 dark:text-gray-200">{% trans "Credit Memo" %}</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Credit Memo Form -->
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Display form errors -->
+            {% if form.errors %}
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div class="flex">
+                        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800 dark:text-red-300">
+                                {% trans "Please correct the following errors:" %}
+                            </h3>
+                            <div class="mt-2 text-sm text-red-700 dark:text-red-400">
+                                <ul class="list-disc list-inside space-y-1">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li>{{ field }}: {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">{% trans "Credit Memo Information" %}</h2>
+                
+                <div class="space-y-6">
+                    <!-- Customer -->
+                    <div>
+                        <label for="{{ form.customer.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Customer" %} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.customer }}
+                        {% if form.customer.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.customer.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Credit Memo Number -->
+                    <div>
+                        <label for="{{ form.credit_memo_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Credit Memo Number" %}
+                        </label>
+                        {{ form.credit_memo_number }}
+                        {% if form.credit_memo_number.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.credit_memo_number.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Credit Date -->
+                    <div>
+                        <label for="{{ form.credit_date.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Credit Date" %} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.credit_date }}
+                        {% if form.credit_date.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.credit_date.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Amount -->
+                    <div>
+                        <label for="{{ form.amount.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Credit Amount" %} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.amount }}
+                        {% if form.amount.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.amount.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Reason -->
+                    <div>
+                        <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Reason" %} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.reason }}
+                        {% if form.reason.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.reason.help_text }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Original Invoice (optional) -->
+                    {% if form.original_invoice %}
+                    <div>
+                        <label for="{{ form.original_invoice.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Original Invoice" %}
+                        </label>
+                        {{ form.original_invoice }}
+                        {% if form.original_invoice.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.original_invoice.help_text }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Notes -->
+                    <div>
+                        <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            {% trans "Notes" %}
+                        </label>
+                        {{ form.notes }}
+                        {% if form.notes.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.notes.help_text }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex items-center justify-end gap-4">
+                <a href="{% url 'accounting:invoice_list' %}" 
+                   class="px-6 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium rounded-lg shadow-sm transition-colors duration-150">
+                    {% trans "Cancel" %}
+                </a>
+                <button type="submit" 
+                        class="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150">
+                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    {% trans "Create Credit Memo" %}
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+{% endblock %}

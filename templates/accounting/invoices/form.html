@@ -1,0 +1,909 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{{ page_title }} - {% trans "Accounting" %}{% endblock %}
+
+{% block extra_head %}
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<style>
+    /* Modern Enterprise UI Styles */
+    .enterprise-card {
+        background: linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%);
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .dark .enterprise-card {
+        background: linear-gradient(to bottom, #1f2937 0%, #111827 100%);
+        border-color: #374151;
+    }
+    
+    .section-header {
+        border-bottom: 2px solid #3b82f6;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .line-item-card {
+        background: #ffffff;
+        border: 2px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    
+    .line-item-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+    }
+    
+    .dark .line-item-card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+    
+    .dark .line-item-card:hover {
+        border-color: #3b82f6;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(to bottom, #3b82f6 0%, #2563eb 100%);
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(to bottom, #2563eb 0%, #1d4ed8 100%);
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+    }
+    
+    .btn-success {
+        background: linear-gradient(to bottom, #10b981 0%, #059669 100%) !important;
+        box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(to bottom, #059669 0%, #047857 100%) !important;
+        box-shadow: 0 4px 6px rgba(5, 150, 105, 0.3);
+    }
+    
+    .btn-success,
+    .btn-success *,
+    .btn-success svg {
+        color: #ffffff !important;
+        fill: currentColor;
+        stroke: currentColor;
+    }
+    
+    .btn-danger {
+        background: linear-gradient(to bottom, #ef4444 0%, #dc2626 100%);
+        box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+    }
+    
+    .btn-danger:hover {
+        background: linear-gradient(to bottom, #dc2626 0%, #b91c1c 100%);
+        box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
+    }
+    
+    .btn-danger,
+    .btn-danger *,
+    .btn-danger svg {
+        color: #ffffff !important;
+        fill: currentColor;
+        stroke: currentColor;
+    }
+    
+    .totals-panel {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .dark .totals-panel {
+        background: linear-gradient(135deg, #4c51bf 0%, #553c9a 100%);
+    }
+    
+    .input-field {
+        transition: all 0.2s ease;
+    }
+    
+    .input-field:focus {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 0.75rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-required {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .dark .badge-required {
+        background: #7f1d1d;
+        color: #fecaca;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Modern Page Header -->
+        <div class="page-header">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center space-x-3 mb-2">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h1 class="text-4xl font-bold">
+                            {% if form.instance.pk %}
+                                {% trans "Edit Invoice" %}
+                            {% else %}
+                                {% trans "Create New Invoice" %}
+                            {% endif %}
+                        </h1>
+                    </div>
+                    <nav class="flex mt-3" aria-label="Breadcrumb">
+                        <ol class="inline-flex items-center space-x-2 text-sm" style="color: white;">
+                            <li>
+                                <a href="{% url 'accounting:dashboard' %}" style="color: rgba(255, 255, 255, 0.9);" class="hover:opacity-100 transition-opacity">
+                                    {% trans "Accounting" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 mx-2" style="color: rgba(255, 255, 255, 0.7);" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <a href="{% url 'accounting:invoice_list' %}" style="color: rgba(255, 255, 255, 0.9);" class="hover:opacity-100 transition-opacity">
+                                    {% trans "Invoices" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 mx-2" style="color: rgba(255, 255, 255, 0.7);" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span style="color: white;" class="font-medium">
+                                    {% if form.instance.pk %}{% trans "Edit" %}{% else %}{% trans "Create" %}{% endif %}
+                                </span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="hidden md:block">
+                    <div class="text-right">
+                        <div class="text-sm" style="color: rgba(255, 255, 255, 0.8);">{% trans "Invoice Management" %}</div>
+                        <div class="text-2xl font-bold" style="color: white;">{% trans "Accounts Receivable" %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" id="invoice-form" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- Display form errors -->
+            {% if form.errors or formset.errors or formset.non_form_errors %}
+                <div class="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg p-6 shadow-lg animate-pulse">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-bold text-red-800 dark:text-red-300">
+                                {% trans "Please correct the following errors:" %}
+                            </h3>
+                            <div class="mt-3 text-sm text-red-700 dark:text-red-400">
+                                <ul class="list-disc list-inside space-y-2">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li class="font-medium">{{ field }}: {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                    {% for error in formset.non_form_errors %}
+                                        <li class="font-medium">Formset: {{ error }}</li>
+                                    {% endfor %}
+                                    {% for form_errors in formset.errors %}
+                                        {% if form_errors %}
+                                            {% for field, errors in form_errors.items %}
+                                                {% for error in errors %}
+                                                    <li class="font-medium">Line item {{ forloop.parentloop.counter }}: {{ field }} - {{ error }}</li>
+                                                {% endfor %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Invoice Header Information -->
+            <div class="enterprise-card rounded-xl p-8">
+                <div class="section-header">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% trans "Invoice Information" %}</h2>
+                        </div>
+                        <span class="badge badge-required">
+                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                            {% trans "Required Fields" %}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Customer - Full Width on Mobile, Spans 2 cols on Desktop -->
+                    <div class="lg:col-span-2">
+                        <label for="{{ form.customer.id_for_label }}" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                {% trans "Customer" %} <span class="text-red-500 ml-1">*</span>
+                            </span>
+                        </label>
+                        {{ form.customer }}
+                        {% if form.customer.help_text %}
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ form.customer.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Invoice Number -->
+                    <div>
+                        <label for="{{ form.invoice_number.id_for_label }}" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                                </svg>
+                                {% trans "Invoice Number" %}
+                            </span>
+                        </label>
+                        {{ form.invoice_number }}
+                        {% if form.invoice_number.help_text %}
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ form.invoice_number.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Invoice Date -->
+                    <div>
+                        <label for="{{ form.invoice_date.id_for_label }}" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                {% trans "Invoice Date" %} <span class="text-red-500 ml-1">*</span>
+                            </span>
+                        </label>
+                        {{ form.invoice_date }}
+                        {% if form.invoice_date.help_text %}
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ form.invoice_date.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Due Date -->
+                    <div>
+                        <label for="{{ form.due_date.id_for_label }}" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {% trans "Due Date" %} <span class="text-red-500 ml-1">*</span>
+                            </span>
+                        </label>
+                        {{ form.due_date }}
+                        {% if form.due_date.help_text %}
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ form.due_date.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tax -->
+                    <div>
+                        <label for="{{ form.tax.id_for_label }}" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {% trans "Tax Amount" %}
+                            </span>
+                        </label>
+                        {{ form.tax }}
+                        {% if form.tax.help_text %}
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ form.tax.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Reference Number -->
+                    <div>
+                        <label for="{{ form.reference_number.id_for_label }}" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span class="flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                {% trans "Reference Number" %}
+                            </span>
+                        </label>
+                        {{ form.reference_number }}
+                        {% if form.reference_number.help_text %}
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ form.reference_number.help_text }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Notes - Full Width -->
+                <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <label for="{{ form.notes.id_for_label }}" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <span class="flex items-center">
+                            <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                            {% trans "Notes" %}
+                        </span>
+                    </label>
+                    {{ form.notes }}
+                    {% if form.notes.help_text %}
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                            {{ form.notes.help_text }}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Line Items -->
+            <div class="enterprise-card rounded-xl p-8">
+                <div class="section-header">
+                    <div class="flex items-center justify-between flex-wrap gap-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% trans "Line Items" %}</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{% trans "Add items and services to this invoice" %}</p>
+                            </div>
+                        </div>
+                        <button type="button" id="add-line-btn" onclick="addLineItem()" 
+                                class="btn-success inline-flex items-center px-6 py-3 text-sm font-bold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
+                                style="color: white !important;">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="white" viewBox="0 0 24 24" style="color: white !important;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            <span style="color: white !important;">{% trans "Add Line Item" %}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Formset Management Fields -->
+                {{ formset.management_form }}
+
+                <!-- Line Items Container -->
+                <div class="mt-6">
+                    <div id="line-items-formset" class="space-y-4">
+                        {% for line_form in formset %}
+                            <div class="invoice-line-row line-item-card rounded-xl p-6 pb-4 relative">
+                                <!-- Line Number Badge -->
+                                <div class="absolute -top-3 -left-3 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                                    {{ forloop.counter }}
+                                </div>
+                                
+                                <!-- Delete Button - Positioned at Top Right -->
+                                <button type="button" onclick="removeLineItem(this)" 
+                                        class="btn-danger absolute -top-3 -right-3 w-10 h-10 flex items-center justify-center text-sm font-bold rounded-full transition-all duration-200 transform hover:scale-110 shadow-lg z-10"
+                                        style="color: white !important;">
+                                    <svg class="w-5 h-5" fill="none" stroke="white" viewBox="0 0 24 24" style="color: white !important;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                                
+                                {{ line_form.id }}
+                                <div class="hidden">{{ line_form.DELETE }}</div>
+                                
+                                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                                    <!-- Account (3 cols) -->
+                                    <div class="lg:col-span-3">
+                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                            <span class="flex items-center">
+                                                <svg class="w-3 h-3 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path>
+                                                    <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                {% trans "Account" %} <span class="text-red-500 ml-1">*</span>
+                                            </span>
+                                        </label>
+                                        {{ line_form.account }}
+                                    </div>
+
+                                    <!-- Description (4 cols) -->
+                                    <div class="lg:col-span-4">
+                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                            <span class="flex items-center">
+                                                <svg class="w-3 h-3 mr-1 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                {% trans "Description" %} <span class="text-red-500 ml-1">*</span>
+                                            </span>
+                                        </label>
+                                        {{ line_form.description }}
+                                    </div>
+
+                                    <!-- Quantity (2 cols) -->
+                                    <div class="lg:col-span-2">
+                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                            <span class="flex items-center">
+                                                <svg class="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                                </svg>
+                                                {% trans "Qty" %} <span class="text-red-500 ml-1">*</span>
+                                            </span>
+                                        </label>
+                                        {{ line_form.quantity }}
+                                    </div>
+
+                                    <!-- Unit Price (2 cols) -->
+                                    <div class="lg:col-span-2">
+                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                            <span class="flex items-center">
+                                                <svg class="w-3 h-3 mr-1 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"></path>
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                {% trans "Price" %} <span class="text-red-500 ml-1">*</span>
+                                            </span>
+                                        </label>
+                                        {{ line_form.unit_price }}
+                                    </div>
+
+                                    <!-- Amount (1 col) - Read Only -->
+                                    <div class="lg:col-span-1 hidden lg:block">
+                                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                            <span class="flex items-center">
+                                                <svg class="w-3 h-3 mr-1 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                {% trans "Total" %}
+                                            </span>
+                                        </label>
+                                        {{ line_form.amount }}
+                                    </div>
+                                </div>
+
+                                <!-- Notes (full width) -->
+                                <div class="mt-4">
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                        <span class="flex items-center">
+                                            <svg class="w-3 h-3 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            {% trans "Notes" %}
+                                        </span>
+                                    </label>
+                                    {{ line_form.notes }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Empty Form Template (hidden) -->
+                <div id="empty-form-template" class="hidden">
+                    <div class="invoice-line-row line-item-card rounded-xl p-6 pb-4 relative">
+                        <div class="absolute -top-3 -left-3 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg line-number">
+                            #
+                        </div>
+                        
+                        <!-- Delete Button - Positioned at Top Right -->
+                        <button type="button" onclick="removeLineItem(this)" 
+                                class="btn-danger absolute -top-3 -right-3 w-10 h-10 flex items-center justify-center text-sm font-bold rounded-full transition-all duration-200 transform hover:scale-110 shadow-lg z-10"
+                                style="color: white !important;">
+                            <svg class="w-5 h-5" fill="none" stroke="white" viewBox="0 0 24 24" style="color: white !important;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                        
+                        {{ formset.empty_form.id }}
+                        <div class="hidden">{{ formset.empty_form.DELETE }}</div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                            <div class="lg:col-span-3">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                    <span class="flex items-center">
+                                        <svg class="w-3 h-3 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"></path>
+                                            <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        {% trans "Account" %} <span class="text-red-500 ml-1">*</span>
+                                    </span>
+                                </label>
+                                {{ formset.empty_form.account }}
+                            </div>
+                            <div class="lg:col-span-4">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                    <span class="flex items-center">
+                                        <svg class="w-3 h-3 mr-1 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        {% trans "Description" %} <span class="text-red-500 ml-1">*</span>
+                                    </span>
+                                </label>
+                                {{ formset.empty_form.description }}
+                            </div>
+                            <div class="lg:col-span-2">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                    <span class="flex items-center">
+                                        <svg class="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                        </svg>
+                                        {% trans "Qty" %} <span class="text-red-500 ml-1">*</span>
+                                    </span>
+                                </label>
+                                {{ formset.empty_form.quantity }}
+                            </div>
+                            <div class="lg:col-span-2">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                    <span class="flex items-center">
+                                        <svg class="w-3 h-3 mr-1 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"></path>
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        {% trans "Price" %} <span class="text-red-500 ml-1">*</span>
+                                    </span>
+                                </label>
+                                {{ formset.empty_form.unit_price }}
+                            </div>
+                            <div class="lg:col-span-1 hidden lg:block">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                    <span class="flex items-center">
+                                        <svg class="w-3 h-3 mr-1 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        {% trans "Total" %}
+                                    </span>
+                                </label>
+                                {{ formset.empty_form.amount }}
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                                <span class="flex items-center">
+                                    <svg class="w-3 h-3 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    {% trans "Notes" %}
+                                </span>
+                            </label>
+                            {{ formset.empty_form.notes }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Totals Summary -->
+                <div class="mt-8">
+                    <div class="totals-panel rounded-xl p-8 shadow-2xl">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold flex items-center">
+                                <svg class="w-7 h-7 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                                {% trans "Invoice Summary" %}
+                            </h3>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center text-lg pb-3 border-b border-white/20">
+                                <span class="font-medium">{% trans "Subtotal:" %}</span>
+                                <span id="invoice-subtotal" class="font-bold text-2xl">$0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center text-lg pb-3 border-b border-white/20">
+                                <span class="font-medium">{% trans "Tax:" %}</span>
+                                <span class="font-bold text-2xl">$<span id="invoice-tax">0.00</span></span>
+                            </div>
+                            <div class="flex justify-between items-center text-2xl font-bold pt-4">
+                                <span>{% trans "Total Amount:" %}</span>
+                                <span id="invoice-total" class="text-3xl">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="enterprise-card rounded-xl p-6">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <a href="{% url 'accounting:invoice_list' %}" 
+                       class="inline-flex items-center px-8 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-bold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        {% trans "Cancel" %}
+                    </a>
+                    <button type="submit" id="submit-btn"
+                            class="btn-primary inline-flex items-center px-8 py-3 text-white font-bold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        {% if form.instance.pk %}
+                            {% trans "Update Invoice" %}
+                        {% else %}
+                            {% trans "Create Invoice" %}
+                        {% endif %}
+                    </button>
+                </div>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<script>
+    // Format currency with commas
+    function formatCurrency(amount) {
+        return '$' + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    
+    // Calculate line totals and invoice total
+    function calculateLineTotals() {
+        let invoiceSubtotal = 0;
+        
+        // Calculate each line total
+        document.querySelectorAll('.invoice-line-row:not(#empty-form-template .invoice-line-row)').forEach((row) => {
+            // Skip if marked for deletion
+            const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+            if (deleteCheckbox && deleteCheckbox.checked) {
+                return;
+            }
+            
+            // Skip if hidden
+            if (row.style.display === 'none') {
+                return;
+            }
+            
+            const quantityInput = row.querySelector('input[name$="-quantity"]');
+            const unitPriceInput = row.querySelector('input[name$="-unit_price"]');
+            const amountInput = row.querySelector('input[name$="-amount"]');
+            
+            if (quantityInput && unitPriceInput && amountInput) {
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const unitPrice = parseFloat(unitPriceInput.value) || 0;
+                const lineTotal = quantity * unitPrice;
+                
+                amountInput.value = lineTotal.toFixed(2);
+                invoiceSubtotal += lineTotal;
+            }
+        });
+        
+        // Update invoice totals
+        const taxInput = document.getElementById('id_tax');
+        const tax = parseFloat(taxInput?.value) || 0;
+        const total = invoiceSubtotal + tax;
+        
+        document.getElementById('invoice-subtotal').textContent = formatCurrency(invoiceSubtotal);
+        document.getElementById('invoice-total').textContent = formatCurrency(total);
+        document.getElementById('invoice-tax').textContent = tax.toFixed(2);
+    }
+    
+    // Update line numbers
+    function updateLineNumbers() {
+        let visibleIndex = 1;
+        document.querySelectorAll('.invoice-line-row:not(#empty-form-template .invoice-line-row)').forEach((row) => {
+            if (row.style.display !== 'none') {
+                const badge = row.querySelector('.line-number, .absolute.-top-3.-left-3');
+                if (badge) {
+                    badge.textContent = visibleIndex;
+                }
+                visibleIndex++;
+            }
+        });
+    }
+    
+    // Add new line item
+    function addLineItem() {
+        try {
+            const formset = document.getElementById('line-items-formset');
+            const totalForms = document.getElementById('id_lines-TOTAL_FORMS');
+            
+            if (!formset || !totalForms) {
+                console.error('Formset container or TOTAL_FORMS not found', {formset: !!formset, totalForms: !!totalForms});
+                return;
+            }
+            
+            const currentCount = parseInt(totalForms.value);
+            
+            // Clone the empty form template
+            const emptyFormTemplate = document.getElementById('empty-form-template');
+            if (!emptyFormTemplate) {
+                console.error('Empty form template not found');
+                return;
+            }
+            
+            const templateContent = emptyFormTemplate.querySelector('.invoice-line-row');
+            if (!templateContent) {
+                console.error('Template content not found');
+                return;
+            }
+            
+            // Clone the template
+            const newForm = templateContent.cloneNode(true);
+            
+            // Replace __prefix__ in the HTML content
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = newForm.outerHTML.replace(/__prefix__/g, currentCount);
+            const processedForm = tempDiv.firstChild;
+            
+            // Append to formset
+            formset.appendChild(processedForm);
+            
+            // Update total forms count
+            totalForms.value = currentCount + 1;
+            
+            // Update line numbers
+            updateLineNumbers();
+            
+            // Recalculate totals
+            calculateLineTotals();
+            
+            // Scroll to new form
+            setTimeout(() => {
+                processedForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+            
+            // Add animation
+            processedForm.style.animation = 'slideIn 0.3s ease-out';
+            
+            console.log('Line item added successfully');
+        } catch (error) {
+            console.error('Error adding line item:', error);
+            alert('Error adding line item. Please try again.');
+        }
+    }
+    
+    // Remove line item
+    function removeLineItem(button) {
+        const row = button.closest('.invoice-line-row');
+        const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+        
+        // Confirm deletion
+        if (!confirm('{% trans "Are you sure you want to remove this line item?" %}')) {
+            return;
+        }
+        
+        if (deleteCheckbox) {
+            // Mark for deletion (for existing records)
+            deleteCheckbox.checked = true;
+            row.style.display = 'none';
+        } else {
+            // Remove from DOM (for new records)
+            row.remove();
+        }
+        
+        // Update line numbers
+        updateLineNumbers();
+        
+        // Recalculate totals
+        calculateLineTotals();
+    }
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calculate on input change
+        document.addEventListener('input', function(e) {
+            if (e.target.matches('input[name$="-quantity"], input[name$="-unit_price"], #id_tax')) {
+                calculateLineTotals();
+            }
+        });
+        
+        // Initial calculation
+        calculateLineTotals();
+        updateLineNumbers();
+        
+        // Validate form before submission
+        const invoiceForm = document.getElementById('invoice-form');
+        if (invoiceForm) {
+            invoiceForm.addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submit-btn');
+                
+                // Check if at least one line item exists
+                let hasValidLines = false;
+                document.querySelectorAll('.invoice-line-row:not(#empty-form-template .invoice-line-row)').forEach((row) => {
+                    const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+                    if (row.style.display !== 'none' && (!deleteCheckbox || !deleteCheckbox.checked)) {
+                        hasValidLines = true;
+                    }
+                });
+                
+                if (!hasValidLines) {
+                    e.preventDefault();
+                    alert('{% trans "Please add at least one line item." %}');
+                    return false;
+                }
+                
+                // Show loading state
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<svg class="animate-spin w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> {% trans "Saving..." %}';
+            });
+        }
+        
+        // Add keyboard shortcut for adding line items (Ctrl+Enter or Cmd+Enter)
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                addLineItem();
+            }
+        });
+    });
+    
+    // Add CSS animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+{% endblock %}

@@ -79,6 +79,8 @@ urlpatterns = [
     path("bills/<uuid:pk>/pay/", views.bill_pay, name="bill_pay"),
     # Aged Payables Report (Task 2.7)
     path("reports/aged-payables/", views.aged_payables_report, name="aged_payables_report"),
+    # Aged Receivables Report (Task 3.7)
+    path("reports/aged-receivables/", views.aged_receivables_report, name="aged_receivables_report"),
     # Customer Accounting Views (Task 3.3)
     path(
         "customers/<uuid:customer_id>/accounting/",

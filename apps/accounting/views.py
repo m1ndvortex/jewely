@@ -3208,6 +3208,335 @@ def check_customer_credit_limit_api(request, customer_id):
 
 
 # ============================================================================
+# Aged Receivables Report (Task 3.7)
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def aged_receivables_report(request):  # noqa: C901
+    """
+    Display aged receivables report with 30/60/90/90+ day buckets.
+
+    Shows amounts owed by customers grouped by aging buckets.
+    Supports PDF and Excel export.
+
+    Requirements: 3.7
+    """
+    from collections import defaultdict
+    from datetime import date
+
+    from .invoice_models import Invoice
+
+    # Get as_of_date from request or default to today
+    as_of_date_str = request.GET.get("as_of_date")
+    if as_of_date_str:
+        try:
+            as_of_date = datetime.strptime(as_of_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            as_of_date = date.today()
+    else:
+        as_of_date = date.today()
+
+    # Get all unpaid invoices for the tenant
+    invoices = (
+        Invoice.objects.filter(
+            tenant=request.user.tenant,
+            status__in=["SENT", "PARTIALLY_PAID", "OVERDUE"],
+        )
+        .select_related("customer")
+        .order_by("customer__first_name", "customer__last_name", "due_date")
+    )
+
+    # Group invoices by customer and calculate aging buckets
+    customer_data = defaultdict(
+        lambda: {
+            "customer": None,
+            "current": 0,
+            "days_1_30": 0,
+            "days_31_60": 0,
+            "days_61_90": 0,
+            "days_90_plus": 0,
+            "total": 0,
+            "invoices": [],
+        }
+    )
+
+    for invoice in invoices:
+        customer_id = invoice.customer.id
+        amount_due = invoice.total - invoice.amount_paid
+
+        # Store customer reference
+        if customer_data[customer_id]["customer"] is None:
+            customer_data[customer_id]["customer"] = invoice.customer
+
+        # Calculate days overdue based on as_of_date
+        days_overdue = (as_of_date - invoice.due_date).days if as_of_date > invoice.due_date else 0
+
+        # Categorize into aging buckets
+        if days_overdue <= 0:
+            customer_data[customer_id]["current"] += amount_due
+        elif days_overdue <= 30:
+            customer_data[customer_id]["days_1_30"] += amount_due
+        elif days_overdue <= 60:
+            customer_data[customer_id]["days_31_60"] += amount_due
+        elif days_overdue <= 90:
+            customer_data[customer_id]["days_61_90"] += amount_due
+        else:
+            customer_data[customer_id]["days_90_plus"] += amount_due
+
+        customer_data[customer_id]["total"] += amount_due
+        customer_data[customer_id]["invoices"].append(
+            {
+                "invoice_number": invoice.invoice_number,
+                "invoice_date": invoice.invoice_date,
+                "due_date": invoice.due_date,
+                "amount_due": amount_due,
+                "days_overdue": days_overdue,
+            }
+        )
+
+    # Convert to list and sort by customer name
+    customer_list = sorted(
+        customer_data.values(), key=lambda x: x["customer"].get_full_name() if x["customer"] else ""
+    )
+
+    # Calculate grand totals
+    grand_totals = {
+        "current": sum(c["current"] for c in customer_list),
+        "days_1_30": sum(c["days_1_30"] for c in customer_list),
+        "days_31_60": sum(c["days_31_60"] for c in customer_list),
+        "days_61_90": sum(c["days_61_90"] for c in customer_list),
+        "days_90_plus": sum(c["days_90_plus"] for c in customer_list),
+        "total": sum(c["total"] for c in customer_list),
+    }
+
+    # Check for export format
+    export_format = request.GET.get("export")
+
+    if export_format == "pdf":
+        return _export_aged_receivables_pdf(
+            request.user.tenant, customer_list, grand_totals, as_of_date
+        )
+    elif export_format == "excel":
+        return _export_aged_receivables_excel(
+            request.user.tenant, customer_list, grand_totals, as_of_date
+        )
+
+    context = {
+        "customer_list": customer_list,
+        "grand_totals": grand_totals,
+        "as_of_date": as_of_date,
+        "page_title": "Aged Receivables Report",
+    }
+
+    return render(request, "accounting/reports/aged_receivables.html", context)
+
+
+def _export_aged_receivables_pdf(tenant, customer_list, grand_totals, as_of_date):
+    """
+    Export aged receivables report as PDF.
+    """
+    from io import BytesIO
+
+    from django.http import HttpResponse
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    # Create response
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="aged_receivables_{as_of_date.strftime("%Y%m%d")}.pdf"'
+    )
+
+    # Create PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=0.5 * inch)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Title
+    title = Paragraph(
+        f"<b>{tenant.company_name}</b><br/>Aged Receivables Report<br/>As of {as_of_date.strftime('%B %d, %Y')}",
+        styles["Title"],
+    )
+    elements.append(title)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    # Table data
+    table_data = [
+        ["Customer", "Current", "1-30 Days", "31-60 Days", "61-90 Days", "90+ Days", "Total"]
+    ]
+
+    for customer_data in customer_list:
+        table_data.append(
+            [
+                customer_data["customer"].get_full_name(),
+                f"${customer_data['current']:,.2f}",
+                f"${customer_data['days_1_30']:,.2f}",
+                f"${customer_data['days_31_60']:,.2f}",
+                f"${customer_data['days_61_90']:,.2f}",
+                f"${customer_data['days_90_plus']:,.2f}",
+                f"${customer_data['total']:,.2f}",
+            ]
+        )
+
+    # Add grand totals row
+    table_data.append(
+        [
+            "TOTAL",
+            f"${grand_totals['current']:,.2f}",
+            f"${grand_totals['days_1_30']:,.2f}",
+            f"${grand_totals['days_31_60']:,.2f}",
+            f"${grand_totals['days_61_90']:,.2f}",
+            f"${grand_totals['days_90_plus']:,.2f}",
+            f"${grand_totals['total']:,.2f}",
+        ]
+    )
+
+    # Create table
+    table = Table(
+        table_data,
+        colWidths=[
+            2.5 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+            1.2 * inch,
+        ],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+            ]
+        )
+    )
+
+    elements.append(table)
+
+    # Build PDF
+    doc.build(elements)
+    pdf = buffer.getvalue()
+    buffer.close()
+    response.write(pdf)
+
+    return response
+
+
+def _export_aged_receivables_excel(tenant, customer_list, grand_totals, as_of_date):
+    """
+    Export aged receivables report as Excel.
+    """
+    from django.http import HttpResponse
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Aged Receivables"
+
+    # Title
+    ws.merge_cells("A1:G1")
+    ws["A1"] = f"{tenant.company_name} - Aged Receivables Report"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells("A2:G2")
+    ws["A2"] = f"As of {as_of_date.strftime('%B %d, %Y')}"
+    ws["A2"].alignment = Alignment(horizontal="center")
+
+    # Headers
+    headers = ["Customer", "Current", "1-30 Days", "31-60 Days", "61-90 Days", "90+ Days", "Total"]
+    ws.append([])  # Empty row
+    ws.append(headers)
+
+    # Style headers
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col_num)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # Data rows
+    for customer_data in customer_list:
+        ws.append(
+            [
+                customer_data["customer"].get_full_name(),
+                customer_data["current"],
+                customer_data["days_1_30"],
+                customer_data["days_31_60"],
+                customer_data["days_61_90"],
+                customer_data["days_90_plus"],
+                customer_data["total"],
+            ]
+        )
+
+    # Grand totals row
+    total_row = ws.max_row + 1
+    ws.append(
+        [
+            "TOTAL",
+            grand_totals["current"],
+            grand_totals["days_1_30"],
+            grand_totals["days_31_60"],
+            grand_totals["days_61_90"],
+            grand_totals["days_90_plus"],
+            grand_totals["total"],
+        ]
+    )
+
+    # Style totals row
+    total_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    total_font = Font(bold=True)
+    for col_num in range(1, 8):
+        cell = ws.cell(row=total_row, column=col_num)
+        cell.fill = total_fill
+        cell.font = total_font
+
+    # Format currency columns
+    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, min_col=2, max_col=7):
+        for cell in row:
+            cell.number_format = "$#,##0.00"
+            cell.alignment = Alignment(horizontal="right")
+
+    # Adjust column widths
+    ws.column_dimensions["A"].width = 30
+    for col in ["B", "C", "D", "E", "F", "G"]:
+        ws.column_dimensions[col].width = 15
+
+    # Create response
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="aged_receivables_{as_of_date.strftime("%Y%m%d")}.xlsx"'
+    )
+
+    wb.save(response)
+    return response
+
+
+# ============================================================================
 # Invoice Management Views (Task 3.5)
 # ============================================================================
 
@@ -3285,7 +3614,7 @@ def invoice_list(request):
         tenant=request.user.tenant,
         user=request.user,
         category=AuditLog.CATEGORY_DATA,
-        action=AuditLog.ACTION_VIEW,
+        action=AuditLog.ACTION_API_GET,
         severity=AuditLog.SEVERITY_INFO,
         description=f"Viewed invoice list ({total_invoices} invoices)",
         ip_address=request.META.get("REMOTE_ADDR"),
