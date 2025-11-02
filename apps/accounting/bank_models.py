@@ -289,7 +289,18 @@ class BankAccount(models.Model):
         self.save(update_fields=["is_default", "updated_at"])
 
     def save(self, *args, **kwargs):
-        """Override save to handle default account logic."""
+        """Override save to handle default account logic and create opening balance journal entry."""
+        is_new = self.pk is None
+        old_opening_balance = None
+
+        # Track if opening balance changed
+        if not is_new:
+            try:
+                old_instance = BankAccount.objects.get(pk=self.pk)
+                old_opening_balance = old_instance.opening_balance
+            except BankAccount.DoesNotExist:
+                pass
+
         # If this is the first active account for the tenant, make it default
         if self.is_active and not self.is_default:
             has_default = BankAccount.objects.filter(
@@ -298,7 +309,146 @@ class BankAccount(models.Model):
             if not has_default:
                 self.is_default = True
 
+        # Set current balance to opening balance for new accounts
+        if is_new and self.opening_balance:
+            self.current_balance = self.opening_balance
+
         super().save(*args, **kwargs)
+
+        # Create journal entry for opening balance if GL account is linked
+        if (
+            is_new
+            and self.gl_account
+            and self.opening_balance
+            and self.opening_balance != Decimal("0.00")
+        ):
+            self._create_opening_balance_journal_entry()
+        elif (
+            not is_new
+            and old_opening_balance is not None
+            and old_opening_balance != self.opening_balance
+        ):
+            # Opening balance was changed - create adjustment entry
+            if self.gl_account:
+                self._create_opening_balance_adjustment_entry(old_opening_balance)
+
+    def _create_opening_balance_journal_entry(self):
+        """Create a journal entry for the opening balance."""
+        from django_ledger.models import JournalEntryModel
+
+        from apps.accounting.models import JewelryEntity
+
+        try:
+            # Get the ledger for this tenant
+            jewelry_entity = JewelryEntity.objects.get(tenant=self.tenant)
+            ledger = jewelry_entity.ledger_entity.ledgermodel_set.first()
+
+            if not ledger:
+                return
+
+            # Create journal entry
+            journal_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description=f"Opening balance for bank account: {self.account_name}",
+                timestamp=timezone.now(),
+                posted=True,  # Auto-post opening balance entries
+            )
+
+            # Debit the GL account (increase cash asset)
+            journal_entry.transactionmodel_set.create(
+                account=self.gl_account,
+                tx_type="debit",
+                amount=self.opening_balance,
+                description=f"Opening balance - {self.account_name}",
+            )
+
+            # Credit equity account (typically 3000 - Owner's Equity or Opening Balance Equity)
+            # Try to find an equity account
+            coa = ledger.entity.chartofaccountmodel_set.first()
+            if coa:
+                equity_account = coa.accountmodel_set.filter(code__startswith="3").first()
+
+                if equity_account:
+                    journal_entry.transactionmodel_set.create(
+                        account=equity_account,
+                        tx_type="credit",
+                        amount=self.opening_balance,
+                        description=f"Opening balance - {self.account_name}",
+                    )
+        except Exception as e:
+            # Log the error but don't fail the save
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to create opening balance journal entry: {str(e)}")
+
+    def _create_opening_balance_adjustment_entry(self, old_balance):
+        """Create a journal entry to adjust the opening balance."""
+        from django_ledger.models import JournalEntryModel
+
+        from apps.accounting.models import JewelryEntity
+
+        try:
+            jewelry_entity = JewelryEntity.objects.get(tenant=self.tenant)
+            ledger = jewelry_entity.ledger_entity.ledgermodel_set.first()
+
+            if not ledger:
+                return
+
+            adjustment_amount = self.opening_balance - old_balance
+
+            # Create journal entry
+            journal_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description=f"Opening balance adjustment for bank account: {self.account_name}",
+                timestamp=timezone.now(),
+                posted=True,
+            )
+
+            # Determine debit/credit based on whether adjustment is positive or negative
+            if adjustment_amount > 0:
+                # Increase in balance - debit cash, credit equity
+                journal_entry.transactionmodel_set.create(
+                    account=self.gl_account,
+                    tx_type="debit",
+                    amount=abs(adjustment_amount),
+                    description=f"Opening balance adjustment - {self.account_name}",
+                )
+
+                coa = ledger.entity.chartofaccountmodel_set.first()
+                if coa:
+                    equity_account = coa.accountmodel_set.filter(code__startswith="3").first()
+                    if equity_account:
+                        journal_entry.transactionmodel_set.create(
+                            account=equity_account,
+                            tx_type="credit",
+                            amount=abs(adjustment_amount),
+                            description=f"Opening balance adjustment - {self.account_name}",
+                        )
+            else:
+                # Decrease in balance - credit cash, debit equity
+                journal_entry.transactionmodel_set.create(
+                    account=self.gl_account,
+                    tx_type="credit",
+                    amount=abs(adjustment_amount),
+                    description=f"Opening balance adjustment - {self.account_name}",
+                )
+
+                coa = ledger.entity.chartofaccountmodel_set.first()
+                if coa:
+                    equity_account = coa.accountmodel_set.filter(code__startswith="3").first()
+                    if equity_account:
+                        journal_entry.transactionmodel_set.create(
+                            account=equity_account,
+                            tx_type="debit",
+                            amount=abs(adjustment_amount),
+                            description=f"Opening balance adjustment - {self.account_name}",
+                        )
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to create opening balance adjustment entry: {str(e)}")
 
 
 class BankTransaction(models.Model):

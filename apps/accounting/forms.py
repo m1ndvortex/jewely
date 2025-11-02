@@ -1637,10 +1637,17 @@ class BankAccountForm(forms.ModelForm):
 
     def save(self, commit=True):
         """Save bank account with tenant and user information."""
+        from decimal import Decimal
+        from django.db import transaction as db_transaction
+        from django.utils import timezone
+        from django_ledger.models import JournalEntryModel, TransactionModel
+        from apps.accounting.models import JewelryEntity
+        
         instance = super().save(commit=False)
+        is_new = instance._state.adding
 
         # Use _state.adding to check if this is a new instance (UUID PKs are generated immediately)
-        if instance._state.adding:
+        if is_new:
             if self.tenant:
                 instance.tenant = self.tenant
             else:
@@ -1655,7 +1662,63 @@ class BankAccountForm(forms.ModelForm):
             instance.current_balance = instance.opening_balance
 
         if commit:
-            instance.save()
+            with db_transaction.atomic():
+                instance.save()
+                
+                # Create journal entry for opening balance if this is a new account with balance > 0
+                if is_new and instance.opening_balance and instance.opening_balance > Decimal("0.00") and instance.gl_account:
+                    try:
+                        # Get the jewelry entity and ledger
+                        jewelry_entity = JewelryEntity.objects.get(tenant=self.tenant)
+                        entity = jewelry_entity.ledger_entity
+                        ledger = entity.ledgermodel_set.first()
+                        
+                        if ledger:
+                            # Get the owner's equity account (typically 3001)
+                            coa = entity.chartofaccountmodel_set.first()
+                            equity_account = AccountModel.objects.filter(
+                                coa_model=coa,
+                                code="3001"  # Owner's Equity
+                            ).first()
+                            
+                            if equity_account:
+                                # Create journal entry for opening balance
+                                journal_entry = JournalEntryModel.objects.create(
+                                    ledger=ledger,
+                                    description=f"Opening balance for {instance.account_name}",
+                                    timestamp=timezone.now(),
+                                    origin="bank_account_opening",
+                                    activity="op",  # Operating activity
+                                )
+                                
+                                # Debit: Cash account (increase asset)
+                                TransactionModel.objects.create(
+                                    journal_entry=journal_entry,
+                                    account=instance.gl_account,
+                                    tx_type="debit",
+                                    amount=instance.opening_balance,
+                                    description=f"Opening balance - {instance.account_name}",
+                                )
+                                
+                                # Credit: Owner's Equity (source of funds)
+                                TransactionModel.objects.create(
+                                    journal_entry=journal_entry,
+                                    account=equity_account,
+                                    tx_type="credit",
+                                    amount=instance.opening_balance,
+                                    description=f"Opening balance - {instance.account_name}",
+                                )
+                                
+                                # Lock and post the journal entry
+                                journal_entry.locked = True
+                                journal_entry.posted = True
+                                journal_entry.save(update_fields=["locked", "posted"])
+                                
+                    except Exception as e:
+                        # Log the error but don't fail the bank account creation
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Failed to create opening balance journal entry: {e}")
 
         return instance
 
