@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -4515,3 +4516,455 @@ def credit_memo_apply(request, credit_memo_id, invoice_id):
         messages.error(request, f"Failed to apply credit memo: {str(e)}")
 
     return redirect("accounting:invoice_detail", invoice_id=invoice.id)
+
+
+# ============================================================================
+# Bank Account Management Views (Task 4.3)
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def bank_account_list(request):
+    """
+    Display list of bank accounts with filtering and status information.
+
+    Shows current balance, reconciled balance, and unreconciled transactions
+    for each account.
+
+    Implements Requirements: 6.1, 6.3, 6.6, 6.7
+    """
+    from .bank_models import BankAccount
+
+    # Get all bank accounts for tenant
+    bank_accounts = (
+        BankAccount.objects.filter(tenant=request.user.tenant)
+        .select_related("created_by")
+        .order_by("-is_default", "account_name")
+    )
+
+    # Apply filters
+    status_filter = request.GET.get("status", "")
+    account_type_filter = request.GET.get("account_type", "")
+
+    if status_filter == "active":
+        bank_accounts = bank_accounts.filter(is_active=True)
+    elif status_filter == "inactive":
+        bank_accounts = bank_accounts.filter(is_active=False)
+
+    if account_type_filter:
+        bank_accounts = bank_accounts.filter(account_type=account_type_filter)
+
+    # Calculate totals
+    total_balance = sum(account.current_balance for account in bank_accounts)
+    total_reconciled = sum(account.reconciled_balance for account in bank_accounts)
+    total_unreconciled = total_balance - total_reconciled
+
+    # Get account types for filter dropdown
+    account_types = BankAccount.ACCOUNT_TYPE_CHOICES
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_VIEW,
+        severity=AuditLog.SEVERITY_INFO,
+        description=f"Viewed bank accounts list (filters: status={status_filter}, type={account_type_filter})",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    context = {
+        "bank_accounts": bank_accounts,
+        "total_balance": total_balance,
+        "total_reconciled": total_reconciled,
+        "total_unreconciled": total_unreconciled,
+        "status_filter": status_filter,
+        "account_type_filter": account_type_filter,
+        "account_types": account_types,
+        "page_title": "Bank Accounts",
+    }
+
+    return render(request, "accounting/bank_accounts/list.html", context)
+
+
+@login_required
+@tenant_access_required
+def bank_account_create(request):
+    """
+    Create a new bank account.
+
+    Handles form submission and creates bank account with tenant isolation
+    and audit logging.
+
+    Implements Requirements: 6.1, 6.7
+    """
+    from .forms import BankAccountForm
+
+    if request.method == "POST":
+        form = BankAccountForm(request.POST, tenant=request.user.tenant, user=request.user)
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    bank_account = form.save()
+
+                    # Audit logging
+                    from apps.core.audit_models import AuditLog
+
+                    AuditLog.objects.create(
+                        tenant=request.user.tenant,
+                        user=request.user,
+                        category=AuditLog.CATEGORY_DATA,
+                        action=AuditLog.ACTION_CREATE,
+                        severity=AuditLog.SEVERITY_INFO,
+                        description=f"Created bank account: {bank_account.account_name}",
+                        after_value=f"Account: {bank_account.masked_account_number}, Bank: {bank_account.bank_name}, Balance: ${bank_account.current_balance:,.2f}",
+                        ip_address=request.META.get("REMOTE_ADDR"),
+                        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                        request_method=request.method,
+                        request_path=request.path,
+                    )
+
+                    messages.success(
+                        request,
+                        f"Bank account '{bank_account.account_name}' created successfully.",
+                    )
+                    return redirect("accounting:bank_account_detail", account_id=bank_account.id)
+
+            except Exception as e:
+                logger.error(f"Failed to create bank account: {str(e)}")
+                messages.error(request, f"Failed to create bank account: {str(e)}")
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = BankAccountForm(tenant=request.user.tenant, user=request.user)
+
+    context = {
+        "form": form,
+        "page_title": "Create Bank Account",
+    }
+
+    return render(request, "accounting/bank_accounts/form.html", context)
+
+
+@login_required
+@tenant_access_required
+def bank_account_detail(request, account_id):
+    """
+    Display bank account details with transaction history.
+
+    Shows current balance, reconciled balance, unreconciled transactions,
+    and recent transaction history with running balance.
+
+    Implements Requirements: 6.1, 6.3, 6.6, 6.7
+    """
+    from .bank_models import BankAccount, BankTransaction
+
+    # Get bank account with tenant filtering
+    bank_account = get_object_or_404(
+        BankAccount.objects.select_related("created_by"),
+        id=account_id,
+        tenant=request.user.tenant,
+    )
+
+    # Get date range from request or default to current month
+    end_date = date.today()
+    start_date = date(end_date.year, end_date.month, 1)
+
+    if request.GET.get("start_date"):
+        start_date = datetime.strptime(request.GET["start_date"], "%Y-%m-%d").date()
+    if request.GET.get("end_date"):
+        end_date = datetime.strptime(request.GET["end_date"], "%Y-%m-%d").date()
+
+    # Get transactions for this account
+    transactions = (
+        BankTransaction.objects.filter(
+            bank_account=bank_account,
+            transaction_date__gte=start_date,
+            transaction_date__lte=end_date,
+        )
+        .select_related("reconciled_by", "created_by")
+        .order_by("-transaction_date", "-created_at")
+    )
+
+    # Apply reconciliation filter
+    reconciliation_filter = request.GET.get("reconciliation", "")
+    if reconciliation_filter == "reconciled":
+        transactions = transactions.filter(is_reconciled=True)
+    elif reconciliation_filter == "unreconciled":
+        transactions = transactions.filter(is_reconciled=False)
+
+    # Calculate running balance
+    transactions_with_balance = []
+    running_balance = bank_account.current_balance
+
+    for txn in transactions:
+        transactions_with_balance.append(
+            {
+                "transaction": txn,
+                "balance": running_balance,
+            }
+        )
+        # Adjust running balance backwards (since we're going newest to oldest)
+        running_balance -= txn.signed_amount
+
+    # Get reconciliation statistics
+    unreconciled_count = BankTransaction.objects.filter(
+        bank_account=bank_account,
+        is_reconciled=False,
+    ).count()
+
+    unreconciled_amount = sum(
+        txn.signed_amount
+        for txn in BankTransaction.objects.filter(
+            bank_account=bank_account,
+            is_reconciled=False,
+        )
+    )
+
+    # Get recent reconciliations
+    from .bank_models import BankReconciliation
+
+    recent_reconciliations = (
+        BankReconciliation.objects.filter(bank_account=bank_account)
+        .select_related("created_by", "completed_by")
+        .order_by("-reconciliation_date")[:5]
+    )
+
+    # Audit logging
+    from apps.core.audit_models import AuditLog
+
+    AuditLog.objects.create(
+        tenant=request.user.tenant,
+        user=request.user,
+        category=AuditLog.CATEGORY_DATA,
+        action=AuditLog.ACTION_VIEW,
+        severity=AuditLog.SEVERITY_INFO,
+        description=f"Viewed bank account detail: {bank_account.account_name}",
+        ip_address=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        request_method=request.method,
+        request_path=request.path,
+    )
+
+    context = {
+        "bank_account": bank_account,
+        "transactions_with_balance": transactions_with_balance,
+        "unreconciled_count": unreconciled_count,
+        "unreconciled_amount": unreconciled_amount,
+        "recent_reconciliations": recent_reconciliations,
+        "start_date": start_date,
+        "end_date": end_date,
+        "reconciliation_filter": reconciliation_filter,
+        "page_title": f"Bank Account: {bank_account.account_name}",
+    }
+
+    return render(request, "accounting/bank_accounts/detail.html", context)
+
+
+@login_required
+@tenant_access_required
+def bank_account_edit(request, account_id):
+    """
+    Edit an existing bank account.
+
+    Allows updating account details while maintaining audit trail.
+
+    Implements Requirements: 6.1, 6.7
+    """
+    from .bank_models import BankAccount
+    from .forms import BankAccountForm
+
+    # Get bank account with tenant filtering
+    bank_account = get_object_or_404(
+        BankAccount,
+        id=account_id,
+        tenant=request.user.tenant,
+    )
+
+    if request.method == "POST":
+        form = BankAccountForm(
+            request.POST,
+            instance=bank_account,
+            tenant=request.user.tenant,
+            user=request.user,
+        )
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Capture before values for audit
+                    before_values = {
+                        "account_name": bank_account.account_name,
+                        "account_number": bank_account.masked_account_number,
+                        "bank_name": bank_account.bank_name,
+                        "account_type": bank_account.get_account_type_display(),
+                        "is_active": bank_account.is_active,
+                        "is_default": bank_account.is_default,
+                    }
+
+                    bank_account = form.save()
+
+                    # Capture after values for audit
+                    after_values = {
+                        "account_name": bank_account.account_name,
+                        "account_number": bank_account.masked_account_number,
+                        "bank_name": bank_account.bank_name,
+                        "account_type": bank_account.get_account_type_display(),
+                        "is_active": bank_account.is_active,
+                        "is_default": bank_account.is_default,
+                    }
+
+                    # Audit logging
+                    from apps.core.audit_models import AuditLog
+
+                    AuditLog.objects.create(
+                        tenant=request.user.tenant,
+                        user=request.user,
+                        category=AuditLog.CATEGORY_DATA,
+                        action=AuditLog.ACTION_UPDATE,
+                        severity=AuditLog.SEVERITY_INFO,
+                        description=f"Updated bank account: {bank_account.account_name}",
+                        before_value=str(before_values),
+                        after_value=str(after_values),
+                        ip_address=request.META.get("REMOTE_ADDR"),
+                        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                        request_method=request.method,
+                        request_path=request.path,
+                    )
+
+                    messages.success(
+                        request,
+                        f"Bank account '{bank_account.account_name}' updated successfully.",
+                    )
+                    return redirect("accounting:bank_account_detail", account_id=bank_account.id)
+
+            except Exception as e:
+                logger.error(f"Failed to update bank account: {str(e)}")
+                messages.error(request, f"Failed to update bank account: {str(e)}")
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = BankAccountForm(
+            instance=bank_account,
+            tenant=request.user.tenant,
+            user=request.user,
+        )
+
+    context = {
+        "form": form,
+        "bank_account": bank_account,
+        "page_title": f"Edit Bank Account: {bank_account.account_name}",
+    }
+
+    return render(request, "accounting/bank_accounts/form.html", context)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def bank_account_deactivate(request, account_id):
+    """
+    Deactivate a bank account.
+
+    Prevents new transactions but preserves historical data.
+
+    Implements Requirements: 6.7
+    """
+    from .bank_models import BankAccount
+
+    # Get bank account with tenant filtering
+    bank_account = get_object_or_404(
+        BankAccount,
+        id=account_id,
+        tenant=request.user.tenant,
+    )
+
+    try:
+        with transaction.atomic():
+            bank_account.deactivate()
+
+            # Audit logging
+            from apps.core.audit_models import AuditLog
+
+            AuditLog.objects.create(
+                tenant=request.user.tenant,
+                user=request.user,
+                category=AuditLog.CATEGORY_DATA,
+                action=AuditLog.ACTION_UPDATE,
+                severity=AuditLog.SEVERITY_WARNING,
+                description=f"Deactivated bank account: {bank_account.account_name}",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                request_method=request.method,
+                request_path=request.path,
+            )
+
+            messages.success(
+                request,
+                f"Bank account '{bank_account.account_name}' has been deactivated.",
+            )
+
+    except ValidationError as e:
+        messages.error(request, str(e))
+    except Exception as e:
+        logger.error(f"Failed to deactivate bank account: {str(e)}")
+        messages.error(request, f"Failed to deactivate bank account: {str(e)}")
+
+    return redirect("accounting:bank_account_list")
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["POST"])
+def bank_account_set_default(request, account_id):
+    """
+    Set a bank account as the default account for transactions.
+
+    Implements Requirements: 6.1, 6.7
+    """
+    from .bank_models import BankAccount
+
+    # Get bank account with tenant filtering
+    bank_account = get_object_or_404(
+        BankAccount,
+        id=account_id,
+        tenant=request.user.tenant,
+    )
+
+    try:
+        with transaction.atomic():
+            bank_account.set_as_default()
+
+            # Audit logging
+            from apps.core.audit_models import AuditLog
+
+            AuditLog.objects.create(
+                tenant=request.user.tenant,
+                user=request.user,
+                category=AuditLog.CATEGORY_DATA,
+                action=AuditLog.ACTION_UPDATE,
+                severity=AuditLog.SEVERITY_INFO,
+                description=f"Set bank account as default: {bank_account.account_name}",
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                request_method=request.method,
+                request_path=request.path,
+            )
+
+            messages.success(
+                request,
+                f"Bank account '{bank_account.account_name}' is now the default account.",
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to set default bank account: {str(e)}")
+        messages.error(request, f"Failed to set default bank account: {str(e)}")
+
+    return redirect("accounting:bank_account_detail", account_id=bank_account.id)

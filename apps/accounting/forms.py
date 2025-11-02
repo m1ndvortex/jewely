@@ -1378,3 +1378,218 @@ class CreditMemoForm(forms.ModelForm):
             raise ValidationError("Credit amount must be greater than zero.")
 
         return amount
+
+
+# ============================================================================
+# Bank Account Management Forms (Task 4.3)
+# ============================================================================
+
+
+class BankAccountForm(forms.ModelForm):
+    """
+    Form for creating and editing bank accounts.
+
+    Includes account details, bank information, and configuration options.
+
+    Requirements: 6.1, 6.3, 6.6, 6.7
+    """
+
+    account_name = forms.CharField(
+        max_length=100,
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "e.g., Main Checking Account",
+            }
+        ),
+        help_text="Name/description of the bank account",
+    )
+
+    account_number = forms.CharField(
+        max_length=50,
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Last 4 digits recommended for security",
+            }
+        ),
+        help_text="Bank account number (last 4 digits recommended for security)",
+    )
+
+    bank_name = forms.CharField(
+        max_length=100,
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Name of the financial institution",
+            }
+        ),
+        help_text="Name of the financial institution",
+    )
+
+    account_type = forms.ChoiceField(
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Type of bank account",
+    )
+
+    opening_balance = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        required=False,
+        initial=Decimal("0.00"),
+        widget=forms.NumberInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "0.00",
+                "step": "0.01",
+            }
+        ),
+        help_text="Opening balance when account was added to system",
+    )
+
+    routing_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Bank routing number",
+            }
+        ),
+        help_text="Bank routing number (optional)",
+    )
+
+    swift_code = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "SWIFT/BIC code",
+            }
+        ),
+        help_text="SWIFT/BIC code for international transfers (optional)",
+    )
+
+    currency = forms.CharField(
+        max_length=3,
+        required=False,
+        initial="USD",
+        widget=forms.TextInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "USD",
+            }
+        ),
+        help_text="Currency code (ISO 4217)",
+    )
+
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "placeholder": "Internal notes about this bank account...",
+            }
+        ),
+        help_text="Internal notes about this bank account",
+    )
+
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(
+            attrs={
+                "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded",
+            }
+        ),
+        help_text="Whether this account is currently active",
+    )
+
+    is_default = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(
+            attrs={
+                "class": "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded",
+            }
+        ),
+        help_text="Set as default bank account for transactions",
+    )
+
+    class Meta:
+        from .bank_models import BankAccount
+
+        model = BankAccount
+        fields = [
+            "account_name",
+            "account_number",
+            "bank_name",
+            "account_type",
+            "opening_balance",
+            "routing_number",
+            "swift_code",
+            "currency",
+            "notes",
+            "is_active",
+            "is_default",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Set account type choices from model
+        from .bank_models import BankAccount
+
+        self.fields["account_type"].choices = BankAccount.ACCOUNT_TYPE_CHOICES
+
+        # Set initial currency if not provided
+        if not self.instance.pk and "currency" not in self.initial:
+            self.initial["currency"] = "USD"
+
+    def clean(self):
+        """Validate bank account data."""
+        cleaned_data = super().clean()
+        opening_balance = cleaned_data.get("opening_balance")
+
+        # Ensure opening balance is set
+        if opening_balance is None:
+            cleaned_data["opening_balance"] = Decimal("0.00")
+
+        # Set current_balance to opening_balance for new accounts
+        if not self.instance.pk:
+            cleaned_data["current_balance"] = cleaned_data["opening_balance"]
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        """Save bank account with tenant and user information."""
+        instance = super().save(commit=False)
+
+        # Set tenant if creating new account
+        if not instance.pk and self.tenant:
+            instance.tenant = self.tenant
+
+        # Set created_by if creating new account
+        if not instance.pk and self.user:
+            instance.created_by = self.user
+
+        # Set current_balance to opening_balance for new accounts
+        if not instance.pk:
+            instance.current_balance = instance.opening_balance
+
+        if commit:
+            instance.save()
+
+        return instance

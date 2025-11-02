@@ -212,7 +212,7 @@
   - Create and run migrations
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.7_
 
-- [ ] 4.3 Create bank account management (backend)
+- [x] 4.3 Create bank account management (backend)
   - Create BankAccountForm in forms.py
   - Implement bank_account_list, bank_account_create, bank_account_detail views
   - Add tenant filtering and audit logging
