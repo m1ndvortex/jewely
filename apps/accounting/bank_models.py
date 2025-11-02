@@ -434,7 +434,11 @@ class BankTransaction(models.Model):
 
         # Ensure amount is positive
         if self.amount and self.amount < 0:
-            raise ValidationError({"amount": "Amount must be positive. Use transaction_type to indicate debit/credit."})
+            raise ValidationError(
+                {
+                    "amount": "Amount must be positive. Use transaction_type to indicate debit/credit."
+                }
+            )
 
         # Ensure tenant matches bank account tenant
         if self.bank_account and self.bank_account.tenant != self.tenant:
@@ -459,7 +463,15 @@ class BankTransaction(models.Model):
         self.reconciled_date = timezone.now().date()
         self.reconciled_by = user
         self.reconciliation = reconciliation
-        self.save(update_fields=["is_reconciled", "reconciled_date", "reconciled_by", "reconciliation", "updated_at"])
+        self.save(
+            update_fields=[
+                "is_reconciled",
+                "reconciled_date",
+                "reconciled_by",
+                "reconciliation",
+                "updated_at",
+            ]
+        )
 
     def unreconcile(self, reason, user):
         """
@@ -473,8 +485,19 @@ class BankTransaction(models.Model):
         self.reconciled_date = None
         self.reconciled_by = None
         self.reconciliation = None
-        self.unreconcile_reason = f"{timezone.now()}: {user.get_full_name() or user.username} - {reason}"
-        self.save(update_fields=["is_reconciled", "reconciled_date", "reconciled_by", "reconciliation", "unreconcile_reason", "updated_at"])
+        self.unreconcile_reason = (
+            f"{timezone.now()}: {user.get_full_name() or user.username} - {reason}"
+        )
+        self.save(
+            update_fields=[
+                "is_reconciled",
+                "reconciled_date",
+                "reconciled_by",
+                "reconciliation",
+                "unreconcile_reason",
+                "updated_at",
+            ]
+        )
 
     def match_journal_entry(self, journal_entry):
         """
@@ -700,10 +723,7 @@ class BankReconciliation(models.Model):
         self.completed_by = user
 
         # Update bank account reconciled balance
-        self.bank_account.mark_reconciled(
-            self.statement_ending_balance,
-            self.reconciliation_date
-        )
+        self.bank_account.mark_reconciled(self.statement_ending_balance, self.reconciliation_date)
 
         self.save(update_fields=["status", "completed_date", "completed_by", "updated_at"])
 
@@ -719,7 +739,9 @@ class BankReconciliation(models.Model):
 
         self.status = "CANCELLED"
         if reason:
-            self.notes = f"{self.notes}\n\nCancelled: {reason}" if self.notes else f"Cancelled: {reason}"
+            self.notes = (
+                f"{self.notes}\n\nCancelled: {reason}" if self.notes else f"Cancelled: {reason}"
+            )
 
         # Unreconcile all transactions
         self.transactions.filter(is_reconciled=True).update(
@@ -931,7 +953,9 @@ class BankStatementImport(models.Model):
             self.error_message = error_message
 
         self.processing_completed_at = timezone.now()
-        self.save(update_fields=["status", "error_message", "processing_completed_at", "updated_at"])
+        self.save(
+            update_fields=["status", "error_message", "processing_completed_at", "updated_at"]
+        )
 
     @property
     def processing_duration(self):

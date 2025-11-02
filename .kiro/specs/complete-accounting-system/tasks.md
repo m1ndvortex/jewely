@@ -218,7 +218,7 @@
   - Add tenant filtering and audit logging
   - _Requirements: 6.1, 6.3, 6.6, 6.7_
 
-- [ ] 4.4 Create bank account management templates (frontend)
+- [-] 4.4 Create bank account management templates (frontend)
   - Create templates/accounting/bank_accounts/ directory
   - Create list.html, form.html, detail.html templates
   - Display current balance, reconciled balance, unreconciled transactions

@@ -125,4 +125,25 @@ urlpatterns = [
         views.credit_memo_apply,
         name="credit_memo_apply",
     ),
+    # Bank Account Management Views (Task 4.4)
+    path("bank-accounts/", views.bank_account_list, name="bank_account_list"),
+    path("bank-accounts/create/", views.bank_account_create, name="bank_account_create"),
+    path("bank-accounts/<uuid:account_id>/", views.bank_account_detail, name="bank_account_detail"),
+    path("bank-accounts/<uuid:account_id>/edit/", views.bank_account_edit, name="bank_account_edit"),
+    path(
+        "bank-accounts/<uuid:account_id>/set-default/",
+        views.bank_account_set_default,
+        name="bank_account_set_default",
+    ),
+    # Bank Reconciliation Views (placeholders for future tasks)
+    path(
+        "bank-accounts/<uuid:account_id>/reconcile/",
+        views.bank_reconciliation,
+        name="bank_reconciliation_start",
+    ),
+    path(
+        "bank-accounts/<uuid:account_id>/import-statement/",
+        views.bank_reconciliation,
+        name="bank_statement_import",
+    ),
 ]

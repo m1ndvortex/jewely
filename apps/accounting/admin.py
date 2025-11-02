@@ -4,12 +4,7 @@ Admin configuration for accounting models.
 
 from django.contrib import admin
 
-from .bank_models import (
-    BankAccount,
-    BankReconciliation,
-    BankStatementImport,
-    BankTransaction,
-)
+from .bank_models import BankAccount, BankReconciliation, BankStatementImport, BankTransaction
 from .bill_models import Bill, BillLine, BillPayment
 
 
@@ -276,7 +271,6 @@ class BankAccountAdmin(admin.ModelAdmin):
 
     needs_reconciliation.boolean = True
     needs_reconciliation.short_description = "Needs Reconciliation"
-
 
 
 @admin.register(BankTransaction)
