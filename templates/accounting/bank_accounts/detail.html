@@ -134,6 +134,38 @@
                             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Account Type" %}</dt>
                             <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ bank_account.get_account_type_display }}</dd>
                         </div>
+                        {% if bank_account.gl_account %}
+                        <div class="bg-blue-50 dark:bg-blue-900 p-3 rounded-lg">
+                            <dt class="text-sm font-medium text-blue-700 dark:text-blue-300 flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                {% trans "Linked GL Account" %}
+                            </dt>
+                            <dd class="mt-2 text-sm text-blue-900 dark:text-blue-100 font-medium">
+                                {{ bank_account.gl_account.code }} - {{ bank_account.gl_account.name }}
+                            </dd>
+                            <dd class="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                                <a href="{% url 'accounting:chart_of_accounts' %}" class="hover:underline">
+                                    {% trans "View in Chart of Accounts" %} →
+                                </a>
+                            </dd>
+                        </div>
+                        {% else %}
+                        <div class="bg-yellow-50 dark:bg-yellow-900 p-3 rounded-lg">
+                            <dt class="text-sm font-medium text-yellow-700 dark:text-yellow-300">
+                                {% trans "GL Account" %}
+                            </dt>
+                            <dd class="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+                                {% trans "Not linked to Chart of Accounts" %}
+                            </dd>
+                            <dd class="mt-2">
+                                <a href="{% url 'accounting:bank_account_edit' bank_account.id %}" class="text-xs text-yellow-700 dark:text-yellow-300 hover:underline font-medium">
+                                    {% trans "Link to GL Account" %} →
+                                </a>
+                            </dd>
+                        </div>
+                        {% endif %}
                         {% if bank_account.routing_number %}
                         <div>
                             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Routing Number" %}</dt>

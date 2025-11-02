@@ -5153,9 +5153,7 @@ def bank_reconciliation_complete(request, pk):
         )
 
         if reconciliation.is_balanced:
-            messages.success(
-                request, "Reconciliation completed successfully. Account is balanced."
-            )
+            messages.success(request, "Reconciliation completed successfully. Account is balanced.")
         else:
             messages.warning(
                 request,

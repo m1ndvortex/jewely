@@ -87,3 +87,6 @@ django-rosetta==0.10.0
 
 # Persian Calendar & Date Formatting
 jdatetime==5.0.0
+
+# Form Widgets
+django-widget-tweaks==1.5.0

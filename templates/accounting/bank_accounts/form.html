@@ -112,6 +112,26 @@
                             {% endif %}
                         </div>
 
+                        <!-- GL Account (Chart of Accounts) -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.gl_account.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {% trans "GL Account (Chart of Accounts)" %}
+                                <span class="ml-2 text-xs text-blue-600 dark:text-blue-400">{% trans "Recommended" %}</span>
+                            </label>
+                            {% render_field form.gl_account class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" %}
+                            {% if form.gl_account.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.gl_account.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {% trans "Link this bank account to a General Ledger account from your Chart of Accounts. This connects your physical bank account to your accounting records." %}
+                            </p>
+                            <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                                <a href="{% url 'accounting:chart_of_accounts' %}" target="_blank" class="hover:underline">
+                                    {% trans "View Chart of Accounts" %} →
+                                </a>
+                            </p>
+                        </div>
+
                         <!-- Account Number -->
                         <div>
                             <label for="{{ form.account_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

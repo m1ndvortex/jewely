@@ -131,6 +131,16 @@ class BankAccount(models.Model):
         help_text="Linked django-ledger bank account",
     )
 
+    # Direct link to GL Account (Chart of Accounts)
+    gl_account = models.ForeignKey(
+        "django_ledger.AccountModel",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bank_accounts",
+        help_text="General Ledger account this bank account represents (e.g., 1001 - Cash)",
+    )
+
     # Additional Information
     routing_number = models.CharField(
         max_length=20,

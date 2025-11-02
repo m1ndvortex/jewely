@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "hijack.contrib.admin",
     "waffle",
     "rosetta",  # Translation management interface
+    "widget_tweaks",  # Form widget styling
     # Local apps
     "apps.core",
     "apps.inventory",
