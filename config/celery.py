@@ -35,13 +35,12 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=3, minute=0, day_of_week=0),  # Sunday = 0
         "options": {"queue": "backups", "priority": 9},
     },
-    # Continuous WAL archiving every 5 minutes for PITR
-    # TEMPORARILY DISABLED - Permission issues with WAL archive volume
-    # "continuous-wal-archiving": {
-    #     "task": "apps.backups.tasks.continuous_wal_archiving",
-    #     "schedule": 300.0,  # Every 5 minutes (300 seconds)
-    #     "options": {"queue": "backups", "priority": 10},
-    # },
+    # Continuous WAL archiving - interval controlled by BackupConfiguration model
+    "continuous-wal-archiving": {
+        "task": "apps.backups.tasks.continuous_wal_archiving",
+        "schedule": 3600.0,  # Default: Every 1 hour (3600 seconds), adjustable via admin UI
+        "options": {"queue": "backups", "priority": 10},
+    },
     # Fetch gold rates every 5 minutes
     "fetch-gold-rates": {
         "task": "apps.pricing.tasks.fetch_gold_rates",

@@ -309,11 +309,22 @@ def daily_full_database_backup(self, initiated_by_user_id: Optional[int] = None)
     Returns:
         Backup ID if successful, None otherwise
     """
-    start_time = timezone.now()
-    backup = None
-    temp_files = []
+    from django_redis import get_redis_connection
+
+    # Check if this task is already running (prevent duplicate execution)
+    redis_conn = get_redis_connection("default")
+    task_lock_key = f"backup:daily_full_database_backup:lock:{self.request.id}"
+
+    # Try to acquire lock with 2-hour expiration
+    if not redis_conn.set(task_lock_key, "1", ex=7200, nx=True):
+        logger.warning(f"Daily backup task {self.request.id} already running, skipping duplicate execution")
+        return None
 
     try:
+        start_time = timezone.now()
+        backup = None
+        temp_files = []
+
         logger.info("=" * 80)
         logger.info("Starting daily full database backup")
         logger.info("=" * 80)
@@ -475,6 +486,13 @@ def daily_full_database_backup(self, initiated_by_user_id: Optional[int] = None)
     finally:
         # Clean up temporary files (if they weren't in a temp directory)
         cleanup_temp_files(*temp_files)
+
+        # Release task lock
+        try:
+            redis_conn.delete(task_lock_key)
+            logger.debug(f"Released task lock for {self.request.id}")
+        except Exception as lock_error:
+            logger.warning(f"Failed to release task lock: {lock_error}")
 
 
 def create_tenant_pg_dump(
@@ -659,234 +677,275 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
     Returns:
         List of backup IDs if successful, None otherwise
     """
+    from django_redis import get_redis_connection
+
     from apps.core.models import Tenant
     from apps.core.tenant_context import bypass_rls
 
-    start_time = timezone.now()
-    backup_ids = []
+    # Check if this task is already running (prevent duplicate execution)
+    redis_conn = get_redis_connection("default")
+    task_lock_key = f"backup:weekly_tenant_backup:lock:{task_self.request.id}"
+
+    # Try to acquire lock with 30-minute expiration
+    if not redis_conn.set(task_lock_key, "1", ex=1800, nx=True):
+        logger.warning(f"Tenant backup task {task_self.request.id} already running, skipping duplicate execution")
+        return None
 
     try:
-        logger.info("=" * 80)
-        logger.info("Starting weekly per-tenant backup")
-        logger.info("=" * 80)
+        start_time = timezone.now()
+        backup_ids = []
 
-        # Get database configuration
-        db_config = get_database_config()
+        try:
+            logger.info("=" * 80)
+            logger.info("Starting weekly per-tenant backup")
+            logger.info("=" * 80)
 
-        # Query tenants with RLS bypass (platform-level backup operation)
-        with bypass_rls():
-            # Determine which tenants to backup
-            if tenant_id:
-                # Backup specific tenant
-                tenants = list(Tenant.objects.filter(id=tenant_id, status=Tenant.ACTIVE))
-                if not tenants:
-                    raise Exception(f"Tenant {tenant_id} not found or not active")
-            else:
-                # Backup all active tenants
-                tenants = list(Tenant.objects.filter(status=Tenant.ACTIVE))
+            # Get database configuration
+            db_config = get_database_config()
 
-        tenant_count = len(tenants)
-        logger.info(f"Backing up {tenant_count} tenant(s)")
+            # Query tenants with RLS bypass (platform-level backup operation)
+            with bypass_rls():
+                # Determine which tenants to backup
+                if tenant_id:
+                    # Backup specific tenant
+                    tenants = list(Tenant.objects.filter(id=tenant_id, status=Tenant.ACTIVE))
+                    if not tenants:
+                        raise Exception(f"Tenant {tenant_id} not found or not active")
+                else:
+                    # Backup all active tenants
+                    tenants = list(Tenant.objects.filter(status=Tenant.ACTIVE))
 
-        # Process each tenant
-        for index, tenant in enumerate(tenants, 1):
+            tenant_count = len(tenants)
+            logger.info(f"Backing up {tenant_count} tenant(s)")
+
+            # Process each tenant
+            for index, tenant in enumerate(tenants, 1):
+                # Check if backup is already in progress for this tenant
+                tenant_lock_key = f"backup:tenant:{tenant.id}:in_progress"
+
+                # Try to acquire tenant-specific lock with 20-minute expiration
+                if not redis_conn.set(tenant_lock_key, task_self.request.id, ex=1200, nx=True):
+                    existing_task_id = redis_conn.get(tenant_lock_key)
+                    if existing_task_id:
+                        existing_task_id = existing_task_id.decode('utf-8')
+                    logger.warning(
+                        f"Backup already in progress for tenant {tenant.company_name} ({tenant.id}) "
+                        f"by task {existing_task_id}, skipping"
+                    )
+                    continue
+
+                try:
+                    logger.info(
+                        f"Processing tenant {index}/{tenant_count}: {tenant.company_name} ({tenant.id})"
+                    )
+
+                    backup = None
+                    temp_files = []
+
+                    # Generate filename with tenant ID
+                    filename = generate_backup_filename("TENANT_BACKUP", str(tenant.id))
+                    remote_filename = f"{filename}.gz.enc"
+
+                    # Create backup record (platform-level operation)
+                    with bypass_rls():
+                        backup = Backup.objects.create(
+                            backup_type=Backup.TENANT_BACKUP,
+                            tenant=tenant,
+                            filename=remote_filename,
+                            size_bytes=0,  # Will be updated later
+                            checksum="",  # Will be updated later
+                            local_path="",
+                            r2_path="",
+                            b2_path="",
+                            status=Backup.IN_PROGRESS,
+                            backup_job_id=task_self.request.id,
+                            created_by_id=initiated_by_user_id,
+                        )
+
+                    logger.info(f"Created backup record: {backup.id}")
+
+                    # Step 1: Create tenant-specific pg_dump in a temporary directory
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        dump_path = os.path.join(temp_dir, filename)
+                        temp_files.append(dump_path)
+
+                        logger.info(f"Creating tenant-specific pg_dump: {dump_path}")
+
+                        success, error_msg = create_tenant_pg_dump(
+                            output_path=dump_path,
+                            tenant_id=str(tenant.id),
+                            database=db_config["name"],
+                            user=db_config["user"],
+                            password=db_config["password"],
+                            host=db_config["host"],
+                            port=db_config["port"],
+                        )
+
+                        if not success:
+                            raise Exception(f"Tenant pg_dump failed: {error_msg}")
+
+                        # Get original dump size
+                        original_size = Path(dump_path).stat().st_size
+                        logger.info(f"Tenant pg_dump size: {original_size / (1024**2):.2f} MB")
+
+                        # Step 2: Compress and encrypt
+                        logger.info("Compressing and encrypting tenant backup...")
+
+                        encrypted_path, checksum, _, final_size = compress_and_encrypt_file(
+                            input_path=dump_path,
+                            output_path=os.path.join(temp_dir, remote_filename),
+                        )
+                        temp_files.append(encrypted_path)
+
+                        # Calculate compression ratio
+                        compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
+
+                        logger.info(f"Compressed and encrypted size: {final_size / (1024**2):.2f} MB")
+                        logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
+                        logger.info(f"Checksum: {checksum}")
+
+                        # Step 3: Upload to all storage locations
+                        logger.info("Uploading to all storage locations...")
+
+                        all_succeeded, storage_paths = upload_to_all_storages(
+                            encrypted_path, remote_filename
+                        )
+
+                        # For production, we require all three storage locations
+                        # For testing/development, we require at least local storage
+                        if not storage_paths["local"]:
+                            raise Exception("Failed to upload to local storage (minimum requirement)")
+
+                        if not all_succeeded:
+                            logger.warning(
+                                "Not all storage locations succeeded, but local storage is available"
+                            )
+
+                        # Step 4: Update backup record
+                        with bypass_rls():
+                            backup.size_bytes = final_size
+                            backup.checksum = checksum
+                            backup.local_path = storage_paths["local"] or ""
+                            backup.r2_path = storage_paths["r2"] or ""
+                            backup.b2_path = storage_paths["b2"] or ""
+                            backup.status = Backup.COMPLETED
+                            backup.compression_ratio = compression_ratio
+                            backup.backup_duration_seconds = int(
+                                (timezone.now() - start_time).total_seconds()
+                            )
+                            backup.metadata = {
+                                "tenant_id": str(tenant.id),
+                                "tenant_name": tenant.company_name,
+                                "database": db_config["name"],
+                                "original_size_bytes": original_size,
+                                "compressed_size_bytes": final_size,
+                                "pg_dump_format": "custom",
+                                "backup_scope": "tenant_specific",
+                            }
+                            backup.save()
+
+                        logger.info(f"Tenant backup completed successfully: {backup.id}")
+                        logger.info(f"Duration: {backup.backup_duration_seconds} seconds")
+
+                        # Step 5: Verify backup integrity
+                        logger.info("Verifying backup integrity across all storage locations...")
+
+                        verification_result = verify_backup_integrity(
+                            file_path=remote_filename, expected_checksum=checksum
+                        )
+
+                        if verification_result["valid"]:
+                            with bypass_rls():
+                                backup.status = Backup.VERIFIED
+                                backup.verified_at = timezone.now()
+                                backup.save()
+                            logger.info("Backup integrity verified successfully")
+                        else:
+                            logger.warning(
+                                f"Backup integrity verification failed: {verification_result['errors']}"
+                            )
+                            create_backup_alert(
+                                alert_type=BackupAlert.INTEGRITY_FAILURE,
+                                severity=BackupAlert.WARNING,
+                                message=f"Tenant backup integrity verification failed for {tenant.company_name}",
+                                backup=backup,
+                                details=verification_result,
+                            )
+
+                        backup_ids.append(str(backup.id))
+
+                except Exception as e:
+                    logger.error(
+                        f"Tenant backup failed for {tenant.company_name} ({tenant.id}): {e}",
+                        exc_info=True,
+                    )
+
+                    # Update backup record to failed status
+                    if backup:
+                        with bypass_rls():
+                            backup.status = Backup.FAILED
+                            backup.notes = f"Error: {str(e)}"
+                            backup.backup_duration_seconds = int(
+                                (timezone.now() - start_time).total_seconds()
+                            )
+                            backup.save()
+
+                    # Create alert
+                    create_backup_alert(
+                        alert_type=BackupAlert.BACKUP_FAILURE,
+                        severity=BackupAlert.ERROR,
+                        message=f"Weekly tenant backup failed for {tenant.company_name}: {str(e)}",
+                        backup=backup,
+                        details={
+                            "error": str(e),
+                            "tenant_id": str(tenant.id),
+                            "task_id": task_self.request.id,
+                        },
+                    )
+
+                    # Continue with next tenant instead of failing entire task
+                    continue
+
+                finally:
+                    # Clean up temporary files
+                    cleanup_temp_files(*temp_files)
+
+                    # Release tenant-specific lock
+                    try:
+                        redis_conn.delete(tenant_lock_key)
+                        logger.debug(f"Released lock for tenant {tenant.id}")
+                    except Exception as lock_error:
+                        logger.warning(f"Failed to release tenant lock: {lock_error}")
+
+            logger.info("=" * 80)
             logger.info(
-                f"Processing tenant {index}/{tenant_count}: {tenant.company_name} ({tenant.id})"
+                f"Weekly per-tenant backup completed: {len(backup_ids)}/{tenant_count} successful"
+            )
+            logger.info("=" * 80)
+
+            return backup_ids
+
+        except Exception as e:
+            logger.error(f"Weekly per-tenant backup task failed: {e}", exc_info=True)
+
+            # Create alert for overall task failure
+            create_backup_alert(
+                alert_type=BackupAlert.BACKUP_FAILURE,
+                severity=BackupAlert.CRITICAL,
+                message=f"Weekly per-tenant backup task failed: {str(e)}",
+                details={"error": str(e), "task_id": task_self.request.id},
             )
 
-            backup = None
-            temp_files = []
+            # Re-raise exception for Celery retry handling
+            raise e
 
-            try:
-                # Generate filename with tenant ID
-                filename = generate_backup_filename("TENANT_BACKUP", str(tenant.id))
-                remote_filename = f"{filename}.gz.enc"
-
-                # Create backup record (platform-level operation)
-                with bypass_rls():
-                    backup = Backup.objects.create(
-                        backup_type=Backup.TENANT_BACKUP,
-                        tenant=tenant,
-                        filename=remote_filename,
-                        size_bytes=0,  # Will be updated later
-                        checksum="",  # Will be updated later
-                        local_path="",
-                        r2_path="",
-                        b2_path="",
-                        status=Backup.IN_PROGRESS,
-                        backup_job_id=task_self.request.id,
-                        created_by_id=initiated_by_user_id,
-                    )
-
-                logger.info(f"Created backup record: {backup.id}")
-
-                # Step 1: Create tenant-specific pg_dump in a temporary directory
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    dump_path = os.path.join(temp_dir, filename)
-                    temp_files.append(dump_path)
-
-                    logger.info(f"Creating tenant-specific pg_dump: {dump_path}")
-
-                    success, error_msg = create_tenant_pg_dump(
-                        output_path=dump_path,
-                        tenant_id=str(tenant.id),
-                        database=db_config["name"],
-                        user=db_config["user"],
-                        password=db_config["password"],
-                        host=db_config["host"],
-                        port=db_config["port"],
-                    )
-
-                    if not success:
-                        raise Exception(f"Tenant pg_dump failed: {error_msg}")
-
-                    # Get original dump size
-                    original_size = Path(dump_path).stat().st_size
-                    logger.info(f"Tenant pg_dump size: {original_size / (1024**2):.2f} MB")
-
-                    # Step 2: Compress and encrypt
-                    logger.info("Compressing and encrypting tenant backup...")
-
-                    encrypted_path, checksum, _, final_size = compress_and_encrypt_file(
-                        input_path=dump_path,
-                        output_path=os.path.join(temp_dir, remote_filename),
-                    )
-                    temp_files.append(encrypted_path)
-
-                    # Calculate compression ratio
-                    compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
-
-                    logger.info(f"Compressed and encrypted size: {final_size / (1024**2):.2f} MB")
-                    logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
-                    logger.info(f"Checksum: {checksum}")
-
-                    # Step 3: Upload to all storage locations
-                    logger.info("Uploading to all storage locations...")
-
-                    all_succeeded, storage_paths = upload_to_all_storages(
-                        encrypted_path, remote_filename
-                    )
-
-                    # For production, we require all three storage locations
-                    # For testing/development, we require at least local storage
-                    if not storage_paths["local"]:
-                        raise Exception("Failed to upload to local storage (minimum requirement)")
-
-                    if not all_succeeded:
-                        logger.warning(
-                            "Not all storage locations succeeded, but local storage is available"
-                        )
-
-                    # Step 4: Update backup record
-                    with bypass_rls():
-                        backup.size_bytes = final_size
-                        backup.checksum = checksum
-                        backup.local_path = storage_paths["local"] or ""
-                        backup.r2_path = storage_paths["r2"] or ""
-                        backup.b2_path = storage_paths["b2"] or ""
-                        backup.status = Backup.COMPLETED
-                        backup.compression_ratio = compression_ratio
-                        backup.backup_duration_seconds = int(
-                            (timezone.now() - start_time).total_seconds()
-                        )
-                        backup.metadata = {
-                            "tenant_id": str(tenant.id),
-                            "tenant_name": tenant.company_name,
-                            "database": db_config["name"],
-                            "original_size_bytes": original_size,
-                            "compressed_size_bytes": final_size,
-                            "pg_dump_format": "custom",
-                            "backup_scope": "tenant_specific",
-                        }
-                        backup.save()
-
-                    logger.info(f"Tenant backup completed successfully: {backup.id}")
-                    logger.info(f"Duration: {backup.backup_duration_seconds} seconds")
-
-                    # Step 5: Verify backup integrity
-                    logger.info("Verifying backup integrity across all storage locations...")
-
-                    verification_result = verify_backup_integrity(
-                        file_path=remote_filename, expected_checksum=checksum
-                    )
-
-                    if verification_result["valid"]:
-                        with bypass_rls():
-                            backup.status = Backup.VERIFIED
-                            backup.verified_at = timezone.now()
-                            backup.save()
-                        logger.info("Backup integrity verified successfully")
-                    else:
-                        logger.warning(
-                            f"Backup integrity verification failed: {verification_result['errors']}"
-                        )
-                        create_backup_alert(
-                            alert_type=BackupAlert.INTEGRITY_FAILURE,
-                            severity=BackupAlert.WARNING,
-                            message=f"Tenant backup integrity verification failed for {tenant.company_name}",
-                            backup=backup,
-                            details=verification_result,
-                        )
-
-                    backup_ids.append(str(backup.id))
-
-            except Exception as e:
-                logger.error(
-                    f"Tenant backup failed for {tenant.company_name} ({tenant.id}): {e}",
-                    exc_info=True,
-                )
-
-                # Update backup record to failed status
-                if backup:
-                    with bypass_rls():
-                        backup.status = Backup.FAILED
-                        backup.notes = f"Error: {str(e)}"
-                        backup.backup_duration_seconds = int(
-                            (timezone.now() - start_time).total_seconds()
-                        )
-                        backup.save()
-
-                # Create alert
-                create_backup_alert(
-                    alert_type=BackupAlert.BACKUP_FAILURE,
-                    severity=BackupAlert.ERROR,
-                    message=f"Weekly tenant backup failed for {tenant.company_name}: {str(e)}",
-                    backup=backup,
-                    details={
-                        "error": str(e),
-                        "tenant_id": str(tenant.id),
-                        "task_id": task_self.request.id,
-                    },
-                )
-
-                # Continue with next tenant instead of failing entire task
-                continue
-
-            finally:
-                # Clean up temporary files
-                cleanup_temp_files(*temp_files)
-
-        logger.info("=" * 80)
-        logger.info(
-            f"Weekly per-tenant backup completed: {len(backup_ids)}/{tenant_count} successful"
-        )
-        logger.info("=" * 80)
-
-        return backup_ids
-
-    except Exception as e:
-        logger.error(f"Weekly per-tenant backup task failed: {e}", exc_info=True)
-
-        # Create alert for overall task failure
-        create_backup_alert(
-            alert_type=BackupAlert.BACKUP_FAILURE,
-            severity=BackupAlert.CRITICAL,
-            message=f"Weekly per-tenant backup task failed: {str(e)}",
-            details={"error": str(e), "task_id": task_self.request.id},
-        )
-
-        # Re-raise exception for Celery retry handling
-        raise e
+    finally:
+        # Release task-level lock
+        try:
+            redis_conn.delete(task_lock_key)
+            logger.debug(f"Released task lock for {task_self.request.id}")
+        except Exception as lock_error:
+            logger.warning(f"Failed to release task lock: {lock_error}")
 
 
 @shared_task(
@@ -1002,103 +1061,103 @@ def continuous_wal_archiving(self):  # noqa: C901
                 original_size = wal_file_path.stat().st_size
                 logger.info(f"WAL file size: {original_size / (1024**2):.2f} MB")
 
-                # Step 1: Compress WAL file in a temporary directory
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    compressed_path = os.path.join(temp_dir, remote_filename)
-                    temp_files.append(compressed_path)
+                # Step 1: Compress WAL file and keep it locally (save space)
+                compressed_local_path = str(wal_file_path) + ".gz"
 
-                    logger.info("Compressing WAL file...")
+                logger.info("Compressing WAL file...")
 
-                    # Import compression function
-                    from .encryption import compress_file
+                # Import compression function
+                from .encryption import compress_file
 
-                    compressed_path, checksum, final_size = compress_file(
-                        input_path=str(wal_file_path), output_path=compressed_path
+                compressed_path, checksum, final_size = compress_file(
+                    input_path=str(wal_file_path), output_path=compressed_local_path
+                )
+
+                # Calculate compression ratio
+                compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
+
+                logger.info(f"Compressed size: {final_size / (1024**2):.2f} MB")
+                logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
+                logger.info(f"Checksum: {checksum}")
+
+                # Step 2: Upload to R2 and B2 (also keep compressed file locally)
+                logger.info("Uploading to cloud storage (R2 and B2)...")
+
+                storage_paths = {"local": f"{remote_filename}", "r2": None, "b2": None}
+
+                # Upload to Cloudflare R2
+                try:
+                    r2_storage = get_storage_backend("r2")
+                    # Use a subdirectory for WAL files
+                    r2_remote_path = f"wal/{remote_filename}"
+                    if r2_storage.upload(compressed_local_path, r2_remote_path):
+                        storage_paths["r2"] = r2_remote_path
+                        logger.info(f"Uploaded to Cloudflare R2: {r2_remote_path}")
+                    else:
+                        logger.error(f"Failed to upload to Cloudflare R2: {r2_remote_path}")
+                except Exception as e:
+                    logger.error(f"Error uploading to Cloudflare R2: {e}")
+
+                # Upload to Backblaze B2
+                try:
+                    b2_storage = get_storage_backend("b2")
+                    # Use a subdirectory for WAL files
+                    b2_remote_path = f"wal/{remote_filename}"
+                    if b2_storage.upload(compressed_local_path, b2_remote_path):
+                        storage_paths["b2"] = b2_remote_path
+                        logger.info(f"Uploaded to Backblaze B2: {b2_remote_path}")
+                    else:
+                        logger.error(f"Failed to upload to Backblaze B2: {b2_remote_path}")
+                except Exception as e:
+                    logger.error(f"Error uploading to Backblaze B2: {e}")
+
+                # Require at least one cloud storage location
+                if not storage_paths["r2"] and not storage_paths["b2"]:
+                    raise Exception("Failed to upload to any cloud storage location")
+
+                # Step 3: Update backup record
+                with bypass_rls():
+                    backup.size_bytes = final_size
+                    backup.checksum = checksum
+                    backup.local_path = storage_paths["local"]  # Keep compressed locally
+                    backup.r2_path = storage_paths["r2"] or ""
+                    backup.b2_path = storage_paths["b2"] or ""
+                    backup.status = Backup.COMPLETED
+                    backup.compression_ratio = compression_ratio
+                    backup.backup_duration_seconds = int(
+                        (timezone.now() - start_time).total_seconds()
                     )
+                    backup.metadata = {
+                        "wal_filename": wal_filename,
+                        "original_size_bytes": original_size,
+                        "compressed_size_bytes": final_size,
+                        "pg_wal_archive_dir": pg_wal_archive_dir,
+                        "kept_compressed_locally": True,
+                    }
+                    backup.save()
 
-                    # Calculate compression ratio
-                    compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
+                logger.info(f"WAL file archived successfully: {backup.id}")
 
-                    logger.info(f"Compressed size: {final_size / (1024**2):.2f} MB")
-                    logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
-                    logger.info(f"Checksum: {checksum}")
+                # Step 4: Remove UNCOMPRESSED WAL file (keep .gz compressed version)
+                # This saves ~94% disk space (16MB uncompressed -> 1MB compressed)
+                try:
+                    wal_file_path.unlink()
+                    logger.info(f"Removed uncompressed WAL: {wal_filename}")
+                    logger.info(f"Kept compressed file: {compressed_local_path} ({final_size / (1024**2):.2f} MB)")
+                except Exception as e:
+                    logger.warning(f"Failed to remove uncompressed WAL {wal_filename}: {e}")
+                    # This is not critical - PostgreSQL will handle cleanup
 
-                    # Step 2: Upload to R2 and B2 (skip local storage for WAL files)
-                    logger.info("Uploading to cloud storage (R2 and B2)...")
+                # Mark as verified
+                with bypass_rls():
+                    backup.status = Backup.VERIFIED
+                    backup.verified_at = timezone.now()
+                    backup.save()
 
-                    storage_paths = {"local": "", "r2": None, "b2": None}
-
-                    # Upload to Cloudflare R2
-                    try:
-                        r2_storage = get_storage_backend("r2")
-                        # Use a subdirectory for WAL files
-                        r2_remote_path = f"wal/{remote_filename}"
-                        if r2_storage.upload(compressed_path, r2_remote_path):
-                            storage_paths["r2"] = r2_remote_path
-                            logger.info(f"Uploaded to Cloudflare R2: {r2_remote_path}")
-                        else:
-                            logger.error(f"Failed to upload to Cloudflare R2: {r2_remote_path}")
-                    except Exception as e:
-                        logger.error(f"Error uploading to Cloudflare R2: {e}")
-
-                    # Upload to Backblaze B2
-                    try:
-                        b2_storage = get_storage_backend("b2")
-                        # Use a subdirectory for WAL files
-                        b2_remote_path = f"wal/{remote_filename}"
-                        if b2_storage.upload(compressed_path, b2_remote_path):
-                            storage_paths["b2"] = b2_remote_path
-                            logger.info(f"Uploaded to Backblaze B2: {b2_remote_path}")
-                        else:
-                            logger.error(f"Failed to upload to Backblaze B2: {b2_remote_path}")
-                    except Exception as e:
-                        logger.error(f"Error uploading to Backblaze B2: {e}")
-
-                    # Require at least one cloud storage location
-                    if not storage_paths["r2"] and not storage_paths["b2"]:
-                        raise Exception("Failed to upload to any cloud storage location")
-
-                    # Step 3: Update backup record
-                    with bypass_rls():
-                        backup.size_bytes = final_size
-                        backup.checksum = checksum
-                        backup.local_path = ""  # WAL files skip local storage
-                        backup.r2_path = storage_paths["r2"] or ""
-                        backup.b2_path = storage_paths["b2"] or ""
-                        backup.status = Backup.COMPLETED
-                        backup.compression_ratio = compression_ratio
-                        backup.backup_duration_seconds = int(
-                            (timezone.now() - start_time).total_seconds()
-                        )
-                        backup.metadata = {
-                            "wal_filename": wal_filename,
-                            "original_size_bytes": original_size,
-                            "compressed_size_bytes": final_size,
-                            "pg_wal_archive_dir": pg_wal_archive_dir,
-                        }
-                        backup.save()
-
-                    logger.info(f"WAL file archived successfully: {backup.id}")
-
-                    # Step 4: Mark WAL file as archived by removing it from pg_wal
-                    # PostgreSQL will automatically clean up archived WAL files
-                    # We can safely remove the file after successful upload
-                    try:
-                        wal_file_path.unlink()
-                        logger.info(f"Removed archived WAL file: {wal_filename}")
-                    except Exception as e:
-                        logger.warning(f"Failed to remove WAL file {wal_filename}: {e}")
-                        # This is not critical - PostgreSQL will handle cleanup
-
-                    # Mark as verified
-                    with bypass_rls():
-                        backup.status = Backup.VERIFIED
-                        backup.verified_at = timezone.now()
-                        backup.save()
-
-                    archived_count += 1
+                archived_count += 1
 
             except Exception as e:
+
                 logger.error(f"WAL archiving failed for {wal_filename}: {e}", exc_info=True)
 
                 # Update backup record to failed status

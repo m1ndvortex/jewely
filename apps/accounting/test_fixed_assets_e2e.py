@@ -20,8 +20,6 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from django_ledger.models import JournalEntryModel
-
 from apps.accounting.fixed_asset_models import AssetDisposal, DepreciationSchedule, FixedAsset
 from apps.core.models import Tenant
 
@@ -614,7 +612,7 @@ class FixedAssetsE2ETestCase(TestCase):
         Requirement: 5.6
         """
         # Create a fixed asset
-        asset = FixedAsset.objects.create(
+        FixedAsset.objects.create(
             tenant=self.tenant1,
             asset_name="Test Asset",
             asset_number="FA-007",

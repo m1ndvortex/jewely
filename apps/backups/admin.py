@@ -2,10 +2,12 @@
 Admin interface for backup models.
 """
 
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.shortcuts import redirect
+from django.utils import timezone
 from django.utils.html import format_html
 
-from .models import Backup, BackupAlert, BackupRestoreLog
+from .models import Backup, BackupAlert, BackupConfiguration, BackupRestoreLog
 
 
 @admin.register(Backup)
@@ -417,3 +419,65 @@ class BackupAlertAdmin(admin.ModelAdmin):
         self.message_user(request, f"{count} alert(s) resolved.")
 
     resolve_alerts.short_description = "Resolve selected alerts"
+
+
+@admin.register(BackupConfiguration)
+class BackupConfigurationAdmin(admin.ModelAdmin):
+    """Admin interface for Backup Configuration (singleton)."""
+
+    list_display = [
+        "id",
+        "wal_interval_display",
+        "modified_by",
+        "modified_at",
+    ]
+    readonly_fields = [
+        "created_at",
+        "modified_at",
+        "modified_by",
+    ]
+    fieldsets = (
+        (
+            "WAL Archiving Configuration",
+            {
+                "fields": (
+                    "wal_archiving_interval_seconds",
+                    "modified_by",
+                    "modified_at",
+                    "created_at",
+                ),
+                "description": "Configure how often WAL (Write-Ahead Log) archiving runs. Changes take effect on next Celery Beat cycle (typically within 60 seconds).",
+            },
+        ),
+    )
+
+    def has_add_permission(self, request):
+        """Only allow one configuration instance."""
+        if BackupConfiguration.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion of configuration."""
+        return False
+
+    def save_model(self, request, obj, form, change):
+        """Save with current user as modifier."""
+        obj.modified_by = request.user
+        super().save_model(request, obj, form, change)
+
+        # Signal that configuration changed - Celery Beat should reload
+        from django.core.cache import cache
+
+        cache.set("backup_config_changed", timezone.now().isoformat(), 300)
+
+        messages.success(
+            request,
+            f"Configuration updated. WAL archiving will now run every {obj.wal_interval_display}. "
+            f"Changes take effect within 60 seconds.",
+        )
+
+    def changelist_view(self, request, extra_context=None):
+        """Redirect to change view for singleton."""
+        config = BackupConfiguration.get_config()
+        return redirect(f"/admin/backups/backupconfiguration/{config.pk}/change/")

@@ -5563,7 +5563,6 @@ def fixed_asset_create(request):
     """
     from apps.core.audit_models import AuditLog
 
-    from .fixed_asset_models import FixedAsset
     from .forms import FixedAssetForm
 
     tenant = request.user.tenant
@@ -5634,7 +5633,6 @@ def fixed_asset_detail(request, asset_id):
     from apps.core.audit_models import AuditLog
 
     from .fixed_asset_models import DepreciationSchedule, FixedAsset
-    from .services import FixedAssetService
 
     tenant = request.user.tenant
 
@@ -5736,7 +5734,6 @@ def fixed_asset_dispose(request, asset_id):
 
     Requirements: 5.4, 5.6, 5.7
     """
-    from apps.core.audit_models import AuditLog
 
     from .fixed_asset_models import FixedAsset
     from .forms import AssetDisposalForm

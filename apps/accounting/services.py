@@ -4359,7 +4359,7 @@ class FixedAssetService:
             return None
 
     @staticmethod
-    def _create_disposal_journal_entry(
+    def _create_disposal_journal_entry(  # noqa: C901
         fixed_asset, asset_disposal, user: User, cash_account_code: str = "1001"
     ) -> Optional[JournalEntryModel]:
         """
@@ -4632,7 +4632,9 @@ class FixedAssetService:
             return {"as_of_date": as_of_date, "total_assets": 0, "error": str(e)}
 
     @staticmethod
-    def generate_projected_depreciation_schedule(tenant: Tenant, as_of_date: date = None) -> Dict:
+    def generate_projected_depreciation_schedule(  # noqa: C901
+        tenant: Tenant, as_of_date: date = None
+    ) -> Dict:
         """
         Generate projected depreciation schedule for all active assets.
 

@@ -61,3 +61,4 @@ celerybeat.pid
 
 # Docker
 *.pid
+backups/

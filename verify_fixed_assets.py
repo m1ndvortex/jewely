@@ -6,20 +6,18 @@ Tests model creation, tenant filtering, and calculated properties.
 
 import os
 import sys
+from datetime import date
+from decimal import Decimal
 
 import django
+from django.contrib.auth import get_user_model
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-from datetime import date, timedelta
-from decimal import Decimal
-
-from django.contrib.auth import get_user_model
-
-from apps.accounting.models import AssetDisposal, DepreciationSchedule, FixedAsset
-from apps.core.models import Tenant
+from apps.accounting.models import AssetDisposal, DepreciationSchedule, FixedAsset  # noqa: E402
+from apps.core.models import Tenant  # noqa: E402
 
 User = get_user_model()
 
@@ -150,7 +148,8 @@ def test_fixed_asset_models():
     )
 
     # Create asset for other tenant
-    other_asset = FixedAsset.objects.create(
+    # Create asset for other tenant (should not be in filtered results)
+    FixedAsset.objects.create(
         tenant=other_tenant,
         asset_name="Other Display Case",
         category="FIXTURES",

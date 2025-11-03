@@ -7,7 +7,6 @@ including monthly depreciation runs.
 
 import logging
 from datetime import date, datetime
-from typing import Dict, List
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -27,7 +26,7 @@ User = get_user_model()
     max_retries=3,
     default_retry_delay=300,  # 5 minutes
 )
-def run_monthly_depreciation_all_tenants(self, period_date_str: str = None):
+def run_monthly_depreciation_all_tenants(self, period_date_str: str = None):  # noqa: C901
     """
     Run monthly depreciation for all active tenants.
 

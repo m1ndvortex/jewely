@@ -265,7 +265,7 @@ def backup_progress(request):
 @login_required
 @user_passes_test(is_platform_admin)
 @require_http_methods(["POST"])
-def backup_status_api(request):
+def backup_status_api(request):  # noqa: C901
     """
     API endpoint for polling backup status.
 

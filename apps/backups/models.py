@@ -8,6 +8,7 @@ automated disaster recovery, and comprehensive tracking of all backup and restor
 import uuid
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -582,3 +583,71 @@ class BackupAlert(models.Model):
         self.resolved_by = user
         self.resolution_notes = notes
         self.save(update_fields=["status", "resolved_at", "resolved_by", "resolution_notes"])
+
+
+class BackupConfiguration(models.Model):
+    """
+    Singleton model to store backup system configuration.
+    Only one instance should exist in the database.
+    """
+
+    # WAL archiving interval in seconds
+    wal_archiving_interval_seconds = models.IntegerField(
+        default=3600,  # 1 hour default
+        help_text="How often to run WAL archiving (in seconds). Minimum: 300 (5 min), Maximum: 86400 (24 hours)",
+        validators=[
+            MinValueValidator(300, message="Interval must be at least 5 minutes (300 seconds)"),
+            MaxValueValidator(86400, message="Interval must not exceed 24 hours (86400 seconds)"),
+        ],
+    )
+
+    # Audit fields
+    modified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="backup_config_modifications",
+    )
+    modified_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Backup Configuration"
+        verbose_name_plural = "Backup Configuration"
+
+    def __str__(self):
+        minutes = self.wal_archiving_interval_seconds // 60
+        return f"WAL Archiving: Every {minutes} minutes"
+
+    def save(self, *args, **kwargs):
+        """Enforce singleton pattern."""
+        if not self.pk and BackupConfiguration.objects.exists():
+            # If trying to create a new instance when one exists, update the existing one
+            instance = BackupConfiguration.objects.first()
+            instance.wal_archiving_interval_seconds = self.wal_archiving_interval_seconds
+            instance.modified_by = self.modified_by
+            instance.save()
+            self.pk = instance.pk
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_config(cls):
+        """Get the singleton configuration instance, create if doesn't exist."""
+        config, created = cls.objects.get_or_create(pk=1)
+        return config
+
+    @property
+    def wal_interval_display(self):
+        """Human-readable interval display."""
+        seconds = self.wal_archiving_interval_seconds
+        if seconds < 3600:
+            minutes = seconds // 60
+            return f"{minutes} minute{'s' if minutes != 1 else ''}"
+        else:
+            hours = seconds // 3600
+            remaining_mins = (seconds % 3600) // 60
+            result = f"{hours} hour{'s' if hours != 1 else ''}"
+            if remaining_mins:
+                result += f" {remaining_mins} minute{'s' if remaining_mins != 1 else ''}"
+            return result
