@@ -168,10 +168,21 @@
                                  class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
                                  style="display: none;">
                                 <div class="py-1">
-                                    <a href="{% url 'backups:dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Backups" %}</a>
-                                    <a href="{% url 'core:security_dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Security" %}</a>
-                                    <a href="{% url 'core:feature_flag_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Feature Flags" %}</a>
-                                    <a href="{% url 'core:announcement_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{% trans "Announcements" %}</a>
+                                    <a href="{% url 'backups:dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <i class="fas fa-database mr-2"></i>{% trans "Backups" %}
+                                    </a>
+                                    <a href="{% url 'backups:wal_monitoring' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <i class="fas fa-archive mr-2"></i>{% trans "WAL Monitoring" %}
+                                    </a>
+                                    <a href="{% url 'core:security_dashboard' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <i class="fas fa-shield-alt mr-2"></i>{% trans "Security" %}
+                                    </a>
+                                    <a href="{% url 'core:feature_flag_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <i class="fas fa-flag mr-2"></i>{% trans "Feature Flags" %}
+                                    </a>
+                                    <a href="{% url 'core:announcement_list' %}" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <i class="fas fa-bullhorn mr-2"></i>{% trans "Announcements" %}
+                                    </a>
                                     <!-- Webhooks, Jobs, Documentation apps not yet implemented -->
                                 </div>
                             </div>

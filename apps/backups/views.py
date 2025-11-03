@@ -792,3 +792,201 @@ def disaster_recovery_runbook(request):
     }
 
     return render(request, "backups/disaster_recovery_runbook.html", context)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+def wal_monitoring(request):
+    """
+    WAL (Write-Ahead Log) Monitoring Dashboard.
+
+    Enterprise-grade monitoring interface for WAL archiving:
+    - Real-time WAL generation and archiving status
+    - Compression statistics and storage metrics
+    - Archiving timeline and trends
+    - Health indicators and alerts
+    - Configuration management
+    """
+    from datetime import timedelta
+
+    from django.db.models import Avg, Count, Max, Min, Sum
+
+    from apps.backups.models import BackupConfiguration
+
+    # Get WAL statistics for last 24 hours
+    last_24h = timezone.now() - timedelta(hours=24)
+    last_hour = timezone.now() - timedelta(hours=1)
+
+    # Total WAL archives
+    total_wals = Backup.objects.filter(backup_type=Backup.WAL_ARCHIVE).count()
+
+    # Recent WAL archives (last 24 hours)
+    recent_wals = Backup.objects.filter(backup_type=Backup.WAL_ARCHIVE, created_at__gte=last_24h)
+
+    recent_count = recent_wals.count()
+
+    # WAL statistics
+    wal_stats = recent_wals.aggregate(
+        total_size=Sum("size_bytes"),
+        avg_compression=Avg("compression_ratio"),
+        min_compression=Min("compression_ratio"),
+        max_compression=Max("compression_ratio"),
+        last_archived=Max("created_at"),
+    )
+
+    # Calculate space saved by compression
+    if wal_stats["total_size"] and wal_stats["avg_compression"]:
+        original_size = wal_stats["total_size"] / (1 - wal_stats["avg_compression"] / 100)
+        space_saved = original_size - wal_stats["total_size"]
+    else:
+        space_saved = 0
+
+    # Get last 50 WAL archives for timeline
+    recent_wal_list = Backup.objects.filter(backup_type=Backup.WAL_ARCHIVE).order_by("-created_at")[
+        :50
+    ]
+
+    # Status distribution
+    status_counts = recent_wals.values("status").annotate(count=Count("id"))
+
+    # Calculate WAL generation rate (per hour)
+    if recent_count > 0:
+        hours_covered = 24
+        wal_rate = recent_count / hours_covered
+    else:
+        wal_rate = 0
+
+    # Get configuration
+    config = BackupConfiguration.get_config()
+
+    # Calculate next run time
+    if wal_stats["last_archived"]:
+        next_run = wal_stats["last_archived"] + timedelta(
+            seconds=config.wal_archiving_interval_seconds
+        )
+    else:
+        next_run = None
+
+    # Health check
+    minutes_since_last = None
+    health_status = "healthy"
+    health_message = "WAL archiving is operating normally"
+
+    if wal_stats["last_archived"]:
+        minutes_since_last = (timezone.now() - wal_stats["last_archived"]).total_seconds() / 60
+
+        # Check if last archive is overdue
+        expected_interval_minutes = config.wal_archiving_interval_seconds / 60
+        if minutes_since_last > (expected_interval_minutes * 1.5):
+            health_status = "warning"
+            health_message = f"Last WAL archived {int(minutes_since_last)} minutes ago (expected every {int(expected_interval_minutes)} minutes)"
+        elif minutes_since_last > (expected_interval_minutes * 2):
+            health_status = "critical"
+            health_message = (
+                f"WAL archiving is delayed! Last archive was {int(minutes_since_last)} minutes ago"
+            )
+
+    # Get active WAL-related alerts
+    wal_alerts = BackupAlert.objects.filter(
+        status=BackupAlert.ACTIVE,
+        alert_type__in=[BackupAlert.BACKUP_FAILURE, BackupAlert.INTEGRITY_FAILURE],
+    ).order_by("-created_at")[:5]
+
+    context = {
+        "total_wals": total_wals,
+        "recent_count": recent_count,
+        "wal_rate": round(wal_rate, 2),
+        "wal_stats": wal_stats,
+        "space_saved": space_saved,
+        "recent_wal_list": recent_wal_list,
+        "status_counts": {item["status"]: item["count"] for item in status_counts},
+        "config": config,
+        "next_run": next_run,
+        "minutes_since_last": minutes_since_last,
+        "health_status": health_status,
+        "health_message": health_message,
+        "wal_alerts": wal_alerts,
+    }
+
+    return render(request, "backups/wal_monitoring.html", context)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+@require_http_methods(["GET"])
+def wal_status_api(request):
+    """
+    API endpoint for real-time WAL status updates.
+    Returns JSON data for AJAX updates.
+    """
+    from datetime import timedelta
+
+    from django.db.models import Avg, Count, Max, Sum
+    from django.http import JsonResponse
+
+    from apps.backups.models import BackupConfiguration
+
+    last_24h = timezone.now() - timedelta(hours=24)
+
+    # Get recent WAL stats
+    recent_wals = Backup.objects.filter(backup_type=Backup.WAL_ARCHIVE, created_at__gte=last_24h)
+
+    stats = recent_wals.aggregate(
+        count=Count("id"),
+        total_size=Sum("size_bytes"),
+        avg_compression=Avg("compression_ratio"),
+        last_archived=Max("created_at"),
+    )
+
+    # Get last 10 WAL files
+    last_wals = (
+        Backup.objects.filter(backup_type=Backup.WAL_ARCHIVE)
+        .order_by("-created_at")[:10]
+        .values(
+            "id",
+            "filename",
+            "status",
+            "size_bytes",
+            "compression_ratio",
+            "created_at",
+            "r2_path",
+            "b2_path",
+            "local_path",
+        )
+    )
+
+    # Get config
+    config = BackupConfiguration.get_config()
+
+    # Calculate health
+    health = "healthy"
+    if stats["last_archived"]:
+        minutes_since = (timezone.now() - stats["last_archived"]).total_seconds() / 60
+        expected_minutes = config.wal_archiving_interval_seconds / 60
+
+        if minutes_since > (expected_minutes * 2):
+            health = "critical"
+        elif minutes_since > (expected_minutes * 1.5):
+            health = "warning"
+
+    return JsonResponse(
+        {
+            "success": True,
+            "stats": {
+                "count_24h": stats["count"] or 0,
+                "total_size": stats["total_size"] or 0,
+                "avg_compression": (
+                    float(stats["avg_compression"]) if stats["avg_compression"] else 0
+                ),
+                "last_archived": (
+                    stats["last_archived"].isoformat() if stats["last_archived"] else None
+                ),
+            },
+            "recent_wals": list(last_wals),
+            "health": health,
+            "config": {
+                "interval_seconds": config.wal_archiving_interval_seconds,
+                "interval_display": config.wal_interval_display,
+            },
+        }
+    )

@@ -11,6 +11,9 @@ app_name = "backups"
 urlpatterns = [
     # Dashboard
     path("", views.backup_dashboard, name="dashboard"),
+    # WAL Monitoring
+    path("wal-monitoring/", views.wal_monitoring, name="wal_monitoring"),
+    path("api/wal-status/", views.wal_status_api, name="wal_status_api"),
     # Backup management
     path("backups/", views.backup_list, name="backup_list"),
     path("backups/<uuid:backup_id>/", views.backup_detail, name="backup_detail"),

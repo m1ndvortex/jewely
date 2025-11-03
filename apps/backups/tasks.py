@@ -112,13 +112,13 @@ def create_pg_dump(
         env["PGPASSWORD"] = password
 
         # Build pg_dump command
-        # -Fc: Custom format (compressed and allows parallel restore)
+        # -Fp: Plain text SQL format (not pre-compressed, allows gzip to compress effectively)
         # -v: Verbose mode
         # --no-owner: Don't output commands to set ownership
         # --no-acl: Don't output commands to set access privileges
         cmd = [
             "pg_dump",
-            "-Fc",  # Custom format
+            "-Fp",  # Plain text format (for effective gzip compression)
             "-v",  # Verbose
             "--no-owner",
             "--no-acl",
@@ -419,7 +419,7 @@ def daily_full_database_backup(self, initiated_by_user_id: Optional[int] = None)
                 "database": db_config["name"],
                 "original_size_bytes": original_size,
                 "compressed_size_bytes": final_size,
-                "pg_dump_format": "custom",
+                "pg_dump_format": "plain",
             }
             backup.save()
 
@@ -569,14 +569,14 @@ def create_tenant_pg_dump(
 
         try:
             # Build pg_dump command with table selection
-            # -Fc: Custom format (compressed and allows parallel restore)
+            # -Fp: Plain text SQL format (not pre-compressed, allows gzip to compress effectively)
             # -v: Verbose mode
             # --no-owner: Don't output commands to set ownership
             # --no-acl: Don't output commands to set access privileges
             # -t: Include specific tables
             cmd = [
                 "pg_dump",
-                "-Fc",  # Custom format
+                "-Fp",  # Plain text format (for effective gzip compression)
                 "-v",  # Verbose
                 "--no-owner",
                 "--no-acl",
@@ -839,7 +839,7 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
                                 "database": db_config["name"],
                                 "original_size_bytes": original_size,
                                 "compressed_size_bytes": final_size,
-                                "pg_dump_format": "custom",
+                                "pg_dump_format": "plain",
                                 "backup_scope": "tenant_specific",
                             }
                             backup.save()
@@ -1067,11 +1067,14 @@ def continuous_wal_archiving(self):  # noqa: C901
                 logger.info("Compressing WAL file...")
 
                 # Import compression function
-                from .encryption import compress_file
+                from .encryption import calculate_checksum, compress_file
 
-                compressed_path, checksum, final_size = compress_file(
+                compressed_path, original_size_returned, final_size = compress_file(
                     input_path=str(wal_file_path), output_path=compressed_local_path
                 )
+
+                # Calculate SHA-256 checksum of compressed file
+                checksum = calculate_checksum(compressed_path, algorithm='sha256')
 
                 # Calculate compression ratio
                 compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
