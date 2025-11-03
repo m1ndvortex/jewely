@@ -5463,3 +5463,805 @@ def bank_statement_import(request, account_id):
     }
 
     return render(request, "accounting/bank_accounts/import.html", context)
+
+
+# ============================================================================
+# Fixed Asset Management Views
+# ============================================================================
+
+
+@login_required
+@tenant_access_required
+def fixed_asset_list(request):
+    """
+    Display list of all fixed assets for the tenant.
+
+    Shows assets with current book value, accumulated depreciation,
+    and status. Supports filtering by status and category.
+
+    Requirements: 5.1, 5.4, 5.6, 5.7
+    """
+    from apps.core.audit_models import AuditLog
+
+    from .fixed_asset_models import FixedAsset
+
+    tenant = request.user.tenant
+
+    # Get filter parameters
+    status_filter = request.GET.get("status", "")
+    category_filter = request.GET.get("category", "")
+    search_query = request.GET.get("search", "")
+
+    # Base queryset with tenant filtering (Requirement 5.7)
+    assets = FixedAsset.objects.filter(tenant=tenant)
+
+    # Apply filters
+    if status_filter:
+        assets = assets.filter(status=status_filter)
+
+    if category_filter:
+        assets = assets.filter(category=category_filter)
+
+    if search_query:
+        assets = assets.filter(
+            models.Q(asset_name__icontains=search_query)
+            | models.Q(asset_number__icontains=search_query)
+            | models.Q(serial_number__icontains=search_query)
+        )
+
+    # Order by asset number
+    assets = assets.order_by("asset_number")
+
+    # Calculate summary statistics
+    total_acquisition_cost = assets.aggregate(total=models.Sum("acquisition_cost"))[
+        "total"
+    ] or Decimal("0.00")
+
+    total_accumulated_depreciation = assets.aggregate(total=models.Sum("accumulated_depreciation"))[
+        "total"
+    ] or Decimal("0.00")
+
+    total_book_value = assets.aggregate(total=models.Sum("current_book_value"))["total"] or Decimal(
+        "0.00"
+    )
+
+    # Audit logging (Requirement 5.7)
+    AuditLog.objects.create(
+        tenant=tenant,
+        user=request.user,
+        category="ACCOUNTING",
+        action="VIEW",
+        severity="INFO",
+        description=f"Viewed fixed assets list - Total assets: {assets.count()}",
+    )
+
+    context = {
+        "assets": assets,
+        "status_filter": status_filter,
+        "category_filter": category_filter,
+        "search_query": search_query,
+        "status_choices": FixedAsset.STATUS_CHOICES,
+        "category_choices": FixedAsset.CATEGORY_CHOICES,
+        "total_acquisition_cost": total_acquisition_cost,
+        "total_accumulated_depreciation": total_accumulated_depreciation,
+        "total_book_value": total_book_value,
+    }
+
+    return render(request, "accounting/fixed_assets/list.html", context)
+
+
+@login_required
+@tenant_access_required
+def fixed_asset_create(request):
+    """
+    Create a new fixed asset.
+
+    Handles asset registration with all required fields including
+    acquisition details, depreciation settings, and GL account references.
+
+    Requirements: 5.1, 5.4, 5.6, 5.7
+    """
+    from apps.core.audit_models import AuditLog
+
+    from .fixed_asset_models import FixedAsset
+    from .forms import FixedAssetForm
+
+    tenant = request.user.tenant
+
+    if request.method == "POST":
+        form = FixedAssetForm(request.POST, tenant=tenant, user=request.user)
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Save the fixed asset
+                    fixed_asset = form.save()
+
+                    # Audit logging (Requirement 5.7)
+                    AuditLog.objects.create(
+                        tenant=tenant,
+                        user=request.user,
+                        category="ACCOUNTING",
+                        action="CREATE",
+                        severity="INFO",
+                        description=(
+                            f"Created fixed asset {fixed_asset.asset_number} - "
+                            f"{fixed_asset.asset_name} - "
+                            f"Cost: ${fixed_asset.acquisition_cost}"
+                        ),
+                    )
+
+                    messages.success(
+                        request,
+                        f"Fixed asset {fixed_asset.asset_number} created successfully.",
+                    )
+
+                    return redirect("accounting:fixed_asset_detail", asset_id=fixed_asset.id)
+
+            except Exception as e:
+                logger.error(f"Error creating fixed asset: {str(e)}")
+                messages.error(
+                    request,
+                    f"Error creating fixed asset: {str(e)}",
+                )
+        else:
+            messages.error(
+                request,
+                "Please correct the errors below.",
+            )
+    else:
+        form = FixedAssetForm(tenant=tenant, user=request.user)
+
+    context = {
+        "form": form,
+        "title": "Register New Fixed Asset",
+    }
+
+    return render(request, "accounting/fixed_assets/form.html", context)
+
+
+@login_required
+@tenant_access_required
+def fixed_asset_detail(request, asset_id):
+    """
+    Display detailed information about a fixed asset.
+
+    Shows asset details, depreciation history, and current status.
+    Includes depreciation schedule and disposal information if applicable.
+
+    Requirements: 5.1, 5.4, 5.6, 5.7
+    """
+    from apps.core.audit_models import AuditLog
+
+    from .fixed_asset_models import DepreciationSchedule, FixedAsset
+    from .services import FixedAssetService
+
+    tenant = request.user.tenant
+
+    # Get fixed asset with tenant filtering (Requirement 5.7)
+    fixed_asset = get_object_or_404(
+        FixedAsset,
+        id=asset_id,
+        tenant=tenant,
+    )
+
+    # Get depreciation schedule
+    depreciation_schedules = DepreciationSchedule.objects.filter(fixed_asset=fixed_asset).order_by(
+        "-period_date"
+    )
+
+    # Get disposal information if disposed
+    disposal = None
+    if fixed_asset.status == "DISPOSED":
+        try:
+            disposal = fixed_asset.disposal
+        except Exception:
+            pass
+
+    # Calculate projected depreciation for next 12 months
+    projected_depreciation = []
+    if fixed_asset.status == "ACTIVE" and not fixed_asset.is_fully_depreciated:
+        from datetime import date
+
+        from dateutil.relativedelta import relativedelta
+
+        current_date = date.today()
+        monthly_depreciation = fixed_asset.calculate_monthly_depreciation()
+        accumulated = fixed_asset.accumulated_depreciation
+
+        for i in range(12):
+            period_date = current_date + relativedelta(months=i + 1)
+            # Set to last day of month
+            period_date = (
+                period_date.replace(day=1) + relativedelta(months=1) - relativedelta(days=1)
+            )
+
+            if accumulated + monthly_depreciation <= fixed_asset.depreciable_amount:
+                accumulated += monthly_depreciation
+                book_value = fixed_asset.acquisition_cost - accumulated
+
+                projected_depreciation.append(
+                    {
+                        "period_date": period_date,
+                        "depreciation_amount": monthly_depreciation,
+                        "accumulated_depreciation": accumulated,
+                        "book_value": book_value,
+                    }
+                )
+            else:
+                # Final depreciation to reach salvage value
+                final_depreciation = fixed_asset.depreciable_amount - accumulated
+                if final_depreciation > 0:
+                    accumulated += final_depreciation
+                    book_value = fixed_asset.acquisition_cost - accumulated
+
+                    projected_depreciation.append(
+                        {
+                            "period_date": period_date,
+                            "depreciation_amount": final_depreciation,
+                            "accumulated_depreciation": accumulated,
+                            "book_value": book_value,
+                        }
+                    )
+                break
+
+    # Audit logging (Requirement 5.7)
+    AuditLog.objects.create(
+        tenant=tenant,
+        user=request.user,
+        category="ACCOUNTING",
+        action="VIEW",
+        severity="INFO",
+        description=f"Viewed fixed asset details - {fixed_asset.asset_number}",
+    )
+
+    context = {
+        "asset": fixed_asset,
+        "depreciation_schedules": depreciation_schedules,
+        "disposal": disposal,
+        "projected_depreciation": projected_depreciation,
+    }
+
+    return render(request, "accounting/fixed_assets/detail.html", context)
+
+
+@login_required
+@tenant_access_required
+def fixed_asset_dispose(request, asset_id):
+    """
+    Dispose of a fixed asset.
+
+    Records disposal with method, proceeds, and reason.
+    Creates journal entries for disposal including gain/loss calculation.
+
+    Requirements: 5.4, 5.6, 5.7
+    """
+    from apps.core.audit_models import AuditLog
+
+    from .fixed_asset_models import FixedAsset
+    from .forms import AssetDisposalForm
+    from .services import FixedAssetService
+
+    tenant = request.user.tenant
+
+    # Get fixed asset with tenant filtering (Requirement 5.7)
+    fixed_asset = get_object_or_404(
+        FixedAsset,
+        id=asset_id,
+        tenant=tenant,
+    )
+
+    # Check if asset is already disposed
+    if fixed_asset.status == "DISPOSED":
+        messages.error(
+            request,
+            f"Asset {fixed_asset.asset_number} is already disposed.",
+        )
+        return redirect("accounting:fixed_asset_detail", asset_id=fixed_asset.id)
+
+    if request.method == "POST":
+        form = AssetDisposalForm(
+            request.POST,
+            tenant=tenant,
+            user=request.user,
+            fixed_asset=fixed_asset,
+        )
+
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Get form data
+                    disposal_date = form.cleaned_data["disposal_date"]
+                    disposal_method = form.cleaned_data["disposal_method"]
+                    proceeds = form.cleaned_data.get("proceeds") or Decimal("0.00")
+                    buyer_name = form.cleaned_data.get("buyer_name", "")
+                    disposal_reason = form.cleaned_data.get("disposal_reason", "")
+                    notes = form.cleaned_data.get("notes", "")
+                    cash_account_code = form.cleaned_data.get("cash_account_code", "1001")
+
+                    # Dispose asset using service (creates journal entries)
+                    disposal_result = FixedAssetService.dispose_asset(
+                        fixed_asset=fixed_asset,
+                        disposal_date=disposal_date,
+                        disposal_method=disposal_method,
+                        proceeds=proceeds,
+                        user=request.user,
+                        buyer_name=buyer_name,
+                        disposal_reason=disposal_reason,
+                        notes=notes,
+                        cash_account_code=cash_account_code,
+                    )
+
+                    if disposal_result:
+                        gain_loss = disposal_result["gain_loss"]
+                        is_gain = disposal_result["is_gain"]
+
+                        if is_gain:
+                            gain_loss_text = f"Gain: ${gain_loss}"
+                        elif gain_loss < 0:
+                            gain_loss_text = f"Loss: ${abs(gain_loss)}"
+                        else:
+                            gain_loss_text = "No gain or loss"
+
+                        messages.success(
+                            request,
+                            f"Asset {fixed_asset.asset_number} disposed successfully. {gain_loss_text}",
+                        )
+
+                        return redirect("accounting:fixed_asset_detail", asset_id=fixed_asset.id)
+                    else:
+                        messages.error(
+                            request,
+                            "Error disposing asset. Please try again.",
+                        )
+
+            except Exception as e:
+                logger.error(f"Error disposing fixed asset: {str(e)}")
+                messages.error(
+                    request,
+                    f"Error disposing asset: {str(e)}",
+                )
+        else:
+            messages.error(
+                request,
+                "Please correct the errors below.",
+            )
+    else:
+        form = AssetDisposalForm(
+            tenant=tenant,
+            user=request.user,
+            fixed_asset=fixed_asset,
+        )
+
+    context = {
+        "form": form,
+        "asset": fixed_asset,
+        "title": f"Dispose Asset - {fixed_asset.asset_number}",
+    }
+
+    return render(request, "accounting/fixed_assets/disposal_form.html", context)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["GET", "POST"])
+def run_depreciation(request):
+    """
+    Run monthly depreciation for all active assets.
+
+    Processes all active fixed assets and records depreciation
+    for the specified period. Creates journal entries automatically.
+
+    Requirements: 5.2, 5.3, 5.6, 5.7, 5.8
+    """
+    from datetime import date
+
+    from dateutil.relativedelta import relativedelta
+
+    from apps.core.audit_models import AuditLog
+
+    from .services import FixedAssetService
+
+    tenant = request.user.tenant
+
+    if request.method == "POST":
+        # Get period date from form
+        period_date_str = request.POST.get("period_date")
+
+        if not period_date_str:
+            messages.error(request, "Please select a period date.")
+            return redirect("accounting:run_depreciation")
+
+        try:
+            period_date = date.fromisoformat(period_date_str)
+
+            # Run depreciation for all active assets
+            result = FixedAssetService.run_monthly_depreciation(
+                tenant=tenant,
+                period_date=period_date,
+                user=request.user,
+            )
+
+            # Display results
+            if result.get("errors", 0) > 0:
+                messages.warning(
+                    request,
+                    f"Depreciation run completed with errors. "
+                    f"Processed: {result['processed']}, "
+                    f"Skipped: {result['skipped']}, "
+                    f"Already Recorded: {result['already_recorded']}, "
+                    f"Errors: {result['errors']}, "
+                    f"Total Depreciation: ${result['total_depreciation']}",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Depreciation run completed successfully. "
+                    f"Processed: {result['processed']}, "
+                    f"Skipped: {result['skipped']}, "
+                    f"Already Recorded: {result['already_recorded']}, "
+                    f"Total Depreciation: ${result['total_depreciation']}",
+                )
+
+            # Store result in session for display
+            request.session["depreciation_result"] = {
+                "period_date": period_date.isoformat(),
+                "total_assets": result["total_assets"],
+                "processed": result["processed"],
+                "skipped": result["skipped"],
+                "already_recorded": result["already_recorded"],
+                "errors": result["errors"],
+                "total_depreciation": str(result["total_depreciation"]),
+                "details": result.get("details", []),
+            }
+
+            return redirect("accounting:run_depreciation")
+
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect("accounting:run_depreciation")
+        except Exception as e:
+            logger.error(f"Error running depreciation: {str(e)}")
+            messages.error(request, f"Error running depreciation: {str(e)}")
+            return redirect("accounting:run_depreciation")
+
+    # GET request - show form
+    # Get last month's end date as default
+    today = date.today()
+    last_month_end = today.replace(day=1) - relativedelta(days=1)
+
+    # Get depreciation result from session if available
+    depreciation_result = request.session.pop("depreciation_result", None)
+
+    # Audit logging (Requirement 5.7)
+    AuditLog.objects.create(
+        tenant=tenant,
+        user=request.user,
+        category="ACCOUNTING",
+        action="VIEW",
+        severity="INFO",
+        description="Viewed run depreciation page",
+    )
+
+    context = {
+        "default_period_date": last_month_end,
+        "depreciation_result": depreciation_result,
+    }
+
+    return render(request, "accounting/fixed_assets/run_depreciation.html", context)
+
+
+@login_required
+@tenant_access_required
+@require_http_methods(["GET"])
+def depreciation_schedule(request):  # noqa: C901
+    """
+    Display depreciation schedule report showing projected depreciation.
+
+    Shows projected depreciation for each active asset over its remaining
+    useful life. Supports HTML, PDF, and Excel export formats.
+
+    Requirements: 5.5, 5.6
+    """
+    from datetime import date
+
+    from apps.core.audit_models import AuditLog
+
+    from .services import FixedAssetService
+
+    tenant = request.user.tenant
+
+    # Get format parameter
+    export_format = request.GET.get("format", "html")
+
+    # Get as_of_date parameter (defaults to today)
+    as_of_date_str = request.GET.get("as_of_date")
+    if as_of_date_str:
+        try:
+            as_of_date = datetime.strptime(as_of_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            as_of_date = date.today()
+    else:
+        as_of_date = date.today()
+
+    # Generate depreciation schedule
+    schedule_data = FixedAssetService.generate_projected_depreciation_schedule(tenant, as_of_date)
+
+    # Audit logging (Requirement 5.7)
+    AuditLog.objects.create(
+        tenant=tenant,
+        user=request.user,
+        category="ACCOUNTING",
+        action="VIEW",
+        severity="INFO",
+        description=f"Viewed depreciation schedule report (format: {export_format})",
+    )
+
+    # Handle different export formats
+    if export_format == "pdf":
+        return _export_depreciation_schedule_pdf(request, schedule_data)
+    elif export_format == "excel":
+        return _export_depreciation_schedule_excel(request, schedule_data)
+    else:
+        # HTML format
+        context = {
+            "schedule_data": schedule_data,
+            "as_of_date": as_of_date,
+        }
+        return render(request, "accounting/reports/depreciation_schedule.html", context)
+
+
+def _export_depreciation_schedule_pdf(request, schedule_data):
+    """Export depreciation schedule as PDF."""
+    from io import BytesIO
+
+    from django.http import HttpResponse
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import landscape, letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from reportlab.platypus import (
+        PageBreak,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    try:
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(letter),
+            rightMargin=0.5 * inch,
+            leftMargin=0.5 * inch,
+            topMargin=0.75 * inch,
+            bottomMargin=0.5 * inch,
+        )
+
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title
+        title = Paragraph(
+            f"<b>Depreciation Schedule Report</b><br/>"
+            f"{request.user.tenant.company_name}<br/>"
+            f"As of {schedule_data['as_of_date'].strftime('%B %d, %Y')}",
+            styles["Title"],
+        )
+        elements.append(title)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Summary
+        summary_text = f"Total Active Assets: {schedule_data['total_assets']}"
+        summary = Paragraph(summary_text, styles["Normal"])
+        elements.append(summary)
+        elements.append(Spacer(1, 0.2 * inch))
+
+        # Process each asset
+        for asset in schedule_data["assets"]:
+            # Asset header
+            asset_header = Paragraph(
+                f"<b>{asset['asset_number']} - {asset['asset_name']}</b><br/>"
+                f"Category: {asset['category']} | "
+                f"Method: {asset['depreciation_method']} | "
+                f"Remaining: {asset['months_remaining']} months",
+                styles["Heading2"],
+            )
+            elements.append(asset_header)
+            elements.append(Spacer(1, 0.1 * inch))
+
+            # Asset details table
+            details_data = [
+                ["Acquisition Cost:", f"${asset['acquisition_cost']:,.2f}"],
+                ["Salvage Value:", f"${asset['salvage_value']:,.2f}"],
+                ["Current Accumulated:", f"${asset['current_accumulated_depreciation']:,.2f}"],
+                ["Current Book Value:", f"${asset['current_book_value']:,.2f}"],
+                ["Total Projected:", f"${asset['total_projected_depreciation']:,.2f}"],
+            ]
+
+            details_table = Table(details_data, colWidths=[2 * inch, 2 * inch])
+            details_table.setStyle(
+                TableStyle(
+                    [
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ]
+                )
+            )
+            elements.append(details_table)
+            elements.append(Spacer(1, 0.15 * inch))
+
+            # Projected schedule table
+            if asset["projected_periods"]:
+                schedule_header = [["Period", "Depreciation", "Accumulated", "Book Value"]]
+
+                schedule_rows = []
+                for period in asset["projected_periods"][:36]:  # Limit to 3 years
+                    schedule_rows.append(
+                        [
+                            period["period_date"].strftime("%b %Y"),
+                            f"${period['depreciation_amount']:,.2f}",
+                            f"${period['accumulated_depreciation']:,.2f}",
+                            f"${period['book_value']:,.2f}",
+                        ]
+                    )
+
+                schedule_table = Table(
+                    schedule_header + schedule_rows,
+                    colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch],
+                )
+                schedule_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 8),
+                            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                        ]
+                    )
+                )
+                elements.append(schedule_table)
+
+                if len(asset["projected_periods"]) > 36:
+                    note = Paragraph(
+                        f"<i>Note: Showing first 36 months of {len(asset['projected_periods'])} total periods</i>",
+                        styles["Normal"],
+                    )
+                    elements.append(Spacer(1, 0.05 * inch))
+                    elements.append(note)
+
+            elements.append(PageBreak())
+
+        # Build PDF
+        doc.build(elements)
+
+        # Return response
+        buffer.seek(0)
+        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+        filename = f"depreciation_schedule_{schedule_data['as_of_date'].strftime('%Y%m%d')}.pdf"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to generate depreciation schedule PDF: {str(e)}")
+        messages.error(request, f"Failed to generate PDF: {str(e)}")
+        return redirect("accounting:depreciation_schedule")
+
+
+def _export_depreciation_schedule_excel(request, schedule_data):
+    """Export depreciation schedule as Excel."""
+    from django.http import HttpResponse
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    try:
+        # Create workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Depreciation Schedule"
+
+        # Title
+        ws["A1"] = "Depreciation Schedule Report"
+        ws["A1"].font = Font(bold=True, size=14)
+        ws["A2"] = request.user.tenant.company_name
+        ws["A3"] = f"As of {schedule_data['as_of_date'].strftime('%B %d, %Y')}"
+        ws["A4"] = f"Total Active Assets: {schedule_data['total_assets']}"
+
+        current_row = 6
+
+        # Process each asset
+        for asset in schedule_data["assets"]:
+            # Asset header
+            ws[f"A{current_row}"] = f"{asset['asset_number']} - {asset['asset_name']}"
+            ws[f"A{current_row}"].font = Font(bold=True, size=12)
+            current_row += 1
+
+            # Asset details
+            ws[f"A{current_row}"] = "Category:"
+            ws[f"B{current_row}"] = asset["category"]
+            ws[f"C{current_row}"] = "Method:"
+            ws[f"D{current_row}"] = asset["depreciation_method"]
+            current_row += 1
+
+            ws[f"A{current_row}"] = "Acquisition Cost:"
+            ws[f"B{current_row}"] = float(asset["acquisition_cost"])
+            ws[f"B{current_row}"].number_format = "$#,##0.00"
+            ws[f"C{current_row}"] = "Salvage Value:"
+            ws[f"D{current_row}"] = float(asset["salvage_value"])
+            ws[f"D{current_row}"].number_format = "$#,##0.00"
+            current_row += 1
+
+            ws[f"A{current_row}"] = "Current Accumulated:"
+            ws[f"B{current_row}"] = float(asset["current_accumulated_depreciation"])
+            ws[f"B{current_row}"].number_format = "$#,##0.00"
+            ws[f"C{current_row}"] = "Current Book Value:"
+            ws[f"D{current_row}"] = float(asset["current_book_value"])
+            ws[f"D{current_row}"].number_format = "$#,##0.00"
+            current_row += 1
+
+            ws[f"A{current_row}"] = "Total Projected:"
+            ws[f"B{current_row}"] = float(asset["total_projected_depreciation"])
+            ws[f"B{current_row}"].number_format = "$#,##0.00"
+            ws[f"C{current_row}"] = "Months Remaining:"
+            ws[f"D{current_row}"] = asset["months_remaining"]
+            current_row += 2
+
+            # Projected schedule header
+            header_row = current_row
+            ws[f"A{header_row}"] = "Period"
+            ws[f"B{header_row}"] = "Depreciation"
+            ws[f"C{header_row}"] = "Accumulated"
+            ws[f"D{header_row}"] = "Book Value"
+
+            for col in ["A", "B", "C", "D"]:
+                ws[f"{col}{header_row}"].font = Font(bold=True)
+                ws[f"{col}{header_row}"].fill = PatternFill(
+                    start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
+                )
+                ws[f"{col}{header_row}"].alignment = Alignment(horizontal="center")
+
+            current_row += 1
+
+            # Projected periods
+            for period in asset["projected_periods"]:
+                ws[f"A{current_row}"] = period["period_date"].strftime("%b %Y")
+                ws[f"B{current_row}"] = float(period["depreciation_amount"])
+                ws[f"B{current_row}"].number_format = "$#,##0.00"
+                ws[f"C{current_row}"] = float(period["accumulated_depreciation"])
+                ws[f"C{current_row}"].number_format = "$#,##0.00"
+                ws[f"D{current_row}"] = float(period["book_value"])
+                ws[f"D{current_row}"].number_format = "$#,##0.00"
+                current_row += 1
+
+            current_row += 2  # Space between assets
+
+        # Adjust column widths
+        ws.column_dimensions["A"].width = 20
+        ws.column_dimensions["B"].width = 18
+        ws.column_dimensions["C"].width = 20
+        ws.column_dimensions["D"].width = 18
+
+        # Save to response
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        filename = f"depreciation_schedule_{schedule_data['as_of_date'].strftime('%Y%m%d')}.xlsx"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+        wb.save(response)
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to generate depreciation schedule Excel: {str(e)}")
+        messages.error(request, f"Failed to generate Excel: {str(e)}")
+        return redirect("accounting:depreciation_schedule")

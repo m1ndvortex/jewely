@@ -3824,3 +3824,925 @@ class BankStatementImportService:
         except Exception as e:
             logger.error(f"Error auto-matching transaction: {str(e)}")
             return False
+
+
+class FixedAssetService:
+    """
+    Service class for handling fixed asset operations.
+
+    Provides methods for depreciation calculation, disposal processing,
+    and automatic journal entry creation for fixed assets.
+
+    Requirements: 5.2, 5.3, 5.4, 5.7, 5.8
+    """
+
+    @staticmethod
+    def calculate_depreciation(fixed_asset, period_date: date, user: User) -> Optional[Dict]:
+        """
+        Calculate depreciation for a fixed asset for a specific period.
+
+        Args:
+            fixed_asset: FixedAsset instance
+            period_date: Date of the depreciation period (typically month-end)
+            user: User performing the calculation
+
+        Returns:
+            Dict with depreciation details or None if no depreciation needed
+
+        Requirements: 5.2, 5.3, 5.8
+        """
+        from .fixed_asset_models import DepreciationSchedule
+
+        try:
+            # Check if asset is active
+            if fixed_asset.status != "ACTIVE":
+                logger.info(
+                    f"Asset {fixed_asset.asset_number} is not active, skipping depreciation"
+                )
+                return None
+
+            # Check if already fully depreciated
+            if fixed_asset.is_fully_depreciated:
+                logger.info(f"Asset {fixed_asset.asset_number} is fully depreciated")
+                return None
+
+            # Check if depreciation already recorded for this period (Requirement 5.8)
+            existing_schedule = DepreciationSchedule.objects.filter(
+                fixed_asset=fixed_asset, period_date=period_date
+            ).first()
+
+            if existing_schedule:
+                logger.warning(
+                    f"Depreciation already recorded for asset {fixed_asset.asset_number} "
+                    f"on {period_date}"
+                )
+                return {
+                    "asset": fixed_asset,
+                    "period_date": period_date,
+                    "depreciation_amount": existing_schedule.depreciation_amount,
+                    "already_recorded": True,
+                    "schedule": existing_schedule,
+                }
+
+            # Calculate monthly depreciation amount
+            depreciation_amount = fixed_asset.calculate_monthly_depreciation()
+
+            if depreciation_amount == Decimal("0.00"):
+                logger.info(f"No depreciation calculated for asset {fixed_asset.asset_number}")
+                return None
+
+            # Calculate new accumulated depreciation and book value
+            new_accumulated_depreciation = (
+                fixed_asset.accumulated_depreciation + depreciation_amount
+            )
+            new_book_value = fixed_asset.acquisition_cost - new_accumulated_depreciation
+
+            return {
+                "asset": fixed_asset,
+                "period_date": period_date,
+                "depreciation_amount": depreciation_amount,
+                "accumulated_depreciation": new_accumulated_depreciation,
+                "book_value": new_book_value,
+                "already_recorded": False,
+                "schedule": None,
+            }
+
+        except Exception as e:
+            logger.error(
+                f"Failed to calculate depreciation for asset {fixed_asset.asset_number}: {str(e)}"
+            )
+            return None
+
+    @staticmethod
+    def record_depreciation(
+        fixed_asset, period_date: date, user: User, create_journal_entry: bool = True
+    ) -> Optional[Dict]:
+        """
+        Record depreciation for a fixed asset and create journal entry.
+
+        Args:
+            fixed_asset: FixedAsset instance
+            period_date: Date of the depreciation period
+            user: User recording the depreciation
+            create_journal_entry: Whether to create automatic journal entry
+
+        Returns:
+            Dict with depreciation schedule and journal entry or None
+
+        Requirements: 5.2, 5.3, 5.7, 5.8
+        """
+        from apps.core.audit_models import AuditLog
+
+        from .fixed_asset_models import DepreciationSchedule
+
+        try:
+            # Calculate depreciation
+            depreciation_data = FixedAssetService.calculate_depreciation(
+                fixed_asset, period_date, user
+            )
+
+            if not depreciation_data:
+                return None
+
+            # Check if already recorded
+            if depreciation_data.get("already_recorded"):
+                return depreciation_data
+
+            with transaction.atomic():
+                # Create depreciation schedule record
+                depreciation_schedule = DepreciationSchedule.objects.create(
+                    tenant=fixed_asset.tenant,
+                    fixed_asset=fixed_asset,
+                    period_date=period_date,
+                    depreciation_amount=depreciation_data["depreciation_amount"],
+                    accumulated_depreciation=depreciation_data["accumulated_depreciation"],
+                    book_value=depreciation_data["book_value"],
+                    created_by=user,
+                )
+
+                # Update fixed asset
+                fixed_asset.record_depreciation(
+                    depreciation_data["depreciation_amount"], period_date
+                )
+
+                # Create journal entry if requested
+                journal_entry = None
+                if create_journal_entry:
+                    journal_entry = FixedAssetService._create_depreciation_journal_entry(
+                        fixed_asset, depreciation_schedule, user
+                    )
+
+                    if journal_entry:
+                        depreciation_schedule.journal_entry = journal_entry
+                        depreciation_schedule.save(update_fields=["journal_entry"])
+
+                # Audit logging (Requirement 5.7)
+                AuditLog.objects.create(
+                    tenant=fixed_asset.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="CREATE",
+                    severity="INFO",
+                    description=(
+                        f"Recorded depreciation for asset {fixed_asset.asset_number} - "
+                        f"Amount: ${depreciation_data['depreciation_amount']}, "
+                        f"Period: {period_date}"
+                    ),
+                )
+
+                logger.info(
+                    f"Depreciation recorded for asset {fixed_asset.asset_number}: "
+                    f"${depreciation_data['depreciation_amount']}"
+                )
+
+                return {
+                    "asset": fixed_asset,
+                    "schedule": depreciation_schedule,
+                    "journal_entry": journal_entry,
+                    "depreciation_amount": depreciation_data["depreciation_amount"],
+                }
+
+        except Exception as e:
+            logger.error(
+                f"Failed to record depreciation for asset {fixed_asset.asset_number}: {str(e)}"
+            )
+            return None
+
+    @staticmethod
+    def _create_depreciation_journal_entry(
+        fixed_asset, depreciation_schedule, user: User
+    ) -> Optional[JournalEntryModel]:
+        """
+        Create journal entry for depreciation.
+
+        Debits: Depreciation Expense Account
+        Credits: Accumulated Depreciation Account
+
+        Requirements: 5.2, 5.3
+        """
+        try:
+            # Get tenant's accounting entity
+            jewelry_entity = JewelryEntity.objects.get(tenant=fixed_asset.tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get the ledger
+            ledger = entity.ledgermodel_set.first()
+            if not ledger:
+                logger.error(f"No ledger found for entity {entity}")
+                return None
+
+            # Get chart of accounts
+            coa = entity.chartofaccountmodel_set.first()
+            if not coa:
+                logger.error(f"No chart of accounts found for entity {entity}")
+                return None
+
+            # Get depreciation expense account
+            depreciation_expense_account = AccountModel.objects.filter(
+                coa_model=coa, code=fixed_asset.depreciation_expense_account, active=True
+            ).first()
+
+            if not depreciation_expense_account:
+                logger.error(
+                    f"Depreciation expense account {fixed_asset.depreciation_expense_account} "
+                    f"not found"
+                )
+                return None
+
+            # Get accumulated depreciation account
+            accumulated_depreciation_account = AccountModel.objects.filter(
+                coa_model=coa, code=fixed_asset.accumulated_depreciation_account, active=True
+            ).first()
+
+            if not accumulated_depreciation_account:
+                logger.error(
+                    f"Accumulated depreciation account "
+                    f"{fixed_asset.accumulated_depreciation_account} not found"
+                )
+                return None
+
+            # Create journal entry
+            journal_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description=(
+                    f"Depreciation - {fixed_asset.asset_number} - "
+                    f"{fixed_asset.asset_name} - "
+                    f"{depreciation_schedule.period_date.strftime('%B %Y')}"
+                ),
+                posted=True,  # Auto-post depreciation entries
+            )
+
+            # Debit: Depreciation Expense
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=depreciation_expense_account,
+                amount=depreciation_schedule.depreciation_amount,
+                tx_type="debit",
+                description=f"Depreciation expense - {fixed_asset.asset_number}",
+            )
+
+            # Credit: Accumulated Depreciation
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=accumulated_depreciation_account,
+                amount=depreciation_schedule.depreciation_amount,
+                tx_type="credit",
+                description=f"Accumulated depreciation - {fixed_asset.asset_number}",
+            )
+
+            logger.info(
+                f"Journal entry created for depreciation of asset {fixed_asset.asset_number}"
+            )
+
+            return journal_entry
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create depreciation journal entry for asset "
+                f"{fixed_asset.asset_number}: {str(e)}"
+            )
+            return None
+
+    @staticmethod
+    def run_monthly_depreciation(tenant: Tenant, period_date: date, user: User) -> Dict:
+        """
+        Run depreciation for all active assets for a specific period.
+
+        Processes all active fixed assets for the tenant and records
+        depreciation for the specified period.
+
+        Args:
+            tenant: Tenant to process
+            period_date: Date of the depreciation period (typically month-end)
+            user: User running the depreciation
+
+        Returns:
+            Dict with summary of depreciation run
+
+        Requirements: 5.2, 5.3, 5.7, 5.8
+        """
+        from apps.core.audit_models import AuditLog
+
+        from .fixed_asset_models import FixedAsset
+
+        try:
+            # Get all active fixed assets for tenant
+            active_assets = FixedAsset.objects.filter(tenant=tenant, status="ACTIVE")
+
+            results = {
+                "period_date": period_date,
+                "total_assets": active_assets.count(),
+                "processed": 0,
+                "skipped": 0,
+                "already_recorded": 0,
+                "errors": 0,
+                "total_depreciation": Decimal("0.00"),
+                "details": [],
+            }
+
+            for asset in active_assets:
+                try:
+                    # Record depreciation for this asset
+                    depreciation_result = FixedAssetService.record_depreciation(
+                        asset, period_date, user, create_journal_entry=True
+                    )
+
+                    if depreciation_result:
+                        if depreciation_result.get("schedule"):
+                            # Check if it was already recorded
+                            calc_data = FixedAssetService.calculate_depreciation(
+                                asset, period_date, user
+                            )
+                            if calc_data and calc_data.get("already_recorded"):
+                                results["already_recorded"] += 1
+                                results["details"].append(
+                                    {
+                                        "asset_number": asset.asset_number,
+                                        "asset_name": asset.asset_name,
+                                        "status": "already_recorded",
+                                        "amount": depreciation_result["depreciation_amount"],
+                                    }
+                                )
+                            else:
+                                results["processed"] += 1
+                                results["total_depreciation"] += depreciation_result[
+                                    "depreciation_amount"
+                                ]
+                                results["details"].append(
+                                    {
+                                        "asset_number": asset.asset_number,
+                                        "asset_name": asset.asset_name,
+                                        "status": "success",
+                                        "amount": depreciation_result["depreciation_amount"],
+                                    }
+                                )
+                        else:
+                            results["skipped"] += 1
+                            results["details"].append(
+                                {
+                                    "asset_number": asset.asset_number,
+                                    "asset_name": asset.asset_name,
+                                    "status": "skipped",
+                                    "reason": "No depreciation needed",
+                                }
+                            )
+                    else:
+                        results["skipped"] += 1
+                        results["details"].append(
+                            {
+                                "asset_number": asset.asset_number,
+                                "asset_name": asset.asset_name,
+                                "status": "skipped",
+                                "reason": "No depreciation calculated",
+                            }
+                        )
+
+                except Exception as e:
+                    results["errors"] += 1
+                    results["details"].append(
+                        {
+                            "asset_number": asset.asset_number,
+                            "asset_name": asset.asset_name,
+                            "status": "error",
+                            "error": str(e),
+                        }
+                    )
+                    logger.error(
+                        f"Error processing depreciation for asset {asset.asset_number}: {str(e)}"
+                    )
+
+            # Audit logging (Requirement 5.7)
+            AuditLog.objects.create(
+                tenant=tenant,
+                user=user,
+                category="ACCOUNTING",
+                action="BATCH_PROCESS",
+                severity="INFO",
+                description=(
+                    f"Monthly depreciation run for {period_date.strftime('%B %Y')} - "
+                    f"Processed: {results['processed']}, "
+                    f"Skipped: {results['skipped']}, "
+                    f"Already Recorded: {results['already_recorded']}, "
+                    f"Errors: {results['errors']}, "
+                    f"Total Depreciation: ${results['total_depreciation']}"
+                ),
+            )
+
+            logger.info(
+                f"Monthly depreciation run completed for {tenant.company_name} - "
+                f"Period: {period_date}, Processed: {results['processed']}"
+            )
+
+            return results
+
+        except Exception as e:
+            logger.error(
+                f"Failed to run monthly depreciation for tenant {tenant.company_name}: {str(e)}"
+            )
+            return {
+                "period_date": period_date,
+                "total_assets": 0,
+                "processed": 0,
+                "skipped": 0,
+                "already_recorded": 0,
+                "errors": 1,
+                "total_depreciation": Decimal("0.00"),
+                "error": str(e),
+            }
+
+    @staticmethod
+    def dispose_asset(
+        fixed_asset,
+        disposal_date: date,
+        disposal_method: str,
+        proceeds: Decimal,
+        user: User,
+        buyer_name: str = "",
+        disposal_reason: str = "",
+        notes: str = "",
+        cash_account_code: str = "1001",
+    ) -> Optional[Dict]:
+        """
+        Dispose of a fixed asset and create journal entries.
+
+        Creates journal entries for asset disposal:
+        - Debit: Accumulated Depreciation (remove accumulated depreciation)
+        - Debit: Cash/Bank (if proceeds received)
+        - Debit: Loss on Disposal (if loss) OR Credit: Gain on Disposal (if gain)
+        - Credit: Asset Account (remove asset)
+
+        Args:
+            fixed_asset: FixedAsset instance to dispose
+            disposal_date: Date of disposal
+            disposal_method: Method of disposal (SOLD, SCRAPPED, etc.)
+            proceeds: Amount received from disposal
+            user: User performing the disposal
+            buyer_name: Name of buyer (if sold)
+            disposal_reason: Reason for disposal
+            notes: Additional notes
+            cash_account_code: GL account code for cash/bank account
+
+        Returns:
+            Dict with disposal details and journal entry or None
+
+        Requirements: 5.4, 5.7
+        """
+        from apps.core.audit_models import AuditLog
+
+        from .fixed_asset_models import AssetDisposal
+
+        try:
+            # Validate asset is not already disposed
+            if fixed_asset.status == "DISPOSED":
+                logger.error(f"Asset {fixed_asset.asset_number} is already disposed")
+                return None
+
+            with transaction.atomic():
+                # Create asset disposal record
+                asset_disposal = AssetDisposal.objects.create(
+                    tenant=fixed_asset.tenant,
+                    fixed_asset=fixed_asset,
+                    disposal_date=disposal_date,
+                    disposal_method=disposal_method,
+                    proceeds=proceeds,
+                    book_value_at_disposal=fixed_asset.current_book_value,
+                    buyer_name=buyer_name,
+                    disposal_reason=disposal_reason,
+                    notes=notes,
+                    created_by=user,
+                )
+
+                # Calculate gain/loss
+                asset_disposal.calculate_gain_loss()
+
+                # Create journal entry for disposal
+                journal_entry = FixedAssetService._create_disposal_journal_entry(
+                    fixed_asset, asset_disposal, user, cash_account_code
+                )
+
+                if journal_entry:
+                    asset_disposal.journal_entry = journal_entry
+                    asset_disposal.save(update_fields=["journal_entry"])
+
+                # Audit logging (Requirement 5.7)
+                AuditLog.objects.create(
+                    tenant=fixed_asset.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="DELETE",
+                    severity="INFO",
+                    description=(
+                        f"Disposed asset {fixed_asset.asset_number} - "
+                        f"Method: {disposal_method}, "
+                        f"Proceeds: ${proceeds}, "
+                        f"Book Value: ${asset_disposal.book_value_at_disposal}, "
+                        f"Gain/Loss: ${asset_disposal.gain_loss}"
+                    ),
+                )
+
+                logger.info(
+                    f"Asset {fixed_asset.asset_number} disposed - "
+                    f"Gain/Loss: ${asset_disposal.gain_loss}"
+                )
+
+                return {
+                    "asset": fixed_asset,
+                    "disposal": asset_disposal,
+                    "journal_entry": journal_entry,
+                    "gain_loss": asset_disposal.gain_loss,
+                    "is_gain": asset_disposal.is_gain,
+                    "is_loss": asset_disposal.is_loss,
+                }
+
+        except Exception as e:
+            logger.error(f"Failed to dispose asset {fixed_asset.asset_number}: {str(e)}")
+            return None
+
+    @staticmethod
+    def _create_disposal_journal_entry(
+        fixed_asset, asset_disposal, user: User, cash_account_code: str = "1001"
+    ) -> Optional[JournalEntryModel]:
+        """
+        Create journal entry for asset disposal.
+
+        Journal entries:
+        - Debit: Accumulated Depreciation (remove it)
+        - Debit: Cash/Bank (if proceeds received)
+        - Debit: Loss on Disposal (if loss) OR Credit: Gain on Disposal (if gain)
+        - Credit: Asset Account (remove the asset)
+
+        Requirements: 5.4
+        """
+        try:
+            # Get tenant's accounting entity
+            jewelry_entity = JewelryEntity.objects.get(tenant=fixed_asset.tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Get the ledger
+            ledger = entity.ledgermodel_set.first()
+            if not ledger:
+                logger.error(f"No ledger found for entity {entity}")
+                return None
+
+            # Get chart of accounts
+            coa = entity.chartofaccountmodel_set.first()
+            if not coa:
+                logger.error(f"No chart of accounts found for entity {entity}")
+                return None
+
+            # Get asset account
+            asset_account = AccountModel.objects.filter(
+                coa_model=coa, code=fixed_asset.asset_account, active=True
+            ).first()
+
+            if not asset_account:
+                logger.error(f"Asset account {fixed_asset.asset_account} not found")
+                return None
+
+            # Get accumulated depreciation account
+            accumulated_depreciation_account = AccountModel.objects.filter(
+                coa_model=coa, code=fixed_asset.accumulated_depreciation_account, active=True
+            ).first()
+
+            if not accumulated_depreciation_account:
+                logger.error(
+                    f"Accumulated depreciation account "
+                    f"{fixed_asset.accumulated_depreciation_account} not found"
+                )
+                return None
+
+            # Get cash account (if proceeds received)
+            cash_account = None
+            if asset_disposal.proceeds > 0:
+                cash_account = AccountModel.objects.filter(
+                    coa_model=coa, code=cash_account_code, active=True
+                ).first()
+
+                if not cash_account:
+                    logger.error(f"Cash account {cash_account_code} not found")
+                    return None
+
+            # Get gain/loss account
+            # For simplicity, use "Other Income" for gains and "Other Expenses" for losses
+            # In a full implementation, you'd have specific gain/loss on disposal accounts
+            if asset_disposal.gain_loss != 0:
+                if asset_disposal.is_gain:
+                    # Gain on disposal - use other income account
+                    gain_loss_account = AccountModel.objects.filter(
+                        coa_model=coa, role__in=["in_other"], active=True
+                    ).first()
+                else:
+                    # Loss on disposal - use other expense account
+                    gain_loss_account = AccountModel.objects.filter(
+                        coa_model=coa, role__in=["ex_other"], active=True
+                    ).first()
+
+                if not gain_loss_account:
+                    logger.warning("Gain/Loss account not found, using default expense account")
+                    gain_loss_account = AccountModel.objects.filter(
+                        coa_model=coa, code="5400", active=True  # Other Expenses
+                    ).first()
+            else:
+                gain_loss_account = None
+
+            # Create journal entry
+            journal_entry = JournalEntryModel.objects.create(
+                ledger=ledger,
+                description=(
+                    f"Disposal of Asset - {fixed_asset.asset_number} - "
+                    f"{fixed_asset.asset_name} - "
+                    f"{asset_disposal.disposal_method}"
+                ),
+                posted=True,  # Auto-post disposal entries
+            )
+
+            # 1. Debit: Accumulated Depreciation (remove accumulated depreciation)
+            if fixed_asset.accumulated_depreciation > 0:
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=accumulated_depreciation_account,
+                    amount=fixed_asset.accumulated_depreciation,
+                    tx_type="debit",
+                    description=f"Remove accumulated depreciation - {fixed_asset.asset_number}",
+                )
+
+            # 2. Debit: Cash/Bank (if proceeds received)
+            if asset_disposal.proceeds > 0 and cash_account:
+                TransactionModel.objects.create(
+                    journal_entry=journal_entry,
+                    account=cash_account,
+                    amount=asset_disposal.proceeds,
+                    tx_type="debit",
+                    description=f"Proceeds from disposal - {fixed_asset.asset_number}",
+                )
+
+            # 3. Debit: Loss on Disposal OR Credit: Gain on Disposal
+            if asset_disposal.gain_loss != 0 and gain_loss_account:
+                if asset_disposal.is_loss:
+                    # Loss - debit
+                    TransactionModel.objects.create(
+                        journal_entry=journal_entry,
+                        account=gain_loss_account,
+                        amount=abs(asset_disposal.gain_loss),
+                        tx_type="debit",
+                        description=f"Loss on disposal - {fixed_asset.asset_number}",
+                    )
+                else:
+                    # Gain - credit
+                    TransactionModel.objects.create(
+                        journal_entry=journal_entry,
+                        account=gain_loss_account,
+                        amount=asset_disposal.gain_loss,
+                        tx_type="credit",
+                        description=f"Gain on disposal - {fixed_asset.asset_number}",
+                    )
+
+            # 4. Credit: Asset Account (remove the asset)
+            TransactionModel.objects.create(
+                journal_entry=journal_entry,
+                account=asset_account,
+                amount=fixed_asset.acquisition_cost,
+                tx_type="credit",
+                description=f"Remove asset - {fixed_asset.asset_number}",
+            )
+
+            logger.info(f"Journal entry created for disposal of asset {fixed_asset.asset_number}")
+
+            return journal_entry
+
+        except Exception as e:
+            logger.error(
+                f"Failed to create disposal journal entry for asset "
+                f"{fixed_asset.asset_number}: {str(e)}"
+            )
+            return None
+
+    @staticmethod
+    def get_depreciation_schedule(fixed_asset) -> list:
+        """
+        Get depreciation schedule for a fixed asset.
+
+        Returns list of all depreciation entries for the asset.
+
+        Args:
+            fixed_asset: FixedAsset instance
+
+        Returns:
+            List of DepreciationSchedule objects
+        """
+        from .fixed_asset_models import DepreciationSchedule
+
+        try:
+            schedules = DepreciationSchedule.objects.filter(fixed_asset=fixed_asset).order_by(
+                "period_date"
+            )
+
+            return list(schedules)
+
+        except Exception as e:
+            logger.error(
+                f"Failed to get depreciation schedule for asset "
+                f"{fixed_asset.asset_number}: {str(e)}"
+            )
+            return []
+
+    @staticmethod
+    def get_fixed_assets_register(tenant: Tenant, as_of_date: date = None) -> Dict:
+        """
+        Get fixed assets register for a tenant.
+
+        Returns summary of all fixed assets with current values.
+
+        Args:
+            tenant: Tenant to get register for
+            as_of_date: Date to calculate values as of (defaults to today)
+
+        Returns:
+            Dict with assets summary
+
+        Requirements: 5.2, 5.7
+        """
+        from .fixed_asset_models import FixedAsset
+
+        try:
+            if as_of_date is None:
+                as_of_date = date.today()
+
+            # Get all assets for tenant
+            assets = FixedAsset.objects.filter(tenant=tenant).order_by("asset_number")
+
+            register = {
+                "as_of_date": as_of_date,
+                "total_assets": assets.count(),
+                "active_assets": assets.filter(status="ACTIVE").count(),
+                "disposed_assets": assets.filter(status="DISPOSED").count(),
+                "fully_depreciated_assets": assets.filter(status="FULLY_DEPRECIATED").count(),
+                "total_acquisition_cost": Decimal("0.00"),
+                "total_accumulated_depreciation": Decimal("0.00"),
+                "total_book_value": Decimal("0.00"),
+                "assets_by_category": {},
+                "assets": [],
+            }
+
+            for asset in assets:
+                register["total_acquisition_cost"] += asset.acquisition_cost
+                register["total_accumulated_depreciation"] += asset.accumulated_depreciation
+                register["total_book_value"] += asset.current_book_value
+
+                # Group by category
+                if asset.category not in register["assets_by_category"]:
+                    register["assets_by_category"][asset.category] = {
+                        "count": 0,
+                        "acquisition_cost": Decimal("0.00"),
+                        "accumulated_depreciation": Decimal("0.00"),
+                        "book_value": Decimal("0.00"),
+                    }
+
+                register["assets_by_category"][asset.category]["count"] += 1
+                register["assets_by_category"][asset.category][
+                    "acquisition_cost"
+                ] += asset.acquisition_cost
+                register["assets_by_category"][asset.category][
+                    "accumulated_depreciation"
+                ] += asset.accumulated_depreciation
+                register["assets_by_category"][asset.category][
+                    "book_value"
+                ] += asset.current_book_value
+
+                register["assets"].append(
+                    {
+                        "asset_number": asset.asset_number,
+                        "asset_name": asset.asset_name,
+                        "category": asset.category,
+                        "acquisition_date": asset.acquisition_date,
+                        "acquisition_cost": asset.acquisition_cost,
+                        "accumulated_depreciation": asset.accumulated_depreciation,
+                        "book_value": asset.current_book_value,
+                        "status": asset.status,
+                        "depreciation_method": asset.depreciation_method,
+                    }
+                )
+
+            return register
+
+        except Exception as e:
+            logger.error(
+                f"Failed to get fixed assets register for tenant {tenant.company_name}: {str(e)}"
+            )
+            return {"as_of_date": as_of_date, "total_assets": 0, "error": str(e)}
+
+    @staticmethod
+    def generate_projected_depreciation_schedule(tenant: Tenant, as_of_date: date = None) -> Dict:
+        """
+        Generate projected depreciation schedule for all active assets.
+
+        Shows projected depreciation for each asset over its remaining useful life.
+
+        Args:
+            tenant: Tenant to generate schedule for
+            as_of_date: Starting date for projections (defaults to today)
+
+        Returns:
+            Dict with projected depreciation schedule
+
+        Requirements: 5.5, 5.6
+        """
+        from dateutil.relativedelta import relativedelta
+
+        from .fixed_asset_models import FixedAsset
+
+        try:
+            if as_of_date is None:
+                as_of_date = date.today()
+
+            # Get all active assets for tenant
+            assets = FixedAsset.objects.filter(tenant=tenant, status="ACTIVE").order_by(
+                "asset_number"
+            )
+
+            schedule_data = {"as_of_date": as_of_date, "total_assets": assets.count(), "assets": []}
+
+            for asset in assets:
+                # Calculate months remaining
+                months_elapsed = (as_of_date.year - asset.acquisition_date.year) * 12 + (
+                    as_of_date.month - asset.acquisition_date.month
+                )
+                months_remaining = max(0, asset.useful_life_months - months_elapsed)
+
+                if months_remaining == 0:
+                    continue  # Skip fully depreciated assets
+
+                # Generate projected schedule
+                projected_periods = []
+                current_accumulated = asset.accumulated_depreciation
+                current_book_value = asset.current_book_value
+
+                for month_offset in range(months_remaining):
+                    period_date = as_of_date + relativedelta(months=month_offset + 1)
+
+                    # Calculate depreciation for this period
+                    if asset.depreciation_method == "STRAIGHT_LINE":
+                        monthly_depreciation = asset._calculate_straight_line_depreciation()
+                    elif asset.depreciation_method == "DECLINING_BALANCE":
+                        # For declining balance, recalculate based on current book value
+                        if asset.depreciation_rate and current_book_value > asset.salvage_value:
+                            monthly_rate = asset.depreciation_rate / Decimal("12")
+                            monthly_depreciation = (current_book_value * monthly_rate).quantize(
+                                Decimal("0.01")
+                            )
+                            # Don't depreciate below salvage value
+                            if current_book_value - monthly_depreciation < asset.salvage_value:
+                                monthly_depreciation = current_book_value - asset.salvage_value
+                        else:
+                            monthly_depreciation = Decimal("0.00")
+                    else:
+                        monthly_depreciation = Decimal("0.00")
+
+                    # Update running totals
+                    current_accumulated += monthly_depreciation
+                    current_book_value -= monthly_depreciation
+
+                    # Ensure we don't go below salvage value
+                    if current_book_value < asset.salvage_value:
+                        current_book_value = asset.salvage_value
+                        current_accumulated = asset.acquisition_cost - asset.salvage_value
+
+                    projected_periods.append(
+                        {
+                            "period_date": period_date,
+                            "period_month": period_date.month,
+                            "period_year": period_date.year,
+                            "depreciation_amount": monthly_depreciation,
+                            "accumulated_depreciation": current_accumulated,
+                            "book_value": current_book_value,
+                        }
+                    )
+
+                asset_data = {
+                    "asset_number": asset.asset_number,
+                    "asset_name": asset.asset_name,
+                    "category": asset.category,
+                    "acquisition_date": asset.acquisition_date,
+                    "acquisition_cost": asset.acquisition_cost,
+                    "salvage_value": asset.salvage_value,
+                    "useful_life_months": asset.useful_life_months,
+                    "depreciation_method": asset.depreciation_method,
+                    "current_accumulated_depreciation": asset.accumulated_depreciation,
+                    "current_book_value": asset.current_book_value,
+                    "months_remaining": months_remaining,
+                    "projected_periods": projected_periods,
+                    "total_projected_depreciation": sum(
+                        p["depreciation_amount"] for p in projected_periods
+                    ),
+                }
+
+                schedule_data["assets"].append(asset_data)
+
+            return schedule_data
+
+        except Exception as e:
+            logger.error(
+                f"Failed to generate projected depreciation schedule for tenant "
+                f"{tenant.company_name}: {str(e)}"
+            )
+            return {"as_of_date": as_of_date, "total_assets": 0, "assets": [], "error": str(e)}

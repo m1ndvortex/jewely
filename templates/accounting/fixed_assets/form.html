@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{{ title }} - {% trans "Accounting" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Page Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                        {{ title }}
+                    </h1>
+                    <nav class="flex mt-2" aria-label="Breadcrumb">
+                        <ol class="inline-flex items-center space-x-2">
+                            <li>
+                                <a href="{% url 'accounting:dashboard' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">
+                                    {% trans "Accounting" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <a href="{% url 'accounting:fixed_asset_list' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400">
+                                    {% trans "Fixed Assets" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span class="text-gray-800 dark:text-gray-200">{{ title }}</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+            <form method="post" class="p-6 space-y-6">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div class="flex">
+                        <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="text-sm text-red-800 dark:text-red-200">
+                            {{ form.non_field_errors }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Asset Information Section -->
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                        {% trans "Asset Information" %}
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Asset Name -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.asset_name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.asset_name.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.asset_name }}
+                            {% if form.asset_name.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.asset_name.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.asset_name.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.asset_name.help_text }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Asset Number -->
+                        <div>
+                            <label for="{{ form.asset_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.asset_number.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.asset_number }}
+                            {% if form.asset_number.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.asset_number.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.asset_number.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.asset_number.help_text }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Serial Number -->
+                        <div>
+                            <label for="{{ form.serial_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.serial_number.label }}
+                            </label>
+                            {{ form.serial_number }}
+                            {% if form.serial_number.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.serial_number.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Category -->
+                        <div>
+                            <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.category.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.category }}
+                            {% if form.category.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.category.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Description -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.description.label }}
+                            </label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.description.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acquisition Details Section -->
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                        {% trans "Acquisition Details" %}
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Acquisition Date -->
+                        <div>
+                            <label for="{{ form.acquisition_date.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.acquisition_date.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.acquisition_date }}
+                            {% if form.acquisition_date.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.acquisition_date.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Acquisition Cost -->
+                        <div>
+                            <label for="{{ form.acquisition_cost.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.acquisition_cost.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.acquisition_cost }}
+                            {% if form.acquisition_cost.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.acquisition_cost.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Salvage Value -->
+                        <div>
+                            <label for="{{ form.salvage_value.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.salvage_value.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.salvage_value }}
+                            {% if form.salvage_value.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.salvage_value.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.salvage_value.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.salvage_value.help_text }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Vendor -->
+                        <div>
+                            <label for="{{ form.vendor.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.vendor.label }}
+                            </label>
+                            {{ form.vendor }}
+                            {% if form.vendor.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.vendor.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Purchase Order Number -->
+                        <div>
+                            <label for="{{ form.purchase_order_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.purchase_order_number.label }}
+                            </label>
+                            {{ form.purchase_order_number }}
+                            {% if form.purchase_order_number.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.purchase_order_number.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Invoice Number -->
+                        <div>
+                            <label for="{{ form.invoice_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.invoice_number.label }}
+                            </label>
+                            {{ form.invoice_number }}
+                            {% if form.invoice_number.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.invoice_number.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Depreciation Settings Section -->
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                        {% trans "Depreciation Settings" %}
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Depreciation Method -->
+                        <div>
+                            <label for="{{ form.depreciation_method.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.depreciation_method.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.depreciation_method }}
+                            {% if form.depreciation_method.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.depreciation_method.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Useful Life (Months) -->
+                        <div>
+                            <label for="{{ form.useful_life_months.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.useful_life_months.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.useful_life_months }}
+                            {% if form.useful_life_months.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.useful_life_months.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.useful_life_months.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.useful_life_months.help_text }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Depreciation Start Date -->
+                        <div>
+                            <label for="{{ form.depreciation_start_date.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.depreciation_start_date.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.depreciation_start_date }}
+                            {% if form.depreciation_start_date.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.depreciation_start_date.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.depreciation_start_date.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.depreciation_start_date.help_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GL Account References Section -->
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                        {% trans "General Ledger Accounts" %}
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Asset Account -->
+                        <div>
+                            <label for="{{ form.asset_account_code.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.asset_account_code.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.asset_account_code }}
+                            {% if form.asset_account_code.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.asset_account_code.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.asset_account_code.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.asset_account_code.help_text }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Accumulated Depreciation Account -->
+                        <div>
+                            <label for="{{ form.accumulated_depreciation_account_code.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.accumulated_depreciation_account_code.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.accumulated_depreciation_account_code }}
+                            {% if form.accumulated_depreciation_account_code.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.accumulated_depreciation_account_code.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Depreciation Expense Account -->
+                        <div>
+                            <label for="{{ form.depreciation_expense_account_code.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.depreciation_expense_account_code.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.depreciation_expense_account_code }}
+                            {% if form.depreciation_expense_account_code.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.depreciation_expense_account_code.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location and Notes Section -->
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                        {% trans "Additional Information" %}
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Location -->
+                        <div>
+                            <label for="{{ form.location.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.location.label }}
+                            </label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.location.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Department -->
+                        <div>
+                            <label for="{{ form.department.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.department.label }}
+                            </label>
+                            {{ form.department }}
+                            {% if form.department.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.department.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="md:col-span-2">
+                            <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.notes.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-6 flex items-center justify-end gap-4">
+                    <a href="{% url 'accounting:fixed_asset_list' %}" 
+                       class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors duration-150">
+                        {% trans "Cancel" %}
+                    </a>
+                    <button type="submit" 
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-150">
+                        {% trans "Register Asset" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

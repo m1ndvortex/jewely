@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Depreciation Schedule Report" %} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    {% trans "Depreciation Schedule Report" %}
+                </h1>
+                <p class="text-gray-600 dark:text-gray-400">
+                    {% trans "Projected depreciation for active fixed assets" %}
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'accounting:depreciation_schedule' %}?format=pdf&as_of_date={{ as_of_date|date:'Y-m-d' }}"
+                   class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    {% trans "Export PDF" %}
+                </a>
+                <a href="{% url 'accounting:depreciation_schedule' %}?format=excel&as_of_date={{ as_of_date|date:'Y-m-d' }}"
+                   class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    {% trans "Export Excel" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Filter -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+        <form method="get" class="flex items-end gap-4">
+            <div class="flex-1">
+                <label for="as_of_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {% trans "As of Date" %}
+                </label>
+                <input type="date"
+                       id="as_of_date"
+                       name="as_of_date"
+                       value="{{ as_of_date|date:'Y-m-d' }}"
+                       class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+            </div>
+            <button type="submit"
+                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                {% trans "Update" %}
+            </button>
+        </form>
+    </div>
+
+    <!-- Summary -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "Report Date" %}</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {{ schedule_data.as_of_date|date:"M d, Y" }}
+                </p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "Active Assets" %}</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {{ schedule_data.total_assets }}
+                </p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">{% trans "Assets with Projections" %}</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {{ schedule_data.assets|length }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assets -->
+    {% if schedule_data.assets %}
+        {% for asset in schedule_data.assets %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+            <!-- Asset Header -->
+            <div class="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    {{ asset.asset_number }} - {{ asset.asset_name }}
+                </h2>
+                <div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span>
+                        <strong>{% trans "Category:" %}</strong> {{ asset.category }}
+                    </span>
+                    <span>
+                        <strong>{% trans "Method:" %}</strong> {{ asset.depreciation_method }}
+                    </span>
+                    <span>
+                        <strong>{% trans "Remaining:" %}</strong> {{ asset.months_remaining }} {% trans "months" %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Asset Details -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">{% trans "Acquisition Cost" %}</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                        ${{ asset.acquisition_cost|floatformat:2 }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">{% trans "Salvage Value" %}</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                        ${{ asset.salvage_value|floatformat:2 }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">{% trans "Current Accumulated" %}</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                        ${{ asset.current_accumulated_depreciation|floatformat:2 }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">{% trans "Current Book Value" %}</p>
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                        ${{ asset.current_book_value|floatformat:2 }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">{% trans "Total Projected" %}</p>
+                    <p class="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                        ${{ asset.total_projected_depreciation|floatformat:2 }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Projected Schedule Table -->
+            {% if asset.projected_periods %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Period" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Depreciation" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Accumulated" %}
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Book Value" %}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for period in asset.projected_periods %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {{ period.period_date|date:"M Y" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                                ${{ period.depreciation_amount|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                                ${{ period.accumulated_depreciation|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                                ${{ period.book_value|floatformat:2 }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-gray-600 dark:text-gray-400 text-center py-4">
+                {% trans "No projected depreciation periods" %}
+            </p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12 text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                {% trans "No Active Assets" %}
+            </h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {% trans "There are no active fixed assets with remaining depreciation." %}
+            </p>
+            <div class="mt-6">
+                <a href="{% url 'accounting:fixed_asset_create' %}"
+                   class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    {% trans "Add Fixed Asset" %}
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Back Button -->
+    <div class="mt-8">
+        <a href="{% url 'accounting:fixed_asset_list' %}"
+           class="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            {% trans "Back to Fixed Assets" %}
+        </a>
+    </div>
+</div>
+{% endblock %}

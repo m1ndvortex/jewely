@@ -267,7 +267,7 @@
 ## Phase 5: Fixed Assets and Depreciation
 
 - [ ] 5. Create fixed asset models with migrations
-- [-] 5.1 Create FixedAsset model
+- [x] 5.1 Create FixedAsset model
   - Add FixedAsset model to apps/accounting/models.py
   - Include tenant FK, asset details, acquisition info, depreciation method
   - Add DepreciationSchedule model for tracking depreciation
@@ -276,7 +276,7 @@
   - Create and run migrations
   - _Requirements: 5.1, 5.2, 5.4, 5.7_
 
-- [ ] 5.2 Create fixed asset service (backend)
+- [x] 5.2 Create fixed asset service (backend)
   - Create FixedAssetService in services.py
   - Implement calculate_depreciation method (straight-line, declining balance)
   - Implement run_monthly_depreciation method
@@ -285,7 +285,7 @@
   - Add tenant filtering and audit logging
   - _Requirements: 5.2, 5.3, 5.4, 5.7, 5.8_
 
-- [ ] 5.3 Create fixed asset management forms and views (backend)
+- [x] 5.3 Create fixed asset management forms and views (backend)
   - Create FixedAssetForm and AssetDisposalForm in forms.py
   - Implement fixed_asset_list, fixed_asset_create, fixed_asset_detail views
   - Implement fixed_asset_dispose view
@@ -293,7 +293,7 @@
   - Add tenant filtering and audit logging
   - _Requirements: 5.1, 5.4, 5.6, 5.7_
 
-- [ ] 5.4 Create fixed asset management templates (frontend)
+- [x] 5.4 Create fixed asset management templates (frontend)
   - Create templates/accounting/fixed_assets/ directory
   - Create list.html with current book value and accumulated depreciation
   - Create form.html for asset registration
@@ -302,20 +302,20 @@
   - Add TailwindCSS styling
   - _Requirements: 5.1, 5.4, 5.5, 5.6_
 
-- [ ] 5.5 Create depreciation schedule report (backend + frontend)
+- [x] 5.5 Create depreciation schedule report (backend + frontend)
   - Implement depreciation_schedule view
   - Create templates/accounting/reports/depreciation_schedule.html
   - Show projected depreciation for each asset
   - Add PDF/Excel export functionality
   - _Requirements: 5.5, 5.6_
 
-- [ ] 5.6 Create Celery task for automatic depreciation
+- [x] 5.6 Create Celery task for automatic depreciation
   - Create celery task for monthly depreciation run
   - Schedule task to run on first day of each month
   - Add error handling and logging
   - _Requirements: 5.3, 5.8_
 
-- [ ] 5.7 Add fixed assets URLs and test end-to-end
+- [x] 5.7 Add fixed assets URLs and test end-to-end
   - Add URL patterns for fixed assets
   - Test: Register asset → Run depreciation → View schedule → Dispose asset
   - Verify journal entries created correctly

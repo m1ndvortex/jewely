@@ -89,6 +89,12 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=6, minute=0, day_of_week=1),
         "options": {"queue": "reports", "priority": 3},
     },
+    # Run monthly depreciation on the 1st of each month at 1:00 AM
+    "monthly-depreciation-run": {
+        "task": "apps.accounting.tasks.run_monthly_depreciation_all_tenants",
+        "schedule": crontab(hour=1, minute=0, day_of_month=1),
+        "options": {"queue": "accounting", "priority": 8},
+    },
     # Check system metrics for alerts every 5 minutes
     "check-system-metrics": {
         "task": "check_system_metrics",
@@ -133,6 +139,7 @@ app.conf.task_routes = {
     "apps.notifications.tasks.*": {"queue": "notifications", "priority": 5},
     "apps.pricing.tasks.*": {"queue": "pricing", "priority": 8},
     "apps.reporting.tasks.*": {"queue": "reports", "priority": 7},
+    "apps.accounting.tasks.*": {"queue": "accounting", "priority": 8},
     "apps.core.alert_tasks.*": {"queue": "monitoring", "priority": 9},
     "apps.core.webhook_tasks.*": {"queue": "webhooks", "priority": 8},
     "check_system_metrics": {"queue": "monitoring", "priority": 9},

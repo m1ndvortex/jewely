@@ -183,4 +183,19 @@ urlpatterns = [
         views.bank_reconciliation_auto_match,
         name="bank_reconciliation_auto_match",
     ),
+    # Fixed Asset Management Views (Task 5.3)
+    path("fixed-assets/", views.fixed_asset_list, name="fixed_asset_list"),
+    path("fixed-assets/create/", views.fixed_asset_create, name="fixed_asset_create"),
+    path("fixed-assets/<uuid:asset_id>/", views.fixed_asset_detail, name="fixed_asset_detail"),
+    path(
+        "fixed-assets/<uuid:asset_id>/dispose/",
+        views.fixed_asset_dispose,
+        name="fixed_asset_dispose",
+    ),
+    path("fixed-assets/run-depreciation/", views.run_depreciation, name="run_depreciation"),
+    path(
+        "reports/depreciation-schedule/",
+        views.depreciation_schedule,
+        name="depreciation_schedule",
+    ),
 ]
