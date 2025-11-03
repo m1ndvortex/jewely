@@ -1,163 +1,267 @@
 {% extends "base.html" %}
-{% load i18n %}
-{% load humanize %}
+{% load static %}
 
-{% block title %}{% trans "Bank Reconciliation" %} - {% trans "Accounting" %}{% endblock %}
+{% block title %}Bank Reconciliation - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        <!-- Page Header -->
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                {% trans "Bank Reconciliation" %}
-            </h1>
-            <nav class="flex mt-2" aria-label="Breadcrumb">
-                <ol class="inline-flex items-center space-x-2">
-                    <li>
-                        <a href="{% url 'accounting:dashboard' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400">
-                            {% trans "Accounting" %}
-                        </a>
-                    </li>
-                    <li class="flex items-center">
-                        <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span class="text-gray-800 dark:text-gray-200">{% trans "Bank Reconciliation" %}</span>
-                    </li>
-                </ol>
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <nav class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <a href="{% url 'accounting:dashboard' %}" class="hover:text-blue-600 dark:hover:text-blue-400">Accounting</a>
+                <span class="mx-2">/</span>
+                <span class="text-gray-900 dark:text-white">Bank Reconciliation</span>
             </nav>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Bank Reconciliation</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2">
+                Reconcile your bank accounts with your accounting records
+            </p>
         </div>
+        <button onclick="window.location.href='{% url 'accounting:bank_reconciliation_list' %}'" 
+                class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+            <i class="fas fa-history mr-2"></i>View History
+        </button>
+    </div>
 
-        <!-- Account Selector -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-            <form method="get" class="flex flex-wrap gap-4 items-end">
-                <div class="flex-1 min-w-[300px]">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "Select Bank Account" %}
+    <!-- In Progress Reconciliations -->
+    {% if in_progress %}
+    <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+        <div class="flex items-start">
+            <i class="fas fa-exclamation-triangle text-yellow-600 dark:text-yellow-400 mt-1 mr-3"></i>
+            <div class="flex-1">
+                <h3 class="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
+                    You have {{ in_progress.count }} reconciliation(s) in progress
+                </h3>
+                <div class="space-y-2">
+                    {% for recon in in_progress %}
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-yellow-700 dark:text-yellow-400">
+                            {{ recon.bank_account.account_name }} - {{ recon.reconciliation_date }}
+                        </span>
+                        <a href="{% url 'accounting:bank_reconciliation_detail' pk=recon.id %}" 
+                           class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                            Continue →
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Start New Reconciliation -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
+            Start New Reconciliation
+        </h2>
+        
+        {% if bank_accounts %}
+        <form method="post" action="{% url 'accounting:bank_reconciliation_start' %}" class="space-y-4">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Bank Account Selection -->
+                <div>
+                    <label for="bank_account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Bank Account <span class="text-red-500">*</span>
                     </label>
-                    <select name="account" onchange="this.form.submit()" 
-                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
-                        <option value="">{% trans "Choose an account..." %}</option>
+                    <select id="bank_account" 
+                            name="bank_account" 
+                            required
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                        <option value="">Choose an account...</option>
                         {% for account in bank_accounts %}
-                            <option value="{{ account.code }}" {% if account.code == selected_account %}selected{% endif %}>
-                                {{ account.code }} - {{ account.name }}
+                            <option value="{{ account.id }}">
+                                {{ account.account_name }} - {{ account.bank_name }} ({{ account.masked_account_number }})
+                                {% if account.is_default %} - Default{% endif %}
                             </option>
                         {% endfor %}
                     </select>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Select the bank account you want to reconcile
+                    </p>
                 </div>
-            </form>
-        </div>
 
-        {% if selected_account %}
-            <!-- Transactions Table -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        {% trans "Recent Transactions" %}
-                    </h2>
+                <!-- Statement Date -->
+                <div>
+                    <label for="statement_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Statement Date <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" 
+                           id="statement_date" 
+                           name="statement_date"
+                           value="{% now 'Y-m-d' %}"
+                           required
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        The ending date on your bank statement
+                    </p>
                 </div>
-                {% if transactions %}
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                                        <input type="checkbox" class="rounded border-gray-300 dark:border-gray-600">
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                                        {% trans "Date" %}
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                                        {% trans "Description" %}
-                                    </th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                                        {% trans "Debit" %}
-                                    </th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                                        {% trans "Credit" %}
-                                    </th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
-                                        {% trans "Status" %}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                {% for txn in transactions %}
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <input type="checkbox" class="rounded border-gray-300 dark:border-gray-600">
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                            {{ txn.journal_entry.timestamp|date:"Y-m-d" }}
-                                        </td>
-                                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                                            {{ txn.description|default:txn.journal_entry.description|default:"-" }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
-                                            {% if txn.tx_type == 'debit' %}
-                                                ${{ txn.amount|floatformat:2 }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
-                                            {% if txn.tx_type == 'credit' %}
-                                                ${{ txn.amount|floatformat:2 }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                                {% trans "Unreconciled" %}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
 
-                    <!-- Reconciliation Actions -->
-                    <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm text-gray-600 dark:text-gray-400">
-                                {% trans "Select transactions to reconcile with your bank statement" %}
-                            </div>
-                            <button class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                                {% trans "Mark as Reconciled" %}
-                            </button>
-                        </div>
+                <!-- Statement Beginning Balance -->
+                <div>
+                    <label for="beginning_balance" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Statement Beginning Balance
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-gray-500 dark:text-gray-400">$</span>
+                        <input type="number" 
+                               id="beginning_balance" 
+                               name="beginning_balance"
+                               step="0.01"
+                               placeholder="0.00"
+                               class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
                     </div>
-                {% else %}
-                    <div class="p-12 text-center">
-                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{% trans "No transactions" %}</h3>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            {% trans "No transactions found for this account." %}
-                        </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Beginning balance from your bank statement (optional, will use last reconciled balance if not provided)
+                    </p>
+                </div>
+
+                <!-- Statement Ending Balance -->
+                <div>
+                    <label for="ending_balance" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Statement Ending Balance <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-gray-500 dark:text-gray-400">$</span>
+                        <input type="number" 
+                               id="ending_balance" 
+                               name="ending_balance"
+                               step="0.01"
+                               required
+                               placeholder="0.00"
+                               class="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
                     </div>
-                {% endif %}
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Ending balance from your bank statement
+                    </p>
+                </div>
             </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-end pt-4">
+                <button type="submit" 
+                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    <i class="fas fa-arrow-right mr-2"></i>
+                    Start Reconciliation
+                </button>
+            </div>
+        </form>
         {% else %}
-            <!-- Empty State -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
-                <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                </svg>
-                <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-                    {% trans "Select a Bank Account" %}
+        <div class="text-center py-8">
+            <i class="fas fa-university text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">No bank accounts found</p>
+            <a href="{% url 'accounting:bank_account_create' %}" 
+               class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>Add Bank Account
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Reconciliations -->
+    {% if recent_reconciliations %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <i class="fas fa-clock text-gray-600 dark:text-gray-400 mr-2"></i>
+            Recent Reconciliations
+        </h2>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Bank Account
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Date
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Status
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Ending Balance
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for recon in recent_reconciliations %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                            {{ recon.bank_account.account_name }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                            {{ recon.reconciliation_date }}
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            {% if recon.status == 'COMPLETED' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    <i class="fas fa-check-circle mr-1"></i>Completed
+                                </span>
+                            {% elif recon.status == 'IN_PROGRESS' %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                    <i class="fas fa-clock mr-1"></i>In Progress
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                    <i class="fas fa-times-circle mr-1"></i>Cancelled
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-right text-gray-900 dark:text-white">
+                            ${{ recon.statement_ending_balance|floatformat:2 }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-center">
+                            {% if recon.status == 'IN_PROGRESS' %}
+                                <a href="{% url 'accounting:bank_reconciliation_detail' pk=recon.id %}" 
+                                   class="text-blue-600 dark:text-blue-400 hover:underline">
+                                    Continue
+                                </a>
+                            {% elif recon.status == 'COMPLETED' %}
+                                <a href="{% url 'accounting:bank_reconciliation_report' pk=recon.id %}" 
+                                   class="text-blue-600 dark:text-blue-400 hover:underline">
+                                    View Report
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-4 text-center">
+            <a href="{% url 'accounting:bank_reconciliation_list' %}" 
+               class="text-blue-600 dark:text-blue-400 hover:underline text-sm">
+                View All Reconciliations →
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Help Section -->
+    <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div class="flex items-start">
+            <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-1 mr-3"></i>
+            <div>
+                <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                    About Bank Reconciliation
                 </h3>
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    {% trans "Choose a bank account from the dropdown above to start reconciling transactions." %}
+                <p class="text-sm text-blue-700 dark:text-blue-400">
+                    Bank reconciliation ensures your accounting records match your bank statement. 
+                    The system will load unreconciled journal entries for the selected bank account, 
+                    allowing you to mark which transactions have cleared the bank. 
+                    When complete, the reconciliation creates a permanent record and updates your account balances.
                 </p>
             </div>
-        {% endif %}
-
+        </div>
     </div>
 </div>
 {% endblock %}

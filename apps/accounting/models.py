@@ -18,6 +18,9 @@ from .bank_models import BankAccount  # noqa: F401
 # Import bill models for Django to recognize them
 from .bill_models import Bill, BillLine, BillPayment  # noqa: F401
 
+# Import fixed asset models for Django to recognize them
+from .fixed_asset_models import AssetDisposal, DepreciationSchedule, FixedAsset  # noqa: F401
+
 # Import invoice models for Django to recognize them
 from .invoice_models import CreditMemo, Invoice, InvoiceLine, InvoicePayment  # noqa: F401
 

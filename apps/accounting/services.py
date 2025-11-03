@@ -2700,11 +2700,17 @@ class BankReconciliationService:
                 AuditLog.objects.create(
                     tenant=bank_account.tenant,
                     user=user,
-                    category="ACCOUNTING",
-                    action="RECONCILIATION_STARTED",
-                    severity="INFO",
+                    category=AuditLog.CATEGORY_DATA,
+                    action=AuditLog.ACTION_CREATE,
+                    severity=AuditLog.SEVERITY_INFO,
                     description=f"Started bank reconciliation for {bank_account.account_name} as of {statement_date}",
-                    after_value=str(reconciliation.id),
+                    object_id=str(reconciliation.id),
+                    new_values={
+                        "reconciliation_id": str(reconciliation.id),
+                        "bank_account": bank_account.account_name,
+                        "statement_date": str(statement_date),
+                        "ending_balance": str(ending_balance),
+                    },
                 )
 
                 logger.info(
@@ -3127,3 +3133,694 @@ class BankReconciliationService:
         except Exception as e:
             logger.error(f"Failed to create adjusting entry: {str(e)}")
             raise
+
+    @staticmethod
+    def export_reconciliation_report_to_pdf(reconciliation, deposits, withdrawals):
+        """
+        Export bank reconciliation report to PDF format.
+
+        Args:
+            reconciliation: BankReconciliation instance
+            deposits: List of deposit transactions (CREDIT)
+            withdrawals: List of withdrawal transactions (DEBIT)
+
+        Returns:
+            bytes: PDF file content
+
+        Implements Requirements: 4.4, 4.6
+        """
+        try:
+            from io import BytesIO
+
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+            from reportlab.lib.units import inch
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+            # Create PDF buffer
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(
+                buffer,
+                pagesize=letter,
+                topMargin=0.5 * inch,
+                bottomMargin=0.5 * inch,
+                leftMargin=0.75 * inch,
+                rightMargin=0.75 * inch,
+            )
+
+            # Get styles
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(
+                "CustomTitle",
+                parent=styles["Heading1"],
+                fontSize=18,
+                spaceAfter=12,
+                alignment=1,  # Center alignment
+            )
+            heading_style = ParagraphStyle(
+                "CustomHeading", parent=styles["Heading2"], fontSize=14, spaceAfter=10
+            )
+            normal_style = styles["Normal"]
+
+            # Build PDF content
+            story = []
+
+            # Title
+            story.append(Paragraph("Bank Reconciliation Report", title_style))
+            story.append(Spacer(1, 12))
+
+            # Bank Account Information
+            bank_info_data = [
+                ["Bank Account:", reconciliation.bank_account.account_name],
+                ["Bank Name:", reconciliation.bank_account.bank_name],
+                ["Account Number:", reconciliation.bank_account.masked_account_number],
+                ["Reconciliation Date:", reconciliation.reconciliation_date.strftime("%B %d, %Y")],
+                [
+                    "Status:",
+                    (
+                        "Balanced"
+                        if reconciliation.is_balanced
+                        else f"Variance: ${reconciliation.variance:,.2f}"
+                    ),
+                ],
+            ]
+
+            if reconciliation.completed_by:
+                bank_info_data.append(
+                    [
+                        "Completed By:",
+                        reconciliation.completed_by.get_full_name()
+                        or reconciliation.completed_by.username,
+                    ]
+                )
+                bank_info_data.append(
+                    [
+                        "Completed Date:",
+                        reconciliation.completed_date.strftime("%B %d, %Y %I:%M %p"),
+                    ]
+                )
+
+            bank_info_table = Table(bank_info_data, colWidths=[2 * inch, 4.5 * inch])
+            bank_info_table.setStyle(
+                TableStyle(
+                    [
+                        ("ALIGN", (0, 0), (0, -1), "RIGHT"),
+                        ("ALIGN", (1, 0), (1, -1), "LEFT"),
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, -1), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                        ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
+            story.append(bank_info_table)
+            story.append(Spacer(1, 20))
+
+            # Balance Summary
+            story.append(Paragraph("Balance Summary", heading_style))
+
+            balance_data = [
+                ["Description", "Amount"],
+                [
+                    "Statement Beginning Balance",
+                    f"${reconciliation.statement_beginning_balance:,.2f}",
+                ],
+                ["Add: Deposits", f"${reconciliation.total_deposits:,.2f}"],
+                ["Less: Withdrawals", f"${reconciliation.total_withdrawals:,.2f}"],
+                ["Add/Less: Adjustments", f"${reconciliation.total_adjustments:,.2f}"],
+                ["Statement Ending Balance", f"${reconciliation.statement_ending_balance:,.2f}"],
+                ["", ""],
+                ["Book Beginning Balance", f"${reconciliation.book_beginning_balance:,.2f}"],
+                ["Book Ending Balance", f"${reconciliation.book_ending_balance:,.2f}"],
+                ["", ""],
+                [
+                    "Variance",
+                    f"${reconciliation.variance:,.2f}" if reconciliation.variance != 0 else "$0.00",
+                ],
+            ]
+
+            balance_table = Table(balance_data, colWidths=[4.5 * inch, 2 * inch])
+            balance_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (0, 0), (0, -1), "LEFT"),
+                        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 11),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
+                        ("TOPPADDING", (0, 0), (-1, 0), 10),
+                        ("FONTNAME", (0, 1), (0, 5), "Helvetica"),
+                        ("FONTNAME", (0, 7), (0, 8), "Helvetica"),
+                        ("FONTNAME", (0, 10), (0, 10), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 10), (-1, 10), 12),
+                        ("BACKGROUND", (0, 10), (-1, 10), colors.lightgrey),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ]
+                )
+            )
+            story.append(balance_table)
+            story.append(Spacer(1, 20))
+
+            # Deposits Section
+            if deposits:
+                story.append(Paragraph(f"Deposits ({len(deposits)} transactions)", heading_style))
+
+                deposit_data = [["Date", "Description", "Reference", "Amount"]]
+                for deposit in deposits:
+                    deposit_data.append(
+                        [
+                            deposit.transaction_date.strftime("%m/%d/%Y"),
+                            deposit.description[:40],
+                            deposit.reference_number or "",
+                            f"${deposit.amount:,.2f}",
+                        ]
+                    )
+
+                # Add total row
+                deposit_data.append(
+                    ["", "", "Total Deposits:", f"${reconciliation.total_deposits:,.2f}"]
+                )
+
+                deposit_table = Table(
+                    deposit_data, colWidths=[1 * inch, 3 * inch, 1.5 * inch, 1 * inch]
+                )
+                deposit_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("ALIGN", (3, 0), (3, -1), "RIGHT"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, 0), 10),
+                            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                            ("TOPPADDING", (0, 0), (-1, 0), 8),
+                            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                            ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ]
+                    )
+                )
+                story.append(deposit_table)
+                story.append(Spacer(1, 20))
+
+            # Withdrawals Section
+            if withdrawals:
+                story.append(
+                    Paragraph(f"Withdrawals ({len(withdrawals)} transactions)", heading_style)
+                )
+
+                withdrawal_data = [["Date", "Description", "Reference", "Amount"]]
+                for withdrawal in withdrawals:
+                    withdrawal_data.append(
+                        [
+                            withdrawal.transaction_date.strftime("%m/%d/%Y"),
+                            withdrawal.description[:40],
+                            withdrawal.reference_number or "",
+                            f"${withdrawal.amount:,.2f}",
+                        ]
+                    )
+
+                # Add total row
+                withdrawal_data.append(
+                    ["", "", "Total Withdrawals:", f"${reconciliation.total_withdrawals:,.2f}"]
+                )
+
+                withdrawal_table = Table(
+                    withdrawal_data, colWidths=[1 * inch, 3 * inch, 1.5 * inch, 1 * inch]
+                )
+                withdrawal_table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("ALIGN", (3, 0), (3, -1), "RIGHT"),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, 0), 10),
+                            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                            ("TOPPADDING", (0, 0), (-1, 0), 8),
+                            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                            ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ]
+                    )
+                )
+                story.append(withdrawal_table)
+                story.append(Spacer(1, 20))
+
+            # Notes section if present
+            if reconciliation.notes:
+                story.append(Paragraph("Notes", heading_style))
+                story.append(Paragraph(reconciliation.notes, normal_style))
+
+            # Build PDF
+            doc.build(story)
+
+            # Get PDF data
+            pdf_data = buffer.getvalue()
+            buffer.close()
+
+            return pdf_data
+
+        except Exception as e:
+            logger.error(f"Failed to generate reconciliation PDF: {str(e)}")
+            raise
+
+
+class BankStatementImportService:
+    """
+    Service class for handling bank statement imports.
+
+    Supports parsing CSV, OFX, and QFX file formats and automatically
+    matching imported transactions with existing journal entries.
+
+    Requirements: 4.3, 6.4
+    """
+
+    @staticmethod
+    def import_statement(statement_import, user):
+        """
+        Import bank statement from file.
+
+        Args:
+            statement_import: BankStatementImport instance
+            user: User performing the import
+
+        Returns:
+            dict: Import results with statistics
+        """
+        from apps.core.audit_models import AuditLog
+
+        from .bank_models import BankTransaction
+
+        logger.info(
+            f"Starting bank statement import {statement_import.id} for {statement_import.bank_account.account_name}"
+        )
+
+        try:
+            # Mark as processing
+            statement_import.start_processing()
+
+            # Parse file based on format
+            if statement_import.file_format == "CSV":
+                transactions = BankStatementImportService._parse_csv(statement_import)
+            elif statement_import.file_format in ["OFX", "QFX", "QBO"]:
+                transactions = BankStatementImportService._parse_ofx(statement_import)
+            else:
+                raise ValueError(f"Unsupported file format: {statement_import.file_format}")
+
+            # Import transactions
+            imported_count = 0
+            matched_count = 0
+            duplicate_count = 0
+            error_count = 0
+
+            with transaction.atomic():
+                for txn_data in transactions:
+                    try:
+                        # Check for duplicates
+                        existing = BankTransaction.objects.filter(
+                            tenant=statement_import.tenant,
+                            bank_account=statement_import.bank_account,
+                            transaction_date=txn_data["date"],
+                            amount=txn_data["amount"],
+                            description=txn_data["description"],
+                        ).first()
+
+                        if existing:
+                            duplicate_count += 1
+                            continue
+
+                        # Create bank transaction
+                        bank_txn = BankTransaction.objects.create(
+                            tenant=statement_import.tenant,
+                            bank_account=statement_import.bank_account,
+                            transaction_date=txn_data["date"],
+                            description=txn_data["description"],
+                            amount=txn_data["amount"],
+                            transaction_type=txn_data["type"],
+                            reference_number=txn_data.get("reference", ""),
+                            statement_import=statement_import,
+                            created_by=user,
+                        )
+
+                        imported_count += 1
+
+                        # Try to auto-match with journal entries
+                        if BankStatementImportService._auto_match_transaction(bank_txn):
+                            matched_count += 1
+
+                    except Exception as e:
+                        logger.error(f"Error importing transaction: {str(e)}")
+                        error_count += 1
+                        continue
+
+                # Update import statistics
+                statement_import.transactions_imported = imported_count
+                statement_import.transactions_matched = matched_count
+                statement_import.transactions_duplicates = duplicate_count
+                statement_import.transactions_errors = error_count
+                statement_import.complete_processing(success=True)
+
+                # Log audit trail
+                AuditLog.objects.create(
+                    tenant=statement_import.tenant,
+                    user=user,
+                    category="ACCOUNTING",
+                    action="BANK_STATEMENT_IMPORTED",
+                    severity="INFO",
+                    description=f"Imported bank statement for {statement_import.bank_account.account_name}",
+                    after_value=f"imported={imported_count}, matched={matched_count}, duplicates={duplicate_count}, errors={error_count}",
+                )
+
+                logger.info(
+                    f"Bank statement import {statement_import.id} completed: "
+                    f"{imported_count} imported, {matched_count} matched, "
+                    f"{duplicate_count} duplicates, {error_count} errors"
+                )
+
+                return {
+                    "success": True,
+                    "imported": imported_count,
+                    "matched": matched_count,
+                    "duplicates": duplicate_count,
+                    "errors": error_count,
+                }
+
+        except Exception as e:
+            logger.error(f"Failed to import bank statement: {str(e)}")
+            statement_import.complete_processing(success=False, error_message=str(e))
+
+            return {
+                "success": False,
+                "error": str(e),
+                "imported": 0,
+                "matched": 0,
+                "duplicates": 0,
+                "errors": 0,
+            }
+
+    @staticmethod
+    def _parse_csv(statement_import):  # noqa: C901
+        """
+        Parse CSV bank statement file.
+
+        Expected CSV format:
+        Date, Description, Amount, Type (or Debit/Credit columns)
+
+        Args:
+            statement_import: BankStatementImport instance
+
+        Returns:
+            list: List of transaction dictionaries
+        """
+        import csv
+        import io
+        from datetime import datetime
+        from decimal import Decimal, InvalidOperation
+
+        transactions = []
+
+        try:
+            # Read file content
+            statement_import.file.seek(0)
+            content = statement_import.file.read()
+
+            # Try to decode as UTF-8, fallback to latin-1
+            try:
+                text_content = content.decode("utf-8")
+            except UnicodeDecodeError:
+                text_content = content.decode("latin-1")
+
+            # Parse CSV
+            csv_file = io.StringIO(text_content)
+            reader = csv.DictReader(csv_file)
+
+            for row in reader:
+                # Try to parse date (support multiple formats)
+                date_str = row.get("Date") or row.get("date") or row.get("Transaction Date")
+                if not date_str:
+                    continue
+
+                # Parse date
+                txn_date = None
+                for date_format in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y/%m/%d"]:
+                    try:
+                        txn_date = datetime.strptime(date_str.strip(), date_format).date()
+                        break
+                    except ValueError:
+                        continue
+
+                if not txn_date:
+                    logger.warning(f"Could not parse date: {date_str}")
+                    continue
+
+                # Get description
+                description = (
+                    row.get("Description")
+                    or row.get("description")
+                    or row.get("Memo")
+                    or row.get("memo")
+                    or ""
+                )
+
+                # Get amount and type
+                amount = None
+                txn_type = None
+
+                # Check if there's a single Amount column with type
+                if "Amount" in row or "amount" in row:
+                    amount_str = row.get("Amount") or row.get("amount")
+                    try:
+                        amount = abs(Decimal(amount_str.replace(",", "").replace("$", "")))
+                        # Determine type from sign or Type column
+                        if "Type" in row or "type" in row:
+                            type_str = (row.get("Type") or row.get("type")).upper()
+                            txn_type = (
+                                "DEBIT"
+                                if "DEBIT" in type_str or "WITHDRAWAL" in type_str
+                                else "CREDIT"
+                            )
+                        else:
+                            # Use sign of amount
+                            txn_type = (
+                                "DEBIT"
+                                if float(amount_str.replace(",", "").replace("$", "")) < 0
+                                else "CREDIT"
+                            )
+                    except (ValueError, InvalidOperation):
+                        logger.warning(f"Could not parse amount: {amount_str}")
+                        continue
+
+                # Check for separate Debit/Credit columns
+                elif "Debit" in row or "debit" in row or "Credit" in row or "credit" in row:
+                    debit_str = row.get("Debit") or row.get("debit") or "0"
+                    credit_str = row.get("Credit") or row.get("credit") or "0"
+
+                    try:
+                        debit = Decimal(debit_str.replace(",", "").replace("$", "") or "0")
+                        credit = Decimal(credit_str.replace(",", "").replace("$", "") or "0")
+
+                        if debit > 0:
+                            amount = debit
+                            txn_type = "DEBIT"
+                        elif credit > 0:
+                            amount = credit
+                            txn_type = "CREDIT"
+                        else:
+                            continue
+                    except (ValueError, InvalidOperation):
+                        logger.warning(f"Could not parse debit/credit: {debit_str}/{credit_str}")
+                        continue
+
+                if not amount or not txn_type:
+                    continue
+
+                # Get reference number
+                reference = (
+                    row.get("Reference")
+                    or row.get("reference")
+                    or row.get("Check Number")
+                    or row.get("check_number")
+                    or ""
+                )
+
+                transactions.append(
+                    {
+                        "date": txn_date,
+                        "description": description.strip(),
+                        "amount": amount,
+                        "type": txn_type,
+                        "reference": reference.strip(),
+                    }
+                )
+
+        except Exception as e:
+            logger.error(f"Error parsing CSV file: {str(e)}")
+            raise
+
+        return transactions
+
+    @staticmethod
+    def _parse_ofx(statement_import):  # noqa: C901
+        """
+        Parse OFX/QFX bank statement file.
+
+        Args:
+            statement_import: BankStatementImport instance
+
+        Returns:
+            list: List of transaction dictionaries
+        """
+        from decimal import Decimal
+
+        transactions = []
+
+        try:
+            # Try to import ofxparse library
+            try:
+                from ofxparse import OfxParser
+            except ImportError:
+                raise ImportError(
+                    "ofxparse library is required for OFX/QFX file parsing. "
+                    "Please install it: pip install ofxparse"
+                )
+
+            # Parse OFX file
+            statement_import.file.seek(0)
+            ofx = OfxParser.parse(statement_import.file)
+
+            # Get account
+            if not ofx.accounts:
+                raise ValueError("No accounts found in OFX file")
+
+            account = ofx.accounts[0]
+
+            # Parse transactions
+            for txn in account.statement.transactions:
+                # Determine transaction type
+                txn_type = "CREDIT" if txn.amount > 0 else "DEBIT"
+                amount = abs(Decimal(str(txn.amount)))
+
+                transactions.append(
+                    {
+                        "date": txn.date.date() if hasattr(txn.date, "date") else txn.date,
+                        "description": txn.memo or txn.payee or "",
+                        "amount": amount,
+                        "type": txn_type,
+                        "reference": txn.checknum or txn.id or "",
+                    }
+                )
+
+            # Update statement dates and balance if available
+            if account.statement.start_date:
+                statement_import.statement_start_date = (
+                    account.statement.start_date.date()
+                    if hasattr(account.statement.start_date, "date")
+                    else account.statement.start_date
+                )
+
+            if account.statement.end_date:
+                statement_import.statement_end_date = (
+                    account.statement.end_date.date()
+                    if hasattr(account.statement.end_date, "date")
+                    else account.statement.end_date
+                )
+
+            if account.statement.balance:
+                statement_import.statement_balance = Decimal(str(account.statement.balance))
+
+            statement_import.save(
+                update_fields=[
+                    "statement_start_date",
+                    "statement_end_date",
+                    "statement_balance",
+                    "updated_at",
+                ]
+            )
+
+        except ImportError as e:
+            logger.error(f"OFX parsing library not available: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error parsing OFX file: {str(e)}")
+            raise
+
+        return transactions
+
+    @staticmethod
+    def _auto_match_transaction(bank_transaction):
+        """
+        Attempt to automatically match a bank transaction with a journal entry.
+
+        Matching criteria:
+        1. Date within +/- 3 days
+        2. Amount matches exactly
+        3. Description contains keywords
+
+        Args:
+            bank_transaction: BankTransaction instance
+
+        Returns:
+            bool: True if matched, False otherwise
+        """
+        from datetime import timedelta
+
+        from django_ledger.models import JournalEntryModel, TransactionModel
+
+        try:
+            # Get tenant's entity
+            jewelry_entity = JewelryEntity.objects.get(tenant=bank_transaction.tenant)
+            entity = jewelry_entity.ledger_entity
+
+            # Search for matching journal entries
+            start_date = bank_transaction.transaction_date - timedelta(days=3)
+            end_date = bank_transaction.transaction_date + timedelta(days=3)
+
+            # Get journal entries in date range
+            journal_entries = JournalEntryModel.objects.filter(
+                ledger__entity=entity,
+                timestamp__date__gte=start_date,
+                timestamp__date__lte=end_date,
+                posted=True,
+            )
+
+            # Try to find matching entry
+            for je in journal_entries:
+                # Get transactions for this journal entry
+                je_transactions = TransactionModel.objects.filter(journal_entry=je)
+
+                # Calculate total amount
+                total_amount = sum(abs(txn.amount) for txn in je_transactions)
+
+                # Check if amount matches
+                if abs(total_amount - bank_transaction.amount) < Decimal("0.01"):
+                    # Check if description has any matching keywords
+                    description_lower = bank_transaction.description.lower()
+                    je_description_lower = je.description.lower()
+
+                    # Extract keywords (words longer than 3 characters)
+                    bank_keywords = set(word for word in description_lower.split() if len(word) > 3)
+                    je_keywords = set(
+                        word for word in je_description_lower.split() if len(word) > 3
+                    )
+
+                    # Check for keyword overlap
+                    if bank_keywords & je_keywords:
+                        # Match found!
+                        bank_transaction.match_journal_entry(je)
+                        logger.info(
+                            f"Auto-matched bank transaction {bank_transaction.id} "
+                            f"with journal entry {je.id}"
+                        )
+                        return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error auto-matching transaction: {str(e)}")
+            return False

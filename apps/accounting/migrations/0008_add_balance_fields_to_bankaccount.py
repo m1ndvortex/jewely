@@ -1,6 +1,7 @@
 # Generated manually to add missing balance fields
 
 from decimal import Decimal
+
 from django.db import migrations, models
 
 

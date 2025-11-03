@@ -6,6 +6,7 @@ from django.contrib import admin
 
 from .bank_models import BankAccount, BankReconciliation, BankStatementImport, BankTransaction
 from .bill_models import Bill, BillLine, BillPayment
+from .fixed_asset_models import AssetDisposal, DepreciationSchedule, FixedAsset
 
 
 class BillLineInline(admin.TabularInline):
@@ -606,3 +607,337 @@ class BankStatementImportAdmin(admin.ModelAdmin):
         return "N/A"
 
     processing_duration.short_description = "Processing Duration"
+
+
+class DepreciationScheduleInline(admin.TabularInline):
+    """Inline admin for depreciation schedules."""
+
+    model = DepreciationSchedule
+    extra = 0
+    fields = [
+        "period_date",
+        "depreciation_amount",
+        "accumulated_depreciation",
+        "book_value",
+        "journal_entry",
+    ]
+    readonly_fields = [
+        "period_date",
+        "depreciation_amount",
+        "accumulated_depreciation",
+        "book_value",
+        "journal_entry",
+        "created_at",
+        "created_by",
+    ]
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        """Prevent manual addition of depreciation schedules."""
+        return False
+
+
+@admin.register(FixedAsset)
+class FixedAssetAdmin(admin.ModelAdmin):
+    """Admin interface for FixedAsset model."""
+
+    list_display = [
+        "asset_number",
+        "asset_name",
+        "category",
+        "acquisition_date",
+        "acquisition_cost",
+        "current_book_value",
+        "depreciation_percentage_display",
+        "status",
+    ]
+    list_filter = [
+        "status",
+        "category",
+        "depreciation_method",
+        "acquisition_date",
+        "tenant",
+    ]
+    search_fields = [
+        "asset_number",
+        "asset_name",
+        "serial_number",
+        "manufacturer",
+        "model_number",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "created_by",
+        "current_book_value",
+        "accumulated_depreciation",
+        "depreciable_amount",
+        "remaining_depreciable_amount",
+        "is_fully_depreciated",
+        "depreciation_percentage",
+        "months_in_service",
+        "remaining_useful_life_months",
+        "is_under_warranty",
+    ]
+    inlines = [DepreciationScheduleInline]
+    fieldsets = [
+        (
+            "Asset Identification",
+            {
+                "fields": [
+                    "tenant",
+                    "asset_number",
+                    "asset_name",
+                    "category",
+                    "serial_number",
+                    "manufacturer",
+                    "model_number",
+                ]
+            },
+        ),
+        (
+            "Acquisition Information",
+            {
+                "fields": [
+                    "acquisition_date",
+                    "acquisition_cost",
+                    "salvage_value",
+                    "purchase_order_number",
+                    "vendor",
+                ]
+            },
+        ),
+        (
+            "Depreciation Settings",
+            {
+                "fields": [
+                    "useful_life_months",
+                    "depreciation_method",
+                    "depreciation_rate",
+                ]
+            },
+        ),
+        (
+            "Current Status",
+            {
+                "fields": [
+                    "status",
+                    "current_book_value",
+                    "accumulated_depreciation",
+                    "last_depreciation_date",
+                    "depreciable_amount",
+                    "remaining_depreciable_amount",
+                    "is_fully_depreciated",
+                    "depreciation_percentage",
+                    "months_in_service",
+                    "remaining_useful_life_months",
+                ]
+            },
+        ),
+        (
+            "GL Account References",
+            {
+                "fields": [
+                    "asset_account",
+                    "accumulated_depreciation_account",
+                    "depreciation_expense_account",
+                ]
+            },
+        ),
+        (
+            "Location and Responsibility",
+            {
+                "fields": [
+                    "location",
+                    "department",
+                    "assigned_to",
+                ]
+            },
+        ),
+        (
+            "Additional Information",
+            {
+                "fields": [
+                    "warranty_expiration",
+                    "is_under_warranty",
+                    "notes",
+                ]
+            },
+        ),
+        (
+            "Audit Information",
+            {
+                "fields": ["created_at", "created_by", "updated_at"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
+    def depreciation_percentage_display(self, obj):
+        """Display depreciation percentage."""
+        return f"{obj.depreciation_percentage:.1f}%"
+
+    depreciation_percentage_display.short_description = "Depreciated %"
+
+
+@admin.register(DepreciationSchedule)
+class DepreciationScheduleAdmin(admin.ModelAdmin):
+    """Admin interface for DepreciationSchedule model."""
+
+    list_display = [
+        "fixed_asset",
+        "period_date",
+        "depreciation_amount",
+        "accumulated_depreciation",
+        "book_value",
+        "is_adjustment",
+    ]
+    list_filter = [
+        "period_year",
+        "period_month",
+        "is_adjustment",
+        "tenant",
+    ]
+    search_fields = [
+        "fixed_asset__asset_number",
+        "fixed_asset__asset_name",
+    ]
+    readonly_fields = [
+        "created_at",
+        "created_by",
+        "period_month",
+        "period_year",
+    ]
+    fieldsets = [
+        (
+            "Depreciation Information",
+            {
+                "fields": [
+                    "tenant",
+                    "fixed_asset",
+                    "period_date",
+                    "period_month",
+                    "period_year",
+                ]
+            },
+        ),
+        (
+            "Depreciation Amounts",
+            {
+                "fields": [
+                    "depreciation_amount",
+                    "accumulated_depreciation",
+                    "book_value",
+                ]
+            },
+        ),
+        (
+            "Accounting Integration",
+            {"fields": ["journal_entry"]},
+        ),
+        (
+            "Additional Information",
+            {
+                "fields": [
+                    "is_adjustment",
+                    "notes",
+                ]
+            },
+        ),
+        (
+            "Audit Information",
+            {
+                "fields": ["created_at", "created_by"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
+
+@admin.register(AssetDisposal)
+class AssetDisposalAdmin(admin.ModelAdmin):
+    """Admin interface for AssetDisposal model."""
+
+    list_display = [
+        "fixed_asset",
+        "disposal_date",
+        "disposal_method",
+        "proceeds",
+        "book_value_at_disposal",
+        "gain_loss",
+        "gain_loss_indicator",
+    ]
+    list_filter = [
+        "disposal_method",
+        "disposal_date",
+        "tenant",
+    ]
+    search_fields = [
+        "fixed_asset__asset_number",
+        "fixed_asset__asset_name",
+        "buyer_name",
+    ]
+    readonly_fields = [
+        "created_at",
+        "created_by",
+        "book_value_at_disposal",
+        "gain_loss",
+        "is_gain",
+        "is_loss",
+    ]
+    fieldsets = [
+        (
+            "Disposal Information",
+            {
+                "fields": [
+                    "tenant",
+                    "fixed_asset",
+                    "disposal_date",
+                    "disposal_method",
+                    "proceeds",
+                ]
+            },
+        ),
+        (
+            "Financial Calculations",
+            {
+                "fields": [
+                    "book_value_at_disposal",
+                    "gain_loss",
+                    "is_gain",
+                    "is_loss",
+                ]
+            },
+        ),
+        (
+            "Accounting Integration",
+            {"fields": ["journal_entry"]},
+        ),
+        (
+            "Additional Information",
+            {
+                "fields": [
+                    "buyer_name",
+                    "disposal_reason",
+                    "notes",
+                ]
+            },
+        ),
+        (
+            "Audit Information",
+            {
+                "fields": ["created_at", "created_by"],
+                "classes": ["collapse"],
+            },
+        ),
+    ]
+
+    def gain_loss_indicator(self, obj):
+        """Display gain/loss with indicator."""
+        if obj.is_gain:
+            return f"Gain: ${obj.gain_loss}"
+        elif obj.is_loss:
+            return f"Loss: ${abs(obj.gain_loss)}"
+        return "Break Even"
+
+    gain_loss_indicator.short_description = "Gain/Loss"

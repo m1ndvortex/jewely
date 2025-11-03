@@ -401,51 +401,38 @@ def accounts_receivable(request):
 @tenant_access_required
 def bank_reconciliation(request):
     """
-    Display bank reconciliation interface.
+    Bank reconciliation landing page.
+
+    Shows options to start a new reconciliation or view reconciliation history.
+    Redirects to the proper reconciliation workflow.
     """
-    try:
-        jewelry_entity = JewelryEntity.objects.get(tenant=request.user.tenant)
-        entity = jewelry_entity.ledger_entity
+    from .bank_models import BankAccount, BankReconciliation
 
-        # Get cash/bank accounts
-        coa = entity.chartofaccountmodel_set.first()
-        bank_accounts = []
-        if coa:
-            bank_accounts = coa.accountmodel_set.filter(
-                role__in=["ASSET_CA_CASH", "ASSET_CA_CHECKING", "ASSET_CA_SAVINGS"]
-            ).order_by("code")
+    # Get bank accounts for this tenant
+    bank_accounts = BankAccount.objects.filter(tenant=request.user.tenant, is_active=True).order_by(
+        "-is_default", "account_name"
+    )
 
-        # Get recent transactions for selected account
-        account_code = request.GET.get("account")
-        transactions = []
+    # Get recent reconciliations
+    recent_reconciliations = (
+        BankReconciliation.objects.filter(tenant=request.user.tenant)
+        .select_related("bank_account", "created_by")
+        .order_by("-reconciliation_date")[:5]
+    )
 
-        if account_code:
-            from django_ledger.models import TransactionModel
+    # Get in-progress reconciliations
+    in_progress = (
+        BankReconciliation.objects.filter(tenant=request.user.tenant, status="IN_PROGRESS")
+        .select_related("bank_account")
+        .order_by("-created_at")
+    )
 
-            end_date = date.today()
-            start_date = date(end_date.year, end_date.month, 1)
-
-            transactions = (
-                TransactionModel.objects.filter(
-                    journal_entry__ledger__entity=entity,
-                    account__code=account_code,
-                    journal_entry__timestamp__date__gte=start_date,
-                    journal_entry__timestamp__date__lte=end_date,
-                )
-                .select_related("journal_entry", "account")
-                .order_by("-journal_entry__timestamp")
-            )
-
-        context = {
-            "bank_accounts": bank_accounts,
-            "selected_account": account_code,
-            "transactions": transactions,
-            "page_title": "Bank Reconciliation",
-        }
-
-    except JewelryEntity.DoesNotExist:
-        messages.error(request, "Accounting not set up for this tenant.")
-        context = {"bank_accounts": [], "transactions": [], "page_title": "Bank Reconciliation"}
+    context = {
+        "bank_accounts": bank_accounts,
+        "recent_reconciliations": recent_reconciliations,
+        "in_progress": in_progress,
+        "page_title": "Bank Reconciliation",
+    }
 
     return render(request, "accounting/bank_reconciliation.html", context)
 
@@ -5042,7 +5029,7 @@ def bank_reconciliation_start(request):
 
 @login_required
 @tenant_access_required
-def bank_reconciliation_detail(request, pk):
+def bank_reconciliation_detail(request, pk):  # noqa: C901
     """
     Display bank reconciliation interface with transactions to reconcile.
 
@@ -5051,8 +5038,11 @@ def bank_reconciliation_detail(request, pk):
 
     Implements Requirements: 4.1, 4.2, 4.4, 4.7
     """
-    from .bank_models import BankReconciliation, BankTransaction
-    from .services import BankReconciliationService
+    from decimal import Decimal
+
+    from django_ledger.models import TransactionModel
+
+    from .bank_models import BankReconciliation
 
     # Get reconciliation with tenant filtering
     reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
@@ -5061,16 +5051,32 @@ def bank_reconciliation_detail(request, pk):
         action = request.POST.get("action")
 
         if action == "mark_reconciled":
-            # Get selected transaction IDs
+            # Get selected transaction IDs (these are journal entry transaction IDs)
             transaction_ids = request.POST.getlist("transaction_ids")
 
             if transaction_ids:
                 try:
-                    count = BankReconciliationService.mark_reconciled(
-                        transaction_ids=transaction_ids,
-                        reconciliation=reconciliation,
-                        user=request.user,
-                    )
+                    # Mark journal entry transactions as reconciled
+                    count = 0
+                    for txn_id in transaction_ids:
+                        try:
+                            txn = TransactionModel.objects.get(
+                                id=txn_id,
+                                journal_entry__ledger__entity=reconciliation.bank_account.tenant.jewelry_entity.ledger_entity,
+                            )
+                            # Mark as reconciled by adding metadata
+                            if not hasattr(txn, "reconciled_date") or not txn.reconciled_date:
+                                # Store reconciliation info in journal entry
+                                je = txn.journal_entry
+                                if not je.description.startswith("[RECONCILED]"):
+                                    je.description = f"[RECONCILED {reconciliation.reconciliation_date}] {je.description}"
+                                    je.save()
+                                count += 1
+                        except TransactionModel.DoesNotExist:
+                            continue
+
+                    # Recalculate reconciliation totals
+                    reconciliation.calculate_totals()
 
                     messages.success(request, f"Marked {count} transaction(s) as reconciled")
 
@@ -5080,45 +5086,46 @@ def bank_reconciliation_detail(request, pk):
             else:
                 messages.warning(request, "No transactions selected")
 
-        elif action == "unreconcile":
-            transaction_id = request.POST.get("transaction_id")
-            reason = request.POST.get("reason", "User requested unreconcile")
-
-            if transaction_id:
-                try:
-                    txn = BankTransaction.objects.get(id=transaction_id, tenant=request.user.tenant)
-
-                    BankReconciliationService.unreconcile_transaction(
-                        transaction=txn, reason=reason, user=request.user
-                    )
-
-                    messages.success(request, "Transaction unreconciled")
-
-                except Exception as e:
-                    logger.error(f"Failed to unreconcile transaction: {str(e)}")
-                    messages.error(request, f"Failed to unreconcile: {str(e)}")
-
         return redirect("accounting:bank_reconciliation_detail", pk=pk)
 
-    # Get unreconciled transactions
-    unreconciled_transactions = BankTransaction.objects.filter(
-        bank_account=reconciliation.bank_account,
-        is_reconciled=False,
-        transaction_date__lte=reconciliation.reconciliation_date,
-    ).order_by("transaction_date")
+    # Get unreconciled journal entry transactions for this bank account's GL account
+    if reconciliation.bank_account.gl_account:
+        unreconciled_transactions = (
+            TransactionModel.objects.filter(
+                account=reconciliation.bank_account.gl_account,
+                journal_entry__timestamp__date__lte=reconciliation.reconciliation_date,
+                journal_entry__posted=True,
+            )
+            .exclude(journal_entry__description__icontains="[RECONCILED")
+            .select_related("journal_entry", "account")
+            .order_by("journal_entry__timestamp")
+        )
+    else:
+        unreconciled_transactions = TransactionModel.objects.none()
 
-    # Get reconciled transactions for this reconciliation
-    reconciled_transactions = BankTransaction.objects.filter(
-        reconciliation=reconciliation, is_reconciled=True
-    ).order_by("transaction_date")
+    # Get reconciled transactions (those marked as reconciled)
+    if reconciliation.bank_account.gl_account:
+        reconciled_transactions = (
+            TransactionModel.objects.filter(
+                account=reconciliation.bank_account.gl_account,
+                journal_entry__description__icontains=f"[RECONCILED {reconciliation.reconciliation_date}]",
+                journal_entry__posted=True,
+            )
+            .select_related("journal_entry", "account")
+            .order_by("journal_entry__timestamp")
+        )
+    else:
+        reconciled_transactions = TransactionModel.objects.none()
 
     # Calculate summary
-    unreconciled_deposits = sum(
-        txn.amount for txn in unreconciled_transactions if txn.transaction_type == "CREDIT"
-    )
-    unreconciled_withdrawals = sum(
-        txn.amount for txn in unreconciled_transactions if txn.transaction_type == "DEBIT"
-    )
+    unreconciled_deposits = Decimal("0.00")
+    unreconciled_withdrawals = Decimal("0.00")
+
+    for txn in unreconciled_transactions:
+        if txn.tx_type == "debit":
+            unreconciled_deposits += txn.amount
+        else:
+            unreconciled_withdrawals += txn.amount
 
     context = {
         "reconciliation": reconciliation,
@@ -5210,11 +5217,16 @@ def bank_reconciliation_cancel(request, pk):
 @tenant_access_required
 def bank_reconciliation_report(request, pk):
     """
-    Display completed bank reconciliation report.
+    Display completed bank reconciliation report with PDF export.
 
     Implements Requirements: 4.4, 4.6
+    - 4.4: Generate reconciliation report showing beginning balance, transactions, ending balance
+    - 4.6: Display completed reconciliations with dates and balances
     """
+    from django.http import HttpResponse
+
     from .bank_models import BankReconciliation, BankTransaction
+    from .services import BankReconciliationService
 
     # Get reconciliation with tenant filtering
     reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
@@ -5228,6 +5240,29 @@ def bank_reconciliation_report(request, pk):
     deposits = [txn for txn in reconciled_transactions if txn.transaction_type == "CREDIT"]
     withdrawals = [txn for txn in reconciled_transactions if txn.transaction_type == "DEBIT"]
 
+    # Handle PDF export
+    if request.GET.get("export") == "pdf":
+        try:
+            pdf_data = BankReconciliationService.export_reconciliation_report_to_pdf(
+                reconciliation, deposits, withdrawals
+            )
+
+            response = HttpResponse(pdf_data, content_type="application/pdf")
+            filename = (
+                f"bank_reconciliation_{reconciliation.bank_account.account_name}_"
+                f"{reconciliation.reconciliation_date}.pdf"
+            )
+            # Sanitize filename
+            filename = "".join(c for c in filename if c.isalnum() or c in "._- ")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+            return response
+
+        except Exception as e:
+            logger.error(f"Failed to export reconciliation report PDF: {str(e)}")
+            messages.error(request, f"Failed to export PDF: {str(e)}")
+            return redirect("accounting:bank_reconciliation_report", pk=pk)
+
     context = {
         "reconciliation": reconciliation,
         "deposits": deposits,
@@ -5235,7 +5270,7 @@ def bank_reconciliation_report(request, pk):
         "page_title": f"Reconciliation Report - {reconciliation.bank_account.account_name}",
     }
 
-    return render(request, "accounting/bank_reconciliation/report.html", context)
+    return render(request, "accounting/reports/bank_reconciliation.html", context)
 
 
 @login_required
@@ -5364,3 +5399,67 @@ def bank_reconciliation_auto_match(request, pk):
         messages.error(request, f"Failed to auto-match transactions: {str(e)}")
 
     return redirect("accounting:bank_reconciliation_detail", pk=pk)
+
+
+@login_required
+@tenant_access_required
+def bank_statement_import(request, account_id):
+    """
+    Import bank statement from file (CSV, OFX, QFX).
+
+    Supports automatic transaction import and matching with journal entries.
+
+    Implements Requirements: 4.3, 6.4
+    """
+    from .bank_models import BankAccount
+    from .forms import BankStatementImportForm
+    from .services import BankStatementImportService
+
+    # Get bank account with tenant filtering
+    bank_account = get_object_or_404(BankAccount, id=account_id, tenant=request.user.tenant)
+
+    if request.method == "POST":
+        form = BankStatementImportForm(
+            request.POST, request.FILES, tenant=request.user.tenant, user=request.user
+        )
+
+        if form.is_valid():
+            try:
+                # Save the import record
+                statement_import = form.save()
+
+                # Process the import
+                result = BankStatementImportService.import_statement(statement_import, request.user)
+
+                if result["success"]:
+                    messages.success(
+                        request,
+                        f"Successfully imported {result['imported']} transaction(s). "
+                        f"{result['matched']} automatically matched, "
+                        f"{result['duplicates']} duplicates skipped, "
+                        f"{result['errors']} errors.",
+                    )
+
+                    # Redirect to bank account detail to see imported transactions
+                    return redirect("accounting:bank_account_detail", account_id=account_id)
+                else:
+                    messages.error(
+                        request, f"Import failed: {result.get('error', 'Unknown error')}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Failed to import bank statement: {str(e)}")
+                messages.error(request, f"Failed to import bank statement: {str(e)}")
+    else:
+        # Pre-select the bank account
+        form = BankStatementImportForm(
+            tenant=request.user.tenant, user=request.user, initial={"bank_account": bank_account}
+        )
+
+    context = {
+        "form": form,
+        "bank_account": bank_account,
+        "page_title": f"Import Statement - {bank_account.account_name}",
+    }
+
+    return render(request, "accounting/bank_accounts/import.html", context)

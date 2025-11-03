@@ -90,3 +90,6 @@ jdatetime==5.0.0
 
 # Form Widgets
 django-widget-tweaks==1.5.0
+
+# Bank statement parsing
+ofxparse==0.21

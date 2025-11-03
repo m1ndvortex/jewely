@@ -1638,11 +1638,14 @@ class BankAccountForm(forms.ModelForm):
     def save(self, commit=True):
         """Save bank account with tenant and user information."""
         from decimal import Decimal
+
         from django.db import transaction as db_transaction
         from django.utils import timezone
+
         from django_ledger.models import JournalEntryModel, TransactionModel
+
         from apps.accounting.models import JewelryEntity
-        
+
         instance = super().save(commit=False)
         is_new = instance._state.adding
 
@@ -1664,23 +1667,27 @@ class BankAccountForm(forms.ModelForm):
         if commit:
             with db_transaction.atomic():
                 instance.save()
-                
+
                 # Create journal entry for opening balance if this is a new account with balance > 0
-                if is_new and instance.opening_balance and instance.opening_balance > Decimal("0.00") and instance.gl_account:
+                if (
+                    is_new
+                    and instance.opening_balance
+                    and instance.opening_balance > Decimal("0.00")
+                    and instance.gl_account
+                ):
                     try:
                         # Get the jewelry entity and ledger
                         jewelry_entity = JewelryEntity.objects.get(tenant=self.tenant)
                         entity = jewelry_entity.ledger_entity
                         ledger = entity.ledgermodel_set.first()
-                        
+
                         if ledger:
                             # Get the owner's equity account (typically 3001)
                             coa = entity.chartofaccountmodel_set.first()
                             equity_account = AccountModel.objects.filter(
-                                coa_model=coa,
-                                code="3001"  # Owner's Equity
+                                coa_model=coa, code="3001"  # Owner's Equity
                             ).first()
-                            
+
                             if equity_account:
                                 # Create journal entry for opening balance
                                 journal_entry = JournalEntryModel.objects.create(
@@ -1690,7 +1697,7 @@ class BankAccountForm(forms.ModelForm):
                                     origin="bank_account_opening",
                                     activity="op",  # Operating activity
                                 )
-                                
+
                                 # Debit: Cash account (increase asset)
                                 TransactionModel.objects.create(
                                     journal_entry=journal_entry,
@@ -1699,7 +1706,7 @@ class BankAccountForm(forms.ModelForm):
                                     amount=instance.opening_balance,
                                     description=f"Opening balance - {instance.account_name}",
                                 )
-                                
+
                                 # Credit: Owner's Equity (source of funds)
                                 TransactionModel.objects.create(
                                     journal_entry=journal_entry,
@@ -1708,15 +1715,16 @@ class BankAccountForm(forms.ModelForm):
                                     amount=instance.opening_balance,
                                     description=f"Opening balance - {instance.account_name}",
                                 )
-                                
+
                                 # Lock and post the journal entry
                                 journal_entry.locked = True
                                 journal_entry.posted = True
                                 journal_entry.save(update_fields=["locked", "posted"])
-                                
+
                     except Exception as e:
                         # Log the error but don't fail the bank account creation
                         import logging
+
                         logger = logging.getLogger(__name__)
                         logger.error(f"Failed to create opening balance journal entry: {e}")
 
@@ -1830,3 +1838,145 @@ class BankReconciliationStartForm(forms.Form):
                 )
 
         return cleaned_data
+
+
+class BankStatementImportForm(forms.ModelForm):
+    """
+    Form for importing bank statements from files.
+
+    Supports CSV, OFX, and QFX file formats for automatic transaction import.
+
+    Requirements: 4.3, 6.4
+    """
+
+    bank_account = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=True,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="Select the bank account for this statement",
+    )
+
+    file = forms.FileField(
+        required=True,
+        widget=forms.FileInput(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "accept": ".csv,.ofx,.qfx,.qbo",
+            }
+        ),
+        help_text="Upload bank statement file (CSV, OFX, QFX, or QBO format)",
+    )
+
+    file_format = forms.ChoiceField(
+        required=False,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+            }
+        ),
+        help_text="File format (auto-detected if not specified)",
+    )
+
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "class": "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white",
+                "rows": 3,
+                "placeholder": "Optional notes about this import...",
+            }
+        ),
+        help_text="Optional notes about this import",
+    )
+
+    class Meta:
+        from .bank_models import BankStatementImport
+
+        model = BankStatementImport
+        fields = ["bank_account", "file", "file_format", "notes"]
+
+    def __init__(self, *args, **kwargs):
+        self.tenant = kwargs.pop("tenant", None)
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Set bank account queryset with tenant filtering
+        if self.tenant:
+            from .bank_models import BankAccount
+
+            self.fields["bank_account"].queryset = BankAccount.objects.filter(
+                tenant=self.tenant, is_active=True
+            ).order_by("account_name")
+
+        # Set file format choices
+        from .bank_models import BankStatementImport
+
+        self.fields["file_format"].choices = [("", "Auto-detect")] + list(
+            BankStatementImport.FILE_FORMAT_CHOICES
+        )
+
+    def clean_file(self):
+        """Validate uploaded file."""
+        file = self.cleaned_data.get("file")
+
+        if file:
+            # Check file size (max 10MB)
+            if file.size > 10 * 1024 * 1024:
+                raise ValidationError("File size must be less than 10MB")
+
+            # Check file extension
+            file_name = file.name.lower()
+            valid_extensions = [".csv", ".ofx", ".qfx", ".qbo"]
+
+            if not any(file_name.endswith(ext) for ext in valid_extensions):
+                raise ValidationError(
+                    f"Invalid file format. Supported formats: {', '.join(valid_extensions)}"
+                )
+
+        return file
+
+    def clean(self):
+        """Validate import data."""
+        cleaned_data = super().clean()
+
+        file = cleaned_data.get("file")
+        file_format = cleaned_data.get("file_format")
+
+        # Auto-detect file format if not specified
+        if file and not file_format:
+            file_name = file.name.lower()
+            if file_name.endswith(".csv"):
+                cleaned_data["file_format"] = "CSV"
+            elif file_name.endswith(".ofx"):
+                cleaned_data["file_format"] = "OFX"
+            elif file_name.endswith(".qfx"):
+                cleaned_data["file_format"] = "QFX"
+            elif file_name.endswith(".qbo"):
+                cleaned_data["file_format"] = "QBO"
+            else:
+                cleaned_data["file_format"] = "OTHER"
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        """Save the import record."""
+        instance = super().save(commit=False)
+
+        # Set tenant and user
+        if self.tenant:
+            instance.tenant = self.tenant
+        if self.user:
+            instance.imported_by = self.user
+
+        # Set file name from uploaded file
+        if instance.file:
+            instance.file_name = instance.file.name
+
+        if commit:
+            instance.save()
+
+        return instance

@@ -12,15 +12,17 @@ Tests the complete workflow:
 Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
 """
 
-import io
 import csv
-from decimal import Decimal
+import io
 from datetime import date, timedelta
-from django.test import TestCase, Client
-from django.urls import reverse
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from apps.accounting.bank_models import BankAccount, BankReconciliation, BankTransaction
 from apps.core.models import Tenant
-from apps.accounting.bank_models import BankAccount, BankTransaction, BankReconciliation
 
 User = get_user_model()
 
@@ -35,14 +37,10 @@ class BankReconciliationE2ETestCase(TestCase):
         """Set up test data for each test."""
         # Create two tenants for isolation testing
         self.tenant1 = Tenant.objects.create(
-            name="Test Jewelry Store 1",
-            slug="test-store-1",
-            is_active=True
+            name="Test Jewelry Store 1", slug="test-store-1", is_active=True
         )
         self.tenant2 = Tenant.objects.create(
-            name="Test Jewelry Store 2",
-            slug="test-store-2",
-            is_active=True
+            name="Test Jewelry Store 2", slug="test-store-2", is_active=True
         )
 
         # Create users for each tenant
@@ -50,13 +48,13 @@ class BankReconciliationE2ETestCase(TestCase):
             username="accountant1",
             email="accountant1@test.com",
             password="testpass123",
-            tenant=self.tenant1
+            tenant=self.tenant1,
         )
         self.user2 = User.objects.create_user(
             username="accountant2",
             email="accountant2@test.com",
             password="testpass123",
-            tenant=self.tenant2
+            tenant=self.tenant2,
         )
 
         # Create client for HTTP requests
@@ -65,7 +63,7 @@ class BankReconciliationE2ETestCase(TestCase):
     def test_complete_bank_reconciliation_workflow(self):
         """
         Test the complete bank reconciliation workflow end-to-end.
-        
+
         Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 4.7
         """
         # Step 1: Login as user1
@@ -81,16 +79,13 @@ class BankReconciliationE2ETestCase(TestCase):
             "current_balance": "10000.00",
         }
         response = self.client.post(
-            reverse("accounting:bank_account_create"),
-            data=bank_account_data,
-            follow=True
+            reverse("accounting:bank_account_create"), data=bank_account_data, follow=True
         )
         self.assertEqual(response.status_code, 200)
 
         # Verify bank account was created
         bank_account = BankAccount.objects.filter(
-            tenant=self.tenant1,
-            account_name="Main Checking Account"
+            tenant=self.tenant1, account_name="Main Checking Account"
         ).first()
         self.assertIsNotNone(bank_account)
         self.assertEqual(bank_account.account_number, "123456789")
@@ -105,7 +100,7 @@ class BankReconciliationE2ETestCase(TestCase):
             description="Deposit from customer",
             amount=Decimal("500.00"),
             transaction_type="CREDIT",
-            is_reconciled=False
+            is_reconciled=False,
         )
         transaction2 = BankTransaction.objects.create(
             tenant=self.tenant1,
@@ -114,7 +109,7 @@ class BankReconciliationE2ETestCase(TestCase):
             description="Payment to supplier",
             amount=Decimal("300.00"),
             transaction_type="DEBIT",
-            is_reconciled=False
+            is_reconciled=False,
         )
 
         # Step 4: Import a bank statement (Requirement 4.3, 4.7)
@@ -122,18 +117,22 @@ class BankReconciliationE2ETestCase(TestCase):
         csv_content = io.StringIO()
         csv_writer = csv.writer(csv_content)
         csv_writer.writerow(["Date", "Description", "Amount", "Type"])
-        csv_writer.writerow([
-            (date.today() - timedelta(days=5)).strftime("%Y-%m-%d"),
-            "Deposit from customer",
-            "500.00",
-            "CREDIT"
-        ])
-        csv_writer.writerow([
-            (date.today() - timedelta(days=3)).strftime("%Y-%m-%d"),
-            "Payment to supplier",
-            "300.00",
-            "DEBIT"
-        ])
+        csv_writer.writerow(
+            [
+                (date.today() - timedelta(days=5)).strftime("%Y-%m-%d"),
+                "Deposit from customer",
+                "500.00",
+                "CREDIT",
+            ]
+        )
+        csv_writer.writerow(
+            [
+                (date.today() - timedelta(days=3)).strftime("%Y-%m-%d"),
+                "Payment to supplier",
+                "300.00",
+                "DEBIT",
+            ]
+        )
         csv_content.seek(0)
 
         # Upload the statement
@@ -143,7 +142,7 @@ class BankReconciliationE2ETestCase(TestCase):
                 "file": csv_content,
                 "file_format": "CSV",
             },
-            follow=True
+            follow=True,
         )
         # Note: The actual import might fail if the view expects a file upload
         # This is a simplified test
@@ -155,17 +154,13 @@ class BankReconciliationE2ETestCase(TestCase):
             "statement_ending_balance": "10200.00",  # 10000 + 500 - 300
         }
         response = self.client.post(
-            reverse("accounting:bank_reconciliation_start"),
-            data=reconciliation_data,
-            follow=True
+            reverse("accounting:bank_reconciliation_start"), data=reconciliation_data, follow=True
         )
         self.assertEqual(response.status_code, 200)
 
         # Verify reconciliation was created
         reconciliation = BankReconciliation.objects.filter(
-            tenant=self.tenant1,
-            bank_account=bank_account,
-            status="IN_PROGRESS"
+            tenant=self.tenant1, bank_account=bank_account, status="IN_PROGRESS"
         ).first()
         self.assertIsNotNone(reconciliation)
 
@@ -184,7 +179,7 @@ class BankReconciliationE2ETestCase(TestCase):
         # Step 7: Complete the reconciliation (Requirement 4.4, 4.6, 4.7)
         response = self.client.post(
             reverse("accounting:bank_reconciliation_complete", kwargs={"pk": reconciliation.id}),
-            follow=True
+            follow=True,
         )
         self.assertEqual(response.status_code, 200)
 
@@ -211,7 +206,7 @@ class BankReconciliationE2ETestCase(TestCase):
     def test_tenant_isolation_bank_accounts(self):
         """
         Test that users can only access bank accounts from their own tenant.
-        
+
         Requirement: 4.7
         """
         # Create bank accounts for both tenants
@@ -222,7 +217,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("5000.00"),
-            current_balance=Decimal("5000.00")
+            current_balance=Decimal("5000.00"),
         )
         bank_account2 = BankAccount.objects.create(
             tenant=self.tenant2,
@@ -231,7 +226,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("8000.00"),
-            current_balance=Decimal("8000.00")
+            current_balance=Decimal("8000.00"),
         )
 
         # Login as user1 (tenant1)
@@ -258,7 +253,7 @@ class BankReconciliationE2ETestCase(TestCase):
     def test_tenant_isolation_reconciliations(self):
         """
         Test that users can only access reconciliations from their own tenant.
-        
+
         Requirement: 4.7
         """
         # Create bank accounts and reconciliations for both tenants
@@ -269,7 +264,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("5000.00"),
-            current_balance=Decimal("5000.00")
+            current_balance=Decimal("5000.00"),
         )
         bank_account2 = BankAccount.objects.create(
             tenant=self.tenant2,
@@ -278,7 +273,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("8000.00"),
-            current_balance=Decimal("8000.00")
+            current_balance=Decimal("8000.00"),
         )
 
         reconciliation1 = BankReconciliation.objects.create(
@@ -290,7 +285,7 @@ class BankReconciliationE2ETestCase(TestCase):
             book_beginning_balance=Decimal("5000.00"),
             book_ending_balance=Decimal("5500.00"),
             status="IN_PROGRESS",
-            reconciled_by=self.user1
+            reconciled_by=self.user1,
         )
         reconciliation2 = BankReconciliation.objects.create(
             tenant=self.tenant2,
@@ -301,7 +296,7 @@ class BankReconciliationE2ETestCase(TestCase):
             book_beginning_balance=Decimal("8000.00"),
             book_ending_balance=Decimal("8500.00"),
             status="IN_PROGRESS",
-            reconciled_by=self.user2
+            reconciled_by=self.user2,
         )
 
         # Login as user1 (tenant1)
@@ -326,7 +321,7 @@ class BankReconciliationE2ETestCase(TestCase):
     def test_reconciliation_balance_verification(self):
         """
         Test that reconciliation correctly calculates and verifies balances.
-        
+
         Requirement: 4.4
         """
         # Create bank account
@@ -337,7 +332,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("10000.00"),
-            current_balance=Decimal("10000.00")
+            current_balance=Decimal("10000.00"),
         )
 
         # Create transactions
@@ -349,7 +344,7 @@ class BankReconciliationE2ETestCase(TestCase):
             amount=Decimal("1000.00"),
             transaction_type="CREDIT",
             is_reconciled=True,
-            reconciled_date=date.today()
+            reconciled_date=date.today(),
         )
         BankTransaction.objects.create(
             tenant=self.tenant1,
@@ -359,7 +354,7 @@ class BankReconciliationE2ETestCase(TestCase):
             amount=Decimal("500.00"),
             transaction_type="DEBIT",
             is_reconciled=True,
-            reconciled_date=date.today()
+            reconciled_date=date.today(),
         )
 
         # Create reconciliation
@@ -373,13 +368,12 @@ class BankReconciliationE2ETestCase(TestCase):
             book_ending_balance=Decimal("10500.00"),
             status="COMPLETED",
             reconciled_by=self.user1,
-            completed_date=date.today()
+            completed_date=date.today(),
         )
 
         # Verify balances match
         self.assertEqual(
-            reconciliation.statement_ending_balance,
-            reconciliation.book_ending_balance
+            reconciliation.statement_ending_balance, reconciliation.book_ending_balance
         )
 
         # Calculate expected balance
@@ -389,7 +383,7 @@ class BankReconciliationE2ETestCase(TestCase):
     def test_unreconcile_transaction_with_audit_trail(self):
         """
         Test that unreconciling a transaction requires a reason and maintains audit trail.
-        
+
         Requirement: 4.8
         """
         # Create bank account
@@ -400,7 +394,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("10000.00"),
-            current_balance=Decimal("10000.00")
+            current_balance=Decimal("10000.00"),
         )
 
         # Create a reconciled transaction
@@ -413,7 +407,7 @@ class BankReconciliationE2ETestCase(TestCase):
             transaction_type="CREDIT",
             is_reconciled=True,
             reconciled_date=date.today(),
-            reconciled_by=self.user1
+            reconciled_by=self.user1,
         )
 
         # Verify transaction is reconciled
@@ -435,7 +429,7 @@ class BankReconciliationE2ETestCase(TestCase):
     def test_reconciliation_history(self):
         """
         Test that reconciliation history displays all completed reconciliations.
-        
+
         Requirement: 4.6
         """
         # Create bank account
@@ -446,7 +440,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("10000.00"),
-            current_balance=Decimal("10000.00")
+            current_balance=Decimal("10000.00"),
         )
 
         # Create multiple reconciliations
@@ -461,7 +455,7 @@ class BankReconciliationE2ETestCase(TestCase):
                 book_ending_balance=Decimal("10500.00"),
                 status="COMPLETED",
                 reconciled_by=self.user1,
-                completed_date=date.today() - timedelta(days=30 * i)
+                completed_date=date.today() - timedelta(days=30 * i),
             )
 
         # Login and view reconciliation list
@@ -478,7 +472,7 @@ class BankReconciliationE2ETestCase(TestCase):
     def test_create_adjusting_journal_entry(self):
         """
         Test that users can create adjusting journal entries for discrepancies.
-        
+
         Requirement: 4.5
         """
         # Create bank account
@@ -489,7 +483,7 @@ class BankReconciliationE2ETestCase(TestCase):
             bank_name="Test Bank",
             account_type="CHECKING",
             opening_balance=Decimal("10000.00"),
-            current_balance=Decimal("10000.00")
+            current_balance=Decimal("10000.00"),
         )
 
         # Create reconciliation with discrepancy
@@ -502,13 +496,15 @@ class BankReconciliationE2ETestCase(TestCase):
             book_beginning_balance=Decimal("10000.00"),
             book_ending_balance=Decimal("10450.00"),  # $50 discrepancy
             status="IN_PROGRESS",
-            reconciled_by=self.user1
+            reconciled_by=self.user1,
         )
 
         # Login and create adjusting entry
         self.client.login(username="accountant1", password="testpass123")
         response = self.client.get(
-            reverse("accounting:bank_reconciliation_create_adjustment", kwargs={"pk": reconciliation.id})
+            reverse(
+                "accounting:bank_reconciliation_create_adjustment", kwargs={"pk": reconciliation.id}
+            )
         )
         self.assertEqual(response.status_code, 200)
 

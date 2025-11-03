@@ -241,22 +241,16 @@
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transaction-row" data-amount="{{ txn.amount }}">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <input type="checkbox" name="transaction_ids" value="{{ txn.id }}" 
-                                           class="transaction-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                                           hx-post="{% url 'accounting:bank_reconciliation_detail' reconciliation.id %}"
-                                           hx-trigger="change"
-                                           hx-include="[name='csrfmiddlewaretoken']"
-                                           hx-vals='{"action": "mark_reconciled", "transaction_ids": ["{{ txn.id }}"]}'
-                                           hx-target="#reconciliation-content"
-                                           hx-swap="outerHTML">
+                                           class="transaction-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                                    {{ txn.transaction_date|date:"Y-m-d" }}
+                                    {{ txn.journal_entry.timestamp|date:"Y-m-d" }}
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                                    {{ txn.description|default:"-" }}
+                                    {{ txn.journal_entry.description|default:"-" }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    {% if txn.transaction_type == 'CREDIT' %}
+                                    {% if txn.tx_type == 'debit' %}
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                                             {% trans "Deposit" %}
                                         </span>
@@ -267,14 +261,14 @@
                                     {% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
-                                    {% if txn.transaction_type == 'CREDIT' %}
+                                    {% if txn.tx_type == 'debit' %}
                                         ${{ txn.amount|floatformat:2|intcomma }}
                                     {% else %}
                                         -
                                     {% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
-                                    {% if txn.transaction_type == 'DEBIT' %}
+                                    {% if txn.tx_type == 'credit' %}
                                         ${{ txn.amount|floatformat:2|intcomma }}
                                     {% else %}
                                         -

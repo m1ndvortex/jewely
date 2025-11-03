@@ -137,6 +137,11 @@ urlpatterns = [
         views.bank_account_set_default,
         name="bank_account_set_default",
     ),
+    path(
+        "bank-accounts/<uuid:account_id>/import/",
+        views.bank_statement_import,
+        name="bank_statement_import",
+    ),
     # Bank Reconciliation Views (Task 4.5)
     path(
         "bank-reconciliation/start/",
@@ -177,11 +182,5 @@ urlpatterns = [
         "bank-reconciliation/<uuid:pk>/auto-match/",
         views.bank_reconciliation_auto_match,
         name="bank_reconciliation_auto_match",
-    ),
-    # Bank Statement Import (placeholder for Task 4.7)
-    path(
-        "bank-accounts/<uuid:account_id>/import-statement/",
-        views.bank_reconciliation,
-        name="bank_statement_import",
     ),
 ]
