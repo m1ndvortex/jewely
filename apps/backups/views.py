@@ -13,6 +13,8 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.paginator import Paginator
+from django.db.models import Max, Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -815,7 +817,6 @@ def wal_monitoring(request):
 
     # Get WAL statistics for last 24 hours
     last_24h = timezone.now() - timedelta(hours=24)
-    last_hour = timezone.now() - timedelta(hours=1)
 
     # Total WAL archives
     total_wals = Backup.objects.filter(backup_type=Backup.WAL_ARCHIVE).count()
@@ -988,5 +989,284 @@ def wal_status_api(request):
                 "interval_seconds": config.wal_archiving_interval_seconds,
                 "interval_display": config.wal_interval_display,
             },
+        }
+    )
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+def daily_backup_monitoring(request):
+    """
+    Enterprise Daily Backup Monitoring Dashboard.
+
+    Displays:
+    - Daily backup schedule and next run
+    - Recent daily backups with success rate
+    - Storage metrics and compression stats
+    - Backup health indicators
+    """
+    from datetime import timedelta
+
+    from django.db.models import Avg, Count, Sum
+
+    # Get daily backups from last 30 days
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    daily_backups = Backup.objects.filter(
+        backup_type=Backup.FULL_DATABASE, created_at__gte=thirty_days_ago
+    ).order_by("-created_at")
+
+    # Calculate statistics
+    stats = daily_backups.aggregate(
+        total_count=Count("id"),
+        successful_count=Count("id", filter=Q(status=Backup.VERIFIED)),
+        failed_count=Count("id", filter=Q(status=Backup.FAILED)),
+        total_size=Sum("size_bytes"),
+        avg_compression=Avg("compression_ratio"),
+        avg_duration=Avg("backup_duration_seconds"),
+    )
+
+    # Success rate
+    success_rate = 0
+    if stats["total_count"] > 0:
+        success_rate = (stats["successful_count"] / stats["total_count"]) * 100
+
+    # Get recent backups
+    recent_backups = daily_backups[:10]
+
+    # Get next scheduled backup time (2 AM daily)
+    from celery import current_app
+
+    beat_schedule = current_app.conf.beat_schedule
+    daily_backup_config = beat_schedule.get("daily-full-database-backup", {})
+
+    # Calculate next run
+    now = timezone.now()
+    next_run = now.replace(hour=2, minute=0, second=0, microsecond=0)
+    if now.hour >= 2:
+        next_run += timedelta(days=1)
+    time_until_next = next_run - now
+
+    context = {
+        "stats": stats,
+        "success_rate": round(success_rate, 1),
+        "recent_backups": recent_backups,
+        "next_run": next_run,
+        "time_until_next": time_until_next,
+        "schedule_config": daily_backup_config.get("schedule", {}),
+    }
+
+    return render(request, "backups/daily_backup_monitoring.html", context)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+@require_http_methods(["GET"])
+def daily_backup_status_api(request):
+    """API endpoint for daily backup status."""
+    from datetime import timedelta
+
+    from django.db.models import Avg, Count
+
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    recent_backups = Backup.objects.filter(
+        backup_type=Backup.FULL_DATABASE, created_at__gte=seven_days_ago
+    )
+
+    stats = recent_backups.aggregate(
+        total=Count("id"),
+        successful=Count("id", filter=Q(status=Backup.VERIFIED)),
+        failed=Count("id", filter=Q(status=Backup.FAILED)),
+        avg_size=Avg("size_bytes"),
+        avg_compression=Avg("compression_ratio"),
+        last_backup=Max("created_at"),
+    )
+
+    # Get last backup details
+    last_backup = recent_backups.order_by("-created_at").first()
+
+    # Health check
+    health = "healthy"
+    if stats["last_backup"]:
+        hours_since = (timezone.now() - stats["last_backup"]).total_seconds() / 3600
+        if hours_since > 30:  # More than 30 hours without backup
+            health = "critical"
+        elif hours_since > 26:  # More than 26 hours
+            health = "warning"
+    else:
+        health = "critical"
+
+    return JsonResponse(
+        {
+            "success": True,
+            "stats": {
+                "total_7_days": stats["total"] or 0,
+                "successful": stats["successful"] or 0,
+                "failed": stats["failed"] or 0,
+                "success_rate": round(
+                    (stats["successful"] / stats["total"] * 100) if stats["total"] else 0, 1
+                ),
+                "avg_size_mb": round((stats["avg_size"] or 0) / (1024**2), 2),
+                "avg_compression": round((stats["avg_compression"] or 0) * 100, 1),
+                "last_backup": stats["last_backup"].isoformat() if stats["last_backup"] else None,
+            },
+            "last_backup": (
+                {
+                    "id": str(last_backup.id) if last_backup else None,
+                    "status": last_backup.status if last_backup else None,
+                    "size_mb": round(last_backup.size_bytes / (1024**2), 2) if last_backup else 0,
+                    "compression": (
+                        round(last_backup.compression_ratio * 100, 1)
+                        if last_backup and last_backup.compression_ratio
+                        else 0
+                    ),
+                    "duration_seconds": last_backup.backup_duration_seconds if last_backup else 0,
+                }
+                if last_backup
+                else None
+            ),
+            "health": health,
+        }
+    )
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+def weekly_backup_monitoring(request):
+    """
+    Enterprise Weekly Tenant Backup Monitoring Dashboard.
+
+    Displays:
+    - Weekly backup schedule (Sunday 3 AM)
+    - Per-tenant backup status
+    - Success rate and coverage
+    - Storage metrics
+    """
+    from datetime import timedelta
+
+    from django.db.models import Avg, Count, Sum
+
+    # Get weekly backups from last 30 days
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    weekly_backups = (
+        Backup.objects.filter(backup_type=Backup.TENANT_BACKUP, created_at__gte=thirty_days_ago)
+        .select_related("tenant")
+        .order_by("-created_at")
+    )
+
+    # Calculate statistics
+    stats = weekly_backups.aggregate(
+        total_count=Count("id"),
+        successful_count=Count("id", filter=Q(status=Backup.VERIFIED)),
+        failed_count=Count("id", filter=Q(status=Backup.FAILED)),
+        total_size=Sum("size_bytes"),
+        avg_compression=Avg("compression_ratio"),
+        avg_duration=Avg("backup_duration_seconds"),
+        tenant_count=Count("tenant_id", distinct=True),
+    )
+
+    # Success rate
+    success_rate = 0
+    if stats["total_count"] > 0:
+        success_rate = (stats["successful_count"] / stats["total_count"]) * 100
+
+    # Get recent backups
+    recent_backups = weekly_backups[:20]
+
+    # Get next scheduled backup time (Sunday 3 AM)
+    now = timezone.now()
+    days_until_sunday = (6 - now.weekday()) % 7
+    if days_until_sunday == 0 and now.hour >= 3:
+        days_until_sunday = 7
+    next_run = now.replace(hour=3, minute=0, second=0, microsecond=0) + timedelta(
+        days=days_until_sunday
+    )
+    time_until_next = next_run - now
+
+    # Get tenant backup coverage (last 7 days)
+    from apps.core.models import Tenant
+
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    recent_tenant_backups = (
+        Backup.objects.filter(
+            backup_type=Backup.TENANT_BACKUP, created_at__gte=seven_days_ago, status=Backup.VERIFIED
+        )
+        .values_list("tenant_id", flat=True)
+        .distinct()
+    )
+
+    total_tenants = Tenant.objects.filter(status=Tenant.ACTIVE).count()
+    backed_up_tenants = len(set(recent_tenant_backups))
+    coverage_rate = (backed_up_tenants / total_tenants * 100) if total_tenants > 0 else 0
+
+    # Calculate SVG stroke-dashoffset for progress ring
+    # Formula: 314 - (314 * percentage / 100)
+    coverage_dashoffset = 314 - (314 * coverage_rate / 100)
+
+    context = {
+        "stats": stats,
+        "success_rate": round(success_rate, 1),
+        "recent_backups": recent_backups,
+        "next_run": next_run,
+        "time_until_next": time_until_next,
+        "coverage_rate": round(coverage_rate, 1),
+        "coverage_dashoffset": round(coverage_dashoffset, 2),
+        "total_tenants": total_tenants,
+        "backed_up_tenants": backed_up_tenants,
+    }
+
+    return render(request, "backups/weekly_backup_monitoring.html", context)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+@require_http_methods(["GET"])
+def weekly_backup_status_api(request):
+    """API endpoint for weekly tenant backup status."""
+    from datetime import timedelta
+
+    from django.db.models import Avg, Count
+
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    recent_backups = Backup.objects.filter(
+        backup_type=Backup.TENANT_BACKUP, created_at__gte=seven_days_ago
+    )
+
+    stats = recent_backups.aggregate(
+        total=Count("id"),
+        successful=Count("id", filter=Q(status=Backup.VERIFIED)),
+        failed=Count("id", filter=Q(status=Backup.FAILED)),
+        avg_size=Avg("size_bytes"),
+        avg_compression=Avg("compression_ratio"),
+        tenant_count=Count("tenant_id", distinct=True),
+        last_backup=Max("created_at"),
+    )
+
+    # Health check - should run weekly on Sunday
+    health = "healthy"
+    if stats["last_backup"]:
+        days_since = (timezone.now() - stats["last_backup"]).total_seconds() / (24 * 3600)
+        if days_since > 10:  # More than 10 days without backup
+            health = "critical"
+        elif days_since > 8:  # More than 8 days
+            health = "warning"
+    else:
+        health = "critical"
+
+    return JsonResponse(
+        {
+            "success": True,
+            "stats": {
+                "total_7_days": stats["total"] or 0,
+                "successful": stats["successful"] or 0,
+                "failed": stats["failed"] or 0,
+                "success_rate": round(
+                    (stats["successful"] / stats["total"] * 100) if stats["total"] else 0, 1
+                ),
+                "avg_size_mb": round((stats["avg_size"] or 0) / (1024**2), 2),
+                "avg_compression": round((stats["avg_compression"] or 0) * 100, 1),
+                "tenant_count": stats["tenant_count"] or 0,
+                "last_backup": stats["last_backup"].isoformat() if stats["last_backup"] else None,
+            },
+            "health": health,
         }
     )

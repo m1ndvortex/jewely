@@ -4,7 +4,7 @@ Views for the accounting module.
 
 import logging
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -401,36 +402,64 @@ def accounts_receivable(request):
 @tenant_access_required
 def bank_reconciliation(request):
     """
-    Bank reconciliation landing page.
+    Display bank reconciliation interface.
 
-    Shows options to start a new reconciliation or view reconciliation history.
-    Redirects to the proper reconciliation workflow.
+    Shows bank accounts, unreconciled transactions, and reconciliation summary.
+    Requirement: 4.1, 4.2, 4.3, 4.4
     """
-    from .bank_models import BankAccount, BankReconciliation
+    from .bank_models import BankAccount, BankReconciliation, BankTransaction
 
-    # Get bank accounts for this tenant
+    # Get all bank accounts for this tenant
     bank_accounts = BankAccount.objects.filter(tenant=request.user.tenant, is_active=True).order_by(
         "-is_default", "account_name"
     )
 
-    # Get recent reconciliations
-    recent_reconciliations = (
-        BankReconciliation.objects.filter(tenant=request.user.tenant)
-        .select_related("bank_account", "created_by")
-        .order_by("-reconciliation_date")[:5]
-    )
+    # Get selected account
+    selected_account_id = request.GET.get("account")
+    selected_account = None
+    transactions = []
+    reconciliation = None
+    past_reconciliations = []
 
-    # Get in-progress reconciliations
-    in_progress = (
-        BankReconciliation.objects.filter(tenant=request.user.tenant, status="IN_PROGRESS")
-        .select_related("bank_account")
-        .order_by("-created_at")
-    )
+    if selected_account_id:
+        try:
+            selected_account = BankAccount.objects.get(
+                id=selected_account_id, tenant=request.user.tenant
+            )
+
+            # Get ONLY unreconciled transactions for this account
+            transactions = BankTransaction.objects.filter(
+                bank_account=selected_account,
+                tenant=request.user.tenant,
+                is_reconciled=False,  # Only show unreconciled transactions
+            ).order_by("-transaction_date", "-created_at")
+
+            # Get current in-progress reconciliation if any
+            reconciliation = BankReconciliation.objects.filter(
+                bank_account=selected_account, tenant=request.user.tenant, status="IN_PROGRESS"
+            ).first()
+
+            # Get past completed reconciliations
+            past_reconciliations = (
+                BankReconciliation.objects.filter(
+                    bank_account=selected_account, tenant=request.user.tenant, status="COMPLETED"
+                )
+                .select_related("completed_by")
+                .order_by("-reconciliation_date")
+            )
+
+        except BankAccount.DoesNotExist:
+            messages.error(request, "Bank account not found.")
+            selected_account_id = None
 
     context = {
         "bank_accounts": bank_accounts,
-        "recent_reconciliations": recent_reconciliations,
-        "in_progress": in_progress,
+        "selected_account": selected_account,
+        "selected_account_id": selected_account_id,
+        "transactions": transactions,
+        "reconciliation": reconciliation,
+        "past_reconciliations": past_reconciliations,
+        "today": date.today(),
         "page_title": "Bank Reconciliation",
     }
 
@@ -5029,7 +5058,7 @@ def bank_reconciliation_start(request):
 
 @login_required
 @tenant_access_required
-def bank_reconciliation_detail(request, pk):  # noqa: C901
+def bank_reconciliation_detail(request, pk):
     """
     Display bank reconciliation interface with transactions to reconcile.
 
@@ -5038,11 +5067,8 @@ def bank_reconciliation_detail(request, pk):  # noqa: C901
 
     Implements Requirements: 4.1, 4.2, 4.4, 4.7
     """
-    from decimal import Decimal
-
-    from django_ledger.models import TransactionModel
-
-    from .bank_models import BankReconciliation
+    from .bank_models import BankReconciliation, BankTransaction
+    from .services import BankReconciliationService
 
     # Get reconciliation with tenant filtering
     reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
@@ -5051,32 +5077,16 @@ def bank_reconciliation_detail(request, pk):  # noqa: C901
         action = request.POST.get("action")
 
         if action == "mark_reconciled":
-            # Get selected transaction IDs (these are journal entry transaction IDs)
+            # Get selected transaction IDs
             transaction_ids = request.POST.getlist("transaction_ids")
 
             if transaction_ids:
                 try:
-                    # Mark journal entry transactions as reconciled
-                    count = 0
-                    for txn_id in transaction_ids:
-                        try:
-                            txn = TransactionModel.objects.get(
-                                id=txn_id,
-                                journal_entry__ledger__entity=reconciliation.bank_account.tenant.jewelry_entity.ledger_entity,
-                            )
-                            # Mark as reconciled by adding metadata
-                            if not hasattr(txn, "reconciled_date") or not txn.reconciled_date:
-                                # Store reconciliation info in journal entry
-                                je = txn.journal_entry
-                                if not je.description.startswith("[RECONCILED]"):
-                                    je.description = f"[RECONCILED {reconciliation.reconciliation_date}] {je.description}"
-                                    je.save()
-                                count += 1
-                        except TransactionModel.DoesNotExist:
-                            continue
-
-                    # Recalculate reconciliation totals
-                    reconciliation.calculate_totals()
+                    count = BankReconciliationService.mark_reconciled(
+                        transaction_ids=transaction_ids,
+                        reconciliation=reconciliation,
+                        user=request.user,
+                    )
 
                     messages.success(request, f"Marked {count} transaction(s) as reconciled")
 
@@ -5086,46 +5096,45 @@ def bank_reconciliation_detail(request, pk):  # noqa: C901
             else:
                 messages.warning(request, "No transactions selected")
 
+        elif action == "unreconcile":
+            transaction_id = request.POST.get("transaction_id")
+            reason = request.POST.get("reason", "User requested unreconcile")
+
+            if transaction_id:
+                try:
+                    txn = BankTransaction.objects.get(id=transaction_id, tenant=request.user.tenant)
+
+                    BankReconciliationService.unreconcile_transaction(
+                        transaction=txn, reason=reason, user=request.user
+                    )
+
+                    messages.success(request, "Transaction unreconciled")
+
+                except Exception as e:
+                    logger.error(f"Failed to unreconcile transaction: {str(e)}")
+                    messages.error(request, f"Failed to unreconcile: {str(e)}")
+
         return redirect("accounting:bank_reconciliation_detail", pk=pk)
 
-    # Get unreconciled journal entry transactions for this bank account's GL account
-    if reconciliation.bank_account.gl_account:
-        unreconciled_transactions = (
-            TransactionModel.objects.filter(
-                account=reconciliation.bank_account.gl_account,
-                journal_entry__timestamp__date__lte=reconciliation.reconciliation_date,
-                journal_entry__posted=True,
-            )
-            .exclude(journal_entry__description__icontains="[RECONCILED")
-            .select_related("journal_entry", "account")
-            .order_by("journal_entry__timestamp")
-        )
-    else:
-        unreconciled_transactions = TransactionModel.objects.none()
+    # Get unreconciled transactions
+    unreconciled_transactions = BankTransaction.objects.filter(
+        bank_account=reconciliation.bank_account,
+        is_reconciled=False,
+        transaction_date__lte=reconciliation.reconciliation_date,
+    ).order_by("transaction_date")
 
-    # Get reconciled transactions (those marked as reconciled)
-    if reconciliation.bank_account.gl_account:
-        reconciled_transactions = (
-            TransactionModel.objects.filter(
-                account=reconciliation.bank_account.gl_account,
-                journal_entry__description__icontains=f"[RECONCILED {reconciliation.reconciliation_date}]",
-                journal_entry__posted=True,
-            )
-            .select_related("journal_entry", "account")
-            .order_by("journal_entry__timestamp")
-        )
-    else:
-        reconciled_transactions = TransactionModel.objects.none()
+    # Get reconciled transactions for this reconciliation
+    reconciled_transactions = BankTransaction.objects.filter(
+        reconciliation=reconciliation, is_reconciled=True
+    ).order_by("transaction_date")
 
     # Calculate summary
-    unreconciled_deposits = Decimal("0.00")
-    unreconciled_withdrawals = Decimal("0.00")
-
-    for txn in unreconciled_transactions:
-        if txn.tx_type == "debit":
-            unreconciled_deposits += txn.amount
-        else:
-            unreconciled_withdrawals += txn.amount
+    unreconciled_deposits = sum(
+        txn.amount for txn in unreconciled_transactions if txn.transaction_type == "CREDIT"
+    )
+    unreconciled_withdrawals = sum(
+        txn.amount for txn in unreconciled_transactions if txn.transaction_type == "DEBIT"
+    )
 
     context = {
         "reconciliation": reconciliation,
@@ -5217,16 +5226,11 @@ def bank_reconciliation_cancel(request, pk):
 @tenant_access_required
 def bank_reconciliation_report(request, pk):
     """
-    Display completed bank reconciliation report with PDF export.
+    Display completed bank reconciliation report.
 
     Implements Requirements: 4.4, 4.6
-    - 4.4: Generate reconciliation report showing beginning balance, transactions, ending balance
-    - 4.6: Display completed reconciliations with dates and balances
     """
-    from django.http import HttpResponse
-
     from .bank_models import BankReconciliation, BankTransaction
-    from .services import BankReconciliationService
 
     # Get reconciliation with tenant filtering
     reconciliation = get_object_or_404(BankReconciliation, id=pk, tenant=request.user.tenant)
@@ -5240,29 +5244,6 @@ def bank_reconciliation_report(request, pk):
     deposits = [txn for txn in reconciled_transactions if txn.transaction_type == "CREDIT"]
     withdrawals = [txn for txn in reconciled_transactions if txn.transaction_type == "DEBIT"]
 
-    # Handle PDF export
-    if request.GET.get("export") == "pdf":
-        try:
-            pdf_data = BankReconciliationService.export_reconciliation_report_to_pdf(
-                reconciliation, deposits, withdrawals
-            )
-
-            response = HttpResponse(pdf_data, content_type="application/pdf")
-            filename = (
-                f"bank_reconciliation_{reconciliation.bank_account.account_name}_"
-                f"{reconciliation.reconciliation_date}.pdf"
-            )
-            # Sanitize filename
-            filename = "".join(c for c in filename if c.isalnum() or c in "._- ")
-            response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-            return response
-
-        except Exception as e:
-            logger.error(f"Failed to export reconciliation report PDF: {str(e)}")
-            messages.error(request, f"Failed to export PDF: {str(e)}")
-            return redirect("accounting:bank_reconciliation_report", pk=pk)
-
     context = {
         "reconciliation": reconciliation,
         "deposits": deposits,
@@ -5270,7 +5251,7 @@ def bank_reconciliation_report(request, pk):
         "page_title": f"Reconciliation Report - {reconciliation.bank_account.account_name}",
     }
 
-    return render(request, "accounting/reports/bank_reconciliation.html", context)
+    return render(request, "accounting/bank_reconciliation/report.html", context)
 
 
 @login_required
@@ -5403,862 +5384,145 @@ def bank_reconciliation_auto_match(request, pk):
 
 @login_required
 @tenant_access_required
-def bank_statement_import(request, account_id):
+@require_http_methods(["POST"])
+def bank_transaction_toggle_reconcile(request, transaction_id):
     """
-    Import bank statement from file (CSV, OFX, QFX).
+    Toggle reconciliation status of a bank transaction (HTMX endpoint).
 
-    Supports automatic transaction import and matching with journal entries.
+    This view is called via HTMX when a user checks/unchecks a transaction
+    in the bank reconciliation interface.
 
-    Implements Requirements: 4.3, 6.4
+    Implements Requirements: 4.2, 4.7
     """
-    from .bank_models import BankAccount
-    from .forms import BankStatementImportForm
-    from .services import BankStatementImportService
+    from django.http import HttpResponse
 
-    # Get bank account with tenant filtering
-    bank_account = get_object_or_404(BankAccount, id=account_id, tenant=request.user.tenant)
+    from .bank_models import BankReconciliation, BankTransaction
+    from .services import BankReconciliationService
 
-    if request.method == "POST":
-        form = BankStatementImportForm(
-            request.POST, request.FILES, tenant=request.user.tenant, user=request.user
-        )
+    # Get transaction with tenant filtering
+    transaction = get_object_or_404(BankTransaction, id=transaction_id, tenant=request.user.tenant)
 
-        if form.is_valid():
-            try:
-                # Save the import record
-                statement_import = form.save()
+    # Get the active reconciliation for this bank account
+    reconciliation = BankReconciliation.objects.filter(
+        bank_account=transaction.bank_account, tenant=request.user.tenant, status="IN_PROGRESS"
+    ).first()
 
-                # Process the import
-                result = BankStatementImportService.import_statement(statement_import, request.user)
+    if not reconciliation:
+        return HttpResponse(status=400)
 
-                if result["success"]:
-                    messages.success(
-                        request,
-                        f"Successfully imported {result['imported']} transaction(s). "
-                        f"{result['matched']} automatically matched, "
-                        f"{result['duplicates']} duplicates skipped, "
-                        f"{result['errors']} errors.",
-                    )
-
-                    # Redirect to bank account detail to see imported transactions
-                    return redirect("accounting:bank_account_detail", account_id=account_id)
-                else:
-                    messages.error(
-                        request, f"Import failed: {result.get('error', 'Unknown error')}"
-                    )
-
-            except Exception as e:
-                logger.error(f"Failed to import bank statement: {str(e)}")
-                messages.error(request, f"Failed to import bank statement: {str(e)}")
-    else:
-        # Pre-select the bank account
-        form = BankStatementImportForm(
-            tenant=request.user.tenant, user=request.user, initial={"bank_account": bank_account}
-        )
-
-    context = {
-        "form": form,
-        "bank_account": bank_account,
-        "page_title": f"Import Statement - {bank_account.account_name}",
-    }
-
-    return render(request, "accounting/bank_accounts/import.html", context)
-
-
-# ============================================================================
-# Fixed Asset Management Views
-# ============================================================================
-
-
-@login_required
-@tenant_access_required
-def fixed_asset_list(request):
-    """
-    Display list of all fixed assets for the tenant.
-
-    Shows assets with current book value, accumulated depreciation,
-    and status. Supports filtering by status and category.
-
-    Requirements: 5.1, 5.4, 5.6, 5.7
-    """
-    from apps.core.audit_models import AuditLog
-
-    from .fixed_asset_models import FixedAsset
-
-    tenant = request.user.tenant
-
-    # Get filter parameters
-    status_filter = request.GET.get("status", "")
-    category_filter = request.GET.get("category", "")
-    search_query = request.GET.get("search", "")
-
-    # Base queryset with tenant filtering (Requirement 5.7)
-    assets = FixedAsset.objects.filter(tenant=tenant)
-
-    # Apply filters
-    if status_filter:
-        assets = assets.filter(status=status_filter)
-
-    if category_filter:
-        assets = assets.filter(category=category_filter)
-
-    if search_query:
-        assets = assets.filter(
-            models.Q(asset_name__icontains=search_query)
-            | models.Q(asset_number__icontains=search_query)
-            | models.Q(serial_number__icontains=search_query)
-        )
-
-    # Order by asset number
-    assets = assets.order_by("asset_number")
-
-    # Calculate summary statistics
-    total_acquisition_cost = assets.aggregate(total=models.Sum("acquisition_cost"))[
-        "total"
-    ] or Decimal("0.00")
-
-    total_accumulated_depreciation = assets.aggregate(total=models.Sum("accumulated_depreciation"))[
-        "total"
-    ] or Decimal("0.00")
-
-    total_book_value = assets.aggregate(total=models.Sum("current_book_value"))["total"] or Decimal(
-        "0.00"
-    )
-
-    # Audit logging (Requirement 5.7)
-    AuditLog.objects.create(
-        tenant=tenant,
-        user=request.user,
-        category="ACCOUNTING",
-        action="VIEW",
-        severity="INFO",
-        description=f"Viewed fixed assets list - Total assets: {assets.count()}",
-    )
-
-    context = {
-        "assets": assets,
-        "status_filter": status_filter,
-        "category_filter": category_filter,
-        "search_query": search_query,
-        "status_choices": FixedAsset.STATUS_CHOICES,
-        "category_choices": FixedAsset.CATEGORY_CHOICES,
-        "total_acquisition_cost": total_acquisition_cost,
-        "total_accumulated_depreciation": total_accumulated_depreciation,
-        "total_book_value": total_book_value,
-    }
-
-    return render(request, "accounting/fixed_assets/list.html", context)
-
-
-@login_required
-@tenant_access_required
-def fixed_asset_create(request):
-    """
-    Create a new fixed asset.
-
-    Handles asset registration with all required fields including
-    acquisition details, depreciation settings, and GL account references.
-
-    Requirements: 5.1, 5.4, 5.6, 5.7
-    """
-    from apps.core.audit_models import AuditLog
-
-    from .forms import FixedAssetForm
-
-    tenant = request.user.tenant
-
-    if request.method == "POST":
-        form = FixedAssetForm(request.POST, tenant=tenant, user=request.user)
-
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    # Save the fixed asset
-                    fixed_asset = form.save()
-
-                    # Audit logging (Requirement 5.7)
-                    AuditLog.objects.create(
-                        tenant=tenant,
-                        user=request.user,
-                        category="ACCOUNTING",
-                        action="CREATE",
-                        severity="INFO",
-                        description=(
-                            f"Created fixed asset {fixed_asset.asset_number} - "
-                            f"{fixed_asset.asset_name} - "
-                            f"Cost: ${fixed_asset.acquisition_cost}"
-                        ),
-                    )
-
-                    messages.success(
-                        request,
-                        f"Fixed asset {fixed_asset.asset_number} created successfully.",
-                    )
-
-                    return redirect("accounting:fixed_asset_detail", asset_id=fixed_asset.id)
-
-            except Exception as e:
-                logger.error(f"Error creating fixed asset: {str(e)}")
-                messages.error(
-                    request,
-                    f"Error creating fixed asset: {str(e)}",
-                )
+    try:
+        if transaction.is_reconciled:
+            # Unreconcile the transaction
+            BankReconciliationService.unreconcile_transaction(
+                transaction=transaction,
+                reason="User toggled in reconciliation interface",
+                user=request.user,
+            )
         else:
-            messages.error(
-                request,
-                "Please correct the errors below.",
-            )
-    else:
-        form = FixedAssetForm(tenant=tenant, user=request.user)
-
-    context = {
-        "form": form,
-        "title": "Register New Fixed Asset",
-    }
-
-    return render(request, "accounting/fixed_assets/form.html", context)
-
-
-@login_required
-@tenant_access_required
-def fixed_asset_detail(request, asset_id):
-    """
-    Display detailed information about a fixed asset.
-
-    Shows asset details, depreciation history, and current status.
-    Includes depreciation schedule and disposal information if applicable.
-
-    Requirements: 5.1, 5.4, 5.6, 5.7
-    """
-    from apps.core.audit_models import AuditLog
-
-    from .fixed_asset_models import DepreciationSchedule, FixedAsset
-
-    tenant = request.user.tenant
-
-    # Get fixed asset with tenant filtering (Requirement 5.7)
-    fixed_asset = get_object_or_404(
-        FixedAsset,
-        id=asset_id,
-        tenant=tenant,
-    )
-
-    # Get depreciation schedule
-    depreciation_schedules = DepreciationSchedule.objects.filter(fixed_asset=fixed_asset).order_by(
-        "-period_date"
-    )
-
-    # Get disposal information if disposed
-    disposal = None
-    if fixed_asset.status == "DISPOSED":
-        try:
-            disposal = fixed_asset.disposal
-        except Exception:
-            pass
-
-    # Calculate projected depreciation for next 12 months
-    projected_depreciation = []
-    if fixed_asset.status == "ACTIVE" and not fixed_asset.is_fully_depreciated:
-        from datetime import date
-
-        from dateutil.relativedelta import relativedelta
-
-        current_date = date.today()
-        monthly_depreciation = fixed_asset.calculate_monthly_depreciation()
-        accumulated = fixed_asset.accumulated_depreciation
-
-        for i in range(12):
-            period_date = current_date + relativedelta(months=i + 1)
-            # Set to last day of month
-            period_date = (
-                period_date.replace(day=1) + relativedelta(months=1) - relativedelta(days=1)
-            )
-
-            if accumulated + monthly_depreciation <= fixed_asset.depreciable_amount:
-                accumulated += monthly_depreciation
-                book_value = fixed_asset.acquisition_cost - accumulated
-
-                projected_depreciation.append(
-                    {
-                        "period_date": period_date,
-                        "depreciation_amount": monthly_depreciation,
-                        "accumulated_depreciation": accumulated,
-                        "book_value": book_value,
-                    }
-                )
-            else:
-                # Final depreciation to reach salvage value
-                final_depreciation = fixed_asset.depreciable_amount - accumulated
-                if final_depreciation > 0:
-                    accumulated += final_depreciation
-                    book_value = fixed_asset.acquisition_cost - accumulated
-
-                    projected_depreciation.append(
-                        {
-                            "period_date": period_date,
-                            "depreciation_amount": final_depreciation,
-                            "accumulated_depreciation": accumulated,
-                            "book_value": book_value,
-                        }
-                    )
-                break
-
-    # Audit logging (Requirement 5.7)
-    AuditLog.objects.create(
-        tenant=tenant,
-        user=request.user,
-        category="ACCOUNTING",
-        action="VIEW",
-        severity="INFO",
-        description=f"Viewed fixed asset details - {fixed_asset.asset_number}",
-    )
-
-    context = {
-        "asset": fixed_asset,
-        "depreciation_schedules": depreciation_schedules,
-        "disposal": disposal,
-        "projected_depreciation": projected_depreciation,
-    }
-
-    return render(request, "accounting/fixed_assets/detail.html", context)
-
-
-@login_required
-@tenant_access_required
-def fixed_asset_dispose(request, asset_id):
-    """
-    Dispose of a fixed asset.
-
-    Records disposal with method, proceeds, and reason.
-    Creates journal entries for disposal including gain/loss calculation.
-
-    Requirements: 5.4, 5.6, 5.7
-    """
-
-    from .fixed_asset_models import FixedAsset
-    from .forms import AssetDisposalForm
-    from .services import FixedAssetService
-
-    tenant = request.user.tenant
-
-    # Get fixed asset with tenant filtering (Requirement 5.7)
-    fixed_asset = get_object_or_404(
-        FixedAsset,
-        id=asset_id,
-        tenant=tenant,
-    )
-
-    # Check if asset is already disposed
-    if fixed_asset.status == "DISPOSED":
-        messages.error(
-            request,
-            f"Asset {fixed_asset.asset_number} is already disposed.",
-        )
-        return redirect("accounting:fixed_asset_detail", asset_id=fixed_asset.id)
-
-    if request.method == "POST":
-        form = AssetDisposalForm(
-            request.POST,
-            tenant=tenant,
-            user=request.user,
-            fixed_asset=fixed_asset,
-        )
-
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    # Get form data
-                    disposal_date = form.cleaned_data["disposal_date"]
-                    disposal_method = form.cleaned_data["disposal_method"]
-                    proceeds = form.cleaned_data.get("proceeds") or Decimal("0.00")
-                    buyer_name = form.cleaned_data.get("buyer_name", "")
-                    disposal_reason = form.cleaned_data.get("disposal_reason", "")
-                    notes = form.cleaned_data.get("notes", "")
-                    cash_account_code = form.cleaned_data.get("cash_account_code", "1001")
-
-                    # Dispose asset using service (creates journal entries)
-                    disposal_result = FixedAssetService.dispose_asset(
-                        fixed_asset=fixed_asset,
-                        disposal_date=disposal_date,
-                        disposal_method=disposal_method,
-                        proceeds=proceeds,
-                        user=request.user,
-                        buyer_name=buyer_name,
-                        disposal_reason=disposal_reason,
-                        notes=notes,
-                        cash_account_code=cash_account_code,
-                    )
-
-                    if disposal_result:
-                        gain_loss = disposal_result["gain_loss"]
-                        is_gain = disposal_result["is_gain"]
-
-                        if is_gain:
-                            gain_loss_text = f"Gain: ${gain_loss}"
-                        elif gain_loss < 0:
-                            gain_loss_text = f"Loss: ${abs(gain_loss)}"
-                        else:
-                            gain_loss_text = "No gain or loss"
-
-                        messages.success(
-                            request,
-                            f"Asset {fixed_asset.asset_number} disposed successfully. {gain_loss_text}",
-                        )
-
-                        return redirect("accounting:fixed_asset_detail", asset_id=fixed_asset.id)
-                    else:
-                        messages.error(
-                            request,
-                            "Error disposing asset. Please try again.",
-                        )
-
-            except Exception as e:
-                logger.error(f"Error disposing fixed asset: {str(e)}")
-                messages.error(
-                    request,
-                    f"Error disposing asset: {str(e)}",
-                )
-        else:
-            messages.error(
-                request,
-                "Please correct the errors below.",
-            )
-    else:
-        form = AssetDisposalForm(
-            tenant=tenant,
-            user=request.user,
-            fixed_asset=fixed_asset,
-        )
-
-    context = {
-        "form": form,
-        "asset": fixed_asset,
-        "title": f"Dispose Asset - {fixed_asset.asset_number}",
-    }
-
-    return render(request, "accounting/fixed_assets/disposal_form.html", context)
-
-
-@login_required
-@tenant_access_required
-@require_http_methods(["GET", "POST"])
-def run_depreciation(request):
-    """
-    Run monthly depreciation for all active assets.
-
-    Processes all active fixed assets and records depreciation
-    for the specified period. Creates journal entries automatically.
-
-    Requirements: 5.2, 5.3, 5.6, 5.7, 5.8
-    """
-    from datetime import date
-
-    from dateutil.relativedelta import relativedelta
-
-    from apps.core.audit_models import AuditLog
-
-    from .services import FixedAssetService
-
-    tenant = request.user.tenant
-
-    if request.method == "POST":
-        # Get period date from form
-        period_date_str = request.POST.get("period_date")
-
-        if not period_date_str:
-            messages.error(request, "Please select a period date.")
-            return redirect("accounting:run_depreciation")
-
-        try:
-            period_date = date.fromisoformat(period_date_str)
-
-            # Run depreciation for all active assets
-            result = FixedAssetService.run_monthly_depreciation(
-                tenant=tenant,
-                period_date=period_date,
+            # Mark as reconciled
+            BankReconciliationService.mark_reconciled(
+                transaction_ids=[str(transaction.id)],
+                reconciliation=reconciliation,
                 user=request.user,
             )
 
-            # Display results
-            if result.get("errors", 0) > 0:
-                messages.warning(
-                    request,
-                    f"Depreciation run completed with errors. "
-                    f"Processed: {result['processed']}, "
-                    f"Skipped: {result['skipped']}, "
-                    f"Already Recorded: {result['already_recorded']}, "
-                    f"Errors: {result['errors']}, "
-                    f"Total Depreciation: ${result['total_depreciation']}",
-                )
-            else:
-                messages.success(
-                    request,
-                    f"Depreciation run completed successfully. "
-                    f"Processed: {result['processed']}, "
-                    f"Skipped: {result['skipped']}, "
-                    f"Already Recorded: {result['already_recorded']}, "
-                    f"Total Depreciation: ${result['total_depreciation']}",
-                )
+        # Return success (HTMX will handle the UI update via JavaScript)
+        return HttpResponse(status=200)
 
-            # Store result in session for display
-            request.session["depreciation_result"] = {
-                "period_date": period_date.isoformat(),
-                "total_assets": result["total_assets"],
-                "processed": result["processed"],
-                "skipped": result["skipped"],
-                "already_recorded": result["already_recorded"],
-                "errors": result["errors"],
-                "total_depreciation": str(result["total_depreciation"]),
-                "details": result.get("details", []),
-            }
-
-            return redirect("accounting:run_depreciation")
-
-        except ValueError:
-            messages.error(request, "Invalid date format.")
-            return redirect("accounting:run_depreciation")
-        except Exception as e:
-            logger.error(f"Error running depreciation: {str(e)}")
-            messages.error(request, f"Error running depreciation: {str(e)}")
-            return redirect("accounting:run_depreciation")
-
-    # GET request - show form
-    # Get last month's end date as default
-    today = date.today()
-    last_month_end = today.replace(day=1) - relativedelta(days=1)
-
-    # Get depreciation result from session if available
-    depreciation_result = request.session.pop("depreciation_result", None)
-
-    # Audit logging (Requirement 5.7)
-    AuditLog.objects.create(
-        tenant=tenant,
-        user=request.user,
-        category="ACCOUNTING",
-        action="VIEW",
-        severity="INFO",
-        description="Viewed run depreciation page",
-    )
-
-    context = {
-        "default_period_date": last_month_end,
-        "depreciation_result": depreciation_result,
-    }
-
-    return render(request, "accounting/fixed_assets/run_depreciation.html", context)
+    except Exception as e:
+        logger.error(f"Failed to toggle transaction reconciliation: {str(e)}")
+        return HttpResponse(status=500)
 
 
 @login_required
 @tenant_access_required
-@require_http_methods(["GET"])
-def depreciation_schedule(request):  # noqa: C901
+@require_http_methods(["POST"])
+def bank_transaction_create_adjustment(request, account_id):
     """
-    Display depreciation schedule report showing projected depreciation.
+    Create an adjustment transaction during bank reconciliation.
 
-    Shows projected depreciation for each active asset over its remaining
-    useful life. Supports HTML, PDF, and Excel export formats.
-
-    Requirements: 5.5, 5.6
+    Allows users to add missing transactions or adjustments when reconciling.
+    Requirement: 4.5
     """
-    from datetime import date
+    from django.contrib.contenttypes.models import ContentType
 
     from apps.core.audit_models import AuditLog
 
-    from .services import FixedAssetService
+    from .bank_models import BankAccount, BankTransaction
 
-    tenant = request.user.tenant
+    try:
+        bank_account = get_object_or_404(BankAccount, id=account_id, tenant=request.user.tenant)
 
-    # Get format parameter
-    export_format = request.GET.get("format", "html")
+        # Get form data
+        description = request.POST.get("description", "").strip()
+        transaction_date = request.POST.get("transaction_date")
+        transaction_type = request.POST.get("transaction_type")  # DEBIT or CREDIT
+        amount = request.POST.get("amount")
+        reference_number = request.POST.get("reference_number", "").strip()
 
-    # Get as_of_date parameter (defaults to today)
-    as_of_date_str = request.GET.get("as_of_date")
-    if as_of_date_str:
+        # Validate
+        if not all([description, transaction_date, transaction_type, amount]):
+            messages.error(request, "All fields are required.")
+            return redirect(f"{reverse('accounting:bank_reconciliation')}?account={account_id}")
+
         try:
-            as_of_date = datetime.strptime(as_of_date_str, "%Y-%m-%d").date()
+            amount = Decimal(amount)
+            if amount <= 0:
+                raise ValueError("Amount must be positive")
+        except (ValueError, InvalidOperation) as e:
+            messages.error(request, f"Invalid amount: {str(e)}")
+            return redirect(f"{reverse('accounting:bank_reconciliation')}?account={account_id}")
+
+        try:
+            transaction_date = datetime.strptime(transaction_date, "%Y-%m-%d").date()
         except ValueError:
-            as_of_date = date.today()
-    else:
-        as_of_date = date.today()
+            messages.error(request, "Invalid date format.")
+            return redirect(f"{reverse('accounting:bank_reconciliation')}?account={account_id}")
 
-    # Generate depreciation schedule
-    schedule_data = FixedAssetService.generate_projected_depreciation_schedule(tenant, as_of_date)
+        if transaction_type not in ["DEBIT", "CREDIT"]:
+            messages.error(request, "Invalid transaction type.")
+            return redirect(f"{reverse('accounting:bank_reconciliation')}?account={account_id}")
 
-    # Audit logging (Requirement 5.7)
-    AuditLog.objects.create(
-        tenant=tenant,
-        user=request.user,
-        category="ACCOUNTING",
-        action="VIEW",
-        severity="INFO",
-        description=f"Viewed depreciation schedule report (format: {export_format})",
-    )
-
-    # Handle different export formats
-    if export_format == "pdf":
-        return _export_depreciation_schedule_pdf(request, schedule_data)
-    elif export_format == "excel":
-        return _export_depreciation_schedule_excel(request, schedule_data)
-    else:
-        # HTML format
-        context = {
-            "schedule_data": schedule_data,
-            "as_of_date": as_of_date,
-        }
-        return render(request, "accounting/reports/depreciation_schedule.html", context)
-
-
-def _export_depreciation_schedule_pdf(request, schedule_data):
-    """Export depreciation schedule as PDF."""
-    from io import BytesIO
-
-    from django.http import HttpResponse
-
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import landscape, letter
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.units import inch
-    from reportlab.platypus import (
-        PageBreak,
-        Paragraph,
-        SimpleDocTemplate,
-        Spacer,
-        Table,
-        TableStyle,
-    )
-
-    try:
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=landscape(letter),
-            rightMargin=0.5 * inch,
-            leftMargin=0.5 * inch,
-            topMargin=0.75 * inch,
-            bottomMargin=0.5 * inch,
-        )
-
-        elements = []
-        styles = getSampleStyleSheet()
-
-        # Title
-        title = Paragraph(
-            f"<b>Depreciation Schedule Report</b><br/>"
-            f"{request.user.tenant.company_name}<br/>"
-            f"As of {schedule_data['as_of_date'].strftime('%B %d, %Y')}",
-            styles["Title"],
-        )
-        elements.append(title)
-        elements.append(Spacer(1, 0.3 * inch))
-
-        # Summary
-        summary_text = f"Total Active Assets: {schedule_data['total_assets']}"
-        summary = Paragraph(summary_text, styles["Normal"])
-        elements.append(summary)
-        elements.append(Spacer(1, 0.2 * inch))
-
-        # Process each asset
-        for asset in schedule_data["assets"]:
-            # Asset header
-            asset_header = Paragraph(
-                f"<b>{asset['asset_number']} - {asset['asset_name']}</b><br/>"
-                f"Category: {asset['category']} | "
-                f"Method: {asset['depreciation_method']} | "
-                f"Remaining: {asset['months_remaining']} months",
-                styles["Heading2"],
+        # Create the adjustment transaction
+        with transaction.atomic():
+            bank_transaction = BankTransaction.objects.create(
+                tenant=request.user.tenant,
+                bank_account=bank_account,
+                transaction_date=transaction_date,
+                description=f"[ADJUSTMENT] {description}",
+                amount=amount,
+                transaction_type=transaction_type,
+                reference_number=reference_number
+                or f"ADJ-{timezone.now().strftime('%Y%m%d%H%M%S')}",
+                is_reconciled=False,
+                created_by=request.user,
             )
-            elements.append(asset_header)
-            elements.append(Spacer(1, 0.1 * inch))
 
-            # Asset details table
-            details_data = [
-                ["Acquisition Cost:", f"${asset['acquisition_cost']:,.2f}"],
-                ["Salvage Value:", f"${asset['salvage_value']:,.2f}"],
-                ["Current Accumulated:", f"${asset['current_accumulated_depreciation']:,.2f}"],
-                ["Current Book Value:", f"${asset['current_book_value']:,.2f}"],
-                ["Total Projected:", f"${asset['total_projected_depreciation']:,.2f}"],
-            ]
-
-            details_table = Table(details_data, colWidths=[2 * inch, 2 * inch])
-            details_table.setStyle(
-                TableStyle(
-                    [
-                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                        ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ]
-                )
+            # Audit log
+            content_type = ContentType.objects.get_for_model(BankTransaction)
+            AuditLog.objects.create(
+                tenant=request.user.tenant,
+                user=request.user,
+                category="DATA",
+                action="CREATE",
+                severity="INFO",
+                description=f"Created adjustment transaction: {description}",
+                content_type=content_type,
+                object_id=str(bank_transaction.id),
+                new_values={
+                    "description": description,
+                    "amount": str(amount),
+                    "type": transaction_type,
+                    "date": str(transaction_date),
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", "")[:200],
             )
-            elements.append(details_table)
-            elements.append(Spacer(1, 0.15 * inch))
 
-            # Projected schedule table
-            if asset["projected_periods"]:
-                schedule_header = [["Period", "Depreciation", "Accumulated", "Book Value"]]
-
-                schedule_rows = []
-                for period in asset["projected_periods"][:36]:  # Limit to 3 years
-                    schedule_rows.append(
-                        [
-                            period["period_date"].strftime("%b %Y"),
-                            f"${period['depreciation_amount']:,.2f}",
-                            f"${period['accumulated_depreciation']:,.2f}",
-                            f"${period['book_value']:,.2f}",
-                        ]
-                    )
-
-                schedule_table = Table(
-                    schedule_header + schedule_rows,
-                    colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch],
-                )
-                schedule_table.setStyle(
-                    TableStyle(
-                        [
-                            ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                            ("FONTSIZE", (0, 0), (-1, -1), 8),
-                            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                            ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-                        ]
-                    )
-                )
-                elements.append(schedule_table)
-
-                if len(asset["projected_periods"]) > 36:
-                    note = Paragraph(
-                        f"<i>Note: Showing first 36 months of {len(asset['projected_periods'])} total periods</i>",
-                        styles["Normal"],
-                    )
-                    elements.append(Spacer(1, 0.05 * inch))
-                    elements.append(note)
-
-            elements.append(PageBreak())
-
-        # Build PDF
-        doc.build(elements)
-
-        # Return response
-        buffer.seek(0)
-        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
-        filename = f"depreciation_schedule_{schedule_data['as_of_date'].strftime('%Y%m%d')}.pdf"
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-        return response
+            messages.success(request, f"Adjustment transaction created: {description}")
+            return redirect(f"{reverse('accounting:bank_reconciliation')}?account={account_id}")
 
     except Exception as e:
-        logger.error(f"Failed to generate depreciation schedule PDF: {str(e)}")
-        messages.error(request, f"Failed to generate PDF: {str(e)}")
-        return redirect("accounting:depreciation_schedule")
-
-
-def _export_depreciation_schedule_excel(request, schedule_data):
-    """Export depreciation schedule as Excel."""
-    from django.http import HttpResponse
-
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
-
-    try:
-        # Create workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Depreciation Schedule"
-
-        # Title
-        ws["A1"] = "Depreciation Schedule Report"
-        ws["A1"].font = Font(bold=True, size=14)
-        ws["A2"] = request.user.tenant.company_name
-        ws["A3"] = f"As of {schedule_data['as_of_date'].strftime('%B %d, %Y')}"
-        ws["A4"] = f"Total Active Assets: {schedule_data['total_assets']}"
-
-        current_row = 6
-
-        # Process each asset
-        for asset in schedule_data["assets"]:
-            # Asset header
-            ws[f"A{current_row}"] = f"{asset['asset_number']} - {asset['asset_name']}"
-            ws[f"A{current_row}"].font = Font(bold=True, size=12)
-            current_row += 1
-
-            # Asset details
-            ws[f"A{current_row}"] = "Category:"
-            ws[f"B{current_row}"] = asset["category"]
-            ws[f"C{current_row}"] = "Method:"
-            ws[f"D{current_row}"] = asset["depreciation_method"]
-            current_row += 1
-
-            ws[f"A{current_row}"] = "Acquisition Cost:"
-            ws[f"B{current_row}"] = float(asset["acquisition_cost"])
-            ws[f"B{current_row}"].number_format = "$#,##0.00"
-            ws[f"C{current_row}"] = "Salvage Value:"
-            ws[f"D{current_row}"] = float(asset["salvage_value"])
-            ws[f"D{current_row}"].number_format = "$#,##0.00"
-            current_row += 1
-
-            ws[f"A{current_row}"] = "Current Accumulated:"
-            ws[f"B{current_row}"] = float(asset["current_accumulated_depreciation"])
-            ws[f"B{current_row}"].number_format = "$#,##0.00"
-            ws[f"C{current_row}"] = "Current Book Value:"
-            ws[f"D{current_row}"] = float(asset["current_book_value"])
-            ws[f"D{current_row}"].number_format = "$#,##0.00"
-            current_row += 1
-
-            ws[f"A{current_row}"] = "Total Projected:"
-            ws[f"B{current_row}"] = float(asset["total_projected_depreciation"])
-            ws[f"B{current_row}"].number_format = "$#,##0.00"
-            ws[f"C{current_row}"] = "Months Remaining:"
-            ws[f"D{current_row}"] = asset["months_remaining"]
-            current_row += 2
-
-            # Projected schedule header
-            header_row = current_row
-            ws[f"A{header_row}"] = "Period"
-            ws[f"B{header_row}"] = "Depreciation"
-            ws[f"C{header_row}"] = "Accumulated"
-            ws[f"D{header_row}"] = "Book Value"
-
-            for col in ["A", "B", "C", "D"]:
-                ws[f"{col}{header_row}"].font = Font(bold=True)
-                ws[f"{col}{header_row}"].fill = PatternFill(
-                    start_color="CCCCCC", end_color="CCCCCC", fill_type="solid"
-                )
-                ws[f"{col}{header_row}"].alignment = Alignment(horizontal="center")
-
-            current_row += 1
-
-            # Projected periods
-            for period in asset["projected_periods"]:
-                ws[f"A{current_row}"] = period["period_date"].strftime("%b %Y")
-                ws[f"B{current_row}"] = float(period["depreciation_amount"])
-                ws[f"B{current_row}"].number_format = "$#,##0.00"
-                ws[f"C{current_row}"] = float(period["accumulated_depreciation"])
-                ws[f"C{current_row}"].number_format = "$#,##0.00"
-                ws[f"D{current_row}"] = float(period["book_value"])
-                ws[f"D{current_row}"].number_format = "$#,##0.00"
-                current_row += 1
-
-            current_row += 2  # Space between assets
-
-        # Adjust column widths
-        ws.column_dimensions["A"].width = 20
-        ws.column_dimensions["B"].width = 18
-        ws.column_dimensions["C"].width = 20
-        ws.column_dimensions["D"].width = 18
-
-        # Save to response
-        response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        filename = f"depreciation_schedule_{schedule_data['as_of_date'].strftime('%Y%m%d')}.xlsx"
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-        wb.save(response)
-        return response
-
-    except Exception as e:
-        logger.error(f"Failed to generate depreciation schedule Excel: {str(e)}")
-        messages.error(request, f"Failed to generate Excel: {str(e)}")
-        return redirect("accounting:depreciation_schedule")
+        logger.error(f"Error creating adjustment transaction: {str(e)}")
+        messages.error(request, f"Error creating adjustment: {str(e)}")
+        return redirect("accounting:bank_reconciliation")

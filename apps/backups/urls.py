@@ -14,6 +14,12 @@ urlpatterns = [
     # WAL Monitoring
     path("wal-monitoring/", views.wal_monitoring, name="wal_monitoring"),
     path("api/wal-status/", views.wal_status_api, name="wal_status_api"),
+    # Daily Backup Monitoring
+    path("daily-backup-monitoring/", views.daily_backup_monitoring, name="daily_backup_monitoring"),
+    path("api/daily-backup-status/", views.daily_backup_status_api, name="daily_backup_status_api"),
+    # Weekly Backup Monitoring
+    path("weekly-backup-monitoring/", views.weekly_backup_monitoring, name="weekly_backup_monitoring"),
+    path("api/weekly-backup-status/", views.weekly_backup_status_api, name="weekly_backup_status_api"),
     # Backup management
     path("backups/", views.backup_list, name="backup_list"),
     path("backups/<uuid:backup_id>/", views.backup_detail, name="backup_detail"),

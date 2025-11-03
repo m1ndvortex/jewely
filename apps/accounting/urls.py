@@ -137,14 +137,9 @@ urlpatterns = [
         views.bank_account_set_default,
         name="bank_account_set_default",
     ),
-    path(
-        "bank-accounts/<uuid:account_id>/import/",
-        views.bank_statement_import,
-        name="bank_statement_import",
-    ),
     # Bank Reconciliation Views (Task 4.5)
     path(
-        "bank-reconciliation/start/",
+        "bank-reconciliation/<uuid:account_id>/start/",
         views.bank_reconciliation_start,
         name="bank_reconciliation_start",
     ),
@@ -183,19 +178,20 @@ urlpatterns = [
         views.bank_reconciliation_auto_match,
         name="bank_reconciliation_auto_match",
     ),
-    # Fixed Asset Management Views (Task 5.3)
-    path("fixed-assets/", views.fixed_asset_list, name="fixed_asset_list"),
-    path("fixed-assets/create/", views.fixed_asset_create, name="fixed_asset_create"),
-    path("fixed-assets/<uuid:asset_id>/", views.fixed_asset_detail, name="fixed_asset_detail"),
     path(
-        "fixed-assets/<uuid:asset_id>/dispose/",
-        views.fixed_asset_dispose,
-        name="fixed_asset_dispose",
+        "bank-transactions/<uuid:transaction_id>/toggle-reconcile/",
+        views.bank_transaction_toggle_reconcile,
+        name="bank_transaction_toggle_reconcile",
     ),
-    path("fixed-assets/run-depreciation/", views.run_depreciation, name="run_depreciation"),
     path(
-        "reports/depreciation-schedule/",
-        views.depreciation_schedule,
-        name="depreciation_schedule",
+        "bank-accounts/<uuid:account_id>/create-adjustment/",
+        views.bank_transaction_create_adjustment,
+        name="bank_transaction_create_adjustment",
+    ),
+    # Bank Statement Import (placeholder for Task 4.7)
+    path(
+        "bank-accounts/<uuid:account_id>/import-statement/",
+        views.bank_reconciliation,
+        name="bank_statement_import",
     ),
 ]
