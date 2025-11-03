@@ -69,7 +69,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: jewelry_shop_celery_worker
-    command: celery -A config worker --loglevel=info
+    command: celery -A config worker --loglevel=info -Q celery,backups,pricing,reports,notifications
     volumes:
       - .:/app
       - postgres_wal_archive:/var/lib/postgresql/wal_archive

@@ -626,19 +626,33 @@ def weekly_per_tenant_backup(  # noqa: C901
     self, tenant_id: Optional[str] = None, initiated_by_user_id: Optional[int] = None
 ):
     """
-    Perform weekly per-tenant backup.
+    Perform weekly per-tenant backup (Celery task wrapper).
 
-    This task:
-    1. Exports tenant-specific data using RLS-filtered pg_dump
-    2. Includes only tenant-scoped tables (inventory, sales, CRM, accounting)
-    3. Compresses the dump with gzip level 9
-    4. Encrypts the compressed dump with AES-256
-    5. Calculates SHA-256 checksum
-    6. Tags backup with tenant_id
-    7. Uploads to all three storage locations (local, R2, B2)
-    8. Records metadata in the database
+    This task is scheduled by Celery Beat for automated weekly backups.
+    For manual backups, use perform_tenant_backup instead.
 
     Args:
+        tenant_id: UUID of the tenant to backup (if None, backs up all active tenants)
+        initiated_by_user_id: ID of user who initiated the backup (None for automated)
+
+    Returns:
+        List of backup IDs if successful, None otherwise
+    """
+    return _do_weekly_per_tenant_backup(self, tenant_id, initiated_by_user_id)
+
+
+def _do_weekly_per_tenant_backup(  # noqa: C901
+    task_self, tenant_id: Optional[str] = None, initiated_by_user_id: Optional[int] = None
+):
+    """
+    Perform weekly per-tenant backup (actual implementation).
+
+    This function contains the actual backup logic. It's called by both:
+    - weekly_per_tenant_backup (scheduled task)
+    - perform_tenant_backup (manual trigger)
+
+    Args:
+        task_self: The Celery task instance (for accessing self.request.id)
         tenant_id: UUID of the tenant to backup (if None, backs up all active tenants)
         initiated_by_user_id: ID of user who initiated the backup (None for automated)
 
@@ -700,7 +714,7 @@ def weekly_per_tenant_backup(  # noqa: C901
                         r2_path="",
                         b2_path="",
                         status=Backup.IN_PROGRESS,
-                        backup_job_id=self.request.id,
+                        backup_job_id=task_self.request.id,
                         created_by_id=initiated_by_user_id,
                     )
 
@@ -841,7 +855,7 @@ def weekly_per_tenant_backup(  # noqa: C901
                     details={
                         "error": str(e),
                         "tenant_id": str(tenant.id),
-                        "task_id": self.request.id,
+                        "task_id": task_self.request.id,
                     },
                 )
 
@@ -868,11 +882,11 @@ def weekly_per_tenant_backup(  # noqa: C901
             alert_type=BackupAlert.BACKUP_FAILURE,
             severity=BackupAlert.CRITICAL,
             message=f"Weekly per-tenant backup task failed: {str(e)}",
-            details={"error": str(e), "task_id": self.request.id},
+            details={"error": str(e), "task_id": task_self.request.id},
         )
 
-        # Retry the task
-        raise self.retry(exc=e)
+        # Re-raise exception for Celery retry handling
+        raise e
 
 
 @shared_task(
@@ -1693,7 +1707,10 @@ def perform_tenant_backup(
     Returns:
         List of backup IDs if successful
     """
-    return weekly_per_tenant_backup(tenant_id=tenant_id, initiated_by_user_id=created_by_id)
+    # Call the helper function directly, not as a Celery task
+    return _do_weekly_per_tenant_backup(
+        task_self=self, tenant_id=tenant_id, initiated_by_user_id=created_by_id
+    )
 
 
 @shared_task(

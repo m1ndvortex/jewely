@@ -8,6 +8,9 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
+    path(
+        "admin/backups/", include("apps.backups.urls")
+    ),  # Backup management (must be before admin/)
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),  # django-allauth URLs
     path("hijack/", include("hijack.urls")),  # django-hijack URLs for impersonation
@@ -22,7 +25,6 @@ urlpatterns = [
     path("pricing/", include("apps.pricing.urls")),
     path("reports/", include("apps.reporting.urls")),
     path("notifications/", include("apps.notifications.urls")),
-    path("admin/backups/", include("apps.backups.urls")),  # Backup management
     path("", include("django_prometheus.urls")),  # Prometheus metrics endpoint at /metrics
 ]
 

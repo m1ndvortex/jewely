@@ -48,10 +48,11 @@ def backup_dashboard(request):
     # Get recent backups
     recent_backups = Backup.objects.all()[:10]
 
-    # Get active alerts
-    active_alerts = BackupAlert.objects.filter(status=BackupAlert.ACTIVE).order_by("-created_at")[
-        :10
-    ]
+    # Get active alerts (without slice for health check)
+    active_alerts_queryset = BackupAlert.objects.filter(status=BackupAlert.ACTIVE)
+
+    # Get limited alerts for display
+    active_alerts = active_alerts_queryset.order_by("-created_at")[:10]
 
     # Get recent restore operations
     recent_restores = BackupRestoreLog.objects.all()[:5]
@@ -60,9 +61,9 @@ def backup_dashboard(request):
     health_score = 100
     if stats["failed_backups"] > 0:
         health_score -= min(stats["failed_backups"] * 10, 50)
-    if active_alerts.filter(severity=BackupAlert.CRITICAL).exists():
+    if active_alerts_queryset.filter(severity=BackupAlert.CRITICAL).exists():
         health_score -= 30
-    elif active_alerts.filter(severity=BackupAlert.ERROR).exists():
+    elif active_alerts_queryset.filter(severity=BackupAlert.ERROR).exists():
         health_score -= 20
     health_score = max(health_score, 0)
 
@@ -183,14 +184,22 @@ def manual_backup(request):
             )
 
             if result["success"]:
-                # Display success message
+                # Log the action
                 if execution_timing == "immediate":
                     job_count = len(result["backup_jobs"])
-                    messages.success(
-                        request,
-                        f"Successfully queued {job_count} backup job(s). "
-                        f"Check the backup list for progress.",
+                    logger.info(
+                        f"Manual backup triggered by {request.user.username}: "
+                        f"scope={backup_scope}, timing={execution_timing}, jobs={job_count}"
                     )
+
+                    # Store backup job information in session for progress tracking
+                    # Each job is a dict with tenant_id, tenant_name, task_id, status
+                    request.session["backup_jobs"] = result["backup_jobs"]
+                    request.session["backup_job_count"] = job_count
+                    request.session["backup_start_time"] = timezone.now().isoformat()
+
+                    # Redirect to progress page
+                    return redirect("backups:backup_progress")
                 else:
                     job_count = len(result["scheduled_jobs"])
                     messages.success(
@@ -198,14 +207,12 @@ def manual_backup(request):
                         f"Successfully scheduled {job_count} backup job(s) for "
                         f"{scheduled_time.strftime('%Y-%m-%d %H:%M')}.",
                     )
+                    logger.info(
+                        f"Manual backup scheduled by {request.user.username}: "
+                        f"scope={backup_scope}, timing={execution_timing}, jobs={job_count}"
+                    )
 
-                # Log the action
-                logger.info(
-                    f"Manual backup triggered by {request.user.username}: "
-                    f"scope={backup_scope}, timing={execution_timing}, jobs={job_count}"
-                )
-
-                return redirect("backups:backup_list")
+                    return redirect("backups:backup_list")
             else:
                 # Display error messages
                 for error in result["errors"]:
@@ -227,6 +234,272 @@ def manual_backup(request):
     }
 
     return render(request, "backups/manual_backup.html", context)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+def backup_progress(request):
+    """
+    Real-time backup progress monitoring page.
+
+    Displays live status updates for running backup jobs.
+    """
+    # Get backup job info from session
+    backup_jobs = request.session.get("backup_jobs", [])
+    backup_job_count = request.session.get("backup_job_count", 0)
+    start_time = request.session.get("backup_start_time")
+
+    if not backup_jobs:
+        messages.warning(request, "No active backup jobs found.")
+        return redirect("backups:dashboard")
+
+    context = {
+        "backup_jobs": backup_jobs,  # Pass as Python list - will be converted to JSON in template
+        "backup_job_count": backup_job_count,
+        "start_time": start_time,
+    }
+
+    return render(request, "backups/backup_progress.html", context)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+@require_http_methods(["POST"])
+def backup_status_api(request):
+    """
+    API endpoint for polling backup status.
+
+    Returns current status of multiple backup jobs using Celery task IDs.
+    """
+    import json
+    from datetime import timedelta
+
+    from django.http import JsonResponse
+
+    from celery.result import AsyncResult
+
+    try:
+        data = json.loads(request.body)
+        backup_jobs = data.get("backup_jobs", [])
+
+        if not backup_jobs:
+            return JsonResponse({"error": "No backup jobs provided"}, status=400)
+
+        jobs = []
+        completed = 0
+        in_progress = 0
+        failed = 0
+        total = len(backup_jobs)
+
+        for job_info in backup_jobs:
+            task_id = job_info.get("task_id")
+            tenant_id = job_info.get("tenant_id")
+            tenant_name = job_info.get("tenant_name")
+
+            # Get Celery task status
+            task_result = AsyncResult(task_id)
+
+            # Map Celery states to our status
+            celery_state = task_result.state
+            progress = 0
+            status = "PENDING"
+
+            if celery_state == "SUCCESS":
+                progress = 100
+                completed += 1
+                status = "COMPLETED"
+            elif celery_state == "FAILURE":
+                progress = 0
+                failed += 1
+                status = "FAILED"
+            elif celery_state == "STARTED":
+                progress = 30
+                in_progress += 1
+                status = "IN_PROGRESS"
+            elif celery_state == "PROGRESS":
+                # Custom state with progress info
+                info = task_result.info or {}
+                progress = info.get("progress", 50)
+                in_progress += 1
+                status = "IN_PROGRESS"
+            elif celery_state == "PENDING":
+                progress = 0
+                in_progress += 1
+                status = "PENDING"
+
+            # Try to get actual backup record if it was created
+            duration = "--"
+            size = "--"
+            speed = "--"
+
+            try:
+                from apps.tenants.models import Tenant
+
+                tenant = Tenant.objects.get(id=tenant_id)
+                # Get most recent backup for this tenant
+                recent_backup = Backup.objects.filter(tenant=tenant).order_by("-created_at").first()
+
+                if recent_backup:
+                    # Calculate duration
+                    if recent_backup.started_at:
+                        if recent_backup.completed_at:
+                            elapsed = recent_backup.completed_at - recent_backup.started_at
+                        else:
+                            elapsed = timezone.now() - recent_backup.started_at
+                        minutes = int(elapsed.total_seconds() / 60)
+                        seconds = int(elapsed.total_seconds() % 60)
+                        duration = f"{minutes}m {seconds}s"
+
+                    # Format size
+                    if recent_backup.size:
+                        mb = recent_backup.size / (1024 * 1024)
+                        size = f"{mb:.2f} MB"
+
+                    # Calculate speed
+                    if recent_backup.size and recent_backup.started_at:
+                        elapsed_seconds = (
+                            timezone.now() - recent_backup.started_at
+                        ).total_seconds()
+                        if elapsed_seconds > 0:
+                            mb_per_sec = (recent_backup.size / (1024 * 1024)) / elapsed_seconds
+                            speed = f"{mb_per_sec:.2f} MB/s"
+
+                    # Update status from backup record
+                    if recent_backup.status == Backup.COMPLETED:
+                        status = "COMPLETED"
+                        progress = 100
+                    elif recent_backup.status == Backup.FAILED:
+                        status = "FAILED"
+                        progress = 0
+                    elif recent_backup.status == Backup.IN_PROGRESS:
+                        status = "IN_PROGRESS"
+                    elif recent_backup.status == Backup.VERIFYING:
+                        status = "VERIFYING"
+                        progress = 90
+                    elif recent_backup.status == Backup.UPLOADING:
+                        status = "UPLOADING"
+                        progress = 70
+            except Exception as e:
+                logger.debug(f"Could not fetch backup record: {str(e)}")
+
+            jobs.append(
+                {
+                    "id": task_id,
+                    "tenant_id": tenant_id,
+                    "name": f"Tenant Backup: {tenant_name}",
+                    "info": f"Task ID: {task_id[:8]}...",
+                    "status": status,
+                    "progress": progress,
+                    "size": size,
+                    "duration": duration,
+                    "speed": speed,
+                }
+            )
+
+        # Calculate ETA - simplified for now
+        eta = ""
+        if completed > 0 and in_progress > 0:
+            # Estimate 5 minutes per backup on average
+            remaining_minutes = in_progress * 5
+            eta_time = timezone.now() + timedelta(minutes=remaining_minutes)
+            eta = eta_time.strftime("%H:%M:%S")
+
+        # Determine overall status
+        overall_status = "IN_PROGRESS"
+        if completed == total:
+            overall_status = "COMPLETED"
+        elif failed > 0 and (completed + failed) == total:
+            overall_status = "FAILED"
+        elif failed == 0 and (completed + in_progress) == total and in_progress == 0:
+            overall_status = "COMPLETED"
+
+        # Generate log entries based on job statuses
+        log_entries = []
+        for job in jobs:
+            if job["status"] == "COMPLETED":
+                log_entries.append(
+                    {
+                        "timestamp": timezone.now().strftime("%H:%M:%S"),
+                        "level": "success",
+                        "message": f"✓ {job['name']} completed successfully ({job['size']})",
+                    }
+                )
+            elif job["status"] == "FAILED":
+                log_entries.append(
+                    {
+                        "timestamp": timezone.now().strftime("%H:%M:%S"),
+                        "level": "error",
+                        "message": f"✗ {job['name']} failed",
+                    }
+                )
+            elif job["status"] == "IN_PROGRESS":
+                log_entries.append(
+                    {
+                        "timestamp": timezone.now().strftime("%H:%M:%S"),
+                        "level": "info",
+                        "message": f"⟳ {job['name']} in progress ({job['progress']}%)",
+                    }
+                )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "total": total,
+                "completed": completed,
+                "in_progress": in_progress,
+                "failed": failed,
+                "overall_status": overall_status,
+                "jobs": jobs,
+                "eta": eta,
+                "log_entries": log_entries[:10],  # Last 10 entries
+                "all_complete": (completed + failed) == total,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error in backup_status_api: {str(e)}", exc_info=True)
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+@require_http_methods(["POST"])
+def cancel_backup_api(request):
+    """
+    API endpoint to cancel running backups.
+    """
+    import json
+
+    from django.http import JsonResponse
+
+    from celery.task.control import revoke
+
+    try:
+        data = json.loads(request.body)
+        backup_jobs = data.get("backup_jobs", [])
+
+        if not backup_jobs:
+            return JsonResponse({"error": "No backup jobs provided"}, status=400)
+
+        # Cancel Celery tasks
+        cancelled_count = 0
+        for job_info in backup_jobs:
+            task_id = job_info.get("task_id")
+            if task_id:
+                revoke(task_id, terminate=True)
+                cancelled_count += 1
+
+        return JsonResponse(
+            {
+                "success": True,
+                "cancelled_count": cancelled_count,
+                "message": f"Cancelled {cancelled_count} backup(s)",
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error in cancel_backup_api: {str(e)}")
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 @login_required

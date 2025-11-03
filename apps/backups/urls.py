@@ -15,6 +15,10 @@ urlpatterns = [
     path("backups/", views.backup_list, name="backup_list"),
     path("backups/<uuid:backup_id>/", views.backup_detail, name="backup_detail"),
     path("backups/manual/", views.manual_backup, name="manual_backup"),
+    path("backups/progress/", views.backup_progress, name="backup_progress"),
+    # API endpoints
+    path("api/backup-status/", views.backup_status_api, name="backup_status_api"),
+    path("api/cancel-backup/", views.cancel_backup_api, name="cancel_backup_api"),
     # Restore management
     path("restore/", views.restore_backup, name="restore_backup"),
     path("restore/<uuid:backup_id>/", views.restore_backup, name="restore_backup_with_id"),

@@ -36,11 +36,12 @@ app.conf.beat_schedule = {
         "options": {"queue": "backups", "priority": 9},
     },
     # Continuous WAL archiving every 5 minutes for PITR
-    "continuous-wal-archiving": {
-        "task": "apps.backups.tasks.continuous_wal_archiving",
-        "schedule": 300.0,  # Every 5 minutes (300 seconds)
-        "options": {"queue": "backups", "priority": 10},
-    },
+    # TEMPORARILY DISABLED - Permission issues with WAL archive volume
+    # "continuous-wal-archiving": {
+    #     "task": "apps.backups.tasks.continuous_wal_archiving",
+    #     "schedule": 300.0,  # Every 5 minutes (300 seconds)
+    #     "options": {"queue": "backups", "priority": 10},
+    # },
     # Fetch gold rates every 5 minutes
     "fetch-gold-rates": {
         "task": "apps.pricing.tasks.fetch_gold_rates",

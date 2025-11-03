@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Backup Progress{% endblock %}
+
+{% block extra_css %}
+<style>
+.progress-bar {
+    transition: width 0.3s ease;
+}
+.log-entry {
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.pulse-dot {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .5;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Backup Operation Progress</h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">Monitor your backup operation in real-time</p>
+            </div>
+            <div id="status-badge" class="px-4 py-2 rounded-lg font-semibold">
+                <span class="flex items-center">
+                    <span class="pulse-dot w-3 h-3 bg-blue-600 rounded-full mr-2"></span>
+                    <span id="status-text">Initializing...</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Jobs</div>
+            <div class="text-3xl font-bold text-gray-900 dark:text-white" id="total-jobs">{{ backup_jobs|length }}</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Completed</div>
+            <div class="text-3xl font-bold text-green-600" id="completed-jobs">0</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">In Progress</div>
+            <div class="text-3xl font-bold text-blue-600" id="in-progress-jobs">0</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Failed</div>
+            <div class="text-3xl font-bold text-red-600" id="failed-jobs">0</div>
+        </div>
+    </div>
+
+    <!-- Overall Progress Bar -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <div class="flex items-center justify-between mb-2">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Overall Progress</h2>
+            <span class="text-sm font-medium text-gray-600 dark:text-gray-400" id="progress-percentage">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+            <div id="progress-bar" class="progress-bar bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
+        </div>
+        <div class="mt-2 text-sm text-gray-600 dark:text-gray-400" id="progress-eta">Calculating ETA...</div>
+    </div>
+
+    <!-- Backup Jobs -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Backup Jobs</h2>
+        <div class="space-y-4" id="backup-jobs">
+            {% for job in backup_jobs %}
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4" id="job-{{ forloop.counter0 }}" data-job-index="{{ forloop.counter0 }}">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-400 job-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900 dark:text-white job-name">Tenant: {{ job.tenant_name }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 job-info">Task: {{ job.task_id|slice:":8" }}...</div>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full job-status bg-gray-200 text-gray-800">
+                        {{ job.status|default:"Queued" }}
+                    </span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
+                    <div class="job-progress bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                </div>
+                <div class="text-xs text-gray-600 dark:text-gray-400 job-details">
+                    <span class="job-size">Size: --</span> | 
+                    <span class="job-duration">Duration: --</span> | 
+                    <span class="job-speed">Speed: --</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Live Activity Log -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Activity Log</h2>
+            <button onclick="clearLog()" class="text-sm text-blue-600 hover:text-blue-700">Clear Log</button>
+        </div>
+        <div id="activity-log" class="max-h-96 overflow-y-auto space-y-2 font-mono text-sm">
+            <div class="log-entry text-gray-600 dark:text-gray-400">
+                <span class="text-gray-500">[{{ backup_jobs.0|date:"H:i:s" }}]</span> Backup operation initiated
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-8 flex items-center justify-between">
+        <a href="{% url 'backups:dashboard' %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg">
+            Back to Dashboard
+        </a>
+        <div class="space-x-4">
+            <button id="pause-btn" onclick="pauseBackup()" class="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-lg" style="display: none;">
+                Pause All
+            </button>
+            <button id="cancel-btn" onclick="cancelBackup()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg">
+                Cancel All
+            </button>
+        </div>
+    </div>
+</div>
+
+{{ backup_jobs|json_script:"backup-jobs-data" }}
+
+<script>
+const backupJobs = JSON.parse(document.getElementById('backup-jobs-data').textContent);
+let pollingInterval;
+let startTime = Date.now();
+
+// Poll for status updates every 2 seconds
+function startPolling() {
+    updateStatus();
+    pollingInterval = setInterval(updateStatus, 2000);
+}
+
+async function updateStatus() {
+    try {
+        const response = await fetch('/admin/backups/api/backup-status/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ backup_jobs: backupJobs })
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch status');
+
+        const data = await response.json();
+        updateUI(data);
+
+        // Check if all jobs are complete
+        if (data.all_complete) {
+            clearInterval(pollingInterval);
+            showCompletionMessage(data);
+        }
+    } catch (error) {
+        console.error('Error fetching backup status:', error);
+        addLog('ERROR: Failed to fetch status update', 'error');
+    }
+}
+
+function updateUI(data) {
+    // Update counters
+    document.getElementById('completed-jobs').textContent = data.completed;
+    document.getElementById('in-progress-jobs').textContent = data.in_progress;
+    document.getElementById('failed-jobs').textContent = data.failed;
+
+    // Update progress bar
+    const progress = (data.completed / data.total) * 100;
+    document.getElementById('progress-bar').style.width = progress + '%';
+    document.getElementById('progress-percentage').textContent = Math.round(progress) + '%';
+
+    // Update ETA
+    if (data.eta) {
+        document.getElementById('progress-eta').textContent = `Estimated completion: ${data.eta}`;
+    }
+
+    // Update status badge
+    updateStatusBadge(data.overall_status);
+
+    // Update individual job statuses
+    data.jobs.forEach(job => {
+        updateJobUI(job);
+    });
+
+    // Add new log entries
+    if (data.log_entries) {
+        data.log_entries.forEach(entry => {
+            addLog(entry.message, entry.level, entry.timestamp);
+        });
+    }
+}
+
+function updateJobUI(job) {
+    // Find job by iterating through jobs (since we're using array indices)
+    const jobElements = document.querySelectorAll('[data-job-index]');
+    let jobEl = null;
+    
+    jobElements.forEach(el => {
+        const jobInfo = el.querySelector('.job-info').textContent;
+        if (jobInfo.includes(job.id.substring(0, 8))) {
+            jobEl = el;
+        }
+    });
+    
+    if (!jobEl) return;
+
+    // Update job name and info
+    jobEl.querySelector('.job-name').textContent = job.name;
+    jobEl.querySelector('.job-info').textContent = job.info;
+
+    // Update status badge
+    const statusEl = jobEl.querySelector('.job-status');
+    statusEl.textContent = job.status;
+    statusEl.className = 'px-3 py-1 text-xs font-semibold rounded-full job-status ' + getStatusClass(job.status);
+
+    // Update icon
+    const iconEl = jobEl.querySelector('.job-icon');
+    iconEl.innerHTML = getStatusIcon(job.status);
+
+    // Update progress bar
+    jobEl.querySelector('.job-progress').style.width = job.progress + '%';
+
+    // Update details
+    jobEl.querySelector('.job-size').textContent = `Size: ${job.size || '--'}`;
+    jobEl.querySelector('.job-duration').textContent = `Duration: ${job.duration || '--'}`;
+    jobEl.querySelector('.job-speed').textContent = `Speed: ${job.speed || '--'}`;
+}
+
+function getStatusClass(status) {
+    const statusClasses = {
+        'PENDING': 'bg-gray-200 text-gray-800',
+        'IN_PROGRESS': 'bg-blue-100 text-blue-800',
+        'COMPLETED': 'bg-green-100 text-green-800',
+        'FAILED': 'bg-red-100 text-red-800',
+        'VERIFYING': 'bg-purple-100 text-purple-800',
+        'UPLOADING': 'bg-indigo-100 text-indigo-800'
+    };
+    return statusClasses[status] || 'bg-gray-200 text-gray-800';
+}
+
+function getStatusIcon(status) {
+    const icons = {
+        'PENDING': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>',
+        'IN_PROGRESS': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>',
+        'COMPLETED': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>',
+        'FAILED': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>',
+        'VERIFYING': '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>'
+    };
+    return icons[status] || icons['PENDING'];
+}
+
+function updateStatusBadge(status) {
+    const badge = document.getElementById('status-badge');
+    const text = document.getElementById('status-text');
+
+    if (status === 'COMPLETED') {
+        badge.className = 'px-4 py-2 rounded-lg font-semibold bg-green-100 text-green-800';
+        text.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Completed';
+    } else if (status === 'FAILED') {
+        badge.className = 'px-4 py-2 rounded-lg font-semibold bg-red-100 text-red-800';
+        text.innerHTML = '<svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Failed';
+    } else if (status === 'IN_PROGRESS') {
+        badge.className = 'px-4 py-2 rounded-lg font-semibold bg-blue-100 text-blue-800';
+        text.innerHTML = '<span class="pulse-dot w-3 h-3 bg-blue-600 rounded-full inline-block mr-2"></span>In Progress';
+    }
+}
+
+function addLog(message, level = 'info', timestamp = null) {
+    const logContainer = document.getElementById('activity-log');
+    const time = timestamp || new Date().toLocaleTimeString();
+    
+    const levelClasses = {
+        'error': 'text-red-600 dark:text-red-400',
+        'warning': 'text-yellow-600 dark:text-yellow-400',
+        'success': 'text-green-600 dark:text-green-400',
+        'info': 'text-gray-600 dark:text-gray-400'
+    };
+
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${levelClasses[level] || levelClasses.info}`;
+    entry.innerHTML = `<span class="text-gray-500">[${time}]</span> ${message}`;
+    
+    logContainer.appendChild(entry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+
+    // Keep only last 100 entries
+    while (logContainer.children.length > 100) {
+        logContainer.removeChild(logContainer.firstChild);
+    }
+}
+
+function clearLog() {
+    document.getElementById('activity-log').innerHTML = '';
+    addLog('Log cleared', 'info');
+}
+
+function showCompletionMessage(data) {
+    const message = data.failed > 0
+        ? `Backup completed with ${data.failed} failure(s). ${data.completed} succeeded.`
+        : `All ${data.completed} backup job(s) completed successfully!`;
+    
+    addLog(message, data.failed > 0 ? 'warning' : 'success');
+
+    // Show notification
+    if (Notification.permission === 'granted') {
+        new Notification('Backup Complete', {
+            body: message,
+            icon: '/static/images/backup-icon.png'
+        });
+    }
+}
+
+async function cancelBackup() {
+    if (!confirm('Are you sure you want to cancel all pending backups?')) return;
+
+    try {
+        const response = await fetch('/admin/backups/api/cancel-backup/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ backup_ids: backupJobs })
+        });
+
+        if (response.ok) {
+            addLog('Backup cancellation requested', 'warning');
+            clearInterval(pollingInterval);
+        }
+    } catch (error) {
+        addLog('ERROR: Failed to cancel backup', 'error');
+    }
+}
+
+// Request notification permission
+if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+}
+
+// Start polling when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    startPolling();
+    addLog('Starting real-time monitoring...', 'info');
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+});
+</script>
+{% endblock %}
