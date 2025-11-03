@@ -14,8 +14,9 @@ fi
 
 # Set proper ownership and permissions
 # PostgreSQL runs as user 'postgres' (UID 70 in Alpine)
+# chmod 777 to allow web container (root) to write compressed WAL files
 chown -R postgres:postgres "$WAL_ARCHIVE_DIR"
-chmod 700 "$WAL_ARCHIVE_DIR"
+chmod 777 "$WAL_ARCHIVE_DIR"
 
 echo "WAL archive directory initialized successfully"
 echo "Directory: $WAL_ARCHIVE_DIR"
