@@ -233,7 +233,7 @@
   - Add tenant filtering and audit logging
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.7, 4.8_
 
-- [ ] 4.6 Create bank reconciliation templates (frontend)
+- [x] 4.6 Create bank reconciliation templates (frontend)
   - Update templates/accounting/bank_reconciliation.html
   - Add reconciliation interface with checkboxes for marking transactions
   - Add statement balance input
@@ -242,20 +242,20 @@
   - Add TailwindCSS styling
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 4.7 Create bank statement import (backend + frontend)
+- [x] 4.7 Create bank statement import (backend + frontend)
   - Create BankStatementImportForm in forms.py
   - Implement bank_statement_import view with CSV/OFX/QFX parsing
   - Implement auto-matching logic
   - Create templates/accounting/bank_accounts/import.html
   - _Requirements: 4.3, 6.4_
 
-- [ ] 4.8 Create reconciliation report (backend + frontend)
+- [x] 4.8 Create reconciliation report (backend + frontend)
   - Implement bank_reconciliation_report view
   - Create templates/accounting/reports/bank_reconciliation.html
   - Add PDF export functionality
   - _Requirements: 4.4, 4.6_
 
-- [ ] 4.9 Add bank reconciliation URLs and test end-to-end
+- [x] 4.9 Add bank reconciliation URLs and test end-to-end
   - Add URL patterns for bank accounts and reconciliation
   - Test: Create bank account → Import statement → Mark transactions → Complete reconciliation
   - Verify reconciliation balance
@@ -267,7 +267,7 @@
 ## Phase 5: Fixed Assets and Depreciation
 
 - [ ] 5. Create fixed asset models with migrations
-- [ ] 5.1 Create FixedAsset model
+- [-] 5.1 Create FixedAsset model
   - Add FixedAsset model to apps/accounting/models.py
   - Include tenant FK, asset details, acquisition info, depreciation method
   - Add DepreciationSchedule model for tracking depreciation

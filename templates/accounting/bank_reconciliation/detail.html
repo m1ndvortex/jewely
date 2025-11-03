@@ -1,0 +1,696 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{% trans "Bank Reconciliation" %} - {{ reconciliation.bank_account.account_name }} - {% trans "Accounting" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Page Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                        {% trans "Bank Reconciliation" %}
+                    </h1>
+                    <nav class="flex mt-2" aria-label="Breadcrumb">
+                        <ol class="inline-flex items-center space-x-2">
+                            <li>
+                                <a href="{% url 'accounting:dashboard' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400">
+                                    {% trans "Accounting" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <a href="{% url 'accounting:bank_reconciliation_list' %}" class="text-gray-600 hover:text-blue-600 dark:text-gray-400">
+                                    {% trans "Reconciliations" %}
+                                </a>
+                            </li>
+                            <li class="flex items-center">
+                                <svg class="w-4 h-4 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span class="text-gray-800 dark:text-gray-200">{{ reconciliation.bank_account.account_name }}</span>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+                
+                <!-- Status Badge -->
+                <div>
+                    {% if reconciliation.status == 'IN_PROGRESS' %}
+                        <span class="px-4 py-2 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                            {% trans "In Progress" %}
+                        </span>
+                    {% elif reconciliation.status == 'COMPLETED' %}
+                        <span class="px-4 py-2 text-sm font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            {% trans "Completed" %}
+                        </span>
+                    {% elif reconciliation.status == 'CANCELLED' %}
+                        <span class="px-4 py-2 text-sm font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                            {% trans "Cancelled" %}
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Reconciliation Info Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Bank Account" %}</h3>
+                    <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ reconciliation.bank_account.account_name }}
+                    </p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        {{ reconciliation.bank_account.account_number }}
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Statement Date" %}</h3>
+                    <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                        {{ reconciliation.reconciliation_date|date:"F d, Y" }}
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Reconciled By" %}</h3>
+                    <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                        {% if reconciliation.reconciled_by %}
+                            {{ reconciliation.reconciled_by.get_full_name|default:reconciliation.reconciled_by.username }}
+                        {% else %}
+                            <span class="text-gray-400">{% trans "In Progress" %}</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reconciliation Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Statement Beginning Balance -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Statement Beginning" %}</h3>
+                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                            ${{ reconciliation.statement_beginning_balance|floatformat:2|intcomma }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statement Ending Balance -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Statement Ending" %}</h3>
+                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                            ${{ reconciliation.statement_ending_balance|floatformat:2|intcomma }}
+                        </p>
+                        {% if reconciliation.status == 'IN_PROGRESS' %}
+                            <button onclick="openEditBalanceModal()" class="mt-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                                {% trans "Edit" %}
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cleared Transactions -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-8 w-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Cleared Transactions" %}</h3>
+                        <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                            {{ reconciled_transactions.count }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            {% trans "Deposits:" %} ${{ reconciliation.total_deposits|floatformat:2|intcomma }}<br>
+                            {% trans "Withdrawals:" %} ${{ reconciliation.total_withdrawals|floatformat:2|intcomma }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Difference -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        {% with difference=reconciliation.statement_ending_balance|add:reconciliation.book_ending_balance|add:"-"|floatformat:2 %}
+                            {% if difference == "0.00" %}
+                                <svg class="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            {% else %}
+                                <svg class="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">{% trans "Difference" %}</h3>
+                        {% with difference=reconciliation.statement_ending_balance|add:reconciliation.book_ending_balance|add:"-" %}
+                            <p class="mt-1 text-2xl font-bold {% if difference == 0 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                                ${{ difference|floatformat:2|intcomma }}
+                            </p>
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if reconciliation.status == 'IN_PROGRESS' %}
+        <!-- Unreconciled Transactions -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                        {% trans "Unreconciled Transactions" %}
+                        <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+                            ({{ unreconciled_transactions.count }} {% trans "transactions" %})
+                        </span>
+                    </h2>
+                    <div class="flex space-x-2">
+                        <button type="button" onclick="selectAllUnreconciled()" 
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                            {% trans "Select All" %}
+                        </button>
+                        <button type="button" onclick="markSelectedAsReconciled()" 
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                            {% trans "Mark Selected as Reconciled" %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {% if unreconciled_transactions %}
+            <div class="overflow-x-auto">
+                <form id="reconcile-form" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="mark_reconciled">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left">
+                                    <input type="checkbox" id="select-all-unreconciled" 
+                                           class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Date" %}
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Description" %}
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Type" %}
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Deposits" %}
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Withdrawals" %}
+                                </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {% trans "Balance" %}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" id="unreconciled-tbody">
+                            {% for txn in unreconciled_transactions %}
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transaction-row" data-amount="{{ txn.amount }}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input type="checkbox" name="transaction_ids" value="{{ txn.id }}" 
+                                           class="transaction-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                           hx-post="{% url 'accounting:bank_reconciliation_detail' reconciliation.id %}"
+                                           hx-trigger="change"
+                                           hx-include="[name='csrfmiddlewaretoken']"
+                                           hx-vals='{"action": "mark_reconciled", "transaction_ids": ["{{ txn.id }}"]}'
+                                           hx-target="#reconciliation-content"
+                                           hx-swap="outerHTML">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                    {{ txn.transaction_date|date:"Y-m-d" }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                                    {{ txn.description|default:"-" }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {% if txn.transaction_type == 'CREDIT' %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                            {% trans "Deposit" %}
+                                        </span>
+                                    {% else %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                            {% trans "Withdrawal" %}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
+                                    {% if txn.transaction_type == 'CREDIT' %}
+                                        ${{ txn.amount|floatformat:2|intcomma }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
+                                    {% if txn.transaction_type == 'DEBIT' %}
+                                        ${{ txn.amount|floatformat:2|intcomma }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-gray-100">
+                                    <!-- Running balance would be calculated here -->
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <td colspan="4" class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white text-right">
+                                    {% trans "Unreconciled Totals:" %}
+                                </td>
+                                <td class="px-6 py-4 text-sm font-bold text-green-600 dark:text-green-400 text-right">
+                                    ${{ unreconciled_deposits|floatformat:2|intcomma }}
+                                </td>
+                                <td class="px-6 py-4 text-sm font-bold text-red-600 dark:text-red-400 text-right">
+                                    ${{ unreconciled_withdrawals|floatformat:2|intcomma }}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </form>
+            </div>
+            {% else %}
+            <div class="p-12 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{% trans "All transactions reconciled" %}</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "There are no unreconciled transactions for this period." %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Reconciled Transactions -->
+        {% if reconciled_transactions %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {% trans "Reconciled Transactions" %}
+                    <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+                        ({{ reconciled_transactions.count }} {% trans "transactions" %})
+                    </span>
+                </h2>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Date" %}
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Description" %}
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Type" %}
+                            </th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Deposits" %}
+                            </th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Withdrawals" %}
+                            </th>
+                            {% if reconciliation.status == 'IN_PROGRESS' %}
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                {% trans "Actions" %}
+                            </th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for txn in reconciled_transactions %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                {{ txn.transaction_date|date:"Y-m-d" }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                                {{ txn.description|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                {% if txn.transaction_type == 'CREDIT' %}
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        {% trans "Deposit" %}
+                                    </span>
+                                {% else %}
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                        {% trans "Withdrawal" %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
+                                {% if txn.transaction_type == 'CREDIT' %}
+                                    ${{ txn.amount|floatformat:2|intcomma }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-100">
+                                {% if txn.transaction_type == 'DEBIT' %}
+                                    ${{ txn.amount|floatformat:2|intcomma }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            {% if reconciliation.status == 'IN_PROGRESS' %}
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <form method="post" class="inline" onsubmit="return confirm('{% trans "Are you sure you want to unreconcile this transaction?" %}');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="unreconcile">
+                                    <input type="hidden" name="transaction_id" value="{{ txn.id }}">
+                                    <button type="submit" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm">
+                                        {% trans "Unreconcile" %}
+                                    </button>
+                                </form>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white text-right">
+                                {% trans "Reconciled Totals:" %}
+                            </td>
+                            <td class="px-6 py-4 text-sm font-bold text-green-600 dark:text-green-400 text-right">
+                                ${{ reconciliation.total_deposits|floatformat:2|intcomma }}
+                            </td>
+                            <td class="px-6 py-4 text-sm font-bold text-red-600 dark:text-red-400 text-right">
+                                ${{ reconciliation.total_withdrawals|floatformat:2|intcomma }}
+                            </td>
+                            {% if reconciliation.status == 'IN_PROGRESS' %}
+                            <td></td>
+                            {% endif %}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        {% if reconciliation.status == 'IN_PROGRESS' %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div class="flex flex-wrap gap-4 justify-between items-center">
+                <div class="flex flex-wrap gap-4">
+                    <form method="post" action="{% url 'accounting:bank_reconciliation_auto_match' reconciliation.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                            <svg class="inline-block w-5 h-5 mr-2 -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            {% trans "Auto-Match Transactions" %}
+                        </button>
+                    </form>
+
+                    <button type="button" onclick="openCreateAdjustmentModal()" class="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600">
+                        <svg class="inline-block w-5 h-5 mr-2 -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        {% trans "Create Adjustment" %}
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap gap-4">
+                    <form method="post" action="{% url 'accounting:bank_reconciliation_cancel' reconciliation.id %}" class="inline" onsubmit="return confirm('{% trans "Are you sure you want to cancel this reconciliation?" %}');">
+                        {% csrf_token %}
+                        <button type="submit" class="px-6 py-3 text-sm font-medium text-red-700 bg-white border border-red-300 rounded-lg hover:bg-red-50 dark:bg-gray-700 dark:text-red-400 dark:border-red-600 dark:hover:bg-gray-600">
+                            {% trans "Cancel Reconciliation" %}
+                        </button>
+                    </form>
+
+                    <form method="post" action="{% url 'accounting:bank_reconciliation_complete' reconciliation.id %}" class="inline" onsubmit="return confirmComplete();">
+                        {% csrf_token %}
+                        <button type="submit" class="px-6 py-3 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
+                            <svg class="inline-block w-5 h-5 mr-2 -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {% trans "Complete Reconciliation" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% elif reconciliation.status == 'COMPLETED' %}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center">
+                <div class="text-green-600 dark:text-green-400">
+                    <svg class="inline-block w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-lg font-semibold">{% trans "Reconciliation Completed" %}</span>
+                </div>
+                <a href="{% url 'accounting:bank_reconciliation_report' reconciliation.id %}" 
+                   class="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                    <svg class="inline-block w-5 h-5 mr-2 -mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    {% trans "View Report" %}
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- Edit Statement Balance Modal -->
+<div id="edit-balance-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                {% trans "Edit Statement Ending Balance" %}
+            </h3>
+            <form method="post" action="{% url 'accounting:bank_reconciliation_detail' reconciliation.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_balance">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Statement Ending Balance" %}
+                    </label>
+                    <input type="number" step="0.01" name="statement_ending_balance" 
+                           value="{{ reconciliation.statement_ending_balance }}"
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                           required>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeEditBalanceModal()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                        {% trans "Cancel" %}
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                        {% trans "Update" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Adjustment Modal -->
+<div id="create-adjustment-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                {% trans "Create Adjusting Entry" %}
+            </h3>
+            <form method="post" action="{% url 'accounting:bank_reconciliation_create_adjustment' reconciliation.id %}">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Description" %}
+                    </label>
+                    <input type="text" name="description" 
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                           required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Amount" %}
+                    </label>
+                    <input type="number" step="0.01" name="amount" 
+                           class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                           required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Type" %}
+                    </label>
+                    <select name="transaction_type" 
+                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                            required>
+                        <option value="CREDIT">{% trans "Deposit" %}</option>
+                        <option value="DEBIT">{% trans "Withdrawal" %}</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeCreateAdjustmentModal()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                        {% trans "Cancel" %}
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                        {% trans "Create" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Modal functions
+function openEditBalanceModal() {
+    document.getElementById('edit-balance-modal').classList.remove('hidden');
+}
+
+function closeEditBalanceModal() {
+    document.getElementById('edit-balance-modal').classList.add('hidden');
+}
+
+function openCreateAdjustmentModal() {
+    document.getElementById('create-adjustment-modal').classList.remove('hidden');
+}
+
+function closeCreateAdjustmentModal() {
+    document.getElementById('create-adjustment-modal').classList.add('hidden');
+}
+
+// Select all functionality
+function selectAllUnreconciled() {
+    const checkboxes = document.querySelectorAll('.transaction-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all-unreconciled');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = !allChecked;
+    });
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = !allChecked;
+    }
+}
+
+// Handle select all checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all-unreconciled');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.transaction-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+});
+
+// Mark selected as reconciled
+function markSelectedAsReconciled() {
+    const form = document.getElementById('reconcile-form');
+    const checkboxes = document.querySelectorAll('.transaction-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        alert('{% trans "Please select at least one transaction to reconcile." %}');
+        return;
+    }
+    
+    if (confirm('{% trans "Mark " %}' + checkboxes.length + '{% trans " transaction(s) as reconciled?" %}')) {
+        form.submit();
+    }
+}
+
+// Confirm complete reconciliation
+function confirmComplete() {
+    const difference = parseFloat('{{ reconciliation.statement_ending_balance|add:reconciliation.book_ending_balance|add:"-"|floatformat:2 }}');
+    
+    if (Math.abs(difference) > 0.01) {
+        return confirm('{% trans "The reconciliation has a difference of $" %}' + Math.abs(difference).toFixed(2) + '{% trans ". Are you sure you want to complete it?" %}');
+    }
+    
+    return confirm('{% trans "Are you sure you want to complete this reconciliation?" %}');
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const editModal = document.getElementById('edit-balance-modal');
+    const adjustmentModal = document.getElementById('create-adjustment-modal');
+    
+    if (event.target == editModal) {
+        closeEditBalanceModal();
+    }
+    if (event.target == adjustmentModal) {
+        closeCreateAdjustmentModal();
+    }
+}
+
+// HTMX event handlers
+document.body.addEventListener('htmx:beforeRequest', function(event) {
+    // Show loading indicator
+    const checkbox = event.detail.elt;
+    if (checkbox && checkbox.classList.contains('transaction-checkbox')) {
+        checkbox.disabled = true;
+    }
+});
+
+document.body.addEventListener('htmx:afterRequest', function(event) {
+    // Hide loading indicator and handle response
+    const checkbox = event.detail.elt;
+    if (checkbox && checkbox.classList.contains('transaction-checkbox')) {
+        checkbox.disabled = false;
+        
+        // If successful, reload the page to update totals
+        if (event.detail.successful) {
+            window.location.reload();
+        }
+    }
+});
+
+document.body.addEventListener('htmx:responseError', function(event) {
+    alert('{% trans "An error occurred. Please try again." %}');
+    const checkbox = event.detail.elt;
+    if (checkbox && checkbox.classList.contains('transaction-checkbox')) {
+        checkbox.disabled = false;
+        checkbox.checked = !checkbox.checked; // Revert checkbox state
+    }
+});
+</script>
+
+{% endblock %}

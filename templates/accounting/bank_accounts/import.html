@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Import Bank Statement" %} - {{ bank_account.account_name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {% trans "Import Bank Statement" %}
+                </h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">
+                    {% trans "Upload a bank statement file to automatically import transactions" %}
+                </p>
+            </div>
+            <a href="{% url 'accounting:bank_account_detail' bank_account.id %}"
+               class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>{% trans "Back to Account" %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Bank Account Info -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+        <div class="flex items-center">
+            <i class="fas fa-university text-blue-600 dark:text-blue-400 text-2xl mr-4"></i>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {{ bank_account.account_name }}
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ bank_account.bank_name }} - {{ bank_account.masked_account_number }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Instructions -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <i class="fas fa-info-circle text-blue-500 mr-2"></i>{% trans "Import Instructions" %}
+        </h2>
+        
+        <div class="space-y-4">
+            <div>
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+                    {% trans "Supported File Formats:" %}
+                </h3>
+                <ul class="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                    <li><strong>CSV</strong> - {% trans "Comma-separated values with Date, Description, Amount columns" %}</li>
+                    <li><strong>OFX</strong> - {% trans "Open Financial Exchange format" %}</li>
+                    <li><strong>QFX</strong> - {% trans "Quicken Financial Exchange format" %}</li>
+                    <li><strong>QBO</strong> - {% trans "QuickBooks Online format" %}</li>
+                </ul>
+            </div>
+
+            <div>
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+                    {% trans "CSV File Format:" %}
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-2">
+                    {% trans "Your CSV file should have the following columns:" %}
+                </p>
+                <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded font-mono text-sm">
+                    Date, Description, Amount, Type<br>
+                    {% trans "or" %}<br>
+                    Date, Description, Debit, Credit
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-2">
+                    {% trans "What Happens During Import:" %}
+                </h3>
+                <ol class="list-decimal list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                    <li>{% trans "The system parses your file and extracts transactions" %}</li>
+                    <li>{% trans "Duplicate transactions are automatically detected and skipped" %}</li>
+                    <li>{% trans "The system attempts to match transactions with existing journal entries" %}</li>
+                    <li>{% trans "Unmatched transactions can be manually reconciled later" %}</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+            <i class="fas fa-upload text-green-500 mr-2"></i>{% trans "Upload Statement File" %}
+        </h2>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Display form errors -->
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-circle text-red-600 dark:text-red-400 mt-1 mr-3"></i>
+                        <div class="flex-1">
+                            <h3 class="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">
+                                {% trans "Please correct the following errors:" %}
+                            </h3>
+                            <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-400">
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Bank Account Field -->
+            <div>
+                <label for="{{ form.bank_account.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ form.bank_account.label }}
+                    {% if form.bank_account.field.required %}
+                        <span class="text-red-500">*</span>
+                    {% endif %}
+                </label>
+                {{ form.bank_account }}
+                {% if form.bank_account.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.bank_account.help_text }}</p>
+                {% endif %}
+                {% if form.bank_account.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.bank_account.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- File Upload Field -->
+            <div>
+                <label for="{{ form.file.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ form.file.label }}
+                    {% if form.file.field.required %}
+                        <span class="text-red-500">*</span>
+                    {% endif %}
+                </label>
+                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
+                    <div class="space-y-1 text-center">
+                        <i class="fas fa-file-upload text-4xl text-gray-400 dark:text-gray-500 mb-3"></i>
+                        <div class="flex text-sm text-gray-600 dark:text-gray-400">
+                            <label for="{{ form.file.id_for_label }}" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                <span>{% trans "Upload a file" %}</span>
+                                {{ form.file }}
+                            </label>
+                            <p class="pl-1">{% trans "or drag and drop" %}</p>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            CSV, OFX, QFX, QBO {% trans "up to 10MB" %}
+                        </p>
+                    </div>
+                </div>
+                {% if form.file.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.file.help_text }}</p>
+                {% endif %}
+                {% if form.file.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.file.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- File Format Field -->
+            <div>
+                <label for="{{ form.file_format.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ form.file_format.label }}
+                </label>
+                {{ form.file_format }}
+                {% if form.file_format.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.file_format.help_text }}</p>
+                {% endif %}
+                {% if form.file_format.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.file_format.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Notes Field -->
+            <div>
+                <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ form.notes.label }}
+                </label>
+                {{ form.notes }}
+                {% if form.notes.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.notes.help_text }}</p>
+                {% endif %}
+                {% if form.notes.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.notes.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <a href="{% url 'accounting:bank_account_detail' bank_account.id %}"
+                   class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    {% trans "Cancel" %}
+                </a>
+                <button type="submit"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-upload mr-2"></i>{% trans "Import Statement" %}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Recent Imports -->
+    {% if bank_account.statement_imports.all %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mt-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            <i class="fas fa-history text-gray-500 mr-2"></i>{% trans "Recent Imports" %}
+        </h2>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Date" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "File Name" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Format" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Imported" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Matched" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Status" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for import in bank_account.statement_imports.all|slice:":5" %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ import.import_date|date:"Y-m-d H:i" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ import.file_name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
+                                {{ import.file_format }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ import.transactions_imported }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ import.transactions_matched }}
+                            {% if import.transactions_imported > 0 %}
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    ({{ import.match_rate|floatformat:0 }}%)
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if import.status == "COMPLETED" %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                                    <i class="fas fa-check-circle mr-1"></i>{% trans "Completed" %}
+                                </span>
+                            {% elif import.status == "PARTIALLY_COMPLETED" %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>{% trans "Partial" %}
+                                </span>
+                            {% elif import.status == "FAILED" %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+                                    <i class="fas fa-times-circle mr-1"></i>{% trans "Failed" %}
+                                </span>
+                            {% elif import.status == "PROCESSING" %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                                    <i class="fas fa-spinner fa-spin mr-1"></i>{% trans "Processing" %}
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
+                                    {{ import.get_status_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// File input enhancement
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('{{ form.file.id_for_label }}');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name;
+            if (fileName) {
+                // Update the label to show selected file
+                const label = document.querySelector('label[for="{{ form.file.id_for_label }}"] span');
+                if (label) {
+                    label.textContent = fileName;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

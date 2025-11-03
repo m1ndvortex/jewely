@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Bank Reconciliation Report" %} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {% trans "Bank Reconciliation Report" %}
+                </h1>
+                <p class="text-gray-600 dark:text-gray-400 mt-1">
+                    {{ reconciliation.bank_account.account_name }} - {{ reconciliation.reconciliation_date|date:"F d, Y" }}
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'accounting:bank_reconciliation_list' %}" 
+                   class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                    {% trans "Back to Reconciliations" %}
+                </a>
+                <a href="?export=pdf" 
+                   class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors inline-flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    {% trans "Export PDF" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bank Account Information -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {% trans "Bank Account Information" %}
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{% trans "Bank Name" %}</div>
+                <div class="text-base font-medium text-gray-900 dark:text-white">
+                    {{ reconciliation.bank_account.bank_name }}
+                </div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{% trans "Account Number" %}</div>
+                <div class="text-base font-medium text-gray-900 dark:text-white">
+                    {{ reconciliation.bank_account.masked_account_number }}
+                </div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{% trans "Reconciliation Date" %}</div>
+                <div class="text-base font-medium text-gray-900 dark:text-white">
+                    {{ reconciliation.reconciliation_date|date:"F d, Y" }}
+                </div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{% trans "Status" %}</div>
+                <div class="text-base font-medium">
+                    {% if reconciliation.status == "COMPLETED" %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            {% trans "Completed" %}
+                        </span>
+                    {% elif reconciliation.status == "IN_PROGRESS" %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                            {% trans "In Progress" %}
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                            {{ reconciliation.get_status_display }}
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if reconciliation.completed_by %}
+            <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{% trans "Completed By" %}</div>
+                <div class="text-base font-medium text-gray-900 dark:text-white">
+                    {{ reconciliation.completed_by.get_full_name|default:reconciliation.completed_by.username }}
+                </div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{% trans "Completed Date" %}</div>
+                <div class="text-base font-medium text-gray-900 dark:text-white">
+                    {{ reconciliation.completed_date|date:"F d, Y g:i A" }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Balance Summary -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {% trans "Balance Summary" %}
+        </h2>
+        
+        <!-- Statement Balances -->
+        <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                {% trans "Bank Statement" %}
+            </h3>
+            <div class="space-y-2">
+                <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                    <span class="text-gray-700 dark:text-gray-300">{% trans "Beginning Balance" %}</span>
+                    <span class="font-medium text-gray-900 dark:text-white">
+                        ${{ reconciliation.statement_beginning_balance|floatformat:2 }}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                    <span class="text-gray-700 dark:text-gray-300">{% trans "Add: Deposits" %}</span>
+                    <span class="font-medium text-green-600 dark:text-green-400">
+                        +${{ reconciliation.total_deposits|floatformat:2 }}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                    <span class="text-gray-700 dark:text-gray-300">{% trans "Less: Withdrawals" %}</span>
+                    <span class="font-medium text-red-600 dark:text-red-400">
+                        -${{ reconciliation.total_withdrawals|floatformat:2 }}
+                    </span>
+                </div>
+                {% if reconciliation.total_adjustments != 0 %}
+                <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                    <span class="text-gray-700 dark:text-gray-300">{% trans "Add/Less: Adjustments" %}</span>
+                    <span class="font-medium {% if reconciliation.total_adjustments > 0 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                        {% if reconciliation.total_adjustments > 0 %}+{% endif %}${{ reconciliation.total_adjustments|floatformat:2 }}
+                    </span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between items-center py-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 mt-2">
+                    <span class="font-semibold text-gray-900 dark:text-white">{% trans "Ending Balance" %}</span>
+                    <span class="font-bold text-xl text-blue-600 dark:text-blue-400">
+                        ${{ reconciliation.statement_ending_balance|floatformat:2 }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Book Balances -->
+        <div class="mb-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                {% trans "Book Balance" %}
+            </h3>
+            <div class="space-y-2">
+                <div class="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                    <span class="text-gray-700 dark:text-gray-300">{% trans "Beginning Balance" %}</span>
+                    <span class="font-medium text-gray-900 dark:text-white">
+                        ${{ reconciliation.book_beginning_balance|floatformat:2 }}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 mt-2">
+                    <span class="font-semibold text-gray-900 dark:text-white">{% trans "Ending Balance" %}</span>
+                    <span class="font-bold text-xl text-gray-900 dark:text-white">
+                        ${{ reconciliation.book_ending_balance|floatformat:2 }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Variance -->
+        <div class="pt-4 border-t-2 border-gray-300 dark:border-gray-600">
+            <div class="flex justify-between items-center py-3 {% if reconciliation.is_balanced %}bg-green-50 dark:bg-green-900/20{% else %}bg-red-50 dark:bg-red-900/20{% endif %} rounded-lg px-4">
+                <span class="font-bold text-lg text-gray-900 dark:text-white">{% trans "Variance" %}</span>
+                <div class="text-right">
+                    <span class="font-bold text-2xl {% if reconciliation.is_balanced %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                        {% if reconciliation.variance > 0 %}+{% endif %}${{ reconciliation.variance|floatformat:2 }}
+                    </span>
+                    {% if reconciliation.is_balanced %}
+                    <div class="text-sm text-green-600 dark:text-green-400 font-medium">
+                        {% trans "Balanced" %} ✓
+                    </div>
+                    {% else %}
+                    <div class="text-sm text-red-600 dark:text-red-400 font-medium">
+                        {% trans "Not Balanced" %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deposits Section -->
+    {% if deposits %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {% trans "Deposits" %} ({{ deposits|length }} {% trans "transactions" %})
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Date" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Description" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Reference" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Amount" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for deposit in deposits %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ deposit.transaction_date|date:"m/d/Y" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                            {{ deposit.description }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ deposit.reference_number|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600 dark:text-green-400">
+                            ${{ deposit.amount|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                        <td colspan="3" class="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
+                            {% trans "Total Deposits:" %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-green-600 dark:text-green-400">
+                            ${{ reconciliation.total_deposits|floatformat:2 }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Withdrawals Section -->
+    {% if withdrawals %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {% trans "Withdrawals" %} ({{ withdrawals|length }} {% trans "transactions" %})
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Date" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Description" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Reference" %}
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                            {% trans "Amount" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for withdrawal in withdrawals %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ withdrawal.transaction_date|date:"m/d/Y" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                            {{ withdrawal.description }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ withdrawal.reference_number|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-red-600 dark:text-red-400">
+                            ${{ withdrawal.amount|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="bg-gray-100 dark:bg-gray-700 font-bold">
+                        <td colspan="3" class="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
+                            {% trans "Total Withdrawals:" %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-red-600 dark:text-red-400">
+                            ${{ reconciliation.total_withdrawals|floatformat:2 }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Notes Section -->
+    {% if reconciliation.notes %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {% trans "Notes" %}
+        </h2>
+        <div class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+            {{ reconciliation.notes }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Help Text -->
+    <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    {% trans "About This Report" %}
+                </h3>
+                <div class="mt-2 text-sm text-blue-700 dark:text-blue-400">
+                    <p>
+                        {% trans "This report shows the completed bank reconciliation, including all reconciled transactions and the final balance comparison between the bank statement and your accounting records." %}
+                    </p>
+                    {% if not reconciliation.is_balanced %}
+                    <p class="mt-2 font-medium">
+                        {% trans "Note: This reconciliation has a variance. Review the transactions and consider creating adjusting entries if needed." %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
