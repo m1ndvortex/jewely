@@ -41,6 +41,12 @@ app.conf.beat_schedule = {
         "schedule": 3600.0,  # Default: Every 1 hour (3600 seconds), adjustable via admin UI
         "options": {"queue": "backups", "priority": 10},
     },
+    # Daily configuration backup at 4:00 AM
+    "daily-configuration-backup": {
+        "task": "apps.backups.tasks.configuration_backup",
+        "schedule": crontab(hour=4, minute=0),
+        "options": {"queue": "backups", "priority": 9},
+    },
     # Fetch gold rates every 5 minutes
     "fetch-gold-rates": {
         "task": "apps.pricing.tasks.fetch_gold_rates",
@@ -65,10 +71,10 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute="*/15"),
         "options": {"queue": "reports", "priority": 7},
     },
-    # Clean up old report files daily at 4 AM
+    # Clean up old report files daily at 4:30 AM (moved from 4:00 AM to avoid conflict with config backup)
     "cleanup-old-report-files": {
         "task": "apps.reporting.tasks.cleanup_old_report_files",
-        "schedule": crontab(hour=4, minute=0),
+        "schedule": crontab(hour=4, minute=30),
         "options": {"queue": "reports", "priority": 2},
     },
     # Clean up old execution records weekly on Sunday at 5 AM
