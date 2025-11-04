@@ -567,12 +567,15 @@ BACKUP_LOCAL_PATH = os.getenv("BACKUP_LOCAL_PATH", "/var/backups/jewelry-shop")
 # Cloudflare R2 Configuration
 R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "b7900eeee7c415345d86ea859c9dad47")
 R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "securesyntax")
+R2_ENDPOINT = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
 R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
 
 # Backblaze B2 Configuration
 B2_BUCKET_NAME = os.getenv("B2_BUCKET_NAME", "securesyntax")
+B2_BUCKET_ID = os.getenv("B2_BUCKET_ID", "2a0cfb4aa9f8f8f29c820b18")
 B2_REGION = os.getenv("B2_REGION", "us-east-005")
+B2_ENDPOINT = f"https://s3.{B2_REGION}.backblazeb2.com"
 B2_ACCESS_KEY_ID = os.getenv("B2_ACCESS_KEY_ID", "")
 B2_SECRET_ACCESS_KEY = os.getenv("B2_SECRET_ACCESS_KEY", "")
 

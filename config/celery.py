@@ -47,6 +47,12 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=4, minute=0),
         "options": {"queue": "backups", "priority": 9},
     },
+    # Verify storage integrity hourly
+    "hourly-storage-integrity-verification": {
+        "task": "apps.backups.tasks.verify_storage_integrity",
+        "schedule": 3600.0,  # Every 1 hour (3600 seconds)
+        "options": {"queue": "backups", "priority": 8},
+    },
     # Fetch gold rates every 5 minutes
     "fetch-gold-rates": {
         "task": "apps.pricing.tasks.fetch_gold_rates",
