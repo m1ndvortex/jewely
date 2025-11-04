@@ -1006,7 +1006,7 @@ def continuous_wal_archiving(self):  # noqa: C901
                     # Check if this WAL file has already been archived
                     # by checking if it exists in our backup records
                     wal_filename = file_path.name
-                    remote_filename = f"{wal_filename}.gz"
+                    remote_filename = f"{wal_filename}.gz.enc"
 
                     # Check if already archived
                     from apps.core.tenant_context import bypass_rls
@@ -1063,29 +1063,29 @@ def continuous_wal_archiving(self):  # noqa: C901
                 original_size = wal_file_path.stat().st_size
                 logger.info(f"WAL file size: {original_size / (1024**2):.2f} MB")
 
-                # Step 1: Compress WAL file and keep it locally (save space)
-                compressed_local_path = str(wal_file_path) + ".gz"
+                # Step 1: Compress and encrypt WAL file
+                logger.info("Compressing and encrypting WAL file...")
 
-                logger.info("Compressing WAL file...")
+                # Import compression and encryption functions
+                from .encryption import compress_and_encrypt_file
 
-                # Import compression function
-                from .encryption import calculate_checksum, compress_file
+                # Generate remote filename with .enc extension for encryption
+                remote_filename = f"{wal_filename}.gz.enc"
 
-                compressed_path, original_size_returned, final_size = compress_file(
-                    input_path=str(wal_file_path), output_path=compressed_local_path
+                # Compress and encrypt in one operation
+                encrypted_path, checksum, original_size_returned, compressed_size, final_size = compress_and_encrypt_file(
+                    input_path=str(wal_file_path)
                 )
 
-                # Calculate SHA-256 checksum of compressed file
-                checksum = calculate_checksum(compressed_path, algorithm='sha256')
+                # Calculate compression ratio (before encryption)
+                compression_ratio = 1 - (compressed_size / original_size) if original_size > 0 else 0
 
-                # Calculate compression ratio
-                compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
-
-                logger.info(f"Compressed size: {final_size / (1024**2):.2f} MB")
+                logger.info(f"Compressed size: {compressed_size / (1024**2):.2f} MB")
+                logger.info(f"Final encrypted size: {final_size / (1024**2):.2f} MB")
                 logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
                 logger.info(f"Checksum: {checksum}")
 
-                # Step 2: Upload to R2 and B2 (also keep compressed file locally)
+                # Step 2: Upload encrypted file to R2 and B2 (also keep encrypted file locally)
                 logger.info("Uploading to cloud storage (R2 and B2)...")
 
                 storage_paths = {"local": f"{remote_filename}", "r2": None, "b2": None}
@@ -1095,7 +1095,7 @@ def continuous_wal_archiving(self):  # noqa: C901
                     r2_storage = get_storage_backend("r2")
                     # Use a subdirectory for WAL files
                     r2_remote_path = f"wal/{remote_filename}"
-                    if r2_storage.upload(compressed_local_path, r2_remote_path):
+                    if r2_storage.upload(encrypted_path, r2_remote_path):
                         storage_paths["r2"] = r2_remote_path
                         logger.info(f"Uploaded to Cloudflare R2: {r2_remote_path}")
                     else:
@@ -1108,7 +1108,7 @@ def continuous_wal_archiving(self):  # noqa: C901
                     b2_storage = get_storage_backend("b2")
                     # Use a subdirectory for WAL files
                     b2_remote_path = f"wal/{remote_filename}"
-                    if b2_storage.upload(compressed_local_path, b2_remote_path):
+                    if b2_storage.upload(encrypted_path, b2_remote_path):
                         storage_paths["b2"] = b2_remote_path
                         logger.info(f"Uploaded to Backblaze B2: {b2_remote_path}")
                     else:
@@ -1122,35 +1122,43 @@ def continuous_wal_archiving(self):  # noqa: C901
 
                 # Step 3: Update backup record
                 with bypass_rls():
+                    backup.filename = remote_filename  # Update to .gz.enc
                     backup.size_bytes = final_size
                     backup.checksum = checksum
-                    backup.local_path = storage_paths["local"]  # Keep compressed locally
+                    backup.local_path = storage_paths["local"]  # Keep encrypted locally
                     backup.r2_path = storage_paths["r2"] or ""
                     backup.b2_path = storage_paths["b2"] or ""
                     backup.status = Backup.COMPLETED
-                    backup.compression_ratio = compression_ratio
+                    backup.compression_ratio = compression_ratio * 100  # Convert to percentage
                     backup.backup_duration_seconds = int(
                         (timezone.now() - start_time).total_seconds()
                     )
                     backup.metadata = {
                         "wal_filename": wal_filename,
                         "original_size_bytes": original_size,
-                        "compressed_size_bytes": final_size,
+                        "compressed_size_bytes": compressed_size,
                         "pg_wal_archive_dir": pg_wal_archive_dir,
-                        "kept_compressed_locally": True,
+                        "kept_encrypted_locally": True,
+                        "encrypted": True,
                     }
                     backup.save()
 
                 logger.info(f"WAL file archived successfully: {backup.id}")
 
-                # Step 4: Remove UNCOMPRESSED WAL file (keep .gz compressed version)
-                # This saves ~94% disk space (16MB uncompressed -> 1MB compressed)
+                # Step 4: Keep encrypted WAL file locally and remove original
+                # This saves ~94% disk space (16MB uncompressed -> 1MB compressed+encrypted)
                 try:
-                    wal_file_path.unlink()
-                    logger.info(f"Removed uncompressed WAL: {wal_filename}")
-                    logger.info(f"Kept compressed file: {compressed_local_path} ({final_size / (1024**2):.2f} MB)")
+                    # Rename encrypted file to standard location
+                    local_wal_path = Path(pg_wal_archive_dir) / remote_filename
+                    Path(encrypted_path).rename(local_wal_path)
+                    logger.info(f"Kept encrypted file: {local_wal_path} ({final_size / (1024**2):.2f} MB)")
+
+                    # Remove original uncompressed WAL file if it still exists
+                    if wal_file_path.exists():
+                        wal_file_path.unlink()
+                        logger.info(f"Removed uncompressed WAL: {wal_filename}")
                 except Exception as e:
-                    logger.warning(f"Failed to remove uncompressed WAL {wal_filename}: {e}")
+                    logger.warning(f"Failed to manage WAL files {wal_filename}: {e}")
                     # This is not critical - PostgreSQL will handle cleanup
 
                 # Mark as verified
