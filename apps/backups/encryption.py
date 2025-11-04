@@ -401,7 +401,7 @@ def compress_and_encrypt_file(
         keep_intermediate: If True, keep the intermediate compressed file
 
     Returns:
-        Tuple of (final_path, checksum, original_size, final_size)
+        Tuple of (final_path, checksum, original_size, compressed_size, final_size)
 
     Raises:
         CompressionError: If compression fails
@@ -430,13 +430,15 @@ def compress_and_encrypt_file(
             Path(compressed_path).unlink()
             logger.debug(f"Removed intermediate compressed file: {compressed_path}")
 
+        compression_ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
         logger.info(
             f"Compressed and encrypted {input_path} -> {encrypted_path}: "
-            f"{original_size} bytes -> {final_size} bytes "
+            f"{original_size} bytes -> {compressed_size} bytes (compression: {compression_ratio:.1f}%) "
+            f"-> {final_size} bytes (after encryption) "
             f"(checksum: {checksum[:16]}...)"
         )
 
-        return encrypted_path, checksum, original_size, final_size
+        return encrypted_path, checksum, original_size, compressed_size, final_size
 
     except (CompressionError, EncryptionError, FileNotFoundError):
         raise

@@ -379,15 +379,16 @@ def daily_full_database_backup(self, initiated_by_user_id: Optional[int] = None)
             # Step 2: Compress and encrypt
             logger.info("Compressing and encrypting backup...")
 
-            encrypted_path, checksum, _, final_size = compress_and_encrypt_file(
+            encrypted_path, checksum, _, compressed_size, final_size = compress_and_encrypt_file(
                 input_path=dump_path, output_path=os.path.join(temp_dir, remote_filename)
             )
             temp_files.append(encrypted_path)
 
-            # Calculate compression ratio
-            compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
+            # Calculate compression ratio (using compressed size, not final encrypted size)
+            compression_ratio = 1 - (compressed_size / original_size) if original_size > 0 else 0
 
-            logger.info(f"Compressed and encrypted size: {final_size / (1024**2):.2f} MB")
+            logger.info(f"Compressed size: {compressed_size / (1024**2):.2f} MB")
+            logger.info(f"Final encrypted size: {final_size / (1024**2):.2f} MB")
             logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
             logger.info(f"Checksum: {checksum}")
 
@@ -413,12 +414,12 @@ def daily_full_database_backup(self, initiated_by_user_id: Optional[int] = None)
             backup.r2_path = storage_paths["r2"] or ""
             backup.b2_path = storage_paths["b2"] or ""
             backup.status = Backup.COMPLETED
-            backup.compression_ratio = compression_ratio
+            backup.compression_ratio = compression_ratio * 100  # Convert to percentage
             backup.backup_duration_seconds = int((timezone.now() - start_time).total_seconds())
             backup.metadata = {
                 "database": db_config["name"],
                 "original_size_bytes": original_size,
-                "compressed_size_bytes": final_size,
+                "compressed_size_bytes": compressed_size,
                 "pg_dump_format": "plain",
             }
             backup.save()
@@ -791,16 +792,17 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
                         # Step 2: Compress and encrypt
                         logger.info("Compressing and encrypting tenant backup...")
 
-                        encrypted_path, checksum, _, final_size = compress_and_encrypt_file(
+                        encrypted_path, checksum, _, compressed_size, final_size = compress_and_encrypt_file(
                             input_path=dump_path,
                             output_path=os.path.join(temp_dir, remote_filename),
                         )
                         temp_files.append(encrypted_path)
 
-                        # Calculate compression ratio
-                        compression_ratio = 1 - (final_size / original_size) if original_size > 0 else 0
+                        # Calculate compression ratio (using compressed size, not final encrypted size)
+                        compression_ratio = 1 - (compressed_size / original_size) if original_size > 0 else 0
 
-                        logger.info(f"Compressed and encrypted size: {final_size / (1024**2):.2f} MB")
+                        logger.info(f"Compressed size: {compressed_size / (1024**2):.2f} MB")
+                        logger.info(f"Final encrypted size: {final_size / (1024**2):.2f} MB")
                         logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
                         logger.info(f"Checksum: {checksum}")
 
@@ -829,7 +831,7 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
                             backup.r2_path = storage_paths["r2"] or ""
                             backup.b2_path = storage_paths["b2"] or ""
                             backup.status = Backup.COMPLETED
-                            backup.compression_ratio = compression_ratio
+                            backup.compression_ratio = compression_ratio * 100  # Convert to percentage
                             backup.backup_duration_seconds = int(
                                 (timezone.now() - start_time).total_seconds()
                             )
@@ -838,7 +840,7 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
                                 "tenant_name": tenant.company_name,
                                 "database": db_config["name"],
                                 "original_size_bytes": original_size,
-                                "compressed_size_bytes": final_size,
+                                "compressed_size_bytes": compressed_size,
                                 "pg_dump_format": "plain",
                                 "backup_scope": "tenant_specific",
                             }
@@ -1623,15 +1625,18 @@ def configuration_backup(self, initiated_by_user_id: Optional[int] = None):
             # Step 3: Encrypt the archive
             logger.info("Encrypting configuration archive...")
 
-            encrypted_path, checksum, _, final_size = compress_and_encrypt_file(
+            encrypted_path, checksum, _, compressed_size, final_size = compress_and_encrypt_file(
                 input_path=tar_path, output_path=os.path.join(temp_dir, remote_filename)
             )
             temp_files.append(encrypted_path)
 
             # Note: compress_and_encrypt_file compresses again, but tar.gz is already compressed
             # The additional compression won't reduce size much, but encryption is applied
+            compression_ratio = 1 - (compressed_size / original_size) if original_size > 0 else 0
 
+            logger.info(f"Compressed size: {compressed_size / (1024**2):.2f} MB")
             logger.info(f"Encrypted size: {final_size / (1024**2):.2f} MB")
+            logger.info(f"Compression ratio: {compression_ratio * 100:.1f}%")
             logger.info(f"Checksum: {checksum}")
 
             # Step 4: Upload to all storage locations
@@ -1656,10 +1661,11 @@ def configuration_backup(self, initiated_by_user_id: Optional[int] = None):
             backup.r2_path = storage_paths["r2"] or ""
             backup.b2_path = storage_paths["b2"] or ""
             backup.status = Backup.COMPLETED
+            backup.compression_ratio = compression_ratio * 100  # Convert to percentage
             backup.backup_duration_seconds = int((timezone.now() - start_time).total_seconds())
             backup.metadata = {
                 "original_size_bytes": original_size,
-                "compressed_size_bytes": final_size,
+                "compressed_size_bytes": compressed_size,
                 "archive_format": "tar.gz",
                 "files_collected": len(collected_files),
                 "file_categories": metadata,
