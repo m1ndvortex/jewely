@@ -4,8 +4,10 @@ Create test users for multi-portal authentication testing.
 Run this inside Docker: docker compose exec web python create_test_auth_users.py
 """
 import os
+
 import django
 from django.contrib.auth import get_user_model
+
 from apps.core.models import Tenant
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")

@@ -315,6 +315,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Redis Cache Configuration with Prometheus monitoring
+# Multiple cache backends for different use cases
 CACHES = {
     "default": {
         "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",  # Prometheus-wrapped Redis
@@ -331,8 +332,62 @@ CACHES = {
             },
         },
         "KEY_PREFIX": "jewelry_shop",
-        "TIMEOUT": 300,
-    }
+        "TIMEOUT": 300,  # 5 minutes default
+    },
+    # Query result caching - longer timeout for expensive queries
+    "query": {
+        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+            "RETRY_ON_TIMEOUT": True,
+            "MAX_CONNECTIONS": 50,
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 50,
+                "retry_on_timeout": True,
+            },
+        },
+        "KEY_PREFIX": "jewelry_shop_query",
+        "TIMEOUT": 900,  # 15 minutes for query results
+    },
+    # Template fragment caching - medium timeout
+    "template": {
+        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+            "RETRY_ON_TIMEOUT": True,
+            "MAX_CONNECTIONS": 50,
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 50,
+                "retry_on_timeout": True,
+            },
+        },
+        "KEY_PREFIX": "jewelry_shop_template",
+        "TIMEOUT": 600,  # 10 minutes for templates
+    },
+    # API response caching - short timeout for frequently changing data
+    "api": {
+        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
+        "LOCATION": f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}/3",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SOCKET_CONNECT_TIMEOUT": 5,
+            "SOCKET_TIMEOUT": 5,
+            "RETRY_ON_TIMEOUT": True,
+            "MAX_CONNECTIONS": 50,
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 50,
+                "retry_on_timeout": True,
+            },
+        },
+        "KEY_PREFIX": "jewelry_shop_api",
+        "TIMEOUT": 180,  # 3 minutes for API responses
+    },
 }
 
 # Session Configuration
