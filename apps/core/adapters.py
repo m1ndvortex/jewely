@@ -3,8 +3,10 @@ Custom adapters for django-allauth.
 """
 
 from django.conf import settings
+from django.db import transaction
 
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 
 
 class AccountAdapter(DefaultAccountAdapter):
@@ -30,18 +32,69 @@ class AccountAdapter(DefaultAccountAdapter):
         Save a new user instance.
 
         This method is called when a new user is created through allauth.
-        We can customize it to set tenant-specific fields.
+        For OAuth signups, automatically creates a tenant for the user.
         """
+        from apps.core.models import Tenant
+
         user = super().save_user(request, user, form, commit=False)
 
-        # Set default role for new users
+        # For OAuth signups without a tenant, create one automatically
         if not user.role:
-            user.role = user.TENANT_EMPLOYEE
+            # Check if this is an OAuth signup (no tenant assigned)
+            if not user.tenant_id:
+                # Create tenant for OAuth user
+                with transaction.atomic():
+                    # Create tenant with user's name or email
+                    shop_name = f"{user.get_full_name() or user.username}'s Jewelry Shop"
+                    tenant = Tenant.objects.create(
+                        company_name=shop_name,
+                        slug=f"shop-{user.username}".lower().replace(" ", "-"),
+                        status=Tenant.ACTIVE,
+                    )
+                    user.tenant = tenant
+                    user.role = user.TENANT_OWNER
+            else:
+                user.role = user.TENANT_EMPLOYEE
 
         if commit:
             user.save()
 
         return user
+
+
+class SocialAccountAdapter(DefaultSocialAccountAdapter):
+    """
+    Custom social account adapter for OAuth signups.
+
+    Handles automatic tenant creation for OAuth signups.
+    """
+
+    def pre_social_login(self, request, sociallogin):
+        """
+        Called just after social login is confirmed.
+
+        We use this to create a tenant for OAuth signups before the user is saved.
+        """
+        from apps.core.models import Tenant
+
+        # Only process for new users (not existing users connecting accounts)
+        if sociallogin.is_existing:
+            return
+
+        user = sociallogin.user
+
+        # Create tenant for OAuth user if they don't have one
+        if not user.tenant_id:
+            with transaction.atomic():
+                # Create tenant with user's name or email
+                shop_name = f"{user.get_full_name() or user.username}'s Jewelry Shop"
+                tenant = Tenant.objects.create(
+                    company_name=shop_name,
+                    slug=f"shop-{user.username}".lower().replace(" ", "-"),
+                    status=Tenant.ACTIVE,
+                )
+                user.tenant = tenant
+                user.role = user.TENANT_OWNER
 
     def get_login_redirect_url(self, request):
         """

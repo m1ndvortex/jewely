@@ -134,38 +134,106 @@ class AdminLogoutView(View):
     """
     Custom logout view for platform administrators.
     Logs out the user and redirects to the admin login page.
+    Clears the platform_sessionid cookie specifically.
     """
 
     def get(self, request):
         """Handle admin logout."""
+        # Clear the session
         logout(request)
+
+        # Create response with redirect
+        response = redirect("core:admin_login")
+
+        # Explicitly clear the platform session cookie
+        response.delete_cookie(
+            "platform_sessionid",
+            path="/",
+            domain=None,
+            samesite="Lax",
+        )
+
         messages.success(request, _("You have been successfully logged out."))
-        return redirect("core:admin_login")
+        return response
 
     def post(self, request):
         """Handle admin logout via POST."""
+        # Clear the session
         logout(request)
+
+        # Create response with redirect
+        response = redirect("core:admin_login")
+
+        # Explicitly clear the platform session cookie
+        response.delete_cookie(
+            "platform_sessionid",
+            path="/",
+            domain=None,
+            samesite="Lax",
+        )
+
         messages.success(request, _("You have been successfully logged out."))
-        return redirect("core:admin_login")
+        return response
 
 
 class TenantLogoutView(View):
     """
     Custom logout view for tenant users.
     Logs out the user and redirects to the tenant login page.
+    Clears the tenant_sessionid cookie and OAuth tokens.
     """
 
     def get(self, request):
         """Handle tenant logout."""
+        # Delete social account tokens if user logged in via OAuth
+        if request.user.is_authenticated:
+            # Import here to avoid circular imports
+            from allauth.socialaccount.models import SocialToken
+
+            SocialToken.objects.filter(account__user=request.user).delete()
+
+        # Clear the session
         logout(request)
+
+        # Create response with redirect
+        response = redirect("account_login")
+
+        # Explicitly clear the tenant session cookie
+        response.delete_cookie(
+            "tenant_sessionid",
+            path="/",
+            domain=None,
+            samesite="Lax",
+        )
+
         messages.success(request, _("You have been successfully logged out."))
-        return redirect("account_login")
+        return response
 
     def post(self, request):
         """Handle tenant logout via POST."""
+        # Delete social account tokens if user logged in via OAuth
+        if request.user.is_authenticated:
+            # Import here to avoid circular imports
+            from allauth.socialaccount.models import SocialToken
+
+            SocialToken.objects.filter(account__user=request.user).delete()
+
+        # Clear the session
         logout(request)
+
+        # Create response with redirect
+        response = redirect("account_login")
+
+        # Explicitly clear the tenant session cookie
+        response.delete_cookie(
+            "tenant_sessionid",
+            path="/",
+            domain=None,
+            samesite="Lax",
+        )
+
         messages.success(request, _("You have been successfully logged out."))
-        return redirect("account_login")
+        return response
 
 
 class UserRegistrationView(generics.CreateAPIView):

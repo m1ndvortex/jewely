@@ -7,7 +7,9 @@ and object-level permissions throughout the application.
 
 from functools import wraps
 
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect
+from django.urls import reverse
 
 from rest_framework import status
 
@@ -87,6 +89,49 @@ def mfa_required_for_class_view(method):
                 )
 
         return method(self, request, *args, **kwargs)
+
+    return wrapper
+
+
+def portal_login_required(view_func):
+    """
+    Portal-aware login required decorator.
+
+    Unlike Django's @login_required which only checks the default session,
+    this decorator works with MultiPortalSessionMiddleware to check
+    authentication in the current portal context.
+
+    For HTMX requests, returns 401 status instead of redirect to prevent
+    login pages from being injected into dynamic content (e.g., dropdowns).
+
+    Usage:
+        @portal_login_required
+        def my_view(request):
+            ...
+    """
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # Check if user is authenticated (MultiPortalSessionMiddleware handles portal sessions)
+        if not request.user.is_authenticated:
+            # For HTMX requests, return 401 to prevent HTML injection
+            if request.headers.get("HX-Request"):
+                return HttpResponse(
+                    '<div class="text-gray-500 p-4 text-center">Please log in to view this content</div>',
+                    status=401,
+                )
+
+            # For regular requests, determine correct login URL based on path
+            if request.path.startswith("/platform/"):
+                login_url = reverse("platform_admin:login")
+            elif request.path.startswith("/admin/"):
+                login_url = "/admin/login/"
+            else:
+                login_url = reverse("account_login")  # Tenant login
+
+            return redirect(f"{login_url}?next={request.path}")
+
+        return view_func(request, *args, **kwargs)
 
     return wrapper
 

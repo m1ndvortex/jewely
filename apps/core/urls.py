@@ -28,8 +28,7 @@ urlpatterns = [
     # Platform admin login/logout (username/password only - no OAuth2)
     path("platform/login/", views.AdminLoginView.as_view(), name="admin_login"),
     path("platform/logout/", views.AdminLogoutView.as_view(), name="admin_logout"),
-    # Tenant logout (login handled by allauth at accounts/login/)
-    path("accounts/logout/", views.TenantLogoutView.as_view(), name="tenant_logout"),
+    # Tenant logout is now handled in main urls.py (before allauth.urls)
     # Stripe webhook
     path("webhooks/stripe/", stripe_webhooks.stripe_webhook, name="stripe_webhook"),
     # Platform Admin Panel

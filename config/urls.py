@@ -7,11 +7,16 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+# Import tenant logout view to override allauth's default
+from apps.core import views as core_views
+
 urlpatterns = [
     path(
         "admin/backups/", include("apps.backups.urls")
     ),  # Backup management (must be before admin/)
     path("admin/", admin.site.urls),
+    # Custom tenant logout (must be before allauth.urls to override)
+    path("accounts/logout/", core_views.TenantLogoutView.as_view(), name="account_logout"),
     path("accounts/", include("allauth.urls")),  # django-allauth URLs
     path("hijack/", include("hijack.urls")),  # django-hijack URLs for impersonation
     path("rosetta/", include("rosetta.urls")),  # Translation management interface

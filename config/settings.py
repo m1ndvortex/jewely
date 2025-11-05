@@ -77,7 +77,8 @@ SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",  # Must be first
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    # Multi-portal session middleware - replaces default SessionMiddleware
+    "apps.core.session_middleware.MultiPortalSessionMiddleware",
     # LocaleMiddleware must be after SessionMiddleware and before CommonMiddleware
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -164,6 +165,10 @@ ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
 ACCOUNT_USERNAME_MIN_LENGTH = 3
 ACCOUNT_ADAPTER = "apps.core.adapters.AccountAdapter"
+ACCOUNT_ALLOW_REGISTRATION = True  # Allow new user registration via OAuth
+SOCIALACCOUNT_ADAPTER = (
+    "apps.core.adapters.SocialAccountAdapter"  # OAuth adapter with tenant creation
+)
 
 # Rate limiting for allauth (replaces deprecated LOGIN_ATTEMPTS settings)
 ACCOUNT_RATE_LIMITS = {
@@ -185,6 +190,7 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         "AUTH_PARAMS": {
             "access_type": "online",
+            "prompt": "select_account",  # Force account selection on every login
         },
         "APP": {
             "client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
@@ -233,6 +239,7 @@ SOCIALACCOUNT_EMAIL_REQUIRED = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = "optional"  # Less strict for OAuth
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_STORE_TOKENS = True  # Store OAuth tokens for API access
+SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip the intermediate "Sign in via Google" page
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

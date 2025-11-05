@@ -22,6 +22,8 @@ from django.views import View
 from django.views.decorators.http import require_http_methods
 from django.views.generic import ListView
 
+from apps.core.decorators import portal_login_required
+
 from .models import Notification, NotificationPreference
 from .services import (
     get_unread_count,
@@ -68,7 +70,7 @@ class NotificationCenterView(LoginRequiredMixin, ListView):
         return context
 
 
-@method_decorator(login_required, name="dispatch")
+@method_decorator(portal_login_required, name="dispatch")
 class NotificationCountView(View):
     """
     HTMX endpoint for real-time notification count updates.
@@ -86,7 +88,7 @@ class NotificationCountView(View):
         )
 
 
-@method_decorator(login_required, name="dispatch")
+@method_decorator(portal_login_required, name="dispatch")
 class NotificationListView(View):
     """
     HTMX endpoint for real-time notification list updates.
@@ -270,7 +272,7 @@ class NotificationPreferencesView(LoginRequiredMixin, View):
         return preferences
 
 
-@method_decorator(login_required, name="dispatch")
+@method_decorator(portal_login_required, name="dispatch")
 class NotificationDropdownView(View):
     """
     HTMX endpoint for notification dropdown widget.

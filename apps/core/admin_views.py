@@ -30,7 +30,15 @@ from apps.core.models import Tenant, User
 
 
 class PlatformAdminRequiredMixin(LoginRequiredMixin):
-    """Mixin to require platform admin access."""
+    """
+    Mixin to require platform admin access.
+
+    Redirects unauthenticated users to platform admin login page,
+    not the default tenant login page.
+    """
+
+    # Override login_url to point to platform admin login
+    login_url = "/platform/login/"
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
