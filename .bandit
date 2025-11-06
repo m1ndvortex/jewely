@@ -1,0 +1,16 @@
+exclude_dirs:
+  - /tests/
+  - /htmlcov/
+  - /.pytest_cache/
+  - /migrations/
+  - /staticfiles/
+  - /media/
+  - /locale/
+  - /.git/
+  - /.vscode/
+  - /.kiro/
+  - /node_modules/
+  - /backups/
+
+skips:
+  - B101

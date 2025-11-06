@@ -38,7 +38,8 @@ class APIRateLimitMiddleware(MiddlewareMixin):
             return None
 
         # Determine rate limit based on authentication
-        if request.user.is_authenticated:
+        # Check if user attribute exists (may not be set yet in middleware chain)
+        if hasattr(request, "user") and request.user.is_authenticated:
             # Authenticated users: 100/hour per user
             rate = "100/h"
             key = f"user:{request.user.id}"

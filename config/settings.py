@@ -873,3 +873,35 @@ BRUTE_FORCE_WINDOW_MINUTES = 5  # Time window to count failed attempts
 # Rate limiting is handled by django-ratelimit
 # Login endpoints: 5 requests per minute per IP
 # API endpoints: 100 requests per hour per authenticated user, 20 per hour for anonymous
+
+
+# ============================================================================
+# SENTRY ERROR TRACKING (Task 29.4)
+# Per Requirements 24.8 and 25.10
+# ============================================================================
+
+# Sentry DSN (Data Source Name)
+# Get this from your Sentry project settings
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+
+# Sentry environment (development, staging, production)
+SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "development")
+
+# Sentry release version (for tracking which version has errors)
+SENTRY_RELEASE = os.getenv("SENTRY_RELEASE", None)
+
+# Traces sample rate (0.0 to 1.0)
+# 1.0 = 100% of transactions are traced
+# 0.1 = 10% of transactions are traced (recommended for production)
+SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+
+# Initialize Sentry if DSN is provided
+if SENTRY_DSN:
+    from apps.core.sentry_config import initialize_sentry
+
+    initialize_sentry(
+        dsn=SENTRY_DSN,
+        environment=SENTRY_ENVIRONMENT,
+        traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
+        release=SENTRY_RELEASE,
+    )

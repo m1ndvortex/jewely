@@ -105,3 +105,10 @@ django-ratelimit==4.1.0
 
 # Performance Testing
 locust==2.20.0
+
+# Error Tracking & Monitoring
+sentry-sdk[django]==1.40.6
+
+# Security Scanning
+bandit==1.7.7
+pip-audit==2.7.3

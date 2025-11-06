@@ -1,6 +1,7 @@
 {% load i18n %}
 {% load static %}
 {% load compress %}
+{% load accessibility_tags %}
 <!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE }}" 
       dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" 
@@ -35,6 +36,7 @@
     {% compress css %}
     <link rel="stylesheet" href="{% static 'css/theme.css' %}">
     <link rel="stylesheet" href="{% static 'css/rtl.css' %}">
+    <link rel="stylesheet" href="{% static 'css/accessibility.css' %}">
     {% endcompress %}
     
     <!-- HTMX for dynamic interactions -->
@@ -82,6 +84,12 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-100 dark:bg-gray-900">
+    <!-- Skip Navigation Links (WCAG 2.1 Level AA - Requirement 29) -->
+    {% skip_link "main-content" "Skip to main content" %}
+    {% if user.is_authenticated %}
+    {% skip_link "navigation" "Skip to navigation" %}
+    {% endif %}
+    
     <!-- Impersonation Banner -->
     {% load hijack %}
     {% if request.user.is_hijacked %}
@@ -118,8 +126,10 @@
     {% endif %}
     
     {% if user.is_authenticated %}
-    <!-- Navigation -->
-    <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <!-- Navigation (Semantic HTML - WCAG 2.1 Level AA) -->
+    <nav id="navigation" class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700" 
+         role="navigation" 
+         aria-label="{% if user.role == 'PLATFORM_ADMIN' %}{% trans 'Platform admin navigation' %}{% else %}{% trans 'Main navigation' %}{% endif %}">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
@@ -472,8 +482,11 @@
     </div>
     {% endif %}
     
-    {% block content %}
-    {% endblock %}
+    <!-- Main Content Area (Semantic HTML - WCAG 2.1 Level AA) -->
+    <main id="main-content" role="main" aria-label="{% trans 'Main content' %}">
+        {% block content %}
+        {% endblock %}
+    </main>
     
     <!-- Auto-refresh notifications every 30 seconds -->
     <script>
