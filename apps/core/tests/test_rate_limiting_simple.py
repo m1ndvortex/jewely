@@ -7,10 +7,11 @@ Tests Task 29.2: Rate limiting implementation
 
 from datetime import timedelta
 
-import pytest
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.utils import timezone
+
+import pytest
 
 from apps.core.audit_models import LoginAttempt
 from apps.core.brute_force_protection import (

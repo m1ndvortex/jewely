@@ -1953,3 +1953,149 @@ class TenantSubscription(models.Model):
 
         delta = self.trial_end - timezone.now()
         return max(0, delta.days)
+
+
+class SecretsKeyRotation(models.Model):
+    """
+    Track encryption key rotation history for compliance and audit.
+
+    This model records all master key rotations for the secrets management system.
+    Quarterly key rotation is required for security compliance.
+    """
+
+    # Rotation status choices
+    INITIATED = "INITIATED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    ROLLED_BACK = "ROLLED_BACK"
+
+    STATUS_CHOICES = [
+        (INITIATED, "Initiated"),
+        (IN_PROGRESS, "In Progress"),
+        (COMPLETED, "Completed"),
+        (FAILED, "Failed"),
+        (ROLLED_BACK, "Rolled Back"),
+    ]
+
+    # Primary key
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the key rotation",
+    )
+
+    # Rotation details
+    rotation_date = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Timestamp when the rotation was initiated",
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the rotation was completed",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=INITIATED,
+        help_text="Current status of the key rotation",
+    )
+
+    # Key information (never store actual keys, only metadata)
+    old_key_fingerprint = models.CharField(
+        max_length=64,
+        help_text="SHA-256 fingerprint of the old key (for verification)",
+    )
+
+    new_key_fingerprint = models.CharField(
+        max_length=64,
+        help_text="SHA-256 fingerprint of the new key (for verification)",
+    )
+
+    # Rotation metadata
+    initiated_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="key_rotations_initiated",
+        help_text="User who initiated the key rotation",
+    )
+
+    rotation_reason = models.TextField(
+        help_text="Reason for key rotation (scheduled, security incident, etc.)",
+    )
+
+    # Files affected
+    files_re_encrypted = models.JSONField(
+        default=list,
+        help_text="List of files that were re-encrypted with the new key",
+    )
+
+    backup_path = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="Path to backup of old encrypted files",
+    )
+
+    # Error tracking
+    error_message = models.TextField(
+        blank=True,
+        help_text="Error message if rotation failed",
+    )
+
+    # Verification
+    verification_passed = models.BooleanField(
+        default=False,
+        help_text="Whether post-rotation verification passed",
+    )
+
+    verification_details = models.JSONField(
+        default=dict,
+        help_text="Details of verification checks performed",
+    )
+
+    # Next rotation
+    next_rotation_due = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date when next rotation is due (90 days from completion)",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional notes about this rotation",
+    )
+
+    class Meta:
+        db_table = "secrets_key_rotations"
+        ordering = ["-rotation_date"]
+        verbose_name = "Secrets Key Rotation"
+        verbose_name_plural = "Secrets Key Rotations"
+        indexes = [
+            models.Index(fields=["-rotation_date"], name="key_rotation_date_idx"),
+            models.Index(fields=["status"], name="key_rotation_status_idx"),
+            models.Index(fields=["next_rotation_due"], name="key_rotation_next_due_idx"),
+        ]
+
+    def __str__(self):
+        return f"Key Rotation {self.rotation_date.strftime('%Y-%m-%d %H:%M')} - {self.status}"
+
+    def is_overdue(self):
+        """Check if next rotation is overdue."""
+        from django.utils import timezone
+
+        if self.next_rotation_due and self.status == self.COMPLETED:
+            return timezone.now() > self.next_rotation_due
+        return False
+
+    def duration_seconds(self):
+        """Calculate rotation duration in seconds."""
+        if self.completed_at and self.rotation_date:
+            return (self.completed_at - self.rotation_date).total_seconds()
+        return None
