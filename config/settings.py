@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "rosetta",  # Translation management interface
     "widget_tweaks",  # Form widget styling
     "silk",  # Query profiling and optimization
+    "compressor",  # Asset compression and minification
     # Local apps
     "apps.core",
     "apps.inventory",
@@ -99,6 +100,8 @@ MIDDLEWARE = [
     "apps.core.role_middleware.RoleBasedAccessMiddleware",
     # Audit logging middleware - must be after TenantContextMiddleware
     "apps.core.audit_middleware.AuditLoggingMiddleware",
+    # Cache headers middleware for frontend optimization (Task 28.3)
+    "apps.core.cache_headers_middleware.CacheHeadersMiddleware",
     # Silk profiling middleware - should be near the end
     "silk.middleware.SilkyMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",  # Must be last
@@ -396,6 +399,30 @@ CACHES = {
 # Session Configuration
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
+
+# Django Compressor Configuration (Task 28.3)
+# Asset compression and minification for performance optimization
+COMPRESS_ENABLED = not DEBUG  # Enable compression in production
+COMPRESS_OFFLINE = False  # Set to True for offline compression in production
+COMPRESS_CSS_FILTERS = [
+    "compressor.filters.css_default.CssAbsoluteFilter",
+    "compressor.filters.cssmin.rCSSMinFilter",  # Minify CSS
+]
+COMPRESS_JS_FILTERS = [
+    "compressor.filters.jsmin.JSMinFilter",  # Minify JavaScript
+]
+# Store compressed files in STATIC_ROOT
+COMPRESS_ROOT = STATIC_ROOT
+COMPRESS_OUTPUT_DIR = "compressed"
+# Use cached template loader in production for better performance
+COMPRESS_REBUILD_TIMEOUT = 2592000  # 30 days
+COMPRESS_PARSER = "compressor.parser.HtmlParser"
+# Add compressor finder to staticfiles finders
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "compressor.finders.CompressorFinder",  # Add compressor finder
+]
 
 # Celery Configuration
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")

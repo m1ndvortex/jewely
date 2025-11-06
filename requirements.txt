@@ -94,3 +94,8 @@ django-widget-tweaks==1.5.0
 
 # Bank statement parsing
 ofxparse==0.21
+
+# Asset Compression & Optimization
+django-compressor==4.4
+csscompressor==0.9.5
+jsmin==3.0.1

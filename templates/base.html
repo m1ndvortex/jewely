@@ -1,4 +1,6 @@
 {% load i18n %}
+{% load static %}
+{% load compress %}
 <!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE }}" 
       dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" 
@@ -29,25 +31,25 @@
         }
     </script>
     
-    <!-- Theme CSS (Light and Dark Mode) -->
-    {% load static %}
+    <!-- Compressed CSS (Task 28.3) -->
+    {% compress css %}
     <link rel="stylesheet" href="{% static 'css/theme.css' %}">
-    
-    <!-- RTL CSS Support -->
     <link rel="stylesheet" href="{% static 'css/rtl.css' %}">
+    {% endcompress %}
     
     <!-- HTMX for dynamic interactions -->
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     
-    <!-- Set up Alpine.js initialization listener and load Alpine.js with defer -->
+    <!-- Compressed JavaScript (Task 28.3) -->
+    {% compress js %}
     <script>
-        // This runs immediately, before Alpine loads
+        // Alpine.js initialization listener
         window.deferredAlpineInit = [];
         document.addEventListener('alpine:init', () => {
-            // Run deferred initialization when Alpine starts
             window.deferredAlpineInit.forEach(fn => fn());
         });
     </script>
+    {% endcompress %}
     
     <!-- Alpine.js for reactive components -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -597,6 +599,11 @@
             return cookieValue;
         }
     </script>
+    
+    <!-- Lazy Loading Script (Task 28.3) -->
+    {% compress js %}
+    <script src="{% static 'js/lazy-loading.js' %}"></script>
+    {% endcompress %}
     
     <!-- Alpine.js component registration -->
     {% block alpine_components %}{% endblock %}
