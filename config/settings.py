@@ -81,6 +81,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     # Security headers middleware - adds CSP and other security headers (Task 29.1)
     "apps.core.security_headers_middleware.SecurityHeadersMiddleware",
+    # API rate limiting middleware - should be early (Task 29.2)
+    "apps.core.rate_limit_middleware.APIRateLimitMiddleware",
     # GZip compression middleware - should be early to compress all responses (Task 28.4)
     "django.middleware.gzip.GZipMiddleware",
     # Multi-portal session middleware - replaces default SessionMiddleware
@@ -857,3 +859,17 @@ GZIP_MIN_LENGTH = 200
 
 # GZip compression is enabled via GZipMiddleware in MIDDLEWARE
 # It automatically compresses responses for clients that support it
+
+
+# ============================================================================
+# RATE LIMITING AND BRUTE FORCE PROTECTION (Task 29.2)
+# ============================================================================
+
+# Brute force protection settings
+BRUTE_FORCE_MAX_ATTEMPTS = 5  # Maximum failed login attempts before blocking
+BRUTE_FORCE_LOCKOUT_MINUTES = 15  # How long to block an IP after max attempts
+BRUTE_FORCE_WINDOW_MINUTES = 5  # Time window to count failed attempts
+
+# Rate limiting is handled by django-ratelimit
+# Login endpoints: 5 requests per minute per IP
+# API endpoints: 100 requests per hour per authenticated user, 20 per hour for anonymous

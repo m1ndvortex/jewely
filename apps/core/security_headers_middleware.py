@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 class SecurityHeadersMiddleware:
     """
     Middleware to add comprehensive security headers to all responses.
-    
+
     Headers added:
     - Content-Security-Policy: Prevents XSS and other injection attacks
     - Referrer-Policy: Controls referrer information
     - Permissions-Policy: Controls browser features
-    
+
     Note: Other security headers (HSTS, X-Frame-Options, X-Content-Type-Options)
     are handled by Django's SecurityMiddleware and settings.
     """
@@ -30,28 +30,28 @@ class SecurityHeadersMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        
+
         # Add Content Security Policy
         response = self._add_csp_header(response)
-        
+
         # Add Referrer Policy
         response["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
+
         # Add Permissions Policy (formerly Feature-Policy)
         response["Permissions-Policy"] = self._get_permissions_policy()
-        
+
         return response
 
     def _add_csp_header(self, response):
         """
         Add Content Security Policy header.
-        
+
         CSP is configured to work with our tech stack:
         - HTMX: Requires 'unsafe-inline' for inline event handlers
         - Alpine.js: Requires 'unsafe-eval' for reactive expressions
         - Chart.js: Loaded from CDN
         - Tailwind CSS: Inline styles need 'unsafe-inline'
-        
+
         In production, consider using nonces or hashes instead of 'unsafe-inline'.
         """
         csp_directives = [
@@ -79,14 +79,14 @@ class SecurityHeadersMiddleware:
             # Upgrade insecure requests in production
             "upgrade-insecure-requests",
         ]
-        
+
         response["Content-Security-Policy"] = "; ".join(csp_directives)
         return response
 
     def _get_permissions_policy(self):
         """
         Get Permissions Policy header value.
-        
+
         This controls which browser features can be used.
         We disable most features except what we need.
         """
@@ -100,5 +100,5 @@ class SecurityHeadersMiddleware:
             "gyroscope=()",  # Disable gyroscope
             "accelerometer=()",  # Disable accelerometer
         ]
-        
+
         return ", ".join(policies)

@@ -5,9 +5,10 @@ Requirement 25: Security Hardening and Compliance
 Task 29.1: Implement security headers
 """
 
-import pytest
 from django.test import Client, TestCase
 from django.urls import reverse
+
+import pytest
 
 
 class SecurityHeadersTest(TestCase):

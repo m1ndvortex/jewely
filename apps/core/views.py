@@ -6,17 +6,20 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from django.views import View
 from django.views.decorators.http import require_http_methods
 
 from django_otp import user_has_device
 from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .brute_force_protection import brute_force_protected
 from .serializers import (
     CustomTokenObtainPairSerializer,
     PasswordChangeSerializer,
@@ -64,6 +67,8 @@ class AdminLoginView(View):
 
     This view only allows username/password authentication.
     OAuth2/social login is NOT available for admin accounts.
+
+    Includes rate limiting (5/min per IP) and brute force protection.
     """
 
     template_name = "admin/admin_login.html"
@@ -83,11 +88,29 @@ class AdminLoginView(View):
 
         return render(request, self.template_name)
 
+    @method_decorator(ratelimit(key="ip", rate="5/m", method="POST", block=True))
+    @method_decorator(brute_force_protected)
     def post(self, request):
-        """Handle admin login submission."""
+        """Handle admin login submission with rate limiting and brute force protection."""
+        from .audit_models import LoginAttempt
+        from .brute_force_protection import (
+            clear_failed_attempts,
+            get_client_ip,
+            record_login_attempt,
+        )
+
+        # Check if rate limited
+        if getattr(request, "limited", False):
+            messages.error(
+                request,
+                _("Too many login attempts. Please wait a moment and try again."),
+            )
+            return render(request, self.template_name, status=429)
+
         username = request.POST.get("username", "").strip()
         password = request.POST.get("password", "")
         next_url = request.POST.get("next", "/platform/dashboard/")
+        ip_address = get_client_ip(request)
 
         # Validate input
         if not username or not password:
@@ -100,6 +123,12 @@ class AdminLoginView(View):
         if user is not None:
             # Check if user is a platform admin
             if not user.is_platform_admin():
+                record_login_attempt(
+                    request,
+                    username,
+                    LoginAttempt.RESULT_FAILED_PASSWORD,
+                    user,
+                )
                 messages.error(
                     request, _("Access denied. This login is for platform administrators only.")
                 )
@@ -107,8 +136,23 @@ class AdminLoginView(View):
 
             # Check if account is active
             if not user.is_active:
+                record_login_attempt(
+                    request,
+                    username,
+                    LoginAttempt.RESULT_FAILED_ACCOUNT_DISABLED,
+                    user,
+                )
                 messages.error(request, _("This account has been disabled."))
                 return render(request, self.template_name, {"form": request.POST})
+
+            # Successful login
+            record_login_attempt(
+                request,
+                username,
+                LoginAttempt.RESULT_SUCCESS,
+                user,
+            )
+            clear_failed_attempts(ip_address)
 
             # Log the user in
             login(request, user)
@@ -118,6 +162,20 @@ class AdminLoginView(View):
             return redirect(next_url)
         else:
             # Authentication failed
+            # Try to find the user to determine the failure reason
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+
+            try:
+                user_obj = User.objects.get(username=username)
+                result = LoginAttempt.RESULT_FAILED_PASSWORD
+            except User.DoesNotExist:
+                user_obj = None
+                result = LoginAttempt.RESULT_FAILED_USER_NOT_FOUND
+
+            record_login_attempt(request, username, result, user_obj)
+
             messages.error(request, _("Invalid username or password. Please try again."))
             return render(request, self.template_name, {"form": request.POST, "username": username})
 
@@ -125,9 +183,78 @@ class AdminLoginView(View):
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Custom JWT token view that includes additional user information.
+
+    Includes rate limiting (5/min per IP) and brute force protection.
     """
 
     serializer_class = CustomTokenObtainPairSerializer
+
+    @method_decorator(ratelimit(key="ip", rate="5/m", method="POST", block=True))
+    def post(self, request, *args, **kwargs):
+        """Handle JWT token request with rate limiting and brute force protection."""
+        from .audit_models import LoginAttempt
+        from .brute_force_protection import (
+            check_brute_force,
+            clear_failed_attempts,
+            get_client_ip,
+            record_login_attempt,
+        )
+
+        # Check if rate limited
+        if getattr(request, "limited", False):
+            return Response(
+                {
+                    "error": "Rate limit exceeded",
+                    "message": "Too many login attempts. Please wait a moment and try again.",
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        # Check for brute force
+        ip_address = get_client_ip(request)
+        is_blocked, error_message = check_brute_force(ip_address)
+
+        if is_blocked:
+            return Response(
+                {
+                    "error": "Too many failed attempts",
+                    "message": error_message,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        # Get username from request for logging
+        username = request.data.get("username", "")
+
+        # Call parent post method
+        response = super().post(request, *args, **kwargs)
+
+        # Record the attempt
+        if response.status_code == 200:
+            # Successful login
+            try:
+                user = User.objects.get(username=username)
+                record_login_attempt(
+                    request,
+                    username,
+                    LoginAttempt.RESULT_SUCCESS,
+                    user,
+                )
+                clear_failed_attempts(ip_address)
+            except User.DoesNotExist:
+                pass
+        else:
+            # Failed login
+            try:
+                user = User.objects.get(username=username)
+                result = LoginAttempt.RESULT_FAILED_PASSWORD
+            except User.DoesNotExist:
+                user = None
+                result = LoginAttempt.RESULT_FAILED_USER_NOT_FOUND
+
+            record_login_attempt(request, username, result, user)
+
+        return response
 
 
 class AdminLogoutView(View):
@@ -574,22 +701,21 @@ class MFAVerifyView(APIView):
             )
 
 
-
 @require_http_methods(["GET", "POST"])
 def csrf_failure(request, reason=""):
     """
     Custom CSRF failure view.
-    
+
     This view is called when CSRF validation fails.
     It provides a user-friendly error message.
-    
+
     Requirement 25: Security Hardening and Compliance
     """
     context = {
         "reason": reason,
         "message": _("CSRF verification failed. Please try again."),
     }
-    
+
     # Return JSON for API requests
     if request.path.startswith("/api/"):
         return JsonResponse(
@@ -600,6 +726,6 @@ def csrf_failure(request, reason=""):
             },
             status=403,
         )
-    
+
     # Return HTML for web requests
     return render(request, "errors/csrf_failure.html", context, status=403)

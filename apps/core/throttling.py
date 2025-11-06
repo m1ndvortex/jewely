@@ -166,6 +166,10 @@ api_ratelimit_lenient = api_ratelimit(key="ip", rate="500/h", method="GET")
 # Write operation rate limit
 api_ratelimit_write = api_ratelimit(key="user", rate="50/h", method="POST")
 
+# Login endpoint rate limit (5 attempts per minute per IP)
+# Per Requirement 25: Security Hardening - Rate limiting for login endpoints
+login_ratelimit = api_ratelimit(key="ip", rate="5/m", method="POST")
+
 
 def handle_ratelimit_exception(view_func: Callable) -> Callable:
     """
