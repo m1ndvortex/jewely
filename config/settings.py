@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "waffle",
     "rosetta",  # Translation management interface
     "widget_tweaks",  # Form widget styling
+    "silk",  # Query profiling and optimization
     # Local apps
     "apps.core",
     "apps.inventory",
@@ -98,6 +99,8 @@ MIDDLEWARE = [
     "apps.core.role_middleware.RoleBasedAccessMiddleware",
     # Audit logging middleware - must be after TenantContextMiddleware
     "apps.core.audit_middleware.AuditLoggingMiddleware",
+    # Silk profiling middleware - should be near the end
+    "silk.middleware.SilkyMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",  # Must be last
 ]
 
@@ -727,3 +730,48 @@ WAFFLE_SAMPLE_MODEL = "waffle.Sample"
 # Secure flag cookies
 WAFFLE_SECURE = not DEBUG  # Use secure cookies in production
 WAFFLE_MAX_AGE = 2592000  # 30 days cookie lifetime
+
+# ============================================================================
+# Django Silk Configuration
+# Per Requirement 26 - Performance Optimization and Scaling
+# ============================================================================
+
+# Enable Silk only in development and staging
+SILKY_PYTHON_PROFILER = DEBUG
+SILKY_PYTHON_PROFILER_BINARY = DEBUG
+
+# Authentication required to view silk pages
+SILKY_AUTHENTICATION = True
+SILKY_AUTHORISATION = True
+
+# Maximum number of requests to store
+SILKY_MAX_REQUEST_BODY_SIZE = 1024 * 1024  # 1MB
+SILKY_MAX_RESPONSE_BODY_SIZE = 1024 * 1024  # 1MB
+SILKY_MAX_RECORDED_REQUESTS = 10000
+
+# Intercept percentage (100 = all requests)
+SILKY_INTERCEPT_PERCENT = 100 if DEBUG else 10  # Profile all in dev, 10% in staging
+
+# Meta profiling
+SILKY_META = True
+
+# Analyze queries
+SILKY_ANALYZE_QUERIES = True
+
+# ============================================================================
+# Database Connection Pooling Configuration
+# Per Requirement 26.5 - Use PgBouncer for database connection pooling
+# ============================================================================
+
+# PgBouncer will be configured in docker-compose.yml
+# When using PgBouncer, update DATABASES['default']['HOST'] to 'pgbouncer'
+# and PORT to 6432 (PgBouncer default port)
+USE_PGBOUNCER = os.getenv("USE_PGBOUNCER", "False") == "True"
+
+if USE_PGBOUNCER:
+    DATABASES["default"]["HOST"] = os.getenv("PGBOUNCER_HOST", "pgbouncer")
+    DATABASES["default"]["PORT"] = os.getenv("PGBOUNCER_PORT", "6432")
+    # Disable persistent connections when using PgBouncer
+    DATABASES["default"]["CONN_MAX_AGE"] = 0
+    # Disable server-side cursors for PgBouncer compatibility
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
