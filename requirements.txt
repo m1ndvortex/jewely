@@ -99,3 +99,6 @@ ofxparse==0.21
 django-compressor==4.4
 csscompressor==0.9.5
 jsmin==3.0.1
+
+# API Rate Limiting
+django-ratelimit==4.1.0

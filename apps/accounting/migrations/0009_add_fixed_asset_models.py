@@ -359,10 +359,6 @@ class Migration(migrations.Migration):
                 "ordering": ["asset_number"],
             },
         ),
-        migrations.RemoveIndex(
-            model_name="bankaccount",
-            name="accounting__last_re_idx",
-        ),
         migrations.AddField(
             model_name="fixedasset",
             name="assigned_to",

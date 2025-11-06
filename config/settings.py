@@ -79,6 +79,8 @@ SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",  # Must be first
     "django.middleware.security.SecurityMiddleware",
+    # GZip compression middleware - should be early to compress all responses (Task 28.4)
+    "django.middleware.gzip.GZipMiddleware",
     # Multi-portal session middleware - replaces default SessionMiddleware
     "apps.core.session_middleware.MultiPortalSessionMiddleware",
     # LocaleMiddleware must be after SessionMiddleware and before CommonMiddleware
@@ -802,3 +804,35 @@ if USE_PGBOUNCER:
     DATABASES["default"]["CONN_MAX_AGE"] = 0
     # Disable server-side cursors for PgBouncer compatibility
     DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+
+# ============================================================================
+# API Rate Limiting Configuration (Task 28.4)
+# Per Requirement 26 - Performance Optimization and Scaling
+# ============================================================================
+
+# Django-ratelimit configuration
+RATELIMIT_ENABLE = os.getenv("RATELIMIT_ENABLE", "True") == "True"
+RATELIMIT_USE_CACHE = "default"  # Use Redis cache for rate limiting
+
+# Default rate limits (can be overridden per endpoint)
+RATELIMIT_DEFAULT_RATE = os.getenv("RATELIMIT_DEFAULT_RATE", "100/h")
+RATELIMIT_STRICT_RATE = os.getenv("RATELIMIT_STRICT_RATE", "10/m")
+RATELIMIT_LENIENT_RATE = os.getenv("RATELIMIT_LENIENT_RATE", "500/h")
+
+# Rate limit by tenant for multi-tenant isolation
+RATELIMIT_TENANT_RATE = os.getenv("RATELIMIT_TENANT_RATE", "1000/h")
+
+# Rate limit by user
+RATELIMIT_USER_RATE = os.getenv("RATELIMIT_USER_RATE", "100/h")
+
+# ============================================================================
+# GZip Compression Configuration (Task 28.4)
+# Per Requirement 26.9 - Enable gzip compression for API responses
+# ============================================================================
+
+# Minimum response size to compress (in bytes)
+# Responses smaller than this won't be compressed
+GZIP_MIN_LENGTH = 200
+
+# GZip compression is enabled via GZipMiddleware in MIDDLEWARE
+# It automatically compresses responses for clients that support it

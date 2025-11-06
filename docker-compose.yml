@@ -44,7 +44,7 @@ services:
     image: edoburu/pgbouncer:latest
     container_name: jewelry_shop_pgbouncer
     environment:
-      DATABASE_URL: "postgres://${DB_USER:-jewelry_app}:${APP_DB_PASSWORD:-app_password_change_in_production}@db:5432/${POSTGRES_DB:-jewelry_shop}"
+      DATABASE_URL: "postgres://app_user:${APP_DB_PASSWORD:-app_password_change_in_production}@db:5432/${POSTGRES_DB:-jewelry_shop}"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 25
@@ -67,13 +67,16 @@ services:
       LOG_DISCONNECTIONS: 1
       LOG_POOLER_ERRORS: 1
       STATS_PERIOD: 60
+      AUTH_TYPE: scram-sha-256
+    volumes:
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
     ports:
       - "6432:5432"
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "PGPASSWORD=${APP_DB_PASSWORD:-app_password_change_in_production} psql -h localhost -U ${DB_USER:-jewelry_app} -d ${POSTGRES_DB:-jewelry_shop} -c 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "PGPASSWORD=${APP_DB_PASSWORD:-app_password_change_in_production} psql -h localhost -U app_user -d ${POSTGRES_DB:-jewelry_shop} -c 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -89,8 +89,8 @@ def invalidate_loyalty_cache(sender, instance, **kwargs):
 # Accounting cache invalidation
 
 
-@receiver(post_save, sender="accounting.JournalEntry")
-@receiver(post_delete, sender="accounting.JournalEntry")
+@receiver(post_save, sender="accounting.Expense")
+@receiver(post_delete, sender="accounting.Expense")
 def invalidate_accounting_cache(sender, instance, **kwargs):
     """Invalidate accounting cache when journal entries change."""
     if hasattr(instance, "tenant_id"):
