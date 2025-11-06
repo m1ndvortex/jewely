@@ -572,3 +572,34 @@ class MFAVerifyView(APIView):
                 {"detail": "Invalid token."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+
+@require_http_methods(["GET", "POST"])
+def csrf_failure(request, reason=""):
+    """
+    Custom CSRF failure view.
+    
+    This view is called when CSRF validation fails.
+    It provides a user-friendly error message.
+    
+    Requirement 25: Security Hardening and Compliance
+    """
+    context = {
+        "reason": reason,
+        "message": _("CSRF verification failed. Please try again."),
+    }
+    
+    # Return JSON for API requests
+    if request.path.startswith("/api/"):
+        return JsonResponse(
+            {
+                "error": "CSRF Verification Failed",
+                "message": str(context["message"]),
+                "reason": reason,
+            },
+            status=403,
+        )
+    
+    # Return HTML for web requests
+    return render(request, "errors/csrf_failure.html", context, status=403)

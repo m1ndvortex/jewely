@@ -79,6 +79,8 @@ SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",  # Must be first
     "django.middleware.security.SecurityMiddleware",
+    # Security headers middleware - adds CSP and other security headers (Task 29.1)
+    "apps.core.security_headers_middleware.SecurityHeadersMiddleware",
     # GZip compression middleware - should be early to compress all responses (Task 28.4)
     "django.middleware.gzip.GZipMiddleware",
     # Multi-portal session middleware - replaces default SessionMiddleware
@@ -637,17 +639,36 @@ SIMPLE_JWT = {
 # Django OTP Configuration
 OTP_TOTP_ISSUER = "Jewelry Shop SaaS"
 
-# Security Settings
+# Security Settings (Requirement 25: Security Hardening and Compliance)
+# These settings protect against common web vulnerabilities
+
+# HTTPS and SSL Settings
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = "DENY"
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True  # Redirect all HTTP to HTTPS
+    SECURE_HSTS_SECONDS = 31536000  # 1 year HSTS
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True  # Apply HSTS to subdomains
+    SECURE_HSTS_PRELOAD = True  # Allow HSTS preload list inclusion
+
+# Secure Cookie Settings (always enabled for security)
+SESSION_COOKIE_SECURE = not DEBUG  # Send session cookie only over HTTPS
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access to session cookie
+SESSION_COOKIE_SAMESITE = "Lax"  # CSRF protection for session cookie
+SESSION_COOKIE_AGE = 86400  # 24 hours session timeout
+
+CSRF_COOKIE_SECURE = not DEBUG  # Send CSRF cookie only over HTTPS
+CSRF_COOKIE_HTTPONLY = True  # Prevent JavaScript access to CSRF cookie
+CSRF_COOKIE_SAMESITE = "Lax"  # Additional CSRF protection
+CSRF_USE_SESSIONS = False  # Store CSRF token in cookie (not session)
+CSRF_FAILURE_VIEW = "apps.core.views.csrf_failure"  # Custom CSRF failure view
+
+# Browser Security Headers (always enabled)
+SECURE_BROWSER_XSS_FILTER = True  # Enable browser XSS filter
+SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent MIME type sniffing
+X_FRAME_OPTIONS = "DENY"  # Prevent clickjacking by denying framing
+
+# Additional Security Settings
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"  # Control referrer information
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"  # Isolate browsing context
 
 # Django Guardian Configuration
 # Object-level permissions
