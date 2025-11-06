@@ -102,3 +102,6 @@ jsmin==3.0.1
 
 # API Rate Limiting
 django-ratelimit==4.1.0
+
+# Performance Testing
+locust==2.20.0
