@@ -1,0 +1,185 @@
+# ============================================================================
+# Docker Ignore File
+# ============================================================================
+# Excludes unnecessary files from Docker build context to:
+# - Reduce build context size
+# - Speed up builds
+# - Prevent sensitive files from being copied into images
+# ============================================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+.githooks
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+*.egg
+.pytest_cache
+.mypy_cache
+.coverage
+htmlcov
+.tox
+.hypothesis
+
+# Virtual Environments
+venv
+env
+ENV
+.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+*.md
+!README.md
+docs/
+*.txt
+!requirements.txt
+
+# Testing
+tests/
+*.test.py
+test_*.py
+*_test.py
+
+# Development
+.env.example
+docker-compose.yml
+docker-compose.dev.yml
+docker-compose.override.yml
+Dockerfile
+!Dockerfile.prod
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database
+*.db
+*.sqlite3
+db.sqlite3
+
+# Media and Static (will be collected during build)
+media/
+staticfiles/
+
+# Backups
+backups/
+*.dump
+*.sql
+*.gz
+*.tar
+*.zip
+*.enc
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+.circleci
+
+# Kubernetes
+k8s/
+*.yaml
+*.yml
+!docker-compose.prod.yml
+
+# Monitoring
+.prometheus
+.grafana
+
+# Playwright
+.playwright-mcp/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Locale compiled files (will be compiled during build)
+*.mo
+
+# Node modules (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Scripts
+scripts/
+*.sh
+!docker/*.sh
+
+# Configuration examples
+*.example
+*.sample
+
+# Memory and cache
+memory.json
+*.cache
+
+# Pre-commit
+.pre-commit-config.yaml
+
+# Setup files
+setup.sh
+setup.cfg
+pyproject.toml
+Makefile
+
+# Translation files
+untranslated_strings.txt
+translate_*.py
+add_*.py
+comprehensive_*.py
+
+# Task documentation
+TASK_*.md
+*_COMPLETE.md
+*_IMPLEMENTATION.md
+*_VERIFICATION.md
+*_STATUS.md
+*_SUMMARY.md
+*_FIXES*.md
+*_REQUIREMENTS*.md
+
+# Instruction files
+instruction.md
+backup.md
+
+# Verification scripts
+verify_*.py
+check_*.py
+assign_*.py
+create_test_*.py
