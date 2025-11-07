@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "widget_tweaks",  # Form widget styling
     "silk",  # Query profiling and optimization
     "compressor",  # Asset compression and minification
+    "django_celery_beat",  # Celery beat scheduler
     # Local apps
     "apps.core",
     "apps.inventory",

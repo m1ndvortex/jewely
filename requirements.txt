@@ -11,6 +11,7 @@ django-redis==5.4.0
 # Celery
 celery==5.3.6
 celery[redis]==5.3.6
+django-celery-beat==2.5.0
 
 # Development Tools
 black==24.2.0
