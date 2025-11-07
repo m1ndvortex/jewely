@@ -1045,7 +1045,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Add ARIA labels where appropriate
     - _Requirements: 29_
   
-  - [ ] 30.2 Implement skip navigation links
+  - [-] 30.2 Implement skip navigation links
     - Add skip to main content link
     - Add skip to navigation link
     - _Requirements: 29_
