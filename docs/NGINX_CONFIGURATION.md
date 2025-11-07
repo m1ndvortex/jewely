@@ -303,6 +303,259 @@ add_header Content-Security-Policy "
 " always;
 ```
 
+## WebSocket Proxying
+
+### Overview
+
+WebSocket support is configured for real-time features like notifications, live updates, and chat functionality. The configuration handles WebSocket upgrade requests and maintains long-lived connections.
+
+### Configuration
+
+WebSocket proxying is configured in `snippets/websocket.conf`:
+
+```nginx
+# Use HTTP/1.1 for WebSocket
+proxy_http_version 1.1;
+
+# WebSocket upgrade headers
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+
+# WebSocket connection timeouts (24 hours)
+proxy_connect_timeout 24h;
+proxy_send_timeout 24h;
+proxy_read_timeout 24h;
+
+# Disable buffering for WebSocket
+proxy_buffering off;
+
+# Keep connection alive
+tcp_nodelay on;
+```
+
+### Usage
+
+WebSocket connections are handled at the `/ws/` location:
+
+```nginx
+location /ws/ {
+    # Rate limiting for WebSocket connections
+    limit_req zone=general burst=10 nodelay;
+    limit_conn addr 5;
+    
+    # Proxy to Django
+    include /etc/nginx/snippets/proxy-params.conf;
+    proxy_pass http://django_backend;
+    
+    # WebSocket specific configuration
+    include /etc/nginx/snippets/websocket.conf;
+}
+```
+
+### Timeout Configuration
+
+The default timeout is **24 hours**, which is appropriate for most WebSocket applications. Adjust if needed:
+
+```nginx
+# For shorter-lived connections (e.g., 1 hour)
+proxy_connect_timeout 1h;
+proxy_send_timeout 1h;
+proxy_read_timeout 1h;
+
+# For very long-lived connections (e.g., 7 days)
+proxy_connect_timeout 7d;
+proxy_send_timeout 7d;
+proxy_read_timeout 7d;
+```
+
+### Testing WebSocket Connections
+
+#### Using wscat (WebSocket CLI tool)
+
+```bash
+# Install wscat
+npm install -g wscat
+
+# Test WebSocket connection
+wscat -c ws://localhost/ws/notifications/
+
+# Test with authentication
+wscat -c ws://localhost/ws/notifications/ -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+#### Using JavaScript
+
+```javascript
+// Connect to WebSocket
+const ws = new WebSocket('ws://localhost/ws/notifications/');
+
+// Connection opened
+ws.addEventListener('open', (event) => {
+    console.log('WebSocket connected');
+    ws.send('Hello Server!');
+});
+
+// Listen for messages
+ws.addEventListener('message', (event) => {
+    console.log('Message from server:', event.data);
+});
+
+// Connection closed
+ws.addEventListener('close', (event) => {
+    console.log('WebSocket disconnected');
+});
+
+// Error handling
+ws.addEventListener('error', (event) => {
+    console.error('WebSocket error:', event);
+});
+```
+
+#### Using Python
+
+```python
+import asyncio
+import websockets
+
+async def test_websocket():
+    uri = "ws://localhost/ws/notifications/"
+    async with websockets.connect(uri) as websocket:
+        # Send message
+        await websocket.send("Hello Server!")
+        
+        # Receive message
+        response = await websocket.recv()
+        print(f"Received: {response}")
+
+asyncio.run(test_websocket())
+```
+
+### Monitoring WebSocket Connections
+
+#### Check Active Connections
+
+```bash
+# View nginx status
+docker compose exec nginx curl http://localhost/nginx_status
+
+# Output includes:
+# Active connections: 15
+# Reading: 0 Writing: 1 Waiting: 14
+```
+
+#### Monitor WebSocket Traffic
+
+```bash
+# View access logs for WebSocket requests
+docker compose exec nginx grep "/ws/" /var/log/nginx/access.log
+
+# Monitor in real-time
+docker compose exec nginx tail -f /var/log/nginx/access.log | grep "/ws/"
+```
+
+### Troubleshooting WebSocket Issues
+
+#### 1. Connection Upgrade Failed
+
+**Symptoms**: WebSocket connection fails with 400 or 426 error
+
+**Causes**:
+- Missing Upgrade header
+- HTTP/1.0 instead of HTTP/1.1
+- Proxy not configured correctly
+
+**Solutions**:
+```bash
+# Verify websocket.conf is included
+docker compose exec nginx grep -r "websocket.conf" /etc/nginx/
+
+# Check nginx error log
+docker compose exec nginx tail -f /var/log/nginx/error.log
+
+# Test with curl
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" http://localhost/ws/test/
+```
+
+#### 2. Connection Timeout
+
+**Symptoms**: WebSocket connection drops after a period
+
+**Causes**:
+- Timeout values too short
+- Firewall closing idle connections
+- Load balancer timeout
+
+**Solutions**:
+```bash
+# Increase timeouts in websocket.conf
+proxy_read_timeout 48h;
+
+# Implement ping/pong heartbeat in application
+# Send ping every 30 seconds to keep connection alive
+```
+
+#### 3. High Memory Usage
+
+**Symptoms**: Nginx memory usage increases with WebSocket connections
+
+**Causes**:
+- Too many concurrent connections
+- Memory leak in application
+- Buffering enabled
+
+**Solutions**:
+```bash
+# Limit concurrent connections
+limit_conn addr 5;
+
+# Ensure buffering is disabled
+proxy_buffering off;
+
+# Monitor memory usage
+docker stats jewelry_shop_nginx
+```
+
+### Rate Limiting for WebSocket
+
+WebSocket connections are rate-limited to prevent abuse:
+
+```nginx
+# Allow 10 connection attempts per second
+limit_req zone=general burst=10 nodelay;
+
+# Maximum 5 concurrent connections per IP
+limit_conn addr 5;
+```
+
+Adjust based on your application needs:
+
+```nginx
+# For applications with many concurrent connections
+limit_conn addr 20;
+
+# For stricter rate limiting
+limit_req zone=general burst=5 nodelay;
+```
+
+### Security Considerations
+
+1. **Authentication**: Always authenticate WebSocket connections
+2. **Origin Validation**: Validate the Origin header to prevent CSRF
+3. **Rate Limiting**: Implement rate limiting to prevent DoS attacks
+4. **Encryption**: Use WSS (WebSocket Secure) in production
+5. **Timeout**: Set reasonable timeouts to prevent resource exhaustion
+
+### Production Deployment
+
+For production with SSL, WebSocket connections use WSS:
+
+```javascript
+// Use wss:// instead of ws://
+const ws = new WebSocket('wss://your-domain.com/ws/notifications/');
+```
+
+The HTTPS server block automatically handles WSS connections with the same configuration.
+
 ## Performance Optimization
 
 ### Gzip Compression

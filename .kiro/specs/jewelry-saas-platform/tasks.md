@@ -1079,7 +1079,7 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Generate ETags
     - _Requirements: 22_
   
-  - [ ] 31.4 Set up WebSocket proxying
+  - [x] 31.4 Set up WebSocket proxying
     - Configure WebSocket connection handling
     - Set appropriate timeouts
     - _Requirements: 22_
