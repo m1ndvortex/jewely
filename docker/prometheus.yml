@@ -55,7 +55,7 @@ scrape_configs:
   # Nginx metrics (requires nginx-prometheus-exporter)
   - job_name: 'nginx'
     static_configs:
-      - targets: ['nginx-exporter:9113']
+      - targets: ['nginx_exporter:9113']
         labels:
           service: 'nginx'
           component: 'proxy'
