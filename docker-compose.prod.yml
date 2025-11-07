@@ -1,330 +1,793 @@
 # ============================================================================
 # Production Docker Compose Configuration
+# Jewelry Management SaaS Platform
 # ============================================================================
-# This file defines the production deployment configuration for the
-# Jewelry Shop SaaS platform using the optimized production Dockerfile.
-#
-# Usage:
-#   docker-compose -f docker-compose.prod.yml up -d
-#
-# Prerequisites:
-#   - .env file with production environment variables
-#   - SSL certificates in docker/nginx/ssl/
-#   - Production database credentials
+# This configuration is optimized for production deployment with:
+# - All services configured for high availability
+# - Persistent volumes for data
+# - Network isolation for security
+# - Health checks for all services
+# - Resource limits for stability
+# - Restart policies for resilience
 # ============================================================================
 
-version: '3.8'
+version: '3.9'
 
+# ============================================================================
+# NETWORKS
+# ============================================================================
+# Two-tier network architecture for security:
+# - frontend: Nginx <-> Django communication
+# - backend: Django <-> Database/Redis/Celery communication
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  backend:
+    driver: bridge
+    internal: true  # No external access
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+# Named volumes for persistent data storage
+volumes:
+  # Database data
+  postgres_data:
+    driver: local
+  postgres_wal_archive:
+    driver: local
+  
+  # Cache data
+  redis_data:
+    driver: local
+  
+  # Application data
+  media_files:
+    driver: local
+  static_files:
+    driver: local
+  
+  # Backup storage
+  backups:
+    driver: local
+  
+  # Monitoring data
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  
+  # SSL certificates
+  certbot_www:
+    driver: local
+  certbot_conf:
+    driver: local
+  certbot_logs:
+    driver: local
+  
+  # Logs
+  nginx_logs:
+    driver: local
+  app_logs:
+    driver: local
+
+# ============================================================================
+# SERVICES
+# ============================================================================
 services:
-  # ============================================================================
+  
+  # ==========================================================================
   # PostgreSQL Database
-  # ============================================================================
+  # ==========================================================================
   db:
     image: postgres:15-alpine
     container_name: jewelry_shop_db_prod
     restart: unless-stopped
+    
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-jewelry_shop}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      POSTGRES_USER: ${DB_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${DB_SUPERUSER_PASSWORD}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data
+    
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      - postgres_wal_archive:/var/lib/postgresql/wal_archive
+      - backups:/backups
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/01-init-db.sh:ro
+      - ./docker/init-wal-archive.sh:/docker-entrypoint-initdb.d/02-init-wal-archive.sh:ro
       - ./docker/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-    ports:
-      - "5432:5432"
+    
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    
+    networks:
+      - backend
+    
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_SUPERUSER:-postgres} -d ${POSTGRES_DB:-jewelry_shop}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - jewelry_network
+      start_period: 30s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
+          cpus: '2.0'
           memory: 2G
         reservations:
+          cpus: '1.0'
           memory: 1G
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ============================================================================
-  # Redis Cache and Message Broker
-  # ============================================================================
+  # ==========================================================================
+  # Redis Cache & Message Broker
+  # ==========================================================================
   redis:
     image: redis:7-alpine
     container_name: jewelry_shop_redis_prod
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+    
+    networks:
+      - backend
+    
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - jewelry_network
+      start_period: 10s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
+          cpus: '1.0'
           memory: 512M
         reservations:
+          cpus: '0.5'
           memory: 256M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ============================================================================
+  # ==========================================================================
+  # PgBouncer Connection Pooler
+  # ==========================================================================
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: jewelry_shop_pgbouncer_prod
+    restart: unless-stopped
+    
+    environment:
+      DATABASE_URL: "postgres://app_user:${APP_DB_PASSWORD}@db:5432/${POSTGRES_DB:-jewelry_shop}"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 10
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      MAX_DB_CONNECTIONS: 100
+      MAX_USER_CONNECTIONS: 100
+      SERVER_IDLE_TIMEOUT: 600
+      SERVER_LIFETIME: 3600
+      SERVER_CONNECT_TIMEOUT: 15
+      QUERY_TIMEOUT: 0
+      QUERY_WAIT_TIMEOUT: 120
+      CLIENT_IDLE_TIMEOUT: 0
+      CLIENT_LOGIN_TIMEOUT: 60
+      AUTODB_IDLE_TIMEOUT: 3600
+      DNS_MAX_TTL: 15
+      DNS_NXDOMAIN_TTL: 15
+      LOG_CONNECTIONS: 1
+      LOG_DISCONNECTIONS: 1
+      LOG_POOLER_ERRORS: 1
+      STATS_PERIOD: 60
+      AUTH_TYPE: scram-sha-256
+    
+    volumes:
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    
+    networks:
+      - backend
+    
+    depends_on:
+      db:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=${APP_DB_PASSWORD} psql -h localhost -U app_user -d ${POSTGRES_DB:-jewelry_shop} -c 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================================================
   # Django Web Application
-  # ============================================================================
+  # ==========================================================================
   web:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    image: jewelry-shop:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    
+    image: jewelry-shop:${VERSION:-latest}
     container_name: jewelry_shop_web_prod
     restart: unless-stopped
+    
     env_file:
       - .env
+    
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-jewelry_shop}
+      - DATABASE_URL=postgres://app_user:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-jewelry_shop}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    
     volumes:
-      - media_data:/app/media
-      - static_data:/app/staticfiles
-      - log_data:/app/logs
-    ports:
-      - "8000:8000"
+      - media_files:/app/media
+      - static_files:/app/staticfiles
+      - app_logs:/app/logs
+      - backups:/backups
+      - postgres_wal_archive:/var/lib/postgresql/wal_archive
+    
+    networks:
+      - frontend
+      - backend
+    
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+    
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    networks:
-      - jewelry_network
+      start_period: 60s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '1.0'
+          cpus: '2.0'
+          memory: 2G
         reservations:
-          memory: 512M
-          cpus: '0.5'
-      replicas: 2  # Run 2 instances for high availability
+          cpus: '1.0'
+          memory: 1G
+      
+      # Replicas for high availability (uncomment for multiple instances)
+      # replicas: 3
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # Django needs to write to /tmp
+    tmpfs:
+      - /tmp
+      - /dev/shm
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  # ============================================================================
+  # ==========================================================================
   # Celery Worker
-  # ============================================================================
+  # ==========================================================================
   celery_worker:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    image: jewelry-shop:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    
+    image: jewelry-shop:${VERSION:-latest}
     container_name: jewelry_shop_celery_worker_prod
     restart: unless-stopped
-    command: celery -A config worker --loglevel=info --concurrency=4
+    
+    command: celery -A config worker --loglevel=info -Q celery,backups,pricing,reports,notifications --concurrency=4 --max-tasks-per-child=1000
+    
     env_file:
       - .env
+    
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-jewelry_shop}
+      - DATABASE_URL=postgres://app_user:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-jewelry_shop}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    
     volumes:
-      - media_data:/app/media
-      - log_data:/app/logs
-      - backup_data:/app/backups
+      - media_files:/app/media
+      - app_logs:/app/logs
+      - backups:/backups
+      - postgres_wal_archive:/var/lib/postgresql/wal_archive
+    
+    networks:
+      - backend
+    
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - jewelry_network
+      pgbouncer:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '1.0'
+          cpus: '2.0'
+          memory: 2G
         reservations:
-          memory: 512M
-          cpus: '0.5'
+          cpus: '1.0'
+          memory: 1G
+      
+      # Replicas for high availability (uncomment for multiple workers)
+      # replicas: 2
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  # ============================================================================
+  # ==========================================================================
   # Celery Beat Scheduler
-  # ============================================================================
+  # ==========================================================================
   celery_beat:
     build:
       context: .
       dockerfile: Dockerfile.prod
-    image: jewelry-shop:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    
+    image: jewelry-shop:${VERSION:-latest}
     container_name: jewelry_shop_celery_beat_prod
     restart: unless-stopped
+    
     command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    
     env_file:
       - .env
+    
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-jewelry_shop}
+      - DATABASE_URL=postgres://app_user:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-jewelry_shop}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    
     volumes:
-      - log_data:/app/logs
+      - app_logs:/app/logs
+    
+    networks:
+      - backend
+    
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - jewelry_network
+      pgbouncer:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+      celery_worker:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 256M
+          cpus: '0.5'
+          memory: 512M
         reservations:
-          memory: 128M
+          cpus: '0.25'
+          memory: 256M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ============================================================================
+  # ==========================================================================
   # Nginx Reverse Proxy
-  # ============================================================================
+  # ==========================================================================
   nginx:
     image: nginx:1.25-alpine
     container_name: jewelry_shop_nginx_prod
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+    
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./docker/nginx/snippets:/etc/nginx/snippets:ro
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
-      - static_data:/app/staticfiles:ro
-      - media_data:/app/media:ro
+      - static_files:/app/staticfiles:ro
+      - media_files:/app/media:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
       - nginx_logs:/var/log/nginx
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    networks:
+      - frontend
+    
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - jewelry_network
+      start_period: 20s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 256M
+          cpus: '1.0'
+          memory: 512M
         reservations:
-          memory: 128M
+          cpus: '0.5'
+          memory: 256M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
-  # ============================================================================
+  # ==========================================================================
+  # Certbot for SSL Certificates
+  # ==========================================================================
+  certbot:
+    image: certbot/certbot:latest
+    container_name: jewelry_shop_certbot_prod
+    restart: unless-stopped
+    
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+      - certbot_logs:/var/log/letsencrypt
+    
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
+    
+    networks:
+      - frontend
+    
+    depends_on:
+      - nginx
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # ==========================================================================
   # Prometheus Monitoring
-  # ============================================================================
+  # ==========================================================================
   prometheus:
     image: prom/prometheus:latest
     container_name: jewelry_shop_prometheus_prod
     restart: unless-stopped
+    
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    
     volumes:
       - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
+    
     networks:
-      - jewelry_network
+      - backend
+      - frontend
+    
+    depends_on:
+      - web
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
-          memory: 512M
+          cpus: '1.0'
+          memory: 1G
         reservations:
-          memory: 256M
+          cpus: '0.5'
+          memory: 512M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ============================================================================
+  # ==========================================================================
   # Grafana Dashboards
-  # ============================================================================
+  # ==========================================================================
   grafana:
     image: grafana/grafana:latest
     container_name: jewelry_shop_grafana_prod
     restart: unless-stopped
+    
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_INSTALL_PLUGINS=redis-datasource
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3000}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/system-overview.json
+      - GF_LOG_MODE=console
+      - GF_LOG_LEVEL=info
+    
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    ports:
-      - "3000:3000"
+      - ./docker/grafana/dashboards:/etc/grafana/dashboards:ro
+    
+    networks:
+      - backend
+      - frontend
+    
     depends_on:
       - prometheus
-    networks:
-      - jewelry_network
+    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
     deploy:
       resources:
         limits:
+          cpus: '0.5'
           memory: 512M
         reservations:
+          cpus: '0.25'
           memory: 256M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================================================
+  # Nginx Prometheus Exporter
+  # ==========================================================================
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: jewelry_shop_nginx_exporter_prod
+    restart: unless-stopped
+    
+    command:
+      - '--nginx.scrape-uri=http://nginx/nginx_status'
+    
+    networks:
+      - frontend
+      - backend
+    
+    depends_on:
+      - nginx
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
 # ============================================================================
-# Named Volumes
+# DEPLOYMENT NOTES
 # ============================================================================
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  media_data:
-    driver: local
-  static_data:
-    driver: local
-  log_data:
-    driver: local
-  backup_data:
-    driver: local
-  nginx_logs:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
-
-# ============================================================================
-# Networks
-# ============================================================================
-networks:
-  jewelry_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-
-# ============================================================================
-# Deployment Notes:
-# ============================================================================
-# 1. Create .env file with production variables
-# 2. Generate SSL certificates and place in docker/nginx/ssl/
-# 3. Update nginx configuration with your domain
-# 4. Run migrations: docker-compose -f docker-compose.prod.yml exec web python manage.py migrate
-# 5. Create superuser: docker-compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
-# 6. Collect static files: docker-compose -f docker-compose.prod.yml exec web python manage.py collectstatic
-# 7. Start services: docker-compose -f docker-compose.prod.yml up -d
-# 8. Monitor logs: docker-compose -f docker-compose.prod.yml logs -f
-# 9. Scale web service: docker-compose -f docker-compose.prod.yml up -d --scale web=4
+# 
+# 1. Environment Variables:
+#    - Copy .env.example to .env and configure all required variables
+#    - Ensure all passwords are strong and unique
+#    - Set VERSION for image tagging
+# 
+# 2. SSL Certificates:
+#    - Run ./docker/nginx/setup-ssl.sh to obtain Let's Encrypt certificates
+#    - Update nginx configuration with your domain name
+#    - Uncomment HTTPS server block in nginx config
+# 
+# 3. Initial Setup:
+#    docker compose -f docker-compose.prod.yml build
+#    docker compose -f docker-compose.prod.yml up -d
+#    docker compose -f docker-compose.prod.yml exec web python manage.py migrate
+#    docker compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
+#    docker compose -f docker-compose.prod.yml exec web python manage.py collectstatic --noinput
+# 
+# 4. Scaling:
+#    docker compose -f docker-compose.prod.yml up -d --scale web=3 --scale celery_worker=2
+# 
+# 5. Monitoring:
+#    - Prometheus: http://your-domain:9090
+#    - Grafana: http://your-domain:3000
+# 
+# 6. Backups:
+#    - Backups are stored in the 'backups' volume
+#    - Configure automated backup schedule in Django admin
+#    - Test restore procedures regularly
+# 
+# 7. Updates:
+#    docker compose -f docker-compose.prod.yml pull
+#    docker compose -f docker-compose.prod.yml up -d --build
+# 
+# 8. Logs:
+#    docker compose -f docker-compose.prod.yml logs -f [service_name]
+# 
 # ============================================================================
