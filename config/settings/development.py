@@ -187,9 +187,7 @@ BACKUP_LOCAL_PATH = os.getenv("BACKUP_LOCAL_PATH", str(BASE_DIR / "backups"))
 # Cloud Storage - Development (Optional)
 R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
 R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "")
-R2_ENDPOINT = (
-    f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else ""
-)
+R2_ENDPOINT = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else ""
 R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
 R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
 

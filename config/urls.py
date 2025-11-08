@@ -11,6 +11,8 @@ from django.urls import include, path
 from apps.core import views as core_views
 
 urlpatterns = [
+    # Health check endpoints (must be first for load balancers and K8s probes)
+    path("health/", include("apps.core.health")),
     path(
         "admin/backups/", include("apps.backups.urls")
     ),  # Backup management (must be before admin/)
