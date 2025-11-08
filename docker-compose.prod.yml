@@ -278,7 +278,7 @@ services:
       - .env
     
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
+      - DJANGO_SETTINGS_MODULE=config.settings.production
       - DATABASE_URL=postgres://app_user:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-jewelry_shop}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -357,7 +357,7 @@ services:
       - .env
     
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
+      - DJANGO_SETTINGS_MODULE=config.settings.production
       - DATABASE_URL=postgres://app_user:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-jewelry_shop}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -435,7 +435,7 @@ services:
       - .env
     
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
+      - DJANGO_SETTINGS_MODULE=config.settings.production
       - DATABASE_URL=postgres://app_user:${APP_DB_PASSWORD}@pgbouncer:5432/${POSTGRES_DB:-jewelry_shop}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0

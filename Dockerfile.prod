@@ -52,7 +52,7 @@ FROM python:3.11-slim as runtime
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH" \
-    DJANGO_SETTINGS_MODULE=config.settings \
+    DJANGO_SETTINGS_MODULE=config.settings.production \
     PORT=8000
 
 # Install only runtime dependencies (no build tools)

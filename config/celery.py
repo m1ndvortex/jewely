@@ -8,7 +8,7 @@ from celery import Celery
 from celery.schedules import crontab  # noqa: F401
 
 # Set the default Django settings module for the 'celery' program.
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 app = Celery("jewelry_shop")
 
