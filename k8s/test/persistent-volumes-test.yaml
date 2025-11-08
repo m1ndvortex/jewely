@@ -1,0 +1,63 @@
+# ============================================================================
+# Test Persistent Volume Claims (for minikube testing)
+# ============================================================================
+# These PVCs use ReadWriteOnce for minikube compatibility
+# Production should use ReadWriteMany as in persistent-volumes.yaml
+# ============================================================================
+
+---
+# Media Files PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-pvc
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce  # Changed from ReadWriteMany for minikube
+  resources:
+    requests:
+      storage: 1Gi  # Reduced for testing
+  storageClassName: standard
+  volumeMode: Filesystem
+
+---
+# Static Files PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: static-pvc
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce  # Changed from ReadWriteMany for minikube
+  resources:
+    requests:
+      storage: 1Gi  # Reduced for testing
+  storageClassName: standard
+  volumeMode: Filesystem
+
+---
+# Backups PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backups-pvc
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce  # Changed from ReadWriteMany for minikube
+  resources:
+    requests:
+      storage: 2Gi  # Reduced for testing
+  storageClassName: standard
+  volumeMode: Filesystem

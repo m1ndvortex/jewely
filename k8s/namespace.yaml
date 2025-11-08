@@ -1,0 +1,15 @@
+# ============================================================================
+# Namespace for Jewelry Shop SaaS Platform
+# ============================================================================
+# This namespace isolates all resources for the jewelry shop application
+# from other applications in the cluster.
+# ============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jewelry-shop
+  labels:
+    name: jewelry-shop
+    app: jewelry-shop
+    environment: production

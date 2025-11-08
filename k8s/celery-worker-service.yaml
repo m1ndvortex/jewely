@@ -1,0 +1,31 @@
+# ============================================================================
+# Celery Worker Service
+# ============================================================================
+# Headless service for Celery workers.
+# Used for monitoring and metrics collection, not for load balancing.
+# ============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: celery-worker-service
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: celery-worker
+    tier: backend
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service
+  selector:
+    app: jewelry-shop
+    component: celery-worker
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

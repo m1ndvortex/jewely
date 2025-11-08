@@ -1,0 +1,31 @@
+# ============================================================================
+# Django Application Service
+# ============================================================================
+# ClusterIP service for internal communication with Django pods.
+# This service is accessed by Nginx for reverse proxying.
+# ============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-service
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: django
+    tier: backend
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app: jewelry-shop
+    component: django
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+  sessionAffinity: None

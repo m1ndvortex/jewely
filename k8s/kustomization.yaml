@@ -1,0 +1,76 @@
+# ============================================================================
+# Kustomization Configuration
+# ============================================================================
+# This file defines the complete Kubernetes deployment for the
+# Jewelry Shop SaaS Platform. Use with kubectl apply -k k8s/
+# ============================================================================
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Namespace for all resources
+namespace: jewelry-shop
+
+# Common labels applied to all resources
+commonLabels:
+  app: jewelry-shop
+  managed-by: kustomize
+
+# Common annotations applied to all resources
+commonAnnotations:
+  version: "1.0.0"
+  environment: production
+
+# Resources to deploy
+resources:
+  # Namespace
+  - namespace.yaml
+  
+  # Storage
+  - persistent-volumes.yaml
+  
+  # Django Application
+  - django-deployment.yaml
+  - django-service.yaml
+  
+  # Nginx Reverse Proxy
+  - nginx-deployment.yaml
+  - nginx-service.yaml
+  
+  # Celery Workers
+  - celery-worker-deployment.yaml
+  - celery-worker-service.yaml
+  
+  # Celery Beat Scheduler
+  - celery-beat-deployment.yaml
+  - celery-beat-service.yaml
+
+# Images to use (can be overridden with kustomize edit set image)
+images:
+  - name: jewelry-shop
+    newName: your-registry/jewelry-shop
+    newTag: latest
+
+# ConfigMap generator (placeholder - actual ConfigMaps created in task 34.6)
+# configMapGenerator:
+#   - name: django-config
+#     literals:
+#       - DJANGO_SETTINGS_MODULE=config.settings.production
+#       - ENVIRONMENT=production
+
+# Secret generator (placeholder - actual Secrets created in task 34.6)
+# secretGenerator:
+#   - name: django-secrets
+#     literals:
+#       - SECRET_KEY=changeme
+
+# Replicas (can be overridden with kustomize edit set replicas)
+replicas:
+  - name: django
+    count: 3
+  - name: nginx
+    count: 2
+  - name: celery-worker
+    count: 2
+  - name: celery-beat
+    count: 1

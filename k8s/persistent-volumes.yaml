@@ -1,0 +1,65 @@
+# ============================================================================
+# Persistent Volume Claims
+# ============================================================================
+# These PVCs provide persistent storage for:
+# - Media files (user uploads, product images)
+# - Static files (CSS, JS, images)
+# - Backups (database backups, WAL archives)
+# ============================================================================
+
+---
+# Media Files PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-pvc
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteMany  # Multiple pods need read/write access
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard  # Replace with your storage class
+  volumeMode: Filesystem
+
+---
+# Static Files PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: static-pvc
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteMany  # Multiple pods need read access
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard  # Replace with your storage class
+  volumeMode: Filesystem
+
+---
+# Backups PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backups-pvc
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: storage
+spec:
+  accessModes:
+    - ReadWriteMany  # Multiple pods may need access
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard  # Replace with your storage class
+  volumeMode: Filesystem

@@ -1,0 +1,193 @@
+# ============================================================================
+# Celery Worker Deployment
+# ============================================================================
+# This deployment manages Celery worker pods for background task processing:
+# - Handles async tasks (backups, reports, notifications, pricing updates)
+# - Horizontally scalable based on queue depth
+# - Graceful shutdown to complete in-progress tasks
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: celery-worker
+    tier: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: celery-worker
+  template:
+    metadata:
+      labels:
+        app: jewelry-shop
+        component: celery-worker
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      
+      # Init container to wait for dependencies
+      initContainers:
+        - name: wait-for-redis
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z -v -w30 redis-service 6379; do
+                echo "Waiting for Redis connection..."
+                sleep 2
+              done
+              echo "Redis is ready!"
+        
+        - name: wait-for-db
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z -v -w30 postgres-service 5432; do
+                echo "Waiting for database connection..."
+                sleep 2
+              done
+              echo "Database is ready!"
+      
+      containers:
+        - name: celery-worker
+          image: jewelry-shop:latest  # Replace with your registry/image:tag
+          imagePullPolicy: Always
+          
+          command:
+            - celery
+            - -A
+            - config
+            - worker
+            - --loglevel=info
+            - -Q
+            - celery,backups,pricing,reports,notifications
+            - --concurrency=4
+            - --max-tasks-per-child=1000
+            - --without-gossip
+            - --without-mingle
+            - --without-heartbeat
+          
+          # Environment variables from ConfigMap and Secrets
+          envFrom:
+            - configMapRef:
+                name: django-config
+            - secretRef:
+                name: django-secrets
+          
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "config.settings.production"
+            - name: C_FORCE_ROOT
+              value: "true"
+          
+          # Resource requests and limits
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          
+          # Liveness probe - check if worker is responsive
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - celery -A config inspect ping -d celery@$HOSTNAME
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Readiness probe - check if worker can accept tasks
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - celery -A config inspect active -d celery@$HOSTNAME
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Volume mounts
+          volumeMounts:
+            - name: media
+              mountPath: /app/media
+            - name: logs
+              mountPath: /app/logs
+            - name: backups
+              mountPath: /backups
+            - name: tmp
+              mountPath: /tmp
+          
+          # Security context for the container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+      
+      # Volumes
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-pvc
+        - name: logs
+          emptyDir: {}
+        - name: backups
+          persistentVolumeClaim:
+            claimName: backups-pvc
+        - name: tmp
+          emptyDir: {}
+      
+      # Pod affinity - spread workers across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - celery-worker
+                topologyKey: kubernetes.io/hostname
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Termination grace period - allow time to finish tasks
+      terminationGracePeriodSeconds: 300  # 5 minutes

@@ -1,0 +1,27 @@
+# ============================================================================
+# Celery Beat Service
+# ============================================================================
+# Headless service for Celery Beat scheduler.
+# Used for monitoring and service discovery, not for load balancing.
+# ============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: celery-beat-service
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: celery-beat
+    tier: backend
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service
+  selector:
+    app: jewelry-shop
+    component: celery-beat
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

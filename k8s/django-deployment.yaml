@@ -1,0 +1,189 @@
+# ============================================================================
+# Django Application Deployment
+# ============================================================================
+# This deployment manages the Django web application pods with:
+# - 3 replicas for high availability
+# - Health probes for automatic recovery
+# - Resource limits for stability
+# - Rolling update strategy for zero-downtime deployments
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: django
+    tier: backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero-downtime deployments
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: django
+  template:
+    metadata:
+      labels:
+        app: jewelry-shop
+        component: django
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      
+      # Init container to wait for database
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z -v -w30 postgres-service 5432; do
+                echo "Waiting for database connection..."
+                sleep 2
+              done
+              echo "Database is ready!"
+      
+      containers:
+        - name: django
+          image: jewelry-shop:latest  # Replace with your registry/image:tag
+          imagePullPolicy: Always
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          
+          # Environment variables from ConfigMap and Secrets
+          envFrom:
+            - configMapRef:
+                name: django-config
+            - secretRef:
+                name: django-secrets
+          
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "config.settings.production"
+            - name: PORT
+              value: "8000"
+          
+          # Resource requests and limits
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          
+          # Liveness probe - restart if unhealthy
+          livenessProbe:
+            httpGet:
+              path: /health/live/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Readiness probe - stop routing traffic if not ready
+          readinessProbe:
+            httpGet:
+              path: /health/ready/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Startup probe - allow more time for initial startup
+          startupProbe:
+            httpGet:
+              path: /health/live/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 12  # 120 seconds total
+          
+          # Volume mounts
+          volumeMounts:
+            - name: media
+              mountPath: /app/media
+            - name: static
+              mountPath: /app/staticfiles
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+          
+          # Security context for the container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Django needs to write to /tmp
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+      
+      # Volumes
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-pvc
+        - name: static
+          persistentVolumeClaim:
+            claimName: static-pvc
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+      
+      # Pod affinity - spread pods across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - django
+                topologyKey: kubernetes.io/hostname
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Termination grace period
+      terminationGracePeriodSeconds: 30
