@@ -1,0 +1,151 @@
+name: Code Coverage Report
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  coverage:
+    name: Generate Coverage Report
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_jewelry_shop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better coverage comparison
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          DEBUG=True
+          SECRET_KEY=test-secret-key-for-ci-only
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_jewelry_shop
+          REDIS_URL=redis://localhost:6379/0
+          CELERY_BROKER_URL=redis://localhost:6379/0
+          ALLOWED_HOSTS=localhost,127.0.0.1
+          DJANGO_SETTINGS_MODULE=config.settings
+          EOF
+      
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_jewelry_shop
+      
+      - name: Run tests with coverage
+        run: |
+          pytest \
+            --cov=apps \
+            --cov=config \
+            --cov-report=html \
+            --cov-report=xml \
+            --cov-report=json \
+            --cov-report=term-missing \
+            --cov-fail-under=75 \
+            -v
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_jewelry_shop
+          REDIS_URL: redis://localhost:6379/0
+      
+      - name: Generate coverage badge
+        uses: tj-actions/coverage-badge-py@v2
+        with:
+          output: coverage.svg
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      
+      - name: Upload coverage HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-report
+          path: htmlcov/
+          retention-days: 30
+      
+      - name: Coverage comment on PR
+        if: github.event_name == 'pull_request'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 70
+      
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])")
+          echo "Current coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 75" | bc -l) )); then
+            echo "❌ Coverage is below 75% threshold"
+            exit 1
+          else
+            echo "✅ Coverage meets 75% threshold"
+          fi
+      
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          with open('coverage.json') as f:
+              data = json.load(f)
+              total = data['totals']
+              print(f\"**Total Coverage:** {total['percent_covered']:.2f}%\")
+              print(f\"**Lines Covered:** {total['covered_lines']}/{total['num_statements']}\")
+              print(f\"**Missing Lines:** {total['missing_lines']}\")
+          " >> $GITHUB_STEP_SUMMARY
+      
+      - name: Commit coverage badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add coverage.svg
+          git diff --staged --quiet || git commit -m "Update coverage badge [skip ci]"
+          git push
