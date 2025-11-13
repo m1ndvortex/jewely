@@ -1,0 +1,687 @@
+# ============================================================================
+# Kubernetes NetworkPolicies for Security Isolation
+# ============================================================================
+# These policies implement zero-trust networking for the jewelry-shop platform:
+# - Only authorized pods can communicate with each other
+# - No direct external access to databases and caches
+# - Explicit allow rules for all required traffic flows
+# - Monitoring tools can access all pods for metrics collection
+# 
+# Default behavior: Once a NetworkPolicy selects a pod, all traffic not
+# explicitly allowed is denied (default deny).
+# ============================================================================
+
+---
+# ============================================================================
+# Policy 1: Allow Nginx → Django Traffic
+# ============================================================================
+# Nginx needs to proxy HTTP requests to Django application pods
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nginx-to-django
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: django
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic from Nginx pods
+    - from:
+        - podSelector:
+            matchLabels:
+              component: nginx
+      ports:
+        - protocol: TCP
+          port: 8000  # Django application port
+
+---
+# ============================================================================
+# Policy 2: Allow Django → PostgreSQL Traffic
+# ============================================================================
+# Django needs to connect to PostgreSQL for database operations
+# This allows Django to connect via PgBouncer (connection pooler)
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-django-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo  # PostgreSQL pods managed by Zalando operator
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from Django pods
+    - from:
+        - podSelector:
+            matchLabels:
+              component: django
+      ports:
+        - protocol: TCP
+          port: 5432  # PostgreSQL port
+    
+    # Allow from PgBouncer (connection pooler)
+    - from:
+        - podSelector:
+            matchLabels:
+              application: db-connection-pooler
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow inter-pod communication for replication
+    - from:
+        - podSelector:
+            matchLabels:
+              application: spilo
+      ports:
+        - protocol: TCP
+          port: 5432  # PostgreSQL replication
+        - protocol: TCP
+          port: 8008  # Patroni REST API for health checks
+
+---
+# ============================================================================
+# Policy 3: Allow Django → PgBouncer Traffic
+# ============================================================================
+# Django connects to PostgreSQL via PgBouncer for connection pooling
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-django-to-pgbouncer
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: db-connection-pooler  # PgBouncer pods
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: django
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# ============================================================================
+# Policy 4: Allow Django → Redis Traffic
+# ============================================================================
+# Django needs to connect to Redis for caching and session storage
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-django-to-redis
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      component: server
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from Django pods
+    - from:
+        - podSelector:
+            matchLabels:
+              component: django
+      ports:
+        - protocol: TCP
+          port: 6379  # Redis port
+    
+    # Allow inter-pod communication for Redis replication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis
+              component: server
+      ports:
+        - protocol: TCP
+          port: 6379
+
+---
+# ============================================================================
+# Policy 5: Allow Celery Workers → PostgreSQL Traffic
+# ============================================================================
+# Celery workers need database access for background tasks
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-celery-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: db-connection-pooler  # PgBouncer
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: celery-worker
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# ============================================================================
+# Policy 6: Allow Celery Workers → Redis Traffic
+# ============================================================================
+# Celery workers use Redis as message broker for task queue
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-celery-to-redis
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      component: server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: celery-worker
+      ports:
+        - protocol: TCP
+          port: 6379
+
+---
+# ============================================================================
+# Policy 7: Allow Celery Beat → Redis Traffic
+# ============================================================================
+# Celery Beat scheduler needs Redis to store schedule information
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-celery-beat-to-redis
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      component: server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: celery-beat
+      ports:
+        - protocol: TCP
+          port: 6379
+
+---
+# ============================================================================
+# Policy 8: Allow Celery Beat → PostgreSQL Traffic
+# ============================================================================
+# Celery Beat may need database access for scheduled tasks
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-celery-beat-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: db-connection-pooler
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: celery-beat
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# ============================================================================
+# Policy 9: Allow Redis Sentinel → Redis Traffic
+# ============================================================================
+# Redis Sentinel needs to monitor Redis instances for failover
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-sentinel-to-redis
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      component: server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis-sentinel
+      ports:
+        - protocol: TCP
+          port: 6379
+
+---
+# ============================================================================
+# Policy 10: Allow Monitoring Tools → All Pods (Metrics Collection)
+# ============================================================================
+# Prometheus and other monitoring tools need to scrape metrics from all pods
+# This policy allows traffic from the monitoring namespace to all pods
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-to-all-pods
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector: {}  # Select all pods in the namespace
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from monitoring namespace (Prometheus, Grafana, etc.)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8000  # Django metrics
+        - protocol: TCP
+          port: 9113  # Nginx exporter
+        - protocol: TCP
+          port: 9187  # PostgreSQL exporter
+        - protocol: TCP
+          port: 9121  # Redis exporter
+    
+    # Also allow from pods with monitoring label in same namespace
+    - from:
+        - podSelector:
+            matchLabels:
+              role: monitoring
+      ports:
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 9113
+        - protocol: TCP
+          port: 9187
+        - protocol: TCP
+          port: 9121
+
+---
+# ============================================================================
+# Policy 11: Allow Ingress Controller → Nginx Traffic
+# ============================================================================
+# Traefik ingress controller needs to route external traffic to Nginx
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-nginx
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: nginx
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from Traefik ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: traefik
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 80   # HTTP
+        - protocol: TCP
+          port: 443  # HTTPS
+    
+    # Also allow from any ingress controller in kube-system
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+
+---
+# ============================================================================
+# Policy 12: Deny Direct External Access to PostgreSQL
+# ============================================================================
+# Explicitly deny all traffic to PostgreSQL except what's allowed above
+# This is redundant with the default deny behavior but makes intent clear
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-external-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Ingress
+  # No ingress rules = deny all (except what's allowed by other policies)
+
+---
+# ============================================================================
+# Policy 13: Deny Direct External Access to Redis
+# ============================================================================
+# Explicitly deny all traffic to Redis except what's allowed above
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-external-to-redis
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      component: server
+  policyTypes:
+    - Ingress
+  # No ingress rules = deny all (except what's allowed by other policies)
+
+---
+# ============================================================================
+# Policy 14: Allow DNS Resolution for All Pods
+# ============================================================================
+# All pods need to resolve DNS names (kube-dns/CoreDNS)
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-access
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector: {}  # All pods
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS queries to kube-dns/CoreDNS in kube-system namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 15: Allow Django Egress to External Services
+# ============================================================================
+# Django needs to make outbound connections to external APIs
+# (payment gateways, SMS providers, email services, etc.)
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-django-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: django
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              application: spilo
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow to PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              application: db-connection-pooler
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+              component: server
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow to external services (HTTPS)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443  # HTTPS for external APIs
+        - protocol: TCP
+          port: 80   # HTTP for external APIs
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 16: Allow Celery Worker Egress
+# ============================================================================
+# Celery workers need to connect to databases, Redis, and external services
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-celery-worker-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: celery-worker
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to PostgreSQL via PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              application: db-connection-pooler
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+              component: server
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow to external services (for webhooks, notifications, etc.)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 587  # SMTP for email
+        - protocol: TCP
+          port: 25   # SMTP
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 17: Allow Nginx Egress to Django
+# ============================================================================
+# Nginx needs to proxy requests to Django backend
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nginx-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: nginx
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to Django
+    - to:
+        - podSelector:
+            matchLabels:
+              component: django
+      ports:
+        - protocol: TCP
+          port: 8000
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

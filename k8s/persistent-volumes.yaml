@@ -1,14 +1,26 @@
 # ============================================================================
-# Persistent Volume Claims
+# Persistent Volume Claims for Stateful Data
 # ============================================================================
 # These PVCs provide persistent storage for:
-# - Media files (user uploads, product images)
-# - Static files (CSS, JS, images)
-# - Backups (database backups, WAL archives)
+# - Media files (user uploads, product images) - 50Gi
+# - Static files (CSS, JS, images) - 10Gi
+# - Backups (database backups, WAL archives) - 100Gi
+#
+# Storage Classes:
+# - k3d development: local-path (ReadWriteOnce only)
+# - Production: longhorn (supports ReadWriteMany for true shared storage)
+#
+# IMPORTANT: local-path storage class only supports ReadWriteOnce (RWO)
+# For development, we use RWO which means only one pod can mount the volume.
+# For production with multiple pods, use Longhorn or NFS-based storage.
+#
+# Note: PostgreSQL and Redis use volumeClaimTemplates in their StatefulSets
+# - PostgreSQL: 100Gi per replica (3 replicas = 300Gi total)
+# - Redis: 10Gi per replica (3 replicas = 30Gi total)
 # ============================================================================
 
 ---
-# Media Files PVC
+# Media Files PVC - For user uploads and product images
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -17,17 +29,18 @@ metadata:
   labels:
     app: jewelry-shop
     component: storage
+    type: media
 spec:
   accessModes:
-    - ReadWriteMany  # Multiple pods need read/write access
+    - ReadWriteOnce  # RWO for k3d local-path, change to RWX with Longhorn in production
   resources:
     requests:
       storage: 50Gi
-  storageClassName: standard  # Replace with your storage class
+  storageClassName: local-path  # k3d: local-path, production: longhorn
   volumeMode: Filesystem
 
 ---
-# Static Files PVC
+# Static Files PVC - For CSS, JS, and static assets
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -36,17 +49,18 @@ metadata:
   labels:
     app: jewelry-shop
     component: storage
+    type: static
 spec:
   accessModes:
-    - ReadWriteMany  # Multiple pods need read access
+    - ReadWriteOnce  # RWO for k3d local-path, change to RWX with Longhorn in production
   resources:
     requests:
       storage: 10Gi
-  storageClassName: standard  # Replace with your storage class
+  storageClassName: local-path  # k3d: local-path, production: longhorn
   volumeMode: Filesystem
 
 ---
-# Backups PVC
+# Backups PVC - For database backups and WAL archives
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -55,11 +69,12 @@ metadata:
   labels:
     app: jewelry-shop
     component: storage
+    type: backups
 spec:
   accessModes:
-    - ReadWriteMany  # Multiple pods may need access
+    - ReadWriteOnce  # RWO for k3d local-path, change to RWX with Longhorn in production
   resources:
     requests:
       storage: 100Gi
-  storageClassName: standard  # Replace with your storage class
+  storageClassName: local-path  # k3d: local-path, production: longhorn
   volumeMode: Filesystem

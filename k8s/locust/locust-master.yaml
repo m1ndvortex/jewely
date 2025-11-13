@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-master
+  namespace: jewelry-shop
+  labels:
+    app: locust
+    role: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust
+      role: master
+  template:
+    metadata:
+      labels:
+        app: locust
+        role: master
+    spec:
+      containers:
+      - name: locust
+        image: locust-jewelry:latest
+        imagePullPolicy: Never  # For k3d local images
+        args:
+          - --master
+          - --host=http://django-service.jewelry-shop.svc.cluster.local
+          - --web-port=8089
+          - --expect-workers=3
+        ports:
+        - containerPort: 8089
+          name: web
+        - containerPort: 5557
+          name: master-bind
+        - containerPort: 5558
+          name: master-bind-2
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-master
+  namespace: jewelry-shop
+  labels:
+    app: locust
+    role: master
+spec:
+  type: NodePort
+  selector:
+    app: locust
+    role: master
+  ports:
+  - name: web
+    port: 8089
+    targetPort: 8089
+    nodePort: 30089
+  - name: master-bind
+    port: 5557
+    targetPort: 5557
+  - name: master-bind-2
+    port: 5558
+    targetPort: 5558

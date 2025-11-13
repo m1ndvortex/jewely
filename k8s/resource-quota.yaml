@@ -34,7 +34,7 @@ spec:
     
     # Storage Resources
     requests.storage: "500Gi"    # Total storage requests across all PVCs
-    persistentvolumeclaims: "10" # Maximum number of PVCs
+    persistentvolumeclaims: "15" # Maximum number of PVCs (3 PostgreSQL + 3 Redis + 3 Sentinel + 3 manual + buffer)
     
     # Object Counts
     pods: "50"                   # Maximum number of pods
