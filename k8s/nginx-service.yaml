@@ -1,8 +1,9 @@
 # ============================================================================
 # Nginx Service
 # ============================================================================
-# LoadBalancer service to expose Nginx to external traffic.
-# This is the entry point for all HTTP/HTTPS traffic to the application.
+# ClusterIP service for Nginx reverse proxy.
+# This service is accessed by the Ingress controller (Traefik).
+# For direct external access in k3d, use LoadBalancer type.
 # ============================================================================
 
 apiVersion: v1
@@ -14,20 +15,8 @@ metadata:
     app: jewelry-shop
     component: nginx
     tier: frontend
-  annotations:
-    # Cloud provider specific annotations (uncomment as needed)
-    # AWS:
-    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    # service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:..."
-    # service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
-    # 
-    # GCP:
-    # cloud.google.com/load-balancer-type: "External"
-    # 
-    # Azure:
-    # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: jewelry-shop
     component: nginx
@@ -39,6 +28,10 @@ spec:
     - name: https
       port: 443
       targetPort: https
+      protocol: TCP
+    - name: metrics
+      port: 9113
+      targetPort: metrics
       protocol: TCP
   sessionAffinity: ClientIP
   sessionAffinityConfig:

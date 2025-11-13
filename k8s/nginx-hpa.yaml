@@ -1,0 +1,106 @@
+# ============================================================================
+# Nginx Reverse Proxy Horizontal Pod Autoscaler
+# ============================================================================
+# Automatically scales Nginx reverse proxy pods based on CPU and memory usage.
+#
+# Scaling Configuration:
+# - Min Replicas: 2 (high availability)
+# - Max Replicas: 5 (handle peak loads)
+# - CPU Threshold: 70%
+# - Memory Threshold: 80%
+#
+# Scaling Behavior:
+# - Scale-Up: Moderate (50% increase every 30s)
+# - Scale-Down: Gradual (50% decrease every 60s after 3min stabilization)
+# ============================================================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-hpa
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: nginx
+    tier: frontend
+  annotations:
+    description: "HPA for Nginx reverse proxy pods"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx
+  
+  # Scaling boundaries
+  minReplicas: 2   # Maintain 2 pods minimum for high availability
+  maxReplicas: 5   # Scale up to 5 pods for peak loads
+  
+  # Scaling metrics
+  metrics:
+    # Primary metric: CPU usage
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70  # Scale up when average CPU > 70%
+    
+    # Secondary metric: Memory usage
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80  # Scale up when average memory > 80%
+  
+  # Scaling behavior - moderate scale-up, gradual scale-down
+  behavior:
+    # Scale-down policy: Gradual and conservative
+    scaleDown:
+      stabilizationWindowSeconds: 180  # Wait 3 minutes before scaling down
+      policies:
+        - type: Percent
+          value: 50  # Scale down by max 50% at a time
+          periodSeconds: 60  # Every 60 seconds
+      selectPolicy: Min  # Use the most conservative policy
+    
+    # Scale-up policy: Moderate
+    scaleUp:
+      stabilizationWindowSeconds: 30  # Wait 30 seconds before scaling up
+      policies:
+        # Policy 1: Increase by 50%
+        - type: Percent
+          value: 50  # Increase by 50%
+          periodSeconds: 30  # Every 30 seconds
+        
+        # Policy 2: Add 1 pod at a time
+        - type: Pods
+          value: 1  # Add 1 pod per period
+          periodSeconds: 30  # Every 30 seconds
+      
+      selectPolicy: Max  # Use the policy that scales fastest
+
+---
+# ============================================================================
+# Pod Disruption Budget for Nginx
+# ============================================================================
+# Ensures at least 1 pod is always available during voluntary disruptions
+# ============================================================================
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nginx-pdb
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: nginx
+    tier: frontend
+spec:
+  minAvailable: 1  # Always keep at least 1 pod running
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: nginx
+  
+  unhealthyPodEvictionPolicy: IfHealthyBudget

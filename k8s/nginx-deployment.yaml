@@ -46,10 +46,33 @@ spec:
         runAsGroup: 101
         fsGroup: 101
       
+      initContainers:
+        - name: copy-configs
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              cp /tmp/nginx-config/nginx.conf /etc/nginx-writable/nginx.conf
+              chmod 644 /etc/nginx-writable/nginx.conf
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /tmp/nginx-config
+              readOnly: true
+            - name: nginx-config-writable
+              mountPath: /etc/nginx-writable
+          securityContext:
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
+      
       containers:
         - name: nginx
           image: nginx:1.25-alpine
           imagePullPolicy: IfNotPresent
+          
+          command: ["nginx"]
+          args: ["-c", "/etc/nginx-writable/nginx.conf", "-g", "daemon off;"]
           
           ports:
             - name: http
@@ -62,35 +85,27 @@ spec:
           # Resource requests and limits
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 250m
+              memory: 256Mi
             limits:
               cpu: 500m
               memory: 512Mi
           
-          # Liveness probe
+          # Liveness probe - TCP check on port 80
           livenessProbe:
-            httpGet:
-              path: /health/
+            tcpSocket:
               port: http
-              httpHeaders:
-                - name: Host
-                  value: localhost
-            initialDelaySeconds: 30
-            periodSeconds: 30
-            timeoutSeconds: 5
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
             successThreshold: 1
             failureThreshold: 3
           
-          # Readiness probe
+          # Readiness probe - TCP check on port 80
           readinessProbe:
-            httpGet:
-              path: /health/
+            tcpSocket:
               port: http
-              httpHeaders:
-                - name: Host
-                  value: localhost
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
             successThreshold: 1
@@ -98,9 +113,8 @@ spec:
           
           # Volume mounts
           volumeMounts:
-            - name: nginx-config
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
+            - name: nginx-config-writable
+              mountPath: /etc/nginx-writable
               readOnly: true
             - name: nginx-conf-d
               mountPath: /etc/nginx/conf.d
@@ -124,7 +138,7 @@ spec:
           # Security context for the container
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
             runAsNonRoot: true
             runAsUser: 101
             capabilities:
@@ -139,7 +153,7 @@ spec:
           imagePullPolicy: IfNotPresent
           
           args:
-            - --nginx.scrape-uri=http://localhost/nginx_status
+            - --nginx.scrape-uri=http://127.0.0.1:80/nginx_status
           
           ports:
             - name: metrics
@@ -148,11 +162,11 @@ spec:
           
           resources:
             requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
               cpu: 100m
               memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
           
           livenessProbe:
             httpGet:
@@ -175,18 +189,19 @@ spec:
         - name: nginx-config
           configMap:
             name: nginx-config
+        - name: nginx-config-writable
+          emptyDir: {}
         - name: nginx-conf-d
           configMap:
             name: nginx-conf-d
         - name: nginx-snippets
           configMap:
             name: nginx-snippets
+        # Using emptyDir for static and media until PVCs are created in task 34.12
         - name: static
-          persistentVolumeClaim:
-            claimName: static-pvc
+          emptyDir: {}
         - name: media
-          persistentVolumeClaim:
-            claimName: media-pvc
+          emptyDir: {}
         - name: nginx-cache
           emptyDir: {}
         - name: nginx-run

@@ -1,0 +1,23 @@
+# ============================================================================
+# Celery Worker Pod Disruption Budget
+# ============================================================================
+# This PDB ensures that at least 2 out of 3 worker pods are always available
+# during voluntary disruptions (node drains, updates, etc.)
+# ============================================================================
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: celery-worker-pdb
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: celery-worker
+    tier: backend
+spec:
+  minAvailable: 2  # At least 2 workers must be available
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: celery-worker
+  unhealthyPodEvictionPolicy: IfHealthyBudget

@@ -1,0 +1,88 @@
+---
+# Let's Encrypt Staging ClusterIssuer
+# Use this for testing to avoid rate limits
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  annotations:
+    description: "Let's Encrypt Staging environment for testing SSL certificates"
+spec:
+  acme:
+    # Let's Encrypt staging server
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    
+    # Email address for ACME registration
+    # IMPORTANT: Replace with your actual email address
+    email: admin@jewelry-shop.com
+    
+    # Secret to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    
+    # Enable HTTP-01 challenge provider
+    solvers:
+      - http01:
+          ingress:
+            class: traefik
+
+---
+# Let's Encrypt Production ClusterIssuer
+# Use this for production SSL certificates
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  annotations:
+    description: "Let's Encrypt Production environment for valid SSL certificates"
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    
+    # Email address for ACME registration
+    # IMPORTANT: Replace with your actual email address
+    # This email will receive certificate expiration notices
+    email: admin@jewelry-shop.com
+    
+    # Secret to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    
+    # Enable HTTP-01 challenge provider
+    # This will create temporary Ingress resources to validate domain ownership
+    solvers:
+      - http01:
+          ingress:
+            class: traefik
+            # Optional: specify service type
+            serviceType: ClusterIP
+
+---
+# Alternative: DNS-01 challenge for wildcard certificates
+# Uncomment and configure if you need wildcard certificates (*.jewelry-shop.com)
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: letsencrypt-dns-prod
+#   annotations:
+#     description: "Let's Encrypt with DNS-01 challenge for wildcard certificates"
+# spec:
+#   acme:
+#     server: https://acme-v02.api.letsencrypt.org/directory
+#     email: admin@jewelry-shop.com
+#     privateKeySecretRef:
+#       name: letsencrypt-dns-prod-account-key
+#     
+#     # DNS-01 challenge using Cloudflare
+#     # Replace with your DNS provider
+#     solvers:
+#       - dns01:
+#           cloudflare:
+#             email: admin@jewelry-shop.com
+#             apiTokenSecretRef:
+#               name: cloudflare-api-token
+#               key: api-token
+#         selector:
+#           dnsZones:
+#             - "jewelry-shop.com"

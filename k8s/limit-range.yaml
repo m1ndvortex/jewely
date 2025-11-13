@@ -1,0 +1,115 @@
+# ============================================================================
+# LimitRange for Jewelry Shop Namespace
+# ============================================================================
+# This LimitRange sets default resource requests and limits for pods and
+# containers in the jewelry-shop namespace. It also enforces minimum and
+# maximum resource constraints to prevent resource starvation and waste.
+# 
+# Benefits:
+# - Prevents pods from consuming excessive resources
+# - Sets sensible defaults for pods without resource specifications
+# - Ensures minimum resource guarantees for stability
+# - Prevents accidental resource exhaustion
+# ============================================================================
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: jewelry-shop-limits
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: resource-management
+spec:
+  limits:
+    # ========================================================================
+    # Container Limits
+    # ========================================================================
+    # These limits apply to individual containers within pods
+    # ========================================================================
+    - type: Container
+      # Default resource requests (if not specified)
+      default:
+        cpu: "500m"      # 0.5 CPU cores
+        memory: "512Mi"  # 512 MiB
+      # Default resource limits (if not specified)
+      defaultRequest:
+        cpu: "250m"      # 0.25 CPU cores
+        memory: "256Mi"  # 256 MiB
+      # Maximum resources a container can request
+      max:
+        cpu: "4"         # 4 CPU cores
+        memory: "8Gi"    # 8 GiB
+      # Minimum resources a container must request
+      min:
+        cpu: "100m"      # 0.1 CPU cores
+        memory: "128Mi"  # 128 MiB
+      # Maximum ratio between limit and request
+      maxLimitRequestRatio:
+        cpu: "4"         # Limit can be up to 4x the request
+        memory: "4"      # Limit can be up to 4x the request
+    
+    # ========================================================================
+    # Pod Limits
+    # ========================================================================
+    # These limits apply to the sum of all containers in a pod
+    # ========================================================================
+    - type: Pod
+      # Maximum resources a pod can request
+      max:
+        cpu: "8"         # 8 CPU cores total
+        memory: "16Gi"   # 16 GiB total
+      # Minimum resources a pod must request
+      min:
+        cpu: "100m"      # 0.1 CPU cores total
+        memory: "128Mi"  # 128 MiB total
+    
+    # ========================================================================
+    # PersistentVolumeClaim Limits
+    # ========================================================================
+    # These limits apply to storage requests
+    # ========================================================================
+    - type: PersistentVolumeClaim
+      # Maximum storage a PVC can request
+      max:
+        storage: "200Gi"  # 200 GiB maximum per PVC
+      # Minimum storage a PVC must request
+      min:
+        storage: "1Gi"    # 1 GiB minimum per PVC
+
+---
+# ============================================================================
+# LimitRange for Development/Testing Workloads
+# ============================================================================
+# This LimitRange is for smaller, non-production workloads like test pods
+# and development containers that don't need as many resources.
+# ============================================================================
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: jewelry-shop-dev-limits
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: resource-management
+    environment: development
+spec:
+  limits:
+    # Container limits for development workloads
+    - type: Container
+      default:
+        cpu: "200m"
+        memory: "256Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      max:
+        cpu: "1"
+        memory: "2Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+      maxLimitRequestRatio:
+        cpu: "2"
+        memory: "2"

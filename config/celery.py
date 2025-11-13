@@ -18,8 +18,8 @@ app = Celery("jewelry_shop")
 #   should have a `CELERY_` prefix.
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
-# Configure broker connection retry on startup for Celery 6.0+ compatibility
-app.conf.broker_connection_retry_on_startup = True
+# Broker connection retry handled via Django settings (CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP)
+# Do not set directly on app.conf in Celery 5.3.x to avoid compatibility issues
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
@@ -80,7 +80,8 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute="*/15"),
         "options": {"queue": "reports", "priority": 7},
     },
-    # Clean up old report files daily at 4:30 AM (moved from 4:00 AM to avoid conflict with config backup)
+    # Clean up old report files daily at 4:30 AM (moved from 4:00 AM to avoid
+    # conflict with config backup)
     "cleanup-old-report-files": {
         "task": "apps.reporting.tasks.cleanup_old_report_files",
         "schedule": crontab(hour=4, minute=30),

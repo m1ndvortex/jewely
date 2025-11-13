@@ -46,7 +46,8 @@ def send_email_task(self, email_notification_id: str):
 
         template = EmailTemplate.objects.get(name=email_notification.template_name, is_active=True)
 
-        # For now, we'll use basic context - in production, context should be stored or reconstructed
+        # For now, we'll use basic context - in production, context should be
+        # stored or reconstructed
         context = {
             "user": email_notification.user,
             "timestamp": timezone.now(),

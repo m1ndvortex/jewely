@@ -1,0 +1,344 @@
+# ============================================================================
+# Nginx ConfigMaps for Kubernetes Deployment
+# ============================================================================
+# This file contains all nginx configuration files as ConfigMaps:
+# - nginx.conf (main configuration)
+# - conf.d/jewelry-shop.conf (site configuration)
+# - snippets/*.conf (reusable configuration snippets)
+# ============================================================================
+
+---
+# Main Nginx Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: nginx
+data:
+  nginx.conf: |
+    # Main Nginx Configuration for Jewelry SaaS Platform (Kubernetes)
+    # Optimized for high performance and security
+    
+    user nginx;
+    worker_processes auto;
+    pid /var/run/nginx.pid;
+    error_log /var/log/nginx/error.log warn;
+    
+    events {
+        worker_connections 2048;
+        use epoll;
+        multi_accept on;
+    }
+    
+    http {
+        include /etc/nginx/mime.types;
+        default_type application/octet-stream;
+    
+        # Custom log format with response times
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for" '
+                        'rt=$request_time uct="$upstream_connect_time" '
+                        'uht="$upstream_header_time" urt="$upstream_response_time"';
+    
+        # JSON log format for structured logging
+        log_format json_combined escape=json
+            '{'
+                '"time_local":"$time_local",'
+                '"remote_addr":"$remote_addr",'
+                '"remote_user":"$remote_user",'
+                '"request":"$request",'
+                '"status": "$status",'
+                '"body_bytes_sent":"$body_bytes_sent",'
+                '"request_time":"$request_time",'
+                '"http_referrer":"$http_referer",'
+                '"http_user_agent":"$http_user_agent",'
+                '"http_x_forwarded_for":"$http_x_forwarded_for",'
+                '"upstream_connect_time":"$upstream_connect_time",'
+                '"upstream_header_time":"$upstream_header_time",'
+                '"upstream_response_time":"$upstream_response_time"'
+            '}';
+    
+        # Access and error logs
+        access_log /var/log/nginx/access.log main;
+        error_log /var/log/nginx/error.log warn;
+    
+        # Performance optimizations
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        keepalive_timeout 65;
+        types_hash_max_size 2048;
+        server_tokens off;
+    
+        # Buffer sizes
+        client_body_buffer_size 128k;
+        client_max_body_size 100M;
+        client_header_buffer_size 1k;
+        large_client_header_buffers 4 16k;
+    
+        # Timeouts
+        client_body_timeout 12;
+        client_header_timeout 12;
+        send_timeout 10;
+    
+        # Rate limiting zones
+        limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+        limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+        limit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;
+        limit_req_zone $binary_remote_addr zone=admin:10m rate=10r/s;
+    
+        # Connection limiting
+        limit_conn_zone $binary_remote_addr zone=addr:10m;
+    
+        # Gzip compression
+        include /etc/nginx/snippets/gzip.conf;
+    
+        # Cache expiration map
+        map $sent_http_content_type $expires_map {
+            default                    off;
+            text/html                  1h;
+            text/css                   1d;
+            text/javascript            1d;
+            application/javascript     1d;
+            application/x-javascript   1d;
+            image/gif                  30d;
+            image/jpeg                 30d;
+            image/jpg                  30d;
+            image/png                  30d;
+            image/svg+xml              30d;
+            image/x-icon               30d;
+            image/webp                 30d;
+            font/woff                  365d;
+            font/woff2                 365d;
+            application/json           1h;
+            application/xml            1h;
+        }
+    
+        # Include site configurations
+        include /etc/nginx/conf.d/*.conf;
+    }
+
+---
+# Site Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf-d
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: nginx
+data:
+  jewelry-shop.conf: |
+    # Jewelry SaaS Platform - Kubernetes Site Configuration
+    # Handles HTTP traffic, reverse proxy to Django, and static files
+    
+    # Upstream Django application servers
+    upstream django_backend {
+        least_conn;
+        server django-service:80 max_fails=3 fail_timeout=30s;
+        keepalive 32;
+    }
+    
+    # HTTP Server
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name _;
+        
+        # Security headers
+        include /etc/nginx/snippets/security-headers-dev.conf;
+        
+        # Static files
+        location /static/ {
+            alias /app/staticfiles/;
+            expires 30d;
+            add_header Cache-Control "public, immutable";
+            etag on;
+            access_log off;
+            add_header Access-Control-Allow-Origin "*" always;
+        }
+        
+        # Media files
+        location /media/ {
+            alias /app/media/;
+            expires 7d;
+            add_header Cache-Control "public";
+            etag on;
+            
+            # Prevent execution of scripts
+            location ~* \.(php|py|pl|sh|cgi)$ {
+                deny all;
+            }
+        }
+        
+        # Metrics and health check endpoints
+        include /etc/nginx/snippets/metrics.conf;
+        
+        # Admin panel - Stricter rate limiting
+        location /admin/ {
+            limit_req zone=admin burst=10 nodelay;
+            limit_conn addr 5;
+            include /etc/nginx/snippets/proxy-params.conf;
+            proxy_pass http://django_backend;
+        }
+        
+        # Authentication endpoints - Prevent brute force
+        location ~ ^/(accounts/login|api/auth/login|api/token)/ {
+            limit_req zone=login burst=3 nodelay;
+            limit_conn addr 3;
+            include /etc/nginx/snippets/proxy-params.conf;
+            proxy_pass http://django_backend;
+        }
+        
+        # API endpoints
+        location /api/ {
+            limit_req zone=api burst=30 nodelay;
+            limit_conn addr 10;
+            include /etc/nginx/snippets/proxy-params.conf;
+            proxy_pass http://django_backend;
+        }
+        
+        # WebSocket connections
+        location /ws/ {
+            limit_req zone=general burst=10 nodelay;
+            limit_conn addr 5;
+            include /etc/nginx/snippets/websocket-proxy.conf;
+            proxy_pass http://django_backend;
+        }
+        
+        # Default location - Proxy to Django
+        location / {
+            limit_req zone=general burst=20 nodelay;
+            limit_conn addr 10;
+            include /etc/nginx/snippets/proxy-params.conf;
+            proxy_pass http://django_backend;
+        }
+        
+        # Deny access to hidden files
+        location ~ /\. {
+            deny all;
+            access_log off;
+            log_not_found off;
+        }
+    }
+
+---
+# Nginx Snippets
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-snippets
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: nginx
+data:
+  gzip.conf: |
+    # Gzip Compression Configuration
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        text/x-component
+        application/json
+        application/javascript
+        application/x-javascript
+        application/xml
+        application/xml+rss
+        application/xhtml+xml
+        application/rss+xml
+        application/atom+xml
+        application/ld+json
+        application/manifest+json
+        application/vnd.ms-fontobject
+        application/x-font-ttf
+        application/x-font-opentype
+        application/font-woff
+        application/font-woff2
+        font/woff
+        font/woff2
+        font/ttf
+        font/eot
+        font/otf
+        image/svg+xml
+        image/x-icon;
+    gzip_disable "msie6";
+    gzip_min_length 256;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+  
+  proxy-params.conf: |
+    # Proxy Parameters for Django Backend
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $server_name;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_connect_timeout 60s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 60s;
+    proxy_buffering on;
+    proxy_buffer_size 4k;
+    proxy_buffers 8 4k;
+    proxy_busy_buffers_size 8k;
+    proxy_redirect off;
+    proxy_http_version 1.1;
+  
+  security-headers-dev.conf: |
+    # Security Headers for Development
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://api.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self), usb=(), magnetometer=(), gyroscope=(), accelerometer=()" always;
+  
+  metrics.conf: |
+    # Nginx Metrics Configuration
+    location /nginx_status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        allow 172.16.0.0/12;
+        allow 10.0.0.0/8;
+        allow 192.168.0.0/16;
+        deny all;
+    }
+    
+    location /health/ {
+        access_log off;
+        include /etc/nginx/snippets/proxy-params.conf;
+        proxy_pass http://django_backend;
+    }
+  
+  cache.conf: |
+    # Cache Configuration
+    expires $expires_map;
+    add_header Cache-Control "public";
+    etag on;
+  
+  websocket-proxy.conf: |
+    # WebSocket Proxy Configuration
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_http_version 1.1;
+    proxy_connect_timeout 7d;
+    proxy_send_timeout 7d;
+    proxy_read_timeout 7d;
+    proxy_buffering off;

@@ -1,0 +1,220 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: jewelry-shop
+  labels:
+    app: redis
+    component: sentinel
+spec:
+  type: ClusterIP
+  ports:
+    - name: sentinel
+      port: 26379
+      targetPort: 26379
+      protocol: TCP
+  selector:
+    app: redis
+    component: sentinel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel-headless
+  namespace: jewelry-shop
+  labels:
+    app: redis
+    component: sentinel
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for stable DNS
+  ports:
+    - name: sentinel
+      port: 26379
+      targetPort: 26379
+      protocol: TCP
+  selector:
+    app: redis
+    component: sentinel
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-sentinel
+  namespace: jewelry-shop
+  labels:
+    app: redis
+    component: sentinel
+spec:
+  serviceName: redis-sentinel-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+      component: sentinel
+  template:
+    metadata:
+      labels:
+        app: redis
+        component: sentinel
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9355"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - redis
+                    - key: component
+                      operator: In
+                      values:
+                        - sentinel
+                topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              set -ex
+              echo "Waiting for Redis master to be ready..."
+              until nc -z redis-0.redis-headless.jewelry-shop.svc.cluster.local 6379; do
+                echo "Waiting for redis-0..."
+                sleep 2
+              done
+              echo "Redis master is ready!"
+        - name: config
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              set -ex
+              # Get Redis master IP
+              REDIS_MASTER_IP=$(getent hosts redis-0.redis-headless.jewelry-shop.svc.cluster.local | awk '{ print $1 }')
+              
+              if [ -z "$REDIS_MASTER_IP" ]; then
+                echo "ERROR: Could not resolve redis-0 IP"
+                exit 1
+              fi
+              
+              echo "Redis master IP: $REDIS_MASTER_IP"
+              
+              # Create sentinel config with IP instead of hostname
+              cat > /etc/redis/sentinel.conf <<EOF
+              # Redis Sentinel Configuration
+              bind 0.0.0.0
+              port 26379
+              daemonize no
+              pidfile /var/run/redis-sentinel.pid
+              loglevel notice
+              logfile ""
+              dir /data
+              
+              # Sentinel monitoring - using IP address
+              sentinel monitor mymaster $REDIS_MASTER_IP 6379 2
+              sentinel down-after-milliseconds mymaster 5000
+              sentinel parallel-syncs mymaster 1
+              sentinel failover-timeout mymaster 30000
+              sentinel deny-scripts-reconfig yes
+              protected-mode no
+              EOF
+              
+              # Ensure sentinel can write to config file
+              chmod 666 /etc/redis/sentinel.conf
+              
+              echo "Sentinel configuration:"
+              cat /etc/redis/sentinel.conf
+          volumeMounts:
+            - name: config
+              mountPath: /mnt/config
+            - name: sentinel-config
+              mountPath: /etc/redis
+      containers:
+        - name: sentinel
+          image: redis:7-alpine
+          command:
+            - redis-sentinel
+            - /etc/redis/sentinel.conf
+          ports:
+            - name: sentinel
+              containerPort: 26379
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            tcpSocket:
+              port: sentinel
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -p 26379 ping | grep PONG
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: sentinel-config
+              mountPath: /etc/redis
+            - name: data
+              mountPath: /data
+        - name: sentinel-exporter
+          image: oliver006/redis_exporter:v1.55.0-alpine
+          ports:
+            - name: metrics
+              containerPort: 9355
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: REDIS_ADDR
+              value: "redis://localhost:26379"
+      volumes:
+        - name: config
+          configMap:
+            name: redis-config
+            items:
+              - key: sentinel.conf
+                path: sentinel.conf
+        - name: sentinel-config
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: redis
+          component: sentinel
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        storageClassName: local-path  # k3d default storage class

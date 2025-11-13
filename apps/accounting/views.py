@@ -495,7 +495,8 @@ def add_account(request):
                 messages.error(request, f"Account with code {code} already exists.")
             else:
                 # Create the account as a root node in the MPTT tree
-                # AccountModel uses MPTT (Modified Preorder Tree Traversal) for hierarchical structure
+                # AccountModel uses MPTT (Modified Preorder Tree Traversal) for
+                # hierarchical structure
                 AccountModel.add_root(
                     coa_model=coa,
                     code=code,
@@ -2337,7 +2338,8 @@ def bill_pay(request, pk):
                     payment.save()
 
                     # Update bill's amount_paid and status
-                    # This is handled automatically by BillPayment.save() which calls bill.add_payment()
+                    # This is handled automatically by BillPayment.save() which calls
+                    # bill.add_payment()
 
                     # Audit logging
                     from apps.core.audit_models import AuditLog

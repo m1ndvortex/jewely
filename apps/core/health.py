@@ -189,10 +189,47 @@ def readiness_probe(request) -> JsonResponse:
         return JsonResponse({"status": "not_ready", "reason": str(e)}, status=503)
 
 
+@never_cache
+@require_GET
+def startup_probe(request) -> JsonResponse:
+    """
+    Kubernetes startup probe endpoint.
+
+    Returns 200 if the application has completed initialization.
+    If this fails, Kubernetes will restart the pod.
+
+    This probe allows more time for slow-starting containers.
+    Once this succeeds, liveness and readiness probes take over.
+
+    Checks:
+    - Database connectivity (critical for startup)
+    - Cache connectivity (critical for startup)
+
+    Returns:
+        JsonResponse: {"status": "started"} or 503 if not started
+    """
+    try:
+        # Check database connectivity
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+
+        # Check cache connectivity
+        cache_key = "startup_check"
+        cache.set(cache_key, "ok", timeout=10)
+        cache.get(cache_key)
+
+        return JsonResponse({"status": "started"})
+    except Exception as e:
+        logger.error(f"Startup probe failed: {e}")
+        return JsonResponse({"status": "not_started", "reason": str(e)}, status=503)
+
+
 # URL patterns for health check endpoints
 urlpatterns = [
     path("", health_check, name="health"),
     path("detailed/", health_check_detailed, name="health_detailed"),
     path("live/", liveness_probe, name="liveness"),
     path("ready/", readiness_probe, name="readiness"),
+    path("startup/", startup_probe, name="startup"),
 ]

@@ -1,0 +1,147 @@
+---
+# Ingress Resource for Jewelry Shop SaaS Platform
+# This configures Traefik to route traffic to the Nginx service
+# and automatically provision SSL certificates via cert-manager
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jewelry-shop-ingress
+  namespace: jewelry-shop
+  annotations:
+    # Use Traefik as the ingress controller
+    kubernetes.io/ingress.class: traefik
+    
+    # cert-manager annotations for automatic SSL certificate provisioning
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/acme-challenge-type: http01
+    
+    # Traefik-specific annotations
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: jewelry-shop-redirect-https@kubernetescrd
+    
+    # Security headers
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    
+    # Optional: Rate limiting
+    # traefik.ingress.kubernetes.io/router.middlewares: jewelry-shop-ratelimit@kubernetescrd
+    
+  labels:
+    app: jewelry-shop
+    component: ingress
+    environment: production
+
+spec:
+  # TLS configuration
+  tls:
+    - hosts:
+        - jewelry-shop.com
+        - www.jewelry-shop.com
+      # Secret name where cert-manager will store the certificate
+      secretName: jewelry-shop-tls-cert
+  
+  # Routing rules
+  rules:
+    # Main domain
+    - host: jewelry-shop.com
+      http:
+        paths:
+          # Route all traffic to Nginx service
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+    
+    # WWW subdomain
+    - host: www.jewelry-shop.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
+
+---
+# Middleware for HTTP to HTTPS redirect
+# This ensures all HTTP traffic is redirected to HTTPS
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: middleware
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+
+---
+# Optional: Middleware for rate limiting
+# Uncomment to enable rate limiting on the ingress
+# apiVersion: traefik.io/v1alpha1
+# kind: Middleware
+# metadata:
+#   name: ratelimit
+#   namespace: jewelry-shop
+#   labels:
+#     app: jewelry-shop
+#     component: middleware
+# spec:
+#   rateLimit:
+#     average: 100
+#     burst: 50
+#     period: 1m
+
+---
+# Optional: Middleware for security headers
+# Uncomment to add security headers to all responses
+# apiVersion: traefik.io/v1alpha1
+# kind: Middleware
+# metadata:
+#   name: security-headers
+#   namespace: jewelry-shop
+#   labels:
+#     app: jewelry-shop
+#     component: middleware
+# spec:
+#   headers:
+#     customResponseHeaders:
+#       X-Frame-Options: "SAMEORIGIN"
+#       X-Content-Type-Options: "nosniff"
+#       X-XSS-Protection: "1; mode=block"
+#       Referrer-Policy: "strict-origin-when-cross-origin"
+#     stsSeconds: 31536000
+#     stsIncludeSubdomains: true
+#     stsPreload: true
+#     contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+
+---
+# Optional: IngressRoute for advanced Traefik features
+# This is an alternative to standard Ingress if you need more control
+# apiVersion: traefik.io/v1alpha1
+# kind: IngressRoute
+# metadata:
+#   name: jewelry-shop-ingressroute
+#   namespace: jewelry-shop
+# spec:
+#   entryPoints:
+#     - websecure
+#   routes:
+#     - match: Host(`jewelry-shop.com`) || Host(`www.jewelry-shop.com`)
+#       kind: Rule
+#       services:
+#         - name: nginx-service
+#           port: 80
+#       middlewares:
+#         - name: security-headers
+#         - name: ratelimit
+#   tls:
+#     secretName: jewelry-shop-tls-cert

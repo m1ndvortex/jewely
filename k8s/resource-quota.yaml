@@ -1,0 +1,86 @@
+# ============================================================================
+# ResourceQuota for Jewelry Shop Namespace
+# ============================================================================
+# This ResourceQuota limits the total resources that can be consumed by all
+# pods in the jewelry-shop namespace. This prevents resource exhaustion and
+# ensures fair resource allocation in a multi-tenant cluster.
+# 
+# Resource Limits:
+# - CPU: 20 cores total (allows ~10 Django pods at 2 cores each)
+# - Memory: 40Gi total (allows ~10 Django pods at 4Gi each)
+# - Storage: 500Gi total (database, media, backups)
+# - Pods: 50 maximum (prevents pod sprawl)
+# - Services: 20 maximum
+# - ConfigMaps: 20 maximum
+# - Secrets: 20 maximum
+# - PersistentVolumeClaims: 10 maximum
+# ============================================================================
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: jewelry-shop-quota
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: resource-management
+spec:
+  hard:
+    # Compute Resources
+    requests.cpu: "20"           # Total CPU requests across all pods
+    requests.memory: "40Gi"      # Total memory requests across all pods
+    limits.cpu: "40"             # Total CPU limits across all pods
+    limits.memory: "80Gi"        # Total memory limits across all pods
+    
+    # Storage Resources
+    requests.storage: "500Gi"    # Total storage requests across all PVCs
+    persistentvolumeclaims: "10" # Maximum number of PVCs
+    
+    # Object Counts
+    pods: "50"                   # Maximum number of pods
+    services: "20"               # Maximum number of services
+    services.loadbalancers: "2"  # Maximum number of LoadBalancer services
+    services.nodeports: "5"      # Maximum number of NodePort services
+    configmaps: "20"             # Maximum number of ConfigMaps
+    secrets: "20"                # Maximum number of Secrets
+    replicationcontrollers: "10" # Maximum number of ReplicationControllers
+    
+    # Resource Counts by Type
+    count/deployments.apps: "20"      # Maximum number of Deployments
+    count/statefulsets.apps: "10"     # Maximum number of StatefulSets
+    count/jobs.batch: "50"            # Maximum number of Jobs
+    count/cronjobs.batch: "10"        # Maximum number of CronJobs
+    count/ingresses.networking.k8s.io: "5"  # Maximum number of Ingresses
+
+---
+# ============================================================================
+# ResourceQuota for High Priority Workloads
+# ============================================================================
+# This quota is for critical system components that need guaranteed resources
+# even when the namespace is under resource pressure.
+# ============================================================================
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: jewelry-shop-priority-quota
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: resource-management
+    priority: high
+spec:
+  hard:
+    # Reserve resources for high-priority pods
+    requests.cpu: "10"
+    requests.memory: "20Gi"
+    limits.cpu: "20"
+    limits.memory: "40Gi"
+    pods: "20"
+  scopeSelector:
+    matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values:
+          - high-priority
+          - system-critical

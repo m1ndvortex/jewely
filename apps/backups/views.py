@@ -220,9 +220,7 @@ def manual_backup(request):
                 for error in result["errors"]:
                     if isinstance(error, dict):
                         messages.error(
-                            request,
-                            f"Error for {error.get('tenant_name', 'unknown')}: {error.get('error')}",
-                        )
+                            request, f"Error for {error.get('tenant_name', 'unknown')}: {error.get('error')}", )
                     else:
                         messages.error(request, f"Error: {error}")
 

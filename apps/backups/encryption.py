@@ -435,8 +435,7 @@ def compress_and_encrypt_file(
             f"Compressed and encrypted {input_path} -> {encrypted_path}: "
             f"{original_size} bytes -> {compressed_size} bytes (compression: {compression_ratio:.1f}%) "
             f"-> {final_size} bytes (after encryption) "
-            f"(checksum: {checksum[:16]}...)"
-        )
+            f"(checksum: {checksum[:16]}...)")
 
         return encrypted_path, checksum, original_size, compressed_size, final_size
 

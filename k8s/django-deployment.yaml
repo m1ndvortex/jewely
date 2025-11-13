@@ -46,24 +46,33 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
       
-      # Init container to wait for database
-      initContainers:
-        - name: wait-for-db
-          image: busybox:1.35
-          command:
-            - sh
-            - -c
-            - |
-              until nc -z -v -w30 postgres-service 5432; do
-                echo "Waiting for database connection..."
-                sleep 2
-              done
-              echo "Database is ready!"
+      # Init container to wait for database (disabled until PostgreSQL is deployed)
+      # initContainers:
+      #   - name: wait-for-db
+      #     image: busybox:1.35
+      #     command:
+      #       - sh
+      #       - -c
+      #       - |
+      #         until nc -z -v -w30 postgres-service 5432; do
+      #           echo "Waiting for database connection..."
+      #           sleep 2
+      #         done
+      #         echo "Database is ready!"
       
       containers:
         - name: django
           image: jewelry-shop:latest  # Replace with your registry/image:tag
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent  # Use local image if available
+          command: ["gunicorn"]
+          args:
+            - "config.wsgi:application"
+            - "--bind"
+            - "0.0.0.0:8000"
+            - "--workers"
+            - "2"
+            - "--timeout"
+            - "120"
           
           ports:
             - name: http
@@ -73,15 +82,55 @@ spec:
           # Environment variables from ConfigMap and Secrets
           envFrom:
             - configMapRef:
-                name: django-config
+                name: app-config
             - secretRef:
-                name: django-secrets
+                name: app-secrets
           
           env:
             - name: DJANGO_SETTINGS_MODULE
               value: "config.settings.production"
             - name: PORT
               value: "8000"
+            - name: DEBUG
+              value: "False"
+            # Database connection via PgBouncer
+            - name: DATABASE_URL
+              value: "postgresql://$(DB_USER):$(APP_DB_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable"
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_USER
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jewelry-app.jewelry-shop-db.credentials.postgresql.acid.zalan.do
+                  key: password
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jewelry-app.jewelry-shop-db.credentials.postgresql.acid.zalan.do
+                  key: password
           
           # Resource requests and limits
           resources:
@@ -89,8 +138,8 @@ spec:
               cpu: 500m
               memory: 512Mi
             limits:
-              cpu: 2000m
-              memory: 2Gi
+              cpu: 1000m
+              memory: 1Gi
           
           # Liveness probe - restart if unhealthy
           livenessProbe:
@@ -100,9 +149,9 @@ spec:
               httpHeaders:
                 - name: Host
                   value: localhost
-            initialDelaySeconds: 60
-            periodSeconds: 30
-            timeoutSeconds: 10
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
           
@@ -114,25 +163,25 @@ spec:
               httpHeaders:
                 - name: Host
                   value: localhost
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
             successThreshold: 1
-            failureThreshold: 3
+            failureThreshold: 2
           
           # Startup probe - allow more time for initial startup
           startupProbe:
             httpGet:
-              path: /health/live/
+              path: /health/startup/
               port: http
               httpHeaders:
                 - name: Host
                   value: localhost
-            initialDelaySeconds: 10
+            initialDelaySeconds: 0
             periodSeconds: 10
             timeoutSeconds: 5
             successThreshold: 1
-            failureThreshold: 12  # 120 seconds total
+            failureThreshold: 30  # 300 seconds total
           
           # Volume mounts
           volumeMounts:
@@ -158,11 +207,9 @@ spec:
       # Volumes
       volumes:
         - name: media
-          persistentVolumeClaim:
-            claimName: media-pvc
+          emptyDir: {}
         - name: static
-          persistentVolumeClaim:
-            claimName: static-pvc
+          emptyDir: {}
         - name: logs
           emptyDir: {}
         - name: tmp

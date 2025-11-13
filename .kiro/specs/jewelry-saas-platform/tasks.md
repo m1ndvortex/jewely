@@ -1131,55 +1131,248 @@ This implementation plan breaks down the jewelry management SaaS platform into d
     - Send deployment notifications
     - _Requirements: 27_
 
-- [ ] 34. Kubernetes Deployment
-  - [x] 34.1 Create Kubernetes manifests
-    - Create Deployment for Django application (3 replicas)
-    - Create Deployment for Nginx
-    - Create Deployment for Celery workers
-    - Create Deployment for Celery beat (1 replica)
-    - Create Services for all deployments
-    - _Requirements: 23_
+- [ ] 34. Kubernetes Deployment with k3d/k3s and Full Automation
   
-  - [ ] 34.2 Configure PostgreSQL with Patroni
-    - Create StatefulSet for PostgreSQL
-    - Configure Patroni for automatic failover
-    - Set up streaming replication
-    - Configure PgBouncer for connection pooling
+  - [x] 34.1 Set up local k3d development cluster
+    - Install k3d on development machine (curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash)
+    - Create k3d cluster with 1 server + 2 agents (k3d cluster create jewelry-shop --servers 1 --agents 2)
+    - Configure port mappings for HTTP (8080:80) and HTTPS (8443:443)
+    - Disable default Traefik to install custom version
     - _Requirements: 23_
+    - **Validation**: Run `kubectl get nodes` and verify 3 nodes (1 server, 2 agents) show STATUS=Ready
+    - **Validation**: Run `kubectl cluster-info` and verify cluster is accessible
+    - **Test**: Deploy test nginx pod and verify it runs successfully
   
-  - [ ] 34.3 Configure Redis with Sentinel
-    - Create StatefulSet for Redis
-    - Configure Redis Sentinel for failover
-    - Set up persistence (RDB + AOF)
+  - [x] 34.2 Create Kubernetes namespace and base resources
+    - Create jewelry-shop namespace (kubectl create namespace jewelry-shop)
+    - Create ConfigMap for non-sensitive configuration (database host, Redis URL, etc.)
+    - Create Secrets for sensitive data (database password, encryption keys, API keys)
+    - Apply resource quotas and limit ranges for namespace
     - _Requirements: 23_
+    - **Validation**: Run `kubectl get namespace jewelry-shop` and verify it exists
+    - **Validation**: Run `kubectl get configmaps,secrets -n jewelry-shop` and verify resources created
+    - **Test**: Verify secrets are base64 encoded and not readable in plain text
   
-  - [ ] 34.4 Configure Horizontal Pod Autoscaler
-    - Set up HPA for Django pods (min 3, max 10)
-    - Configure CPU and memory-based scaling
+  - [ ] 34.3 Deploy Django application with health checks
+    - Create Django Deployment manifest with 3 replicas
+    - Configure resource requests (CPU: 500m, Memory: 512Mi) and limits (CPU: 1000m, Memory: 1Gi)
+    - Implement liveness probe (HTTP GET /health/live/ every 10s, fail after 3 attempts)
+    - Implement readiness probe (HTTP GET /health/ready/ every 5s, fail after 2 attempts)
+    - Implement startup probe for slow initialization (HTTP GET /health/startup/ every 10s, 30 attempts)
+    - Create ClusterIP Service for Django (port 80 → 8000)
     - _Requirements: 23_
+    - **Validation**: Run `kubectl get pods -n jewelry-shop -l app=django` and verify 3 pods Running
+    - **Validation**: Run `kubectl describe pod <django-pod> -n jewelry-shop` and verify probes configured
+    - **Test**: Kill one Django pod and verify it's automatically recreated within 30 seconds
+    - **Test**: Run `kubectl exec -it <django-pod> -n jewelry-shop -- python manage.py check` to verify Django is healthy
+    - **Test**: Curl the service endpoint and verify 200 response
   
-  - [ ] 34.5 Configure Ingress
-    - Set up Traefik ingress controller
-    - Configure SSL termination
-    - Set up path-based routing
+  - [x] 34.4 Deploy Nginx reverse proxy
+    - Create Nginx Deployment with 2 replicas
+    - Create ConfigMap with nginx.conf (reverse proxy to Django, static file serving, gzip compression)
+    - Configure resource requests and limits
+    - Implement health checks (TCP probe on port 80)
+    - Create ClusterIP Service for Nginx
     - _Requirements: 23_
+    - **Validation**: Run `kubectl get pods -n jewelry-shop -l app=nginx` and verify 2 pods Running
+    - **Validation**: Verify nginx.conf is mounted correctly from ConfigMap
+    - **Test**: Curl nginx service and verify it proxies to Django backend
+    - **Test**: Request static file and verify nginx serves it directly
+    - **Test**: Check nginx logs for any errors
   
-  - [ ] 34.6 Configure ConfigMaps and Secrets
-    - Create ConfigMaps for configuration
-    - Create Secrets for sensitive data
-    - Inject as environment variables
+  - [x] 34.5 Install and configure Zalando Postgres Operator
+    - Add Zalando Postgres Operator Helm repository
+    - Install operator using Helm (helm install postgres-operator postgres-operator-charts/postgres-operator)
+    - Verify operator pod is running in postgres-operator namespace
+    - Check operator logs for successful initialization
     - _Requirements: 23_
+    - **Validation**: Run `kubectl get pods -n postgres-operator` and verify operator pod Running
+    - **Validation**: Run `kubectl get crd` and verify postgresql.acid.zalan.do CRD exists
+    - **Validation**: Check operator logs: `kubectl logs -n postgres-operator -l app.kubernetes.io/name=postgres-operator`
+    - **Test**: Verify operator can watch for postgresql resources
   
-  - [ ] 34.7 Configure health checks
-    - Implement liveness probes
-    - Implement readiness probes
-    - Implement startup probes
+  - [x] 34.6 Deploy PostgreSQL cluster with automatic failover
+    - Create postgresql custom resource with 3 replicas
+    - Configure volume size (100Gi), PostgreSQL version (15), and performance parameters
+    - Configure Patroni for automatic leader election and failover
+    - Enable connection pooling with PgBouncer
+    - Configure backup schedule and retention
+    - Enable postgres_exporter sidecar for metrics
     - _Requirements: 23_
+    - **Validation**: Run `kubectl get postgresql -n jewelry-shop` and verify cluster status is Running
+    - **Validation**: Run `kubectl get pods -n jewelry-shop -l application=spilo` and verify 3 pods Running
+    - **Validation**: Identify master: `kubectl get pods -n jewelry-shop -l spilo-role=master`
+    - **Test**: Connect to database from Django pod and run query
+    - **Test**: Kill master pod and verify automatic failover within 30 seconds
+    - **Test**: Verify new master is elected and replicas sync from new master
+    - **Test**: Verify application reconnects to new master automatically
+    - **Test**: Check Patroni logs for failover events
   
-  - [ ] 34.8 Implement network policies
-    - Configure network segmentation
-    - Isolate database and cache from public internet
+  - [x] 34.7 Deploy Redis cluster with Sentinel for high availability
+    - Create Redis StatefulSet with 3 replicas
+    - Configure persistence (RDB snapshots + AOF)
+    - Deploy Redis Sentinel for automatic master failover
+    - Configure Sentinel with quorum=2 for master election
+    - Create headless Service for Redis
     - _Requirements: 23_
+    - **Validation**: Run `kubectl get statefulset redis -n jewelry-shop` and verify 3/3 ready
+    - **Validation**: Run `kubectl get pods -n jewelry-shop -l app=redis` and verify all Running
+    - **Validation**: Identify master: `kubectl exec redis-0 -n jewelry-shop -- redis-cli info replication`
+    - **Test**: Connect from Django pod and set/get key
+    - **Test**: Kill Redis master pod and verify Sentinel promotes new master within 30 seconds
+    - **Test**: Verify application reconnects to new master
+    - **Test**: Verify data persists after pod restart
+  
+  - [x] 34.8 Deploy Celery workers and beat scheduler
+    - Create Celery worker Deployment with 3 replicas
+    - Create Celery beat Deployment with 1 replica (singleton)
+    - Configure resource requests and limits
+    - Implement liveness probe (check worker heartbeat)
+    - Configure queue routing (backups, reports, notifications)
+    - _Requirements: 23_
+    - **Validation**: Run `kubectl get pods -n jewelry-shop -l app=celery-worker` and verify 3 pods Running
+    - **Validation**: Run `kubectl get pods -n jewelry-shop -l app=celery-beat` and verify 1 pod Running
+    - **Test**: Check Celery logs and verify workers connected to Redis
+    - **Test**: Trigger test task and verify it executes
+    - **Test**: Kill worker pod and verify task is picked up by another worker
+  
+  - [x] 34.9 Install and configure Traefik Ingress Controller
+    - Install Traefik using Helm with custom values
+    - Configure HTTP (port 80) and HTTPS (port 443) entry points
+    - Install cert-manager for automatic SSL certificate management
+    - Configure Let's Encrypt ClusterIssuer for production certificates
+    - Create Ingress resource for jewelry-shop.com
+    - Configure automatic HTTP to HTTPS redirect
+    - _Requirements: 23_
+    - **Validation**: Run `kubectl get pods -n traefik` and verify Traefik pod Running
+    - **Validation**: Run `kubectl get ingress -n jewelry-shop` and verify ingress created
+    - **Validation**: Run `kubectl get certificate -n jewelry-shop` and verify SSL cert issued
+    - **Test**: Curl http://jewelry-shop.com and verify redirect to HTTPS
+    - **Test**: Curl https://jewelry-shop.com and verify valid SSL certificate
+    - **Test**: Verify traffic routes to Nginx service
+  
+  - [x] 34.10 Configure Horizontal Pod Autoscaler with aggressive scaling
+    - Install metrics-server for resource metrics collection
+    - Create HPA for Django pods (min: 3, max: 10)
+    - Configure CPU threshold at 70% and memory threshold at 80%
+    - Configure aggressive scale-up (100% increase every 15s, max 2 pods per 15s)
+    - Configure gradual scale-down (50% decrease every 60s after 5min stabilization)
+    - _Requirements: 23_
+    - **Validation**: Run `kubectl get hpa -n jewelry-shop` and verify HPA created
+    - **Validation**: Run `kubectl top pods -n jewelry-shop` and verify metrics available
+    - **Validation**: Verify current CPU/memory usage and replica count
+    - **Test**: Generate load with `kubectl run -it load-generator --rm --image=busybox --restart=Never -- /bin/sh -c "while true; do wget -q -O- http://django-service.jewelry-shop.svc.cluster.local; done"`
+    - **Test**: Watch HPA scale up: `kubectl get hpa -n jewelry-shop --watch`
+    - **Test**: Verify pods scale from 3 to 10 as load increases
+    - **Test**: Stop load and verify pods scale down after stabilization window
+  
+  - [x] 34.11 Implement comprehensive health checks for all components
+    - Create /health/live/ endpoint in Django (returns 200 if process is alive)
+    - Create /health/ready/ endpoint (checks database, Redis, Celery connectivity)
+    - Create /health/startup/ endpoint for slow initialization
+    - Configure liveness probes for all deployments
+    - Configure readiness probes for all deployments
+    - Configure startup probes where needed
+    - _Requirements: 23_
+    - **Validation**: Curl each health endpoint and verify responses
+    - **Validation**: Run `kubectl describe pod <pod-name> -n jewelry-shop` and verify probes configured
+    - **Test**: Simulate database failure and verify readiness probe fails
+    - **Test**: Verify pod is removed from service endpoints when unhealthy
+    - **Test**: Restore database and verify pod becomes ready again
+  
+  - [ ] 34.12 Configure PersistentVolumes for stateful data
+    - Create PersistentVolumeClaims for PostgreSQL data (100Gi per replica)
+    - Create PVCs for Redis data (10Gi per replica)
+    - Create PVC for media files (50Gi, ReadWriteMany)
+    - Configure storage class (local-path for k3d, longhorn for production)
+    - Verify volume binding and mounting
+    - _Requirements: 23_
+    - **Validation**: Run `kubectl get pvc -n jewelry-shop` and verify all PVCs Bound
+    - **Validation**: Run `kubectl get pv` and verify PersistentVolumes created
+    - **Test**: Write data to PostgreSQL and delete pod
+    - **Test**: Verify data persists when pod is recreated
+    - **Test**: Same test for Redis persistence
+  
+  - [ ] 34.13 Implement network policies for security
+    - Create NetworkPolicy to allow Django → PostgreSQL traffic only
+    - Create NetworkPolicy to allow Django → Redis traffic only
+    - Create NetworkPolicy to deny direct external access to database and cache
+    - Create NetworkPolicy to allow Nginx → Django traffic
+    - Create NetworkPolicy to allow monitoring tools → all pods
+    - _Requirements: 23_
+    - **Validation**: Run `kubectl get networkpolicies -n jewelry-shop`
+    - **Test**: Try to connect to PostgreSQL from outside cluster (should fail)
+    - **Test**: Verify Django can connect to PostgreSQL (should succeed)
+    - **Test**: Verify Nginx can connect to Django (should succeed)
+  
+  - [ ] 34.14 End-to-end integration testing on k3d
+    - Deploy complete application stack to k3d cluster
+    - Run smoke tests (login, create tenant, add inventory, create sale)
+    - Test database backup and restore
+    - Test PostgreSQL failover (kill master, verify automatic recovery)
+    - Test Redis failover (kill master, verify automatic recovery)
+    - Test pod self-healing (kill random pods, verify recreation)
+    - Test HPA scaling (generate load, verify scale-up and scale-down)
+    - Document any issues found and fixes applied
+    - _Requirements: 23_
+    - **Validation**: All smoke tests pass
+    - **Validation**: Failover tests complete within 30 seconds
+    - **Validation**: Self-healing tests show automatic recovery
+    - **Validation**: HPA scales correctly under load
+    - **Test**: Complete user journey from login to sale completion
+    - **Test**: Verify data consistency after failover events
+  
+  - [ ] 34.15 Deploy to k3s on production VPS
+    - Install k3s on VPS (curl -sfL https://get.k3s.io | sh -)
+    - Copy kubeconfig for remote access
+    - Apply all Kubernetes manifests to production cluster
+    - Configure external DNS for jewelry-shop.com
+    - Verify SSL certificates are issued
+    - Run production smoke tests
+    - Monitor system for 24 hours
+    - _Requirements: 23_
+    - **Validation**: k3s installed and running on VPS
+    - **Validation**: All pods Running in production
+    - **Validation**: External DNS resolves to VPS IP
+    - **Validation**: SSL certificate valid and trusted
+    - **Test**: Access https://jewelry-shop.com and verify site loads
+    - **Test**: Complete end-to-end user journey in production
+    - **Test**: Monitor logs for 24 hours and verify no critical errors
+  
+  - [ ] 34.16 Extreme load testing and chaos engineering validation
+    - Install Locust for load testing (pip install locust)
+    - Create comprehensive load test scenarios (1000 concurrent users, 30min duration)
+    - Run extreme load test and monitor HPA behavior
+    - Verify HPA scales from 3 to 10 pods under load
+    - Verify HPA scales down when load decreases
+    - Verify response times remain acceptable (<2s) during scaling
+    - Conduct chaos test: Kill PostgreSQL master during load test
+    - Verify automatic failover completes within 30 seconds
+    - Verify zero data loss during failover
+    - Conduct chaos test: Kill Redis master during load test
+    - Verify automatic failover and application continues
+    - Conduct chaos test: Kill random Django pods during load test
+    - Verify self-healing and no service disruption
+    - Conduct chaos test: Cordon and drain node to simulate node failure
+    - Verify all pods reschedule to healthy nodes automatically
+    - Conduct chaos test: Simulate network partition
+    - Verify system maintains consistency and recovers automatically
+    - Generate comprehensive test report with metrics (RTO, RPO, availability %)
+    - Document all failure scenarios and recovery times
+    - Verify system meets SLA targets (99.9% uptime, <30s recovery)
+    - _Requirements: 23_
+    - **Validation**: Load test completes successfully with 1000 users
+    - **Validation**: HPA scales correctly (3 → 10 → 3 pods)
+    - **Validation**: All chaos tests show automatic recovery
+    - **Validation**: Zero manual intervention required during all tests
+    - **Validation**: RTO < 30 seconds for all failure scenarios
+    - **Validation**: RPO < 15 minutes (WAL archiving every 5 min)
+    - **Validation**: System availability > 99.9% during test period
+    - **Test Report**: Document peak load handled (requests/second)
+    - **Test Report**: Document scaling behavior (time to scale, resource usage)
+    - **Test Report**: Document failover times for each component
+    - **Test Report**: Document any issues found and resolutions
+    - **Final Validation**: System is production-ready with proven resilience
 
 - [ ] 35. Monitoring & Observability Stack
   - [ ] 35.1 Deploy Prometheus

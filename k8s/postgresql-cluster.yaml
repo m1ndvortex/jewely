@@ -1,0 +1,404 @@
+# ============================================================================
+# PostgreSQL Cluster with Automatic Failover
+# ============================================================================
+# This manifest creates a highly available PostgreSQL cluster using the
+# Zalando Postgres Operator with the following features:
+# 
+# - 3 replicas for high availability
+# - Patroni for automatic leader election and failover
+# - PgBouncer for connection pooling
+# - Automated backups with WAL archiving
+# - postgres_exporter for Prometheus metrics
+# - 100Gi persistent volumes per instance
+# - PostgreSQL 15
+# 
+# The operator automatically handles:
+# - Master election and failover (< 30 seconds)
+# - Replica synchronization
+# - Connection pooling
+# - Backup scheduling
+# - Monitoring and metrics
+# ============================================================================
+
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: jewelry-shop-db
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: database
+    environment: development
+spec:
+  # ============================================================================
+  # Cluster Configuration
+  # ============================================================================
+  teamId: "jewelry-shop"
+  numberOfInstances: 3  # 1 master + 2 replicas for HA
+  
+  # PostgreSQL version and parameters
+  postgresql:
+    version: "15"
+    parameters:
+      # Performance tuning
+      max_connections: "200"
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      maintenance_work_mem: "64MB"
+      checkpoint_completion_target: "0.9"
+      wal_buffers: "16MB"
+      default_statistics_target: "100"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      work_mem: "2621kB"
+      min_wal_size: "1GB"
+      max_wal_size: "4GB"
+      max_worker_processes: "4"
+      max_parallel_workers_per_gather: "2"
+      max_parallel_workers: "4"
+      max_parallel_maintenance_workers: "2"
+      
+      # Logging
+      log_min_duration_statement: "1000"  # Log queries > 1s
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+      log_checkpoints: "on"
+      log_connections: "on"
+      log_disconnections: "on"
+      log_lock_waits: "on"
+      log_temp_files: "0"
+      
+      # Replication
+      wal_level: "replica"
+      max_wal_senders: "10"
+      max_replication_slots: "10"
+      hot_standby: "on"
+      wal_log_hints: "on"
+  
+  # ============================================================================
+  # Users and Databases
+  # ============================================================================
+  users:
+    jewelry_app:  # Application user
+      - superuser
+      - createdb
+    jewelry_readonly:  # Read-only user for reporting
+      []
+  
+  databases:
+    jewelry_shop: jewelry_app  # Database owned by jewelry_app user
+  
+  # ============================================================================
+  # Volume Configuration
+  # ============================================================================
+  volume:
+    size: 100Gi
+    storageClass: local-path  # Use local-path for k3d, change to longhorn for production
+  
+  # Additional volumes for SSL certificates
+  additionalVolumes:
+    - name: postgres-ssl
+      mountPath: /etc/postgresql/ssl
+      targetContainers:
+        - postgres
+      volumeSource:
+        secret:
+          secretName: postgres-ssl-certs
+          defaultMode: 0600
+  
+  # ============================================================================
+  # Resource Limits
+  # ============================================================================
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  
+  # ============================================================================
+  # Patroni Configuration (Automatic Failover)
+  # ============================================================================
+  patroni:
+    # Time to wait before considering master dead and starting failover
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 33554432  # 32MB
+    
+    # Synchronous replication for zero data loss
+    synchronous_mode: true
+    synchronous_mode_strict: false
+    
+    # Slots for replication
+    slots:
+      jewelry_shop_slot:
+        type: physical
+    
+    # Custom pg_hba rules (allow both SSL and non-SSL connections)
+    pg_hba:
+      - local all all trust
+      - host all all 127.0.0.1/32 md5
+      - host all all ::1/128 md5
+      - host all all all md5
+  
+  # ============================================================================
+  # Connection Pooler (PgBouncer)
+  # ============================================================================
+  enableConnectionPooler: true
+  connectionPooler:
+    numberOfInstances: 2
+    mode: "transaction"  # transaction mode for better performance
+    schema: "pooler"
+    user: "pooler"
+    maxDBConnections: 100
+    
+    resources:
+      requests:
+        cpu: 250m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  
+  # ============================================================================
+  # Backup Configuration
+  # ============================================================================
+  # Note: For production, configure WAL-E or WAL-G with S3/R2/B2 storage
+  # This is a basic configuration for development
+  enableLogicalBackup: true
+  logicalBackupSchedule: "0 2 * * *"  # Daily at 2 AM
+  
+  # ============================================================================
+  # Monitoring (postgres_exporter)
+  # ============================================================================
+  enableShmVolume: true
+  sidecars:
+    - name: "postgres-exporter"
+      image: "quay.io/prometheuscommunity/postgres-exporter:v0.15.0"
+      ports:
+        - name: metrics
+          containerPort: 9187
+          protocol: TCP
+      env:
+        - name: DATA_SOURCE_NAME
+          value: "postgresql://postgres@localhost:5432/postgres?sslmode=disable"
+        - name: PG_EXPORTER_AUTO_DISCOVER_DATABASES
+          value: "true"
+        - name: PG_EXPORTER_EXTEND_QUERY_PATH
+          value: "/etc/postgres-exporter/queries.yaml"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      volumeMounts:
+        - name: exporter-config
+          mountPath: /etc/postgres-exporter
+          readOnly: true
+  
+  # Additional volumes for sidecars and SSL certificates
+  additionalVolumes:
+    - name: exporter-config
+      mountPath: /etc/postgres-exporter
+      targetContainers:
+        - postgres-exporter
+      volumeSource:
+        configMap:
+          name: postgres-exporter-config
+          optional: true
+    - name: ssl-certs
+      mountPath: /var/lib/postgresql
+      targetContainers:
+        - postgres
+      volumeSource:
+        secret:
+          secretName: postgresql-ssl-certs
+          defaultMode: 0600
+  
+  # ============================================================================
+  # Pod Configuration
+  # ============================================================================
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9187"
+    prometheus.io/path: "/metrics"
+  
+  # ============================================================================
+  # Service Configuration
+  # ============================================================================
+  # The operator creates these services automatically:
+  # - jewelry-shop-db: Master service (read-write)
+  # - jewelry-shop-db-repl: Replica service (read-only)
+  # - jewelry-shop-db-pooler: PgBouncer service
+  
+  enableMasterLoadBalancer: false
+  enableReplicaLoadBalancer: false
+  
+  # ============================================================================
+  # Additional Configuration
+  # ============================================================================
+  # Allow privilege escalation for certain operations
+  allowedSourceRanges: null
+  
+  # Clone from existing cluster (for disaster recovery)
+  # clone:
+  #   cluster: "source-cluster-name"
+  #   timestamp: "2024-01-01 00:00:00+00:00"
+  
+  # Standby cluster (for read replicas in different regions)
+  # standby:
+  #   s3_wal_path: "s3://bucket/path"
+
+---
+# ============================================================================
+# ConfigMap for postgres_exporter queries
+# ============================================================================
+# Custom queries for monitoring jewelry shop specific metrics
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-exporter-config
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: database
+data:
+  queries.yaml: |
+    # Database size metrics
+    pg_database_size:
+      query: "SELECT pg_database.datname, pg_database_size(pg_database.datname) as size FROM pg_database"
+      master: true
+      metrics:
+        - datname:
+            usage: "LABEL"
+            description: "Name of the database"
+        - size:
+            usage: "GAUGE"
+            description: "Disk space used by the database"
+    
+    # Table size metrics
+    pg_table_size:
+      query: |
+        SELECT
+          schemaname,
+          tablename,
+          pg_total_relation_size(schemaname||'.'||tablename) AS size
+        FROM pg_tables
+        WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+        ORDER BY size DESC
+        LIMIT 20
+      master: true
+      metrics:
+        - schemaname:
+            usage: "LABEL"
+            description: "Schema name"
+        - tablename:
+            usage: "LABEL"
+            description: "Table name"
+        - size:
+            usage: "GAUGE"
+            description: "Total size of the table including indexes"
+    
+    # Connection count by state
+    pg_stat_activity_count:
+      query: |
+        SELECT
+          state,
+          COUNT(*) as count
+        FROM pg_stat_activity
+        WHERE state IS NOT NULL
+        GROUP BY state
+      metrics:
+        - state:
+            usage: "LABEL"
+            description: "Connection state"
+        - count:
+            usage: "GAUGE"
+            description: "Number of connections in this state"
+    
+    # Replication lag
+    pg_replication_lag:
+      query: |
+        SELECT
+          client_addr,
+          client_hostname,
+          state,
+          EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())) AS lag_seconds
+        FROM pg_stat_replication
+      master: true
+      metrics:
+        - client_addr:
+            usage: "LABEL"
+            description: "Replica IP address"
+        - client_hostname:
+            usage: "LABEL"
+            description: "Replica hostname"
+        - state:
+            usage: "LABEL"
+            description: "Replication state"
+        - lag_seconds:
+            usage: "GAUGE"
+            description: "Replication lag in seconds"
+    
+    # Tenant-specific metrics (jewelry shop)
+    tenant_data_size:
+      query: |
+        SELECT
+          t.company_name as tenant,
+          COUNT(DISTINCT i.id) as inventory_count,
+          COUNT(DISTINCT s.id) as sales_count,
+          COUNT(DISTINCT c.id) as customer_count
+        FROM tenants t
+        LEFT JOIN inventory_items i ON i.tenant_id = t.id
+        LEFT JOIN sales s ON s.tenant_id = t.id
+        LEFT JOIN customers c ON c.tenant_id = t.id
+        GROUP BY t.id, t.company_name
+        ORDER BY inventory_count DESC
+        LIMIT 100
+      master: true
+      cache_seconds: 300
+      metrics:
+        - tenant:
+            usage: "LABEL"
+            description: "Tenant company name"
+        - inventory_count:
+            usage: "GAUGE"
+            description: "Number of inventory items"
+        - sales_count:
+            usage: "GAUGE"
+            description: "Number of sales"
+        - customer_count:
+            usage: "GAUGE"
+            description: "Number of customers"
+
+---
+# ============================================================================
+# Service Monitor for Prometheus
+# ============================================================================
+# This allows Prometheus to automatically discover and scrape metrics
+# ============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: jewelry-shop-db-metrics
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: database
+    metrics: "true"
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 9187
+      targetPort: 9187
+      protocol: TCP
+  selector:
+    application: spilo
+    cluster-name: jewelry-shop-db

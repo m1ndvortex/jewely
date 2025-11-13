@@ -3184,3 +3184,529 @@ class BackblazeB2Storage:
         return local_path
 ```
 
+
+
+## Kubernetes Deployment Architecture with k3d/k3s
+
+### Overview
+
+The application uses **k3d** for local development and **k3s** for production VPS deployment. This approach provides:
+- **Lightweight**: k3s uses ~512MB RAM vs 2GB+ for full Kubernetes
+- **Fast**: k3d cluster starts in seconds
+- **Production-ready**: k3s is CNCF certified Kubernetes
+- **Consistent**: Same k3s binary runs locally and in production
+- **Self-healing**: Automatic recovery from failures
+- **Auto-scaling**: HPA scales pods based on load
+
+### k3d Local Development Cluster
+
+**Configuration: 1 Server + 2 Agents**
+
+```bash
+# Create k3d cluster
+k3d cluster create jewelry-shop \
+  --servers 1 \
+  --agents 2 \
+  --port "8080:80@loadbalancer" \
+  --port "8443:443@loadbalancer" \
+  --volume "/var/lib/rancher/k3s/storage:/var/lib/rancher/k3s/storage@all" \
+  --k3s-arg "--disable=traefik@server:0"
+
+# Verify cluster
+kubectl get nodes
+```
+
+### k3s Production VPS Deployment
+
+```bash
+# Install k3s on VPS
+curl -sfL https://get.k3s.io | sh -
+
+# Verify installation
+sudo k3s kubectl get nodes
+
+# Get kubeconfig for remote access
+sudo cat /etc/rancher/k3s/k3s.yaml
+```
+
+### Zalando Postgres Operator
+
+**Why Zalando Operator:**
+- Declarative PostgreSQL cluster management
+- Automatic failover and leader election
+- Built-in backup and restore
+- Connection pooling with PgBouncer
+- Monitoring and metrics
+- Production-proven (used by Zalando, Zalando SE)
+
+**Installation:**
+
+```bash
+# Install operator using Helm
+helm repo add postgres-operator-charts https://opensource.zalando.com/postgres-operator/charts/postgres-operator
+helm install postgres-operator postgres-operator-charts/postgres-operator
+
+# Verify operator is running
+kubectl get pods -n postgres-operator
+```
+
+
+
+**PostgreSQL Cluster Configuration:**
+
+```yaml
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: jewelry-shop-postgres
+  namespace: jewelry-shop
+spec:
+  teamId: "jewelry-shop"
+  volume:
+    size: 100Gi
+    storageClass: local-path
+  numberOfInstances: 3
+  users:
+    jewelry_shop_user:
+      - superuser
+      - createdb
+  databases:
+    jewelry_shop: jewelry_shop_user
+  postgresql:
+    version: "15"
+    parameters:
+      shared_buffers: "2GB"
+      effective_cache_size: "6GB"
+      maintenance_work_mem: "512MB"
+      checkpoint_completion_target: "0.9"
+      wal_buffers: "16MB"
+      default_statistics_target: "100"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      work_mem: "10MB"
+      min_wal_size: "1GB"
+      max_wal_size: "4GB"
+      max_worker_processes: "4"
+      max_parallel_workers_per_gather: "2"
+      max_parallel_workers: "4"
+      max_parallel_maintenance_workers: "2"
+  patroni:
+    initdb:
+      encoding: "UTF8"
+      locale: "en_US.UTF-8"
+      data-checksums: "true"
+    pg_hba:
+      - hostssl all all 0.0.0.0/0 md5
+      - host all all 0.0.0.0/0 md5
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+  sidecars:
+    - name: "exporter"
+      image: "quay.io/prometheuscommunity/postgres-exporter:latest"
+      ports:
+        - name: exporter
+          containerPort: 9187
+          protocol: TCP
+      env:
+        - name: "DATA_SOURCE_URI"
+          value: "localhost/jewelry_shop?sslmode=require"
+```
+
+
+
+### Self-Healing and Automation Features
+
+**1. Automatic Pod Restart (Liveness Probes)**
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health/live/
+    port: 8000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+# If 3 consecutive health checks fail, Kubernetes automatically restarts the pod
+```
+
+**2. Automatic Traffic Routing (Readiness Probes)**
+
+```yaml
+readinessProbe:
+  httpGet:
+    path: /health/ready/
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 2
+# Unhealthy pods are automatically removed from service endpoints
+```
+
+**3. Automatic Scaling (HPA)**
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: django-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: django-app
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 15
+      selectPolicy: Max
+```
+
+
+
+**4. Automatic Database Failover (Zalando Operator)**
+
+The Zalando Postgres Operator automatically handles:
+- **Leader election**: When master fails, a replica is automatically promoted
+- **Replication**: Streaming replication keeps replicas in sync
+- **Split-brain prevention**: Uses Patroni's DCS (etcd) for consensus
+- **Automatic recovery**: Failed pods are recreated automatically
+- **Zero downtime**: Clients reconnect to new master automatically
+
+**Failover Timeline:**
+```
+0:00 - Master pod crashes
+0:05 - Patroni detects master failure
+0:10 - Patroni promotes healthiest replica to master
+0:15 - Other replicas start replicating from new master
+0:20 - Service endpoint updated to point to new master
+0:25 - Application reconnects to new master
+0:30 - System fully operational
+```
+
+**5. Automatic Redis Failover (Sentinel)**
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+spec:
+  serviceName: redis
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command:
+          - redis-server
+          - --appendonly yes
+          - --save 900 1
+          - --save 300 10
+          - --save 60 10000
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+```
+
+
+
+### Chaos Testing and Load Testing
+
+**1. Extreme Load Testing with Locust**
+
+```python
+# locustfile.py - Extreme load test
+from locust import HttpUser, task, between, events
+import random
+
+class JewelryShopUser(HttpUser):
+    wait_time = between(0.1, 0.5)  # Aggressive timing
+    
+    def on_start(self):
+        """Login before starting"""
+        response = self.client.post('/api/auth/login/', {
+            'username': f'testuser{random.randint(1, 1000)}',
+            'password': 'testpass'
+        })
+        self.token = response.json().get('access_token')
+        self.client.headers.update({'Authorization': f'Bearer {self.token}'})
+    
+    @task(10)
+    def view_dashboard(self):
+        """Most common action - high weight"""
+        self.client.get('/dashboard/')
+    
+    @task(5)
+    def search_inventory(self):
+        """Search inventory"""
+        self.client.get(f'/api/inventory/?search=gold&page={random.randint(1, 10)}')
+    
+    @task(3)
+    def create_sale(self):
+        """Create sales - moderate load"""
+        self.client.post('/api/sales/', {
+            'items': [{'inventory_item_id': random.randint(1, 100), 'quantity': 1}],
+            'payment_method': 'cash'
+        })
+    
+    @task(2)
+    def generate_report(self):
+        """Heavy operation"""
+        self.client.post('/api/reports/generate/', {
+            'report_type': 'sales_summary',
+            'date_range': '30_days'
+        })
+
+# Run extreme load test
+# locust -f locustfile.py --users 1000 --spawn-rate 50 --run-time 30m --host https://jewelry-shop.com
+```
+
+**Expected Behavior:**
+- **0-100 users**: All pods handle load easily
+- **100-300 users**: CPU reaches 70%, HPA triggers scale-up to 5 pods
+- **300-500 users**: Memory reaches 80%, HPA scales to 7 pods
+- **500-800 users**: HPA scales to 10 pods (maximum)
+- **800-1000 users**: System maintains performance at max capacity
+- **Load decreases**: HPA gradually scales down after 5-minute stabilization window
+
+
+
+**2. Chaos Testing Scenarios**
+
+```bash
+#!/bin/bash
+# chaos_test.sh - Automated chaos testing
+
+echo "=== Starting Chaos Testing ==="
+
+# Test 1: Kill PostgreSQL master pod
+echo "Test 1: Killing PostgreSQL master pod..."
+MASTER_POD=$(kubectl get pods -l application=spilo,cluster-name=jewelry-shop-postgres,spilo-role=master -o name)
+kubectl delete $MASTER_POD
+echo "Waiting for automatic failover..."
+sleep 30
+kubectl get pods -l application=spilo
+# Expected: New master elected, all pods running
+
+# Test 2: Kill random Django pods
+echo "Test 2: Killing random Django pods..."
+for i in {1..3}; do
+    RANDOM_POD=$(kubectl get pods -l app=django -o name | shuf -n 1)
+    kubectl delete $RANDOM_POD
+    echo "Killed $RANDOM_POD, waiting 10s..."
+    sleep 10
+done
+kubectl get pods -l app=django
+# Expected: Pods automatically recreated, service continues
+
+# Test 3: Kill Redis master
+echo "Test 3: Killing Redis master..."
+REDIS_MASTER=$(kubectl get pods -l app=redis,role=master -o name)
+kubectl delete $REDIS_MASTER
+echo "Waiting for Sentinel failover..."
+sleep 20
+kubectl get pods -l app=redis
+# Expected: Sentinel promotes new master
+
+# Test 4: Simulate node failure
+echo "Test 4: Cordoning node to simulate failure..."
+NODE=$(kubectl get nodes -o name | grep agent | head -n 1)
+kubectl cordon $NODE
+kubectl drain $NODE --ignore-daemonsets --delete-emptydir-data
+echo "Waiting for pods to reschedule..."
+sleep 60
+kubectl get pods -o wide
+# Expected: All pods rescheduled to healthy nodes
+
+# Cleanup
+kubectl uncordon $NODE
+
+# Test 5: Network partition simulation
+echo "Test 5: Simulating network partition..."
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: NetworkPolicy
+metadata:
+  name: isolate-postgres
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress: []
+  egress: []
+EOF
+echo "Waiting 30s..."
+sleep 30
+kubectl delete networkpolicy isolate-postgres
+# Expected: System detects partition, maintains consistency
+
+echo "=== Chaos Testing Complete ==="
+echo "Verifying system health..."
+kubectl get pods --all-namespaces
+kubectl top nodes
+kubectl top pods
+```
+
+
+
+**3. Automated Validation After Each Step**
+
+```bash
+#!/bin/bash
+# validate_deployment.sh - Run after each deployment step
+
+validate_step() {
+    local step_name=$1
+    echo "=== Validating: $step_name ==="
+    
+    # Check pod status
+    echo "Checking pod status..."
+    kubectl get pods -n jewelry-shop
+    PENDING=$(kubectl get pods -n jewelry-shop --field-selector=status.phase=Pending --no-headers | wc -l)
+    FAILED=$(kubectl get pods -n jewelry-shop --field-selector=status.phase=Failed --no-headers | wc -l)
+    
+    if [ $PENDING -gt 0 ] || [ $FAILED -gt 0 ]; then
+        echo "❌ FAILED: Pods not healthy"
+        kubectl describe pods -n jewelry-shop | grep -A 10 "Events:"
+        return 1
+    fi
+    echo "✅ All pods running"
+    
+    # Check service endpoints
+    echo "Checking service endpoints..."
+    kubectl get endpoints -n jewelry-shop
+    
+    # Test connectivity
+    echo "Testing service connectivity..."
+    kubectl run test-pod --image=curlimages/curl:latest --rm -it --restart=Never -- \
+        curl -s -o /dev/null -w "%{http_code}" http://django-service.jewelry-shop.svc.cluster.local/health/
+    
+    # Check logs for errors
+    echo "Checking logs for errors..."
+    ERROR_COUNT=$(kubectl logs -n jewelry-shop -l app=django --tail=100 | grep -i error | wc -l)
+    if [ $ERROR_COUNT -gt 5 ]; then
+        echo "⚠️  WARNING: Found $ERROR_COUNT errors in logs"
+        kubectl logs -n jewelry-shop -l app=django --tail=20 | grep -i error
+    fi
+    
+    echo "✅ $step_name validation complete"
+    return 0
+}
+
+# Usage after each deployment step:
+# validate_step "Django Deployment"
+# validate_step "PostgreSQL Cluster"
+# validate_step "Redis Cluster"
+```
+
+**4. Continuous Health Monitoring**
+
+```python
+# health_check.py - Comprehensive health check endpoint
+from django.http import JsonResponse
+from django.db import connection
+from django.core.cache import cache
+import redis
+
+def health_check_live(request):
+    """Liveness probe - is the application running?"""
+    return JsonResponse({'status': 'alive'})
+
+def health_check_ready(request):
+    """Readiness probe - can the application serve traffic?"""
+    checks = {}
+    
+    # Check database
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        checks['database'] = 'healthy'
+    except Exception as e:
+        checks['database'] = f'unhealthy: {str(e)}'
+        return JsonResponse({'status': 'not_ready', 'checks': checks}, status=503)
+    
+    # Check Redis
+    try:
+        cache.set('health_check', 'ok', 10)
+        assert cache.get('health_check') == 'ok'
+        checks['redis'] = 'healthy'
+    except Exception as e:
+        checks['redis'] = f'unhealthy: {str(e)}'
+        return JsonResponse({'status': 'not_ready', 'checks': checks}, status=503)
+    
+    # Check Celery
+    try:
+        from celery import current_app
+        inspect = current_app.control.inspect()
+        stats = inspect.stats()
+        if stats:
+            checks['celery'] = 'healthy'
+        else:
+            checks['celery'] = 'no workers'
+    except Exception as e:
+        checks['celery'] = f'unhealthy: {str(e)}'
+    
+    return JsonResponse({'status': 'ready', 'checks': checks})
+```
+

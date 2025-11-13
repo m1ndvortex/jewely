@@ -34,8 +34,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django_prometheus.db.backends.postgresql",
         "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+        "USER": os.getenv("POSTGRES_USER") or os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD") or os.getenv("APP_DB_PASSWORD"),
         "HOST": os.getenv("POSTGRES_HOST"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
         "ATOMIC_REQUESTS": True,
@@ -43,6 +43,7 @@ DATABASES = {
         "OPTIONS": {
             "connect_timeout": 10,
             "options": "-c statement_timeout=30000",  # 30 second query timeout
+            "sslmode": os.getenv("DB_SSLMODE", "prefer"),  # SSL mode for PostgreSQL
         },
     }
 }
@@ -110,6 +111,9 @@ CACHES = {
 # Celery Configuration - Production
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"{redis_url_base}/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", f"{redis_url_base}/0")
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = (
+    os.getenv("CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP", "true").lower() == "true"
+)
 
 # Email Configuration - Production
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")

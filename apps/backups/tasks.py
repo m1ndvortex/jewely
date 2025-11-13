@@ -317,7 +317,8 @@ def daily_full_database_backup(self, initiated_by_user_id: Optional[int] = None)
 
     # Try to acquire lock with 2-hour expiration
     if not redis_conn.set(task_lock_key, "1", ex=7200, nx=True):
-        logger.warning(f"Daily backup task {self.request.id} already running, skipping duplicate execution")
+        logger.warning(
+            f"Daily backup task {self.request.id} already running, skipping duplicate execution")
         return None
 
     try:
@@ -689,7 +690,8 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
 
     # Try to acquire lock with 30-minute expiration
     if not redis_conn.set(task_lock_key, "1", ex=1800, nx=True):
-        logger.warning(f"Tenant backup task {task_self.request.id} already running, skipping duplicate execution")
+        logger.warning(
+            f"Tenant backup task {task_self.request.id} already running, skipping duplicate execution")
         return None
 
     try:
@@ -731,8 +733,7 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
                         existing_task_id = existing_task_id.decode('utf-8')
                     logger.warning(
                         f"Backup already in progress for tenant {tenant.company_name} ({tenant.id}) "
-                        f"by task {existing_task_id}, skipping"
-                    )
+                        f"by task {existing_task_id}, skipping")
                     continue
 
                 try:
@@ -793,13 +794,13 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
                         logger.info("Compressing and encrypting tenant backup...")
 
                         encrypted_path, checksum, _, compressed_size, final_size = compress_and_encrypt_file(
-                            input_path=dump_path,
-                            output_path=os.path.join(temp_dir, remote_filename),
-                        )
+                            input_path=dump_path, output_path=os.path.join(temp_dir, remote_filename), )
                         temp_files.append(encrypted_path)
 
-                        # Calculate compression ratio (using compressed size, not final encrypted size)
-                        compression_ratio = 1 - (compressed_size / original_size) if original_size > 0 else 0
+                        # Calculate compression ratio (using compressed size, not final encrypted
+                        # size)
+                        compression_ratio = 1 - \
+                            (compressed_size / original_size) if original_size > 0 else 0
 
                         logger.info(f"Compressed size: {compressed_size / (1024**2):.2f} MB")
                         logger.info(f"Final encrypted size: {final_size / (1024**2):.2f} MB")
@@ -816,7 +817,8 @@ def _do_weekly_per_tenant_backup(  # noqa: C901
                         # For production, we require all three storage locations
                         # For testing/development, we require at least local storage
                         if not storage_paths["local"]:
-                            raise Exception("Failed to upload to local storage (minimum requirement)")
+                            raise Exception(
+                                "Failed to upload to local storage (minimum requirement)")
 
                         if not all_succeeded:
                             logger.warning(
@@ -1074,11 +1076,11 @@ def continuous_wal_archiving(self):  # noqa: C901
 
                 # Compress and encrypt in one operation
                 encrypted_path, checksum, original_size_returned, compressed_size, final_size = compress_and_encrypt_file(
-                    input_path=str(wal_file_path)
-                )
+                    input_path=str(wal_file_path))
 
                 # Calculate compression ratio (before encryption)
-                compression_ratio = 1 - (compressed_size / original_size) if original_size > 0 else 0
+                compression_ratio = 1 - \
+                    (compressed_size / original_size) if original_size > 0 else 0
 
                 logger.info(f"Compressed size: {compressed_size / (1024**2):.2f} MB")
                 logger.info(f"Final encrypted size: {final_size / (1024**2):.2f} MB")
@@ -1151,7 +1153,8 @@ def continuous_wal_archiving(self):  # noqa: C901
                     # Rename encrypted file to standard location
                     local_wal_path = Path(pg_wal_archive_dir) / remote_filename
                     Path(encrypted_path).rename(local_wal_path)
-                    logger.info(f"Kept encrypted file: {local_wal_path} ({final_size / (1024**2):.2f} MB)")
+                    logger.info(
+                        f"Kept encrypted file: {local_wal_path} ({final_size / (1024**2):.2f} MB)")
 
                     # Remove original uncompressed WAL file if it still exists
                     if wal_file_path.exists():

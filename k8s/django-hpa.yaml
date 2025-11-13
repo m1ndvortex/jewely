@@ -1,0 +1,109 @@
+# ============================================================================
+# Django Application Horizontal Pod Autoscaler
+# ============================================================================
+# Automatically scales Django pods based on CPU and memory usage with
+# aggressive scale-up and gradual scale-down policies.
+#
+# Scaling Configuration:
+# - Min Replicas: 3 (high availability baseline)
+# - Max Replicas: 10 (handle peak loads)
+# - CPU Threshold: 70% (scale up when CPU exceeds 70%)
+# - Memory Threshold: 80% (scale up when memory exceeds 80%)
+#
+# Scaling Behavior:
+# - Scale-Up: Aggressive (100% increase every 15s, max 2 pods per 15s)
+# - Scale-Down: Gradual (50% decrease every 60s after 5min stabilization)
+# ============================================================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: django-hpa
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: django
+    tier: backend
+  annotations:
+    description: "Aggressive HPA for Django pods to handle traffic spikes"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: django
+  
+  # Scaling boundaries
+  minReplicas: 3   # Maintain 3 pods minimum for high availability
+  maxReplicas: 10  # Scale up to 10 pods for peak loads
+  
+  # Scaling metrics
+  metrics:
+    # Primary metric: CPU usage
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70  # Scale up when average CPU > 70%
+    
+    # Secondary metric: Memory usage
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80  # Scale up when average memory > 80%
+  
+  # Scaling behavior - aggressive scale-up, gradual scale-down
+  behavior:
+    # Scale-down policy: Gradual and conservative
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 minutes before scaling down
+      policies:
+        - type: Percent
+          value: 50  # Scale down by max 50% at a time
+          periodSeconds: 60  # Every 60 seconds
+      selectPolicy: Min  # Use the most conservative policy
+    
+    # Scale-up policy: Aggressive and fast
+    scaleUp:
+      stabilizationWindowSeconds: 0  # No stabilization window for scale-up
+      policies:
+        # Policy 1: Double the pods (100% increase)
+        - type: Percent
+          value: 100  # Can double pods quickly
+          periodSeconds: 15  # Every 15 seconds
+        
+        # Policy 2: Add up to 2 pods at a time
+        - type: Pods
+          value: 2  # Add max 2 pods per period
+          periodSeconds: 15  # Every 15 seconds
+      
+      selectPolicy: Max  # Use the policy that scales fastest
+
+---
+# ============================================================================
+# Pod Disruption Budget for Django
+# ============================================================================
+# Ensures at least 2 pods are always available during voluntary disruptions
+# (e.g., node drains, updates) to maintain service availability.
+# ============================================================================
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: django-pdb
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: django
+    tier: backend
+spec:
+  minAvailable: 2  # Always keep at least 2 pods running
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: django
+  
+  # Unhealthy pod eviction policy
+  unhealthyPodEvictionPolicy: IfHealthyBudget

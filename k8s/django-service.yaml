@@ -1,8 +1,8 @@
 # ============================================================================
 # Django Application Service
 # ============================================================================
-# ClusterIP service for internal communication with Django pods.
-# This service is accessed by Nginx for reverse proxying.
+# ClusterIP service to expose Django application internally within the cluster
+# Nginx will proxy requests to this service
 # ============================================================================
 
 apiVersion: v1
@@ -25,7 +25,7 @@ spec:
     component: django
   ports:
     - name: http
-      port: 8000
-      targetPort: http
       protocol: TCP
+      port: 80        # Service port
+      targetPort: 8000  # Container port
   sessionAffinity: None

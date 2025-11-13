@@ -1,0 +1,84 @@
+# Simplified Traefik Helm Chart Values
+# Minimal configuration for Jewelry Shop SaaS Platform
+
+deployment:
+  enabled: true
+  kind: Deployment
+  replicas: 2
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
+    prometheus.io/path: "/metrics"
+
+service:
+  enabled: true
+  type: LoadBalancer
+
+ports:
+  web:
+    port: 80
+    expose:
+      default: true
+    exposedPort: 80
+  websecure:
+    port: 443
+    expose:
+      default: true
+    exposedPort: 443
+    tls:
+      enabled: true
+  metrics:
+    port: 9100
+    expose:
+      default: false
+    exposedPort: 9100
+
+ingressRoute:
+  dashboard:
+    enabled: true
+
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+securityContext:
+  capabilities:
+    drop: [ALL]
+    add: [NET_BIND_SERVICE]
+  readOnlyRootFilesystem: true
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+
+podSecurityContext:
+  fsGroup: 65532
+
+rbac:
+  enabled: true
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - traefik
+          topologyKey: kubernetes.io/hostname

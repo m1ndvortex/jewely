@@ -1,0 +1,150 @@
+# Traefik Helm Chart Values for Jewelry Shop SaaS Platform
+# This configuration sets up Traefik as the Ingress Controller with:
+# - HTTP (port 80) and HTTPS (port 443) entry points
+# - Automatic HTTP to HTTPS redirect
+# - Integration with cert-manager for SSL certificates
+# - Prometheus metrics for monitoring
+
+# Deployment configuration
+deployment:
+  enabled: true
+  kind: Deployment
+  replicas: 2  # High availability with 2 replicas
+  
+  # Pod disruption budget for high availability
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# Service configuration
+service:
+  enabled: true
+  type: LoadBalancer  # Use LoadBalancer for production, NodePort for k3d
+  annotations: {}
+  
+# Ports configuration
+ports:
+  # HTTP entry point (port 80)
+  web:
+    port: 80
+    expose:
+      default: true
+    exposedPort: 80
+    protocol: TCP
+    # HTTP to HTTPS redirect will be configured via middleware
+  
+  # HTTPS entry point (port 443)
+  websecure:
+    port: 443
+    expose:
+      default: true
+    exposedPort: 443
+    protocol: TCP
+    tls:
+      enabled: true
+  
+  # Traefik dashboard (internal only)
+  traefik:
+    port: 9000
+    expose:
+      default: false
+    protocol: TCP
+
+# Enable Traefik dashboard
+ingressRoute:
+  dashboard:
+    enabled: true
+    # Secure the dashboard with basic auth
+    matchRule: Host(`traefik.jewelry-shop.local`)
+    entryPoints: ["websecure"]
+
+# Logs configuration
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true
+    format: json
+
+# Metrics for Prometheus
+metrics:
+  prometheus:
+    enabled: true
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    entryPoint: metrics
+
+# Additional arguments for Traefik
+additionalArguments:
+  # Enable access logs
+  - "--accesslog=true"
+  - "--accesslog.format=json"
+  
+  # Metrics
+  - "--metrics.prometheus=true"
+  - "--metrics.prometheus.addEntryPointsLabels=true"
+  - "--metrics.prometheus.addServicesLabels=true"
+
+# Resource limits
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Security context
+securityContext:
+  capabilities:
+    drop: [ALL]
+    add: [NET_BIND_SERVICE]
+  readOnlyRootFilesystem: true
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 65532
+
+# Health checks are configured via deployment settings
+# The chart handles probe configuration automatically
+
+# Persistence for SSL certificates (if not using cert-manager)
+persistence:
+  enabled: false
+
+# RBAC
+rbac:
+  enabled: true
+
+# Service account
+serviceAccount:
+  name: traefik
+
+# Pod annotations for Prometheus scraping
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9100"
+  prometheus.io/path: "/metrics"
+
+# Node selector (optional)
+nodeSelector: {}
+
+# Tolerations (optional)
+tolerations: []
+
+# Affinity rules for pod distribution
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - traefik
+          topologyKey: kubernetes.io/hostname

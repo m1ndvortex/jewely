@@ -437,18 +437,17 @@ class BackupConfigurationAdmin(admin.ModelAdmin):
         "modified_by",
     ]
     fieldsets = (
-        (
-            "WAL Archiving Configuration",
-            {
-                "fields": (
-                    "wal_archiving_interval_seconds",
-                    "modified_by",
-                    "modified_at",
-                    "created_at",
-                ),
-                "description": "Configure how often WAL (Write-Ahead Log) archiving runs. Changes take effect on next Celery Beat cycle (typically within 60 seconds).",
-            },
-        ),
+        ("WAL Archiving Configuration",
+         {
+             "fields": (
+                 "wal_archiving_interval_seconds",
+                 "modified_by",
+                 "modified_at",
+                 "created_at",
+             ),
+             "description": "Configure how often WAL (Write-Ahead Log) archiving runs. Changes take effect on next Celery Beat cycle (typically within 60 seconds).",
+         },
+         ),
     )
 
     def has_add_permission(self, request):

@@ -630,7 +630,8 @@ class RepairOrderNotificationTest(TestCase):
                 # Start work
                 self.repair_order.start_work(user=self.user)
 
-                # Manually trigger notification (in real implementation, this would be in the transition)
+                # Manually trigger notification (in real implementation, this would be in
+                # the transition)
                 send_repair_status_notification(self.repair_order)
                 mock_notify.assert_called_with(self.repair_order)
 

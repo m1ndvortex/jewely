@@ -405,18 +405,47 @@ This document defines the requirements for an enterprise-grade, multi-tenant B2B
 9. THE System SHALL configure Nginx to log all requests with response times and status codes
 10. THE System SHALL configure Nginx to export metrics for Prometheus monitoring
 
-### Requirement 23: Kubernetes Deployment and High Availability
+### Requirement 23: Kubernetes Deployment with k3d/k3s and Full Automation
 
-**User Story:** As a platform administrator, I want the application deployed in a highly available Kubernetes cluster, so that the platform can scale and remain resilient.
+**User Story:** As a platform administrator, I want the application deployed in a highly available, self-healing Kubernetes cluster using k3d for local development and k3s for production, so that the platform can scale automatically and recover from failures without manual intervention.
 
 #### Acceptance Criteria
 
-1. THE System SHALL deploy Django application as stateless pods with multiple replicas
-2. THE System SHALL deploy Nginx as separate pods for static file serving and reverse proxy
-3. THE System SHALL deploy Celery workers as separate deployments with configurable replica counts
-4. THE System SHALL deploy PostgreSQL with Patroni for automatic failover
-5. THE System SHALL deploy Redis with Sentinel for automatic failover
-6. THE System SHALL implement horizontal pod autoscaling based on CPU and memory usage
+1. THE System SHALL use k3d for local development cluster with 1 server node and 2 agent nodes
+2. THE System SHALL use k3s for production VPS deployment with lightweight resource footprint
+3. THE System SHALL deploy Django application as stateless pods with minimum 3 replicas
+4. THE System SHALL deploy Nginx as separate pods for static file serving and reverse proxy
+5. THE System SHALL deploy Celery workers as separate deployments with configurable replica counts
+6. THE System SHALL deploy PostgreSQL using Zalando Postgres Operator for automated high availability
+7. THE System SHALL configure Postgres Operator to manage automatic failover, backup, and recovery
+8. THE System SHALL deploy Redis with Sentinel for automatic master failover
+9. THE System SHALL implement Horizontal Pod Autoscaler for Django pods with minimum 3 and maximum 10 replicas
+10. THE System SHALL configure HPA to scale based on CPU utilization above 70% and memory utilization above 80%
+11. THE System SHALL implement liveness probes to automatically restart unhealthy pods
+12. THE System SHALL implement readiness probes to control traffic routing to healthy pods only
+13. THE System SHALL implement startup probes for slow-starting containers
+14. THE System SHALL use ConfigMaps for non-sensitive configuration management
+15. THE System SHALL use Kubernetes Secrets for sensitive data storage with encryption at rest
+16. THE System SHALL use Traefik as ingress controller with automatic SSL certificate management
+17. THE System SHALL implement network policies for service isolation and security
+18. THE System SHALL configure PersistentVolumeClaims for stateful data with automatic provisioning
+19. THE System SHALL implement automatic leader election for PostgreSQL with zero manual intervention
+20. THE System SHALL implement automatic leader election for Redis Sentinel with zero manual intervention
+21. THE System SHALL perform rolling updates for zero-downtime deployments
+22. THE System SHALL automatically rollback failed deployments without manual intervention
+23. THE System SHALL test all configurations after each deployment step with validation commands
+24. THE System SHALL verify pod health, service connectivity, and data persistence after each step
+25. THE System SHALL conduct extreme load testing to verify HPA scaling behavior under stress
+26. THE System SHALL conduct chaos testing by killing master nodes to verify automatic leader election
+27. THE System SHALL conduct chaos testing by killing random pods to verify self-healing capabilities
+28. THE System SHALL verify system remains operational during simulated node failures
+29. THE System SHALL verify automatic recovery from database master failure within 30 seconds
+30. THE System SHALL verify automatic recovery from Redis master failure within 30 seconds
+31. THE System SHALL maintain service availability during pod terminations and restarts
+32. THE System SHALL handle network partitions and split-brain scenarios automatically
+33. THE System SHALL provide automated health checks for all critical components
+34. THE System SHALL automatically detect and recover from resource exhaustion
+35. THE System SHALL scale down pods automatically when load decreases to save resourcesal pod autoscaling based on CPU and memory usage
 7. THE System SHALL configure liveness probes to restart unhealthy pods
 8. THE System SHALL configure readiness probes to control traffic routing
 9. THE System SHALL use ConfigMaps for configuration management

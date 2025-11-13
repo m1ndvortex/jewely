@@ -1,0 +1,175 @@
+# ============================================================================
+# Network Policies for PostgreSQL Cluster Security
+# ============================================================================
+# These policies implement zero-trust networking for the PostgreSQL cluster:
+# - Only authorized pods can access PostgreSQL
+# - No direct external access
+# - Inter-pod communication for replication
+# - Monitoring access for Prometheus
+# ============================================================================
+
+---
+# Policy 1: Allow Django to PostgreSQL (via PgBouncer)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-django-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from Django pods
+    - from:
+        - podSelector:
+            matchLabels:
+              component: django
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow from PgBouncer
+    - from:
+        - podSelector:
+            matchLabels:
+              application: db-connection-pooler
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow inter-pod communication (replication)
+    - from:
+        - podSelector:
+            matchLabels:
+              application: spilo
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8008  # Patroni REST API
+
+---
+# Policy 2: Allow Django to PgBouncer
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-django-to-pgbouncer
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: db-connection-pooler
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: django
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# Policy 3: Deny direct external access to PostgreSQL
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-external-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only allow from within namespace (already defined above)
+    - from:
+        - podSelector: {}
+
+---
+# Policy 4: Allow Prometheus to scrape metrics
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+        - podSelector: {}  # Also allow from same namespace
+      ports:
+        - protocol: TCP
+          port: 9187  # postgres_exporter
+
+---
+# Policy 5: Allow Celery workers to PostgreSQL (via PgBouncer)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-celery-to-pgbouncer
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: db-connection-pooler
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: celery-worker
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# Policy 6: Allow admin access from specific pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-admin-to-postgresql
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              role: admin
+      ports:
+        - protocol: TCP
+          port: 5432

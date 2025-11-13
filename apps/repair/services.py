@@ -367,7 +367,8 @@ class CustomOrderInventoryService:
             for requirement in custom_order.material_requirements.filter(is_acquired=False):
                 try:
                     # Try to find matching inventory items
-                    # This is a simple matching - in a real system you might want more sophisticated matching
+                    # This is a simple matching - in a real system you might want more
+                    # sophisticated matching
                     matching_items = InventoryItem.objects.filter(
                         tenant=custom_order.tenant,
                         name__icontains=requirement.material_name,

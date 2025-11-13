@@ -1,0 +1,112 @@
+# ============================================================================
+# ConfigMap for Jewelry Shop SaaS Platform
+# ============================================================================
+# This ConfigMap contains non-sensitive configuration that can be shared
+# across all application components (Django, Celery, Nginx).
+# 
+# Sensitive data like passwords and API keys are stored in secrets.yaml
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: configuration
+data:
+  # Django Configuration
+  DJANGO_SETTINGS_MODULE: "config.settings.production"
+  DJANGO_DEBUG: "False"
+  DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,jewelry-shop.local,*.jewelry-shop.local"
+  
+  # Environment
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  
+  # Database Configuration (non-sensitive)
+  # Using PgBouncer connection pooler for PostgreSQL cluster
+  POSTGRES_HOST: "jewelry-shop-db-pooler.jewelry-shop.svc.cluster.local"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "jewelry_shop"
+  DB_USER: "jewelry_app"
+  DB_SUPERUSER: "postgres"
+  
+  # Direct PostgreSQL connections (for admin tasks)
+  POSTGRES_MASTER_HOST: "jewelry-shop-db.jewelry-shop.svc.cluster.local"
+  POSTGRES_REPLICA_HOST: "jewelry-shop-db-repl.jewelry-shop.svc.cluster.local"
+  
+  # PgBouncer Configuration
+  USE_PGBOUNCER: "True"
+  PGBOUNCER_HOST: "jewelry-shop-db-pooler.jewelry-shop.svc.cluster.local"
+  PGBOUNCER_PORT: "5432"
+  
+  # Redis Configuration (non-sensitive)
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  
+  # Celery Configuration (non-sensitive)
+  CELERY_BROKER_URL: "redis://redis-service:6379/0"
+  CELERY_RESULT_BACKEND: "redis://redis-service:6379/0"
+  
+  # Email Configuration
+  EMAIL_BACKEND: "django.core.mail.backends.smtp.EmailBackend"
+  EMAIL_HOST: "smtp.gmail.com"
+  EMAIL_PORT: "587"
+  EMAIL_USE_TLS: "True"
+  DEFAULT_FROM_EMAIL: "noreply@jewelry-shop.local"
+  SERVER_EMAIL: "server@jewelry-shop.local"
+  
+  # Stripe Configuration (non-sensitive)
+  STRIPE_LIVE_MODE: "False"
+  
+  # Sentry Configuration (non-sensitive)
+  SENTRY_ENVIRONMENT: "production"
+  SENTRY_TRACES_SAMPLE_RATE: "0.1"
+  
+  # Feature Flags
+  ENABLE_MFA: "True"
+  ENABLE_BACKUP_SYSTEM: "True"
+  ENABLE_MONITORING: "True"
+  
+  # Application Settings
+  SITE_URL: "http://jewelry-shop.local"
+  MAX_UPLOAD_SIZE: "10485760"  # 10MB in bytes
+  SESSION_COOKIE_AGE: "86400"  # 24 hours in seconds
+  CSRF_COOKIE_SECURE: "True"
+  SESSION_COOKIE_SECURE: "True"
+  
+  # Timezone and Localization
+  TIME_ZONE: "UTC"
+  USE_TZ: "True"
+  LANGUAGE_CODE: "en"
+  
+  # Static and Media Files
+  STATIC_URL: "/static/"
+  MEDIA_URL: "/media/"
+  STATIC_ROOT: "/app/staticfiles"
+  MEDIA_ROOT: "/app/media"
+
+---
+# ============================================================================
+# ConfigMap for Nginx Configuration
+# ============================================================================
+# This ConfigMap will be populated with nginx.conf and other configuration
+# files from the docker/nginx directory when deploying.
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: nginx
+data:
+  # This will be populated from docker/nginx/nginx.conf
+  # Use: kubectl create configmap nginx-config --from-file=nginx.conf=docker/nginx/nginx.conf
+  # For now, we'll add a placeholder
+  placeholder: "Nginx configuration will be added from docker/nginx/ directory"

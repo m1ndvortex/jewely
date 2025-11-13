@@ -1061,7 +1061,8 @@ class AccountingService:
             cash_flow["net_change_in_cash"] = cash_ending - cash_beginning
 
             # For now, set operating cash flow equal to net income
-            # In a full implementation, we would add back depreciation and adjust for working capital changes
+            # In a full implementation, we would add back depreciation and adjust for
+            # working capital changes
             cash_flow["operating_activities"]["net_cash_from_operations"] = cash_flow[
                 "operating_activities"
             ]["net_income"]
