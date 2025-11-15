@@ -1,0 +1,82 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: jewelry-shop
+  labels:
+    app: otel-collector
+    component: tracing
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    
+    processors:
+      batch:
+        timeout: 10s
+        send_batch_size: 1024
+      
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+        spike_limit_mib: 128
+      
+      # Add resource attributes
+      resource:
+        attributes:
+          - key: service.namespace
+            value: jewelry-shop
+            action: upsert
+          - key: deployment.environment
+            value: production
+            action: upsert
+      
+      # Sample traces to reduce volume (optional)
+      probabilistic_sampler:
+        sampling_percentage: 100  # 100% for now, adjust based on volume
+    
+    exporters:
+      # Export to Tempo
+      otlp:
+        endpoint: tempo:4317
+        tls:
+          insecure: true
+      
+      # Export to Prometheus for metrics
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        namespace: otel
+        const_labels:
+          service: otel-collector
+      
+      # Logging exporter for debugging
+      logging:
+        loglevel: info
+        sampling_initial: 5
+        sampling_thereafter: 200
+    
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      pprof:
+        endpoint: 0.0.0.0:1777
+      zpages:
+        endpoint: 0.0.0.0:55679
+    
+    service:
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch, probabilistic_sampler]
+          exporters: [otlp, logging]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch]
+          exporters: [prometheus, logging]

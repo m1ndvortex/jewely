@@ -1,0 +1,443 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-system-overview
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: system-overview
+data:
+  system-overview.json: |
+    {
+      "dashboard": {
+        "title": "System Overview",
+        "tags": ["jewelry-shop", "overview"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Total HTTP Requests",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(django_http_requests_total[5m]))",
+                "legendFormat": "Requests/sec"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "HTTP Request Latency (p95)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_seconds_bucket[5m])) by (le))",
+                "legendFormat": "p95 latency"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "HTTP Status Codes",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(django_http_responses_total_by_status[5m])) by (status)",
+                "legendFormat": "{{status}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Active Pods",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "count(kube_pod_status_phase{namespace=\"jewelry-shop\", phase=\"Running\"})",
+                "legendFormat": "Running Pods"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "CPU Usage",
+            "type": "gauge",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"jewelry-shop\"}[5m])) / sum(kube_pod_container_resource_limits{namespace=\"jewelry-shop\", resource=\"cpu\"}) * 100",
+                "legendFormat": "CPU %"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8}
+          },
+          {
+            "id": 6,
+            "title": "Memory Usage",
+            "type": "gauge",
+            "targets": [
+              {
+                "expr": "sum(container_memory_usage_bytes{namespace=\"jewelry-shop\"}) / sum(kube_pod_container_resource_limits{namespace=\"jewelry-shop\", resource=\"memory\"}) * 100",
+                "legendFormat": "Memory %"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 12}
+          },
+          {
+            "id": 7,
+            "title": "Database Connections",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "django_db_connections_total",
+                "legendFormat": "Connections"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 18, "y": 12}
+          }
+        ],
+        "refresh": "30s",
+        "time": {"from": "now-1h", "to": "now"}
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-application-performance
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: application-performance
+data:
+  application-performance.json: |
+    {
+      "dashboard": {
+        "title": "Application Performance",
+        "tags": ["jewelry-shop", "django", "performance"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Request Rate by View",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(django_http_requests_total[5m])) by (view_name)",
+                "legendFormat": "{{view_name}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Request Latency by View (p95)",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_seconds_by_view_method_bucket[5m])) by (view_name, le))",
+                "legendFormat": "{{view_name}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Database Query Duration",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(django_db_query_duration_seconds_sum[5m]) / rate(django_db_query_duration_seconds_count[5m])",
+                "legendFormat": "Avg Query Time"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Cache Hit Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(django_cache_hit_total[5m]) / (rate(django_cache_hit_total[5m]) + rate(django_cache_miss_total[5m])) * 100",
+                "legendFormat": "Hit Rate %"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(django_http_responses_total_by_status{status=~\"5..\"}[5m]))",
+                "legendFormat": "5xx Errors/sec"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+          },
+          {
+            "id": 6,
+            "title": "Active Database Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "django_db_connections_total",
+                "legendFormat": "Connections"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+          }
+        ],
+        "refresh": "30s",
+        "time": {"from": "now-1h", "to": "now"}
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-database-performance
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: database-performance
+data:
+  database-performance.json: |
+    {
+      "dashboard": {
+        "title": "Database Performance",
+        "tags": ["jewelry-shop", "postgresql", "database"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "PostgreSQL Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "pg_up",
+                "legendFormat": "Status"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Active Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_stat_database_numbackends{datname=\"jewelry_shop\"}",
+                "legendFormat": "Active Connections"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Transaction Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(pg_stat_database_xact_commit{datname=\"jewelry_shop\"}[5m])",
+                "legendFormat": "Commits/sec"
+              },
+              {
+                "expr": "rate(pg_stat_database_xact_rollback{datname=\"jewelry_shop\"}[5m])",
+                "legendFormat": "Rollbacks/sec"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 18, "y": 0}
+          },
+          {
+            "id": 4,
+            "title": "Database Size",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_database_size_bytes{datname=\"jewelry_shop\"}",
+                "legendFormat": "Size (bytes)"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Locks",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_locks_count",
+                "legendFormat": "{{mode}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 6,
+            "title": "Replication Lag",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "pg_replication_lag",
+                "legendFormat": "Lag (seconds)"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+          },
+          {
+            "id": 7,
+            "title": "Cache Hit Ratio",
+            "type": "gauge",
+            "targets": [
+              {
+                "expr": "pg_stat_database_blks_hit{datname=\"jewelry_shop\"} / (pg_stat_database_blks_hit{datname=\"jewelry_shop\"} + pg_stat_database_blks_read{datname=\"jewelry_shop\"}) * 100",
+                "legendFormat": "Hit Ratio %"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+          }
+        ],
+        "refresh": "30s",
+        "time": {"from": "now-1h", "to": "now"}
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-infrastructure-health
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: infrastructure-health
+data:
+  infrastructure-health.json: |
+    {
+      "dashboard": {
+        "title": "Infrastructure Health",
+        "tags": ["jewelry-shop", "kubernetes", "infrastructure"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Pod Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "count(kube_pod_status_phase{namespace=\"jewelry-shop\", phase=\"Running\"})",
+                "legendFormat": "Running"
+              },
+              {
+                "expr": "count(kube_pod_status_phase{namespace=\"jewelry-shop\", phase=\"Pending\"})",
+                "legendFormat": "Pending"
+              },
+              {
+                "expr": "count(kube_pod_status_phase{namespace=\"jewelry-shop\", phase=\"Failed\"})",
+                "legendFormat": "Failed"
+              }
+            ],
+            "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Node CPU Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "100 - (avg by (node) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "legendFormat": "{{node}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 8, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Node Memory Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+                "legendFormat": "{{node}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 20, "y": 0}
+          },
+          {
+            "id": 4,
+            "title": "Container CPU Usage by Pod",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"jewelry-shop\", container!=\"\"}[5m])) by (pod)",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Container Memory Usage by Pod",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(container_memory_usage_bytes{namespace=\"jewelry-shop\", container!=\"\"}) by (pod)",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 6,
+            "title": "Network I/O",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_network_receive_bytes_total{namespace=\"jewelry-shop\"}[5m]))",
+                "legendFormat": "Receive"
+              },
+              {
+                "expr": "sum(rate(container_network_transmit_bytes_total{namespace=\"jewelry-shop\"}[5m]))",
+                "legendFormat": "Transmit"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+          },
+          {
+            "id": 7,
+            "title": "Disk I/O",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_fs_reads_bytes_total{namespace=\"jewelry-shop\"}[5m]))",
+                "legendFormat": "Read"
+              },
+              {
+                "expr": "sum(rate(container_fs_writes_bytes_total{namespace=\"jewelry-shop\"}[5m]))",
+                "legendFormat": "Write"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+          },
+          {
+            "id": 8,
+            "title": "Pod Restarts",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"jewelry-shop\"}) by (pod)",
+                "legendFormat": "{{pod}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+          }
+        ],
+        "refresh": "30s",
+        "time": {"from": "now-1h", "to": "now"}
+      }
+    }

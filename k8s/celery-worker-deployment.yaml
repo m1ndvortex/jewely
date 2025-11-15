@@ -109,6 +109,19 @@ spec:
               value: "config.settings.production"
             - name: DEBUG
               value: "False"
+            # OpenTelemetry Configuration
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: "jewelry-shop-celery"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: APP_VERSION
+              value: "1.0.0"
             # Database configuration - override with PostgreSQL operator credentials
             - name: POSTGRES_USER
               valueFrom:

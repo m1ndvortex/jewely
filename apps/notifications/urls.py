@@ -28,6 +28,8 @@ urlpatterns = [
     path("webhooks/ses/", SESWebhookView.as_view(), name="ses_webhook"),
     # SMS webhooks for delivery tracking
     path("webhooks/sms/", views.sms_webhook, name="sms_webhook"),
+    # Alertmanager webhook for sending SMS alerts
+    path("api/alerts/sms/", views.alertmanager_webhook, name="alertmanager_webhook"),
     # Customer Communication Tools
     path("segments/", views.CustomerSegmentListView.as_view(), name="segments"),
     path("segments/create/", views.CustomerSegmentCreateView.as_view(), name="segment_create"),

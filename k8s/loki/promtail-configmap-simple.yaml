@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: jewelry-shop
+  labels:
+    app: promtail
+    component: logging
+data:
+  promtail.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+      log_level: info
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+        backoff_config:
+          min_period: 100ms
+          max_period: 10s
+          max_retries: 10
+        timeout: 10s
+
+    target_config:
+      sync_period: 10s
+
+    limits_config:
+      readline_rate: 10000
+      readline_burst: 20000
+
+    scrape_configs:
+      # Scrape logs from all pods in the jewelry-shop namespace
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - jewelry-shop
+        
+        pipeline_stages:
+          - cri: {}
+        
+        relabel_configs:
+          # Only keep running pods
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Running
+            action: keep
+          
+          # Drop logs from promtail itself to avoid recursion
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: promtail
+            action: drop
+          
+          # Add namespace label
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          
+          # Add pod name label
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          
+          # Add container name label
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          
+          # Add app label
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+          
+          # Add component label
+          - source_labels: [__meta_kubernetes_pod_label_component]
+            target_label: component
+          
+          # Add node name label
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+          
+          # Set the log path for k3d/containerd
+          - replacement: /var/log/pods/$1/$2/*.log
+            separator: /
+            source_labels:
+            - __meta_kubernetes_pod_uid
+            - __meta_kubernetes_pod_container_name
+            target_label: __path__

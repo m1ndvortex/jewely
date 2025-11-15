@@ -1,0 +1,213 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-system-overview
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: system-overview
+data:
+  system-overview.json: |
+    {
+      "title": "System Overview",
+      "tags": ["jewelry-shop", "overview"],
+      "timezone": "browser",
+      "editable": true,
+      "graphTooltip": 1,
+      "panels": [
+        {
+          "id": 1,
+          "title": "Total HTTP Requests",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sum(rate(django_http_requests_total[5m]))",
+              "legendFormat": "Requests/sec",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+        },
+        {
+          "id": 2,
+          "title": "HTTP Request Latency (p95)",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p95 latency",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+        },
+        {
+          "id": 3,
+          "title": "HTTP Status Codes",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sum(rate(django_http_responses_total_by_status[5m])) by (status)",
+              "legendFormat": "{{status}}",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+        }
+      ],
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "schemaVersion": 27,
+      "version": 1
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-application-performance
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: application-performance
+data:
+  application-performance.json: |
+    {
+      "title": "Application Performance",
+      "tags": ["jewelry-shop", "django", "performance"],
+      "timezone": "browser",
+      "editable": true,
+      "graphTooltip": 1,
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate by View",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sum(rate(django_http_requests_total[5m])) by (view_name)",
+              "legendFormat": "{{view_name}}",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+        },
+        {
+          "id": 2,
+          "title": "Cache Hit Rate",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(django_cache_hit_total[5m]) / (rate(django_cache_hit_total[5m]) + rate(django_cache_miss_total[5m])) * 100",
+              "legendFormat": "Hit Rate %",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+        }
+      ],
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "schemaVersion": 27,
+      "version": 1
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-database-performance
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: database-performance
+data:
+  database-performance.json: |
+    {
+      "title": "Database Performance",
+      "tags": ["jewelry-shop", "postgresql", "database"],
+      "timezone": "browser",
+      "editable": true,
+      "graphTooltip": 1,
+      "panels": [
+        {
+          "id": 1,
+          "title": "PostgreSQL Status",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "pg_up",
+              "legendFormat": "Status",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+        },
+        {
+          "id": 2,
+          "title": "Active Connections",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "pg_stat_database_numbackends{datname=\"jewelry_shop\"}",
+              "legendFormat": "Active Connections",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0}
+        }
+      ],
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "schemaVersion": 27,
+      "version": 1
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-infrastructure-health
+  namespace: jewelry-shop
+  labels:
+    app: grafana
+    dashboard: infrastructure-health
+data:
+  infrastructure-health.json: |
+    {
+      "title": "Infrastructure Health",
+      "tags": ["jewelry-shop", "kubernetes", "infrastructure"],
+      "timezone": "browser",
+      "editable": true,
+      "graphTooltip": 1,
+      "panels": [
+        {
+          "id": 1,
+          "title": "Pod Status",
+          "type": "stat",
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{namespace=\"jewelry-shop\", phase=\"Running\"})",
+              "legendFormat": "Running",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0}
+        },
+        {
+          "id": 2,
+          "title": "Container CPU Usage by Pod",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"jewelry-shop\", container!=\"\"}[5m])) by (pod)",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 8, "y": 0}
+        }
+      ],
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "schemaVersion": 27,
+      "version": 1
+    }

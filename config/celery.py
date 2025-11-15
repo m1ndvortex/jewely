@@ -10,6 +10,10 @@ from celery.schedules import crontab  # noqa: F401
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
+# Initialize OpenTelemetry tracing for Celery workers
+from apps.core.tracing import configure_tracing
+configure_tracing()
+
 app = Celery("jewelry_shop")
 
 # Using a string here means the worker doesn't have to serialize

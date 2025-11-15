@@ -1,0 +1,262 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: jewelry-shop
+  labels:
+    app: prometheus
+    component: monitoring
+data:
+  prometheus.yml: |
+    # Prometheus Configuration for Jewelry SaaS Platform
+    # Per Requirements 7 and 24 - System Monitoring and Observability
+    
+    global:
+      scrape_interval: 15s  # Scrape targets every 15 seconds
+      evaluation_interval: 15s  # Evaluate rules every 15 seconds
+      external_labels:
+        cluster: 'jewelry-saas-k8s'
+        environment: 'production'
+    
+    # Alertmanager configuration
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+                - alertmanager.jewelry-shop.svc.cluster.local:9093
+          timeout: 10s
+          api_version: v2
+    
+    # Alert rule files
+    rule_files:
+      - '/etc/prometheus/rules/*.yml'
+    
+    # Scrape configurations with Kubernetes service discovery
+    scrape_configs:
+      # Django application metrics
+      - job_name: 'django'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - jewelry-shop
+        relabel_configs:
+          # Only scrape services with prometheus.io/scrape annotation
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          # Use service name as job label
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: job
+          # Use pod name as instance label
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          # Add service label
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: service
+          # Use custom metrics path if specified
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          # Use custom port if specified
+          - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+        metric_relabel_configs:
+          # Add component label
+          - source_labels: [job]
+            regex: django.*
+            target_label: component
+            replacement: backend
+      
+      # PostgreSQL metrics (via postgres_exporter sidecar)
+      - job_name: 'postgresql'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - jewelry-shop
+        relabel_configs:
+          # Only scrape pods with postgres-exporter container
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            action: keep
+            regex: postgres-exporter
+          # Use pod name as instance
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          # Add service label
+          - target_label: service
+            replacement: postgresql
+          # Add component label
+          - target_label: component
+            replacement: database
+          # Set metrics port
+          - source_labels: [__address__]
+            action: replace
+            regex: ([^:]+)(?::\d+)?
+            replacement: $1:9187
+            target_label: __address__
+        scrape_interval: 30s
+      
+      # Redis metrics (via redis_exporter sidecar)
+      - job_name: 'redis'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - jewelry-shop
+        relabel_configs:
+          # Only scrape pods with redis-exporter container
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            action: keep
+            regex: redis-exporter
+          # Use pod name as instance
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          # Add service label
+          - target_label: service
+            replacement: redis
+          # Add component label
+          - target_label: component
+            replacement: cache
+          # Set metrics port
+          - source_labels: [__address__]
+            action: replace
+            regex: ([^:]+)(?::\d+)?
+            replacement: $1:9121
+            target_label: __address__
+        scrape_interval: 30s
+      
+      # Nginx metrics (via nginx-prometheus-exporter sidecar)
+      - job_name: 'nginx'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - jewelry-shop
+        relabel_configs:
+          # Only scrape pods with nginx-exporter container
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            action: keep
+            regex: nginx-exporter
+          # Use pod name as instance
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          # Add service label
+          - target_label: service
+            replacement: nginx
+          # Add component label
+          - target_label: component
+            replacement: proxy
+          # Set metrics port
+          - source_labels: [__address__]
+            action: replace
+            regex: ([^:]+)(?::\d+)?
+            replacement: $1:9113
+            target_label: __address__
+        scrape_interval: 30s
+      
+      # Celery metrics (via custom exporter)
+      - job_name: 'celery'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - jewelry-shop
+        relabel_configs:
+          # Only scrape pods with celery-exporter container
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            action: keep
+            regex: celery-exporter
+          # Use pod name as instance
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          # Add service label
+          - target_label: service
+            replacement: celery
+          # Add component label
+          - target_label: component
+            replacement: worker
+          # Set metrics port
+          - source_labels: [__address__]
+            action: replace
+            regex: ([^:]+)(?::\d+)?
+            replacement: $1:9808
+            target_label: __address__
+        scrape_interval: 30s
+      
+      # Kubernetes API server metrics
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+      
+      # Kubernetes nodes metrics
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+      
+      # Kubernetes pods metrics
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - jewelry-shop
+        relabel_configs:
+          # Only scrape pods with prometheus.io/scrape annotation
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          # Use custom metrics path if specified
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          # Use custom port if specified
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          # Add pod labels
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          # Add namespace label
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          # Add pod name label
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: kubernetes_pod_name
+      
+      # Prometheus self-monitoring
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+            labels:
+              service: 'prometheus'
+              component: 'monitoring'
+        scrape_interval: 30s

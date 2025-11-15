@@ -345,6 +345,12 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
+# Alertmanager Webhook Token - Production
+# This token is used to authenticate webhook requests from Alertmanager
+ALERT_WEBHOOK_TOKEN = os.getenv("ALERT_WEBHOOK_TOKEN")
+if not ALERT_WEBHOOK_TOKEN:
+    raise ValueError("ALERT_WEBHOOK_TOKEN must be set in production!")
+
 # Stripe - Production (Live mode)
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")

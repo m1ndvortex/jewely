@@ -1,0 +1,268 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: jewelry-shop
+  labels:
+    app: alertmanager
+    component: monitoring
+data:
+  alertmanager.yml: |
+    # Alertmanager Configuration for Jewelry SaaS Platform
+    # Per Requirement 24 - Configure alert routing to email, SMS, Slack, PagerDuty
+    
+    global:
+      # Default SMTP configuration for email alerts
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'alerts@jewelry-saas.com'
+      smtp_auth_username: 'alerts@jewelry-saas.com'
+      smtp_auth_password: '${SMTP_PASSWORD}'
+      smtp_require_tls: true
+      
+      # Slack webhook URL (set via environment variable)
+      slack_api_url: '${SLACK_WEBHOOK_URL}'
+      
+      # PagerDuty integration key (set via environment variable)
+      pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+      
+      # Default resolve timeout
+      resolve_timeout: 5m
+    
+    # Templates for alert notifications
+    templates:
+      - '/etc/alertmanager/templates/*.tmpl'
+    
+    # Route tree for alert routing
+    route:
+      # Default receiver for all alerts
+      receiver: 'default-receiver'
+      
+      # Group alerts by these labels
+      group_by: ['alertname', 'cluster', 'service']
+      
+      # Wait time before sending first notification
+      group_wait: 10s
+      
+      # Wait time before sending notification about new alerts in group
+      group_interval: 10s
+      
+      # Wait time before re-sending notification
+      repeat_interval: 12h
+      
+      # Child routes for specific alert types
+      routes:
+        # Critical alerts - send to all channels immediately
+        - match:
+            severity: critical
+          receiver: 'critical-alerts'
+          group_wait: 0s
+          group_interval: 5m
+          repeat_interval: 4h
+          continue: false
+        
+        # Database alerts - send to database team
+        - match_re:
+            service: '(postgresql|postgres|database)'
+          receiver: 'database-team'
+          group_wait: 30s
+          repeat_interval: 6h
+        
+        # High severity alerts - send to Slack and email
+        - match:
+            severity: warning
+          receiver: 'warning-alerts'
+          group_wait: 30s
+          repeat_interval: 12h
+        
+        # Infrastructure alerts - send to ops team
+        - match_re:
+            alertname: '(NodeDown|PodCrashLooping|HighCPU|HighMemory|DiskSpaceLow)'
+          receiver: 'infrastructure-team'
+          group_wait: 1m
+          repeat_interval: 6h
+        
+        # Application alerts - send to dev team
+        - match_re:
+            component: '(backend|frontend|worker)'
+          receiver: 'application-team'
+          group_wait: 1m
+          repeat_interval: 8h
+    
+    # Inhibition rules to prevent alert spam
+    inhibit_rules:
+      # Inhibit warning if critical alert is firing
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'cluster', 'service']
+      
+      # Inhibit pod alerts if node is down
+      - source_match:
+          alertname: 'NodeDown'
+        target_match_re:
+          alertname: '(PodCrashLooping|PodNotReady)'
+        equal: ['node']
+      
+      # Inhibit database connection alerts if database is down
+      - source_match:
+          alertname: 'PostgreSQLDown'
+        target_match_re:
+          alertname: '(DatabaseConnectionFailed|SlowQueries)'
+        equal: ['instance']
+    
+    # Receivers define notification destinations
+    receivers:
+      # Default receiver - email only
+      - name: 'default-receiver'
+        email_configs:
+          - to: 'ops-team@jewelry-saas.com'
+            headers:
+              Subject: '[Jewelry SaaS] {{ .GroupLabels.alertname }}'
+            html: '{{ template "email.default.html" . }}'
+            send_resolved: true
+      
+      # Critical alerts - all channels
+      - name: 'critical-alerts'
+        email_configs:
+          - to: 'ops-team@jewelry-saas.com,dev-team@jewelry-saas.com'
+            headers:
+              Subject: '🚨 [CRITICAL] {{ .GroupLabels.alertname }}'
+            html: '{{ template "email.default.html" . }}'
+            send_resolved: true
+        
+        slack_configs:
+          - channel: '#alerts-critical'
+            title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+            send_resolved: true
+            color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+            fields:
+              - title: 'Severity'
+                value: '{{ .CommonLabels.severity }}'
+                short: true
+              - title: 'Service'
+                value: '{{ .CommonLabels.service }}'
+                short: true
+              - title: 'Instance'
+                value: '{{ .CommonLabels.instance }}'
+                short: true
+              - title: 'Summary'
+                value: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+                short: false
+        
+        pagerduty_configs:
+          - service_key: '${PAGERDUTY_SERVICE_KEY}'
+            description: '{{ .GroupLabels.alertname }}: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+            severity: 'critical'
+            details:
+              firing: '{{ .Alerts.Firing | len }}'
+              resolved: '{{ .Alerts.Resolved | len }}'
+              service: '{{ .CommonLabels.service }}'
+              instance: '{{ .CommonLabels.instance }}'
+        
+        # SMS via Django webhook (sends SMS using Twilio)
+        webhook_configs:
+          - url: 'http://django-service.jewelry-shop.svc.cluster.local/notifications/api/alerts/sms/'
+            send_resolved: false
+            http_config:
+              bearer_token: '${ALERT_WEBHOOK_TOKEN}'
+      
+      # Warning alerts - Slack and email
+      - name: 'warning-alerts'
+        email_configs:
+          - to: 'ops-team@jewelry-saas.com'
+            headers:
+              Subject: '⚠️ [WARNING] {{ .GroupLabels.alertname }}'
+            html: '{{ template "email.default.html" . }}'
+            send_resolved: true
+        
+        slack_configs:
+          - channel: '#alerts-warning'
+            title: '⚠️ Warning: {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+            send_resolved: true
+            color: 'warning'
+      
+      # Database team alerts
+      - name: 'database-team'
+        email_configs:
+          - to: 'database-team@jewelry-saas.com'
+            headers:
+              Subject: '[Database] {{ .GroupLabels.alertname }}'
+            html: '{{ template "email.default.html" . }}'
+            send_resolved: true
+        
+        slack_configs:
+          - channel: '#alerts-database'
+            title: '🗄️ Database Alert: {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+            send_resolved: true
+      
+      # Infrastructure team alerts
+      - name: 'infrastructure-team'
+        email_configs:
+          - to: 'infrastructure-team@jewelry-saas.com'
+            headers:
+              Subject: '[Infrastructure] {{ .GroupLabels.alertname }}'
+            html: '{{ template "email.default.html" . }}'
+            send_resolved: true
+        
+        slack_configs:
+          - channel: '#alerts-infrastructure'
+            title: '🏗️ Infrastructure Alert: {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+            send_resolved: true
+      
+      # Application team alerts
+      - name: 'application-team'
+        email_configs:
+          - to: 'dev-team@jewelry-saas.com'
+            headers:
+              Subject: '[Application] {{ .GroupLabels.alertname }}'
+            html: '{{ template "email.default.html" . }}'
+            send_resolved: true
+        
+        slack_configs:
+          - channel: '#alerts-application'
+            title: '💻 Application Alert: {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+            send_resolved: true
+  
+  # Email template for alerts
+  email.tmpl: |
+    {{ define "email.default.html" }}
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; }
+        .alert { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .critical { background-color: #f8d7da; border-left: 5px solid #dc3545; }
+        .warning { background-color: #fff3cd; border-left: 5px solid #ffc107; }
+        .resolved { background-color: #d4edda; border-left: 5px solid #28a745; }
+        .label { font-weight: bold; }
+        .value { margin-left: 10px; }
+      </style>
+    </head>
+    <body>
+      <h2>{{ if eq .Status "firing" }}🔥 Firing Alerts{{ else }}✅ Resolved Alerts{{ end }}</h2>
+      
+      {{ range .Alerts }}
+      <div class="alert {{ if eq .Labels.severity "critical" }}critical{{ else if eq .Labels.severity "warning" }}warning{{ else }}resolved{{ end }}">
+        <h3>{{ .Labels.alertname }}</h3>
+        <p><span class="label">Summary:</span><span class="value">{{ .Annotations.summary }}</span></p>
+        <p><span class="label">Description:</span><span class="value">{{ .Annotations.description }}</span></p>
+        <p><span class="label">Severity:</span><span class="value">{{ .Labels.severity }}</span></p>
+        <p><span class="label">Service:</span><span class="value">{{ .Labels.service }}</span></p>
+        <p><span class="label">Instance:</span><span class="value">{{ .Labels.instance }}</span></p>
+        <p><span class="label">Started:</span><span class="value">{{ .StartsAt }}</span></p>
+        {{ if .EndsAt }}<p><span class="label">Ended:</span><span class="value">{{ .EndsAt }}</span></p>{{ end }}
+      </div>
+      {{ end }}
+      
+      <hr>
+      <p><small>Jewelry SaaS Platform Monitoring System</small></p>
+    </body>
+    </html>
+    {{ end }}

@@ -1,0 +1,200 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: jewelry-shop
+  labels:
+    app: alertmanager
+    component: monitoring
+spec:
+  replicas: 2  # High availability with 2 replicas
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+        component: monitoring
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9093"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: alertmanager
+      
+      # Anti-affinity to spread replicas across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - alertmanager
+                topologyKey: kubernetes.io/hostname
+      
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.26.0
+          args:
+            - '--config.file=/etc/alertmanager/alertmanager.yml'
+            - '--storage.path=/alertmanager'
+            - '--cluster.listen-address=0.0.0.0:9094'
+            - '--cluster.advertise-address=$(POD_IP):9094'
+            - '--cluster.peer=alertmanager-0.alertmanager.jewelry-shop.svc.cluster.local:9094'
+            - '--cluster.peer=alertmanager-1.alertmanager.jewelry-shop.svc.cluster.local:9094'
+            - '--web.external-url=http://alertmanager.jewelry-shop.svc.cluster.local:9093'
+            - '--log.level=info'
+          
+          env:
+            # Pod IP for cluster communication
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            
+            # SMTP credentials from secret
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-secrets
+                  key: smtp-password
+            
+            # Slack webhook URL from secret
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-secrets
+                  key: slack-webhook-url
+            
+            # PagerDuty service key from secret
+            - name: PAGERDUTY_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-secrets
+                  key: pagerduty-service-key
+            
+            # Alert webhook token from secret
+            - name: ALERT_WEBHOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: alertmanager-secrets
+                  key: alert-webhook-token
+          
+          ports:
+            - name: web
+              containerPort: 9093
+              protocol: TCP
+            - name: cluster
+              containerPort: 9094
+              protocol: TCP
+          
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager
+            - name: storage
+              mountPath: /alertmanager
+          
+          # Resource limits
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          
+          # Liveness probe
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9093
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          # Readiness probe
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9093
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534  # nobody user
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      
+      volumes:
+        - name: config
+          configMap:
+            name: alertmanager-config
+        - name: storage
+          emptyDir: {}
+      
+      # Security context for pod
+      securityContext:
+        fsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: jewelry-shop
+  labels:
+    app: alertmanager
+    component: monitoring
+spec:
+  type: ClusterIP
+  ports:
+    - name: web
+      port: 9093
+      targetPort: 9093
+      protocol: TCP
+    - name: cluster
+      port: 9094
+      targetPort: 9094
+      protocol: TCP
+  selector:
+    app: alertmanager
+
+---
+# Headless service for StatefulSet-like behavior
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-headless
+  namespace: jewelry-shop
+  labels:
+    app: alertmanager
+    component: monitoring
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: web
+      port: 9093
+      targetPort: 9093
+      protocol: TCP
+    - name: cluster
+      port: 9094
+      targetPort: 9094
+      protocol: TCP
+  selector:
+    app: alertmanager

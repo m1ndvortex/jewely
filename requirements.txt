@@ -67,6 +67,18 @@ psutil==5.9.8
 django-prometheus==2.3.1
 django-silk==5.0.4
 
+# OpenTelemetry - Distributed Tracing
+opentelemetry-api==1.22.0
+opentelemetry-sdk==1.22.0
+opentelemetry-instrumentation==0.43b0
+opentelemetry-instrumentation-django==0.43b0
+opentelemetry-instrumentation-psycopg2==0.43b0
+opentelemetry-instrumentation-redis==0.43b0
+opentelemetry-instrumentation-requests==0.43b0
+opentelemetry-instrumentation-celery==0.43b0
+opentelemetry-exporter-otlp==1.22.0
+opentelemetry-exporter-otlp-proto-grpc==1.22.0
+
 # Admin Impersonation
 django-hijack==3.4.5
 

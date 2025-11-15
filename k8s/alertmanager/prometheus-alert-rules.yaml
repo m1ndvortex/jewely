@@ -1,0 +1,390 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-alert-rules
+  namespace: jewelry-shop
+  labels:
+    app: prometheus
+    component: monitoring
+data:
+  alert-rules.yml: |
+    # Prometheus Alert Rules for Jewelry SaaS Platform
+    # Per Requirement 24 - Define alert rules for critical metrics
+    
+    groups:
+      # Infrastructure Alerts
+      - name: infrastructure
+        interval: 30s
+        rules:
+          # Node down alert
+          - alert: NodeDown
+            expr: up{job="kubernetes-nodes"} == 0
+            for: 5m
+            labels:
+              severity: critical
+              component: infrastructure
+            annotations:
+              summary: "Node {{ $labels.node }} is down"
+              description: "Kubernetes node {{ $labels.node }} has been down for more than 5 minutes."
+          
+          # High CPU usage
+          - alert: HighCPUUsage
+            expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+            for: 10m
+            labels:
+              severity: warning
+              component: infrastructure
+            annotations:
+              summary: "High CPU usage on {{ $labels.instance }}"
+              description: "CPU usage is above 80% on {{ $labels.instance }} for more than 10 minutes. Current value: {{ $value }}%"
+          
+          # Critical CPU usage
+          - alert: CriticalCPUUsage
+            expr: (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 95
+            for: 5m
+            labels:
+              severity: critical
+              component: infrastructure
+            annotations:
+              summary: "Critical CPU usage on {{ $labels.instance }}"
+              description: "CPU usage is above 95% on {{ $labels.instance }} for more than 5 minutes. Current value: {{ $value }}%"
+          
+          # High memory usage
+          - alert: HighMemoryUsage
+            expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+            for: 10m
+            labels:
+              severity: warning
+              component: infrastructure
+            annotations:
+              summary: "High memory usage on {{ $labels.instance }}"
+              description: "Memory usage is above 80% on {{ $labels.instance }} for more than 10 minutes. Current value: {{ $value }}%"
+          
+          # Critical memory usage
+          - alert: CriticalMemoryUsage
+            expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+            for: 5m
+            labels:
+              severity: critical
+              component: infrastructure
+            annotations:
+              summary: "Critical memory usage on {{ $labels.instance }}"
+              description: "Memory usage is above 95% on {{ $labels.instance }} for more than 5 minutes. Current value: {{ $value }}%"
+          
+          # Low disk space
+          - alert: DiskSpaceLow
+            expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+            for: 5m
+            labels:
+              severity: warning
+              component: infrastructure
+            annotations:
+              summary: "Low disk space on {{ $labels.instance }}"
+              description: "Disk space is below 20% on {{ $labels.instance }}. Current value: {{ $value }}%"
+          
+          # Critical disk space
+          - alert: DiskSpaceCritical
+            expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+            for: 2m
+            labels:
+              severity: critical
+              component: infrastructure
+            annotations:
+              summary: "Critical disk space on {{ $labels.instance }}"
+              description: "Disk space is below 10% on {{ $labels.instance }}. Current value: {{ $value }}%"
+      
+      # Kubernetes Alerts
+      - name: kubernetes
+        interval: 30s
+        rules:
+          # Pod crash looping
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+            for: 5m
+            labels:
+              severity: critical
+              component: kubernetes
+            annotations:
+              summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+              description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes."
+          
+          # Pod not ready
+          - alert: PodNotReady
+            expr: kube_pod_status_phase{phase!="Running"} == 1
+            for: 10m
+            labels:
+              severity: warning
+              component: kubernetes
+            annotations:
+              summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not ready"
+              description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in {{ $labels.phase }} state for more than 10 minutes."
+          
+          # Deployment replicas mismatch
+          - alert: DeploymentReplicasMismatch
+            expr: kube_deployment_spec_replicas != kube_deployment_status_replicas_available
+            for: 10m
+            labels:
+              severity: warning
+              component: kubernetes
+            annotations:
+              summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has mismatched replicas"
+              description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $value }} available replicas, expected {{ $labels.spec_replicas }}."
+          
+          # StatefulSet replicas mismatch
+          - alert: StatefulSetReplicasMismatch
+            expr: kube_statefulset_status_replicas_ready != kube_statefulset_status_replicas
+            for: 10m
+            labels:
+              severity: warning
+              component: kubernetes
+            annotations:
+              summary: "StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has mismatched replicas"
+              description: "StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has {{ $value }} ready replicas out of {{ $labels.replicas }}."
+      
+      # Application Alerts
+      - name: application
+        interval: 30s
+        rules:
+          # Django service down
+          - alert: DjangoServiceDown
+            expr: up{job="django"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              component: backend
+              service: django
+            annotations:
+              summary: "Django service {{ $labels.instance }} is down"
+              description: "Django service {{ $labels.instance }} has been down for more than 2 minutes."
+          
+          # High request latency
+          - alert: HighRequestLatency
+            expr: histogram_quantile(0.95, rate(django_http_request_duration_seconds_bucket[5m])) > 2
+            for: 5m
+            labels:
+              severity: warning
+              component: backend
+              service: django
+            annotations:
+              summary: "High request latency on Django"
+              description: "95th percentile request latency is above 2 seconds. Current value: {{ $value }}s"
+          
+          # High error rate
+          - alert: HighErrorRate
+            expr: rate(django_http_responses_total{status=~"5.."}[5m]) / rate(django_http_responses_total[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: critical
+              component: backend
+              service: django
+            annotations:
+              summary: "High error rate on Django"
+              description: "Error rate is above 5%. Current value: {{ $value | humanizePercentage }}"
+          
+          # Too many requests
+          - alert: TooManyRequests
+            expr: rate(django_http_requests_total[5m]) > 1000
+            for: 5m
+            labels:
+              severity: warning
+              component: backend
+              service: django
+            annotations:
+              summary: "High request rate on Django"
+              description: "Request rate is above 1000 req/s. Current value: {{ $value }} req/s"
+      
+      # Database Alerts
+      - name: database
+        interval: 30s
+        rules:
+          # PostgreSQL down
+          - alert: PostgreSQLDown
+            expr: up{job="postgresql"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              component: database
+              service: postgresql
+            annotations:
+              summary: "PostgreSQL instance {{ $labels.instance }} is down"
+              description: "PostgreSQL instance {{ $labels.instance }} has been down for more than 2 minutes."
+          
+          # Too many connections
+          - alert: PostgreSQLTooManyConnections
+            expr: sum by (instance) (pg_stat_activity_count) > 80
+            for: 5m
+            labels:
+              severity: warning
+              component: database
+              service: postgresql
+            annotations:
+              summary: "Too many connections on PostgreSQL {{ $labels.instance }}"
+              description: "PostgreSQL has {{ $value }} active connections, which is above the threshold."
+          
+          # Slow queries
+          - alert: PostgreSQLSlowQueries
+            expr: rate(pg_stat_activity_max_tx_duration[5m]) > 60
+            for: 5m
+            labels:
+              severity: warning
+              component: database
+              service: postgresql
+            annotations:
+              summary: "Slow queries detected on PostgreSQL {{ $labels.instance }}"
+              description: "PostgreSQL has queries running for more than 60 seconds."
+          
+          # Replication lag
+          - alert: PostgreSQLReplicationLag
+            expr: pg_replication_lag > 30
+            for: 5m
+            labels:
+              severity: warning
+              component: database
+              service: postgresql
+            annotations:
+              summary: "PostgreSQL replication lag on {{ $labels.instance }}"
+              description: "PostgreSQL replication is lagging by {{ $value }} seconds."
+          
+          # Database size growing rapidly
+          - alert: DatabaseSizeGrowingRapidly
+            expr: rate(pg_database_size_bytes[1h]) > 1073741824  # 1GB per hour
+            for: 2h
+            labels:
+              severity: warning
+              component: database
+              service: postgresql
+            annotations:
+              summary: "Database {{ $labels.datname }} is growing rapidly"
+              description: "Database {{ $labels.datname }} is growing at {{ $value | humanize }}B/s."
+      
+      # Redis Alerts
+      - name: redis
+        interval: 30s
+        rules:
+          # Redis down
+          - alert: RedisDown
+            expr: up{job="redis"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              component: cache
+              service: redis
+            annotations:
+              summary: "Redis instance {{ $labels.instance }} is down"
+              description: "Redis instance {{ $labels.instance }} has been down for more than 2 minutes."
+          
+          # High memory usage
+          - alert: RedisHighMemoryUsage
+            expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+            for: 5m
+            labels:
+              severity: warning
+              component: cache
+              service: redis
+            annotations:
+              summary: "High memory usage on Redis {{ $labels.instance }}"
+              description: "Redis memory usage is above 90%. Current value: {{ $value | humanizePercentage }}"
+          
+          # Too many connections
+          - alert: RedisTooManyConnections
+            expr: redis_connected_clients > 100
+            for: 5m
+            labels:
+              severity: warning
+              component: cache
+              service: redis
+            annotations:
+              summary: "Too many connections on Redis {{ $labels.instance }}"
+              description: "Redis has {{ $value }} connected clients."
+          
+          # Replication broken
+          - alert: RedisReplicationBroken
+            expr: redis_connected_slaves == 0
+            for: 5m
+            labels:
+              severity: critical
+              component: cache
+              service: redis
+            annotations:
+              summary: "Redis replication broken on {{ $labels.instance }}"
+              description: "Redis master has no connected slaves."
+      
+      # Celery Alerts
+      - name: celery
+        interval: 30s
+        rules:
+          # Celery worker down
+          - alert: CeleryWorkerDown
+            expr: up{job="celery"} == 0
+            for: 5m
+            labels:
+              severity: critical
+              component: worker
+              service: celery
+            annotations:
+              summary: "Celery worker {{ $labels.instance }} is down"
+              description: "Celery worker {{ $labels.instance }} has been down for more than 5 minutes."
+          
+          # High queue length
+          - alert: CeleryHighQueueLength
+            expr: celery_queue_length > 1000
+            for: 10m
+            labels:
+              severity: warning
+              component: worker
+              service: celery
+            annotations:
+              summary: "High queue length in Celery"
+              description: "Celery queue {{ $labels.queue }} has {{ $value }} pending tasks."
+          
+          # Task failures
+          - alert: CeleryTaskFailures
+            expr: rate(celery_task_failed_total[5m]) > 0.1
+            for: 5m
+            labels:
+              severity: warning
+              component: worker
+              service: celery
+            annotations:
+              summary: "High task failure rate in Celery"
+              description: "Celery task failure rate is {{ $value }} failures/s."
+      
+      # Nginx Alerts
+      - name: nginx
+        interval: 30s
+        rules:
+          # Nginx down
+          - alert: NginxDown
+            expr: up{job="nginx"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              component: proxy
+              service: nginx
+            annotations:
+              summary: "Nginx instance {{ $labels.instance }} is down"
+              description: "Nginx instance {{ $labels.instance }} has been down for more than 2 minutes."
+          
+          # High error rate
+          - alert: NginxHighErrorRate
+            expr: rate(nginx_http_requests_total{status=~"5.."}[5m]) / rate(nginx_http_requests_total[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+              component: proxy
+              service: nginx
+            annotations:
+              summary: "High error rate on Nginx"
+              description: "Nginx error rate is above 5%. Current value: {{ $value | humanizePercentage }}"
+          
+          # High connection count
+          - alert: NginxHighConnectionCount
+            expr: nginx_connections_active > 1000
+            for: 5m
+            labels:
+              severity: warning
+              component: proxy
+              service: nginx
+            annotations:
+              summary: "High connection count on Nginx {{ $labels.instance }}"
+              description: "Nginx has {{ $value }} active connections."
