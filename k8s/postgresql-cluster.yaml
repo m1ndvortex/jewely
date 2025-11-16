@@ -94,16 +94,17 @@ spec:
     size: 100Gi
     storageClass: local-path  # Use local-path for k3d, change to longhorn for production
   
-  # Additional volumes for SSL certificates
-  additionalVolumes:
-    - name: postgres-ssl
-      mountPath: /etc/postgresql/ssl
-      targetContainers:
-        - postgres
-      volumeSource:
-        secret:
-          secretName: postgres-ssl-certs
-          defaultMode: 0600
+  # SSL certificates disabled for development (k3d)
+  # For production, uncomment and configure SSL certificates
+  # additionalVolumes:
+  #   - name: postgres-ssl
+  #     mountPath: /etc/postgresql/ssl
+  #     targetContainers:
+  #       - postgres
+  #     volumeSource:
+  #       secret:
+  #         secretName: postgres-ssl-certs
+  #         defaultMode: 0600
   
   # ============================================================================
   # Resource Limits
@@ -140,6 +141,8 @@ spec:
       - local all all trust
       - host all all 127.0.0.1/32 md5
       - host all all ::1/128 md5
+      - hostssl replication standby all md5
+      - hostnossl replication standby all md5
       - host all all all md5
   
   # ============================================================================
@@ -165,9 +168,9 @@ spec:
   # Backup Configuration
   # ============================================================================
   # Note: For production, configure WAL-E or WAL-G with S3/R2/B2 storage
-  # This is a basic configuration for development
-  enableLogicalBackup: true
-  logicalBackupSchedule: "0 2 * * *"  # Daily at 2 AM
+  # Disabled for air-gapped deployment - requires external storage
+  enableLogicalBackup: false
+  # logicalBackupSchedule: "0 2 * * *"  # Daily at 2 AM
   
   # ============================================================================
   # Monitoring (postgres_exporter)
@@ -199,7 +202,7 @@ spec:
           mountPath: /etc/postgres-exporter
           readOnly: true
   
-  # Additional volumes for sidecars and SSL certificates
+  # Additional volumes for sidecars
   additionalVolumes:
     - name: exporter-config
       mountPath: /etc/postgres-exporter
@@ -209,14 +212,16 @@ spec:
         configMap:
           name: postgres-exporter-config
           optional: true
-    - name: ssl-certs
-      mountPath: /var/lib/postgresql
-      targetContainers:
-        - postgres
-      volumeSource:
-        secret:
-          secretName: postgresql-ssl-certs
-          defaultMode: 0600
+    # SSL certificates disabled for development (k3d)
+    # For production, uncomment and configure SSL certificates
+    # - name: ssl-certs
+    #   mountPath: /var/lib/postgresql
+    #   targetContainers:
+    #     - postgres
+    #   volumeSource:
+    #     secret:
+    #       secretName: postgresql-ssl-certs
+    #       defaultMode: 0600
   
   # ============================================================================
   # Pod Configuration

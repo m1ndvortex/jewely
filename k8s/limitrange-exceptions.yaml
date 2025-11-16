@@ -1,0 +1,60 @@
+# ============================================================================
+# LimitRange Exceptions for System Components
+# ============================================================================
+# Some system components (cert-manager ACME solver, backup jobs) need to run
+# with minimal resources. We'll update the main LimitRange to allow smaller
+# resource requests while maintaining production standards for application pods.
+# ============================================================================
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: jewelry-shop-limits
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: resource-management
+spec:
+  limits:
+    # Container-level limits
+    - type: Container
+      # Minimum resources (lowered to allow cert-manager and backup jobs)
+      min:
+        cpu: "10m"      # Allow minimal CPU for system jobs
+        memory: "64Mi"  # Allow minimal memory for system jobs
+      
+      # Maximum resources per container
+      max:
+        cpu: "4"
+        memory: "8Gi"
+      
+      # Default resources if not specified
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      
+      # Default requests if not specified
+      defaultRequest:
+        cpu: "250m"
+        memory: "256Mi"
+      
+      # Maximum ratio between limit and request
+      maxLimitRequestRatio:
+        cpu: "10"       # Increased to allow cert-manager (10m request, 100m limit)
+        memory: "5"     # Increased to allow backup jobs (100Mi request, 500Mi limit)
+    
+    # Pod-level limits (sum of all containers in a pod)
+    - type: Pod
+      min:
+        cpu: "10m"      # Allow minimal CPU for system jobs
+        memory: "64Mi"  # Allow minimal memory for system jobs
+      max:
+        cpu: "8"
+        memory: "16Gi"
+    
+    # PersistentVolumeClaim limits
+    - type: PersistentVolumeClaim
+      min:
+        storage: "1Gi"
+      max:
+        storage: "200Gi"

@@ -311,10 +311,21 @@ spec:
   policyTypes:
     - Ingress
   ingress:
+    # Allow from sentinel pods
     - from:
         - podSelector:
             matchLabels:
-              app: redis-sentinel
+              app: redis
+              component: sentinel
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow inter-redis communication for replication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis
+              component: server
       ports:
         - protocol: TCP
           port: 6379
@@ -643,7 +654,62 @@ spec:
 
 ---
 # ============================================================================
-# Policy 17: Allow Nginx Egress to Django
+# Policy 17: Allow Celery Beat Egress
+# ============================================================================
+# Celery beat needs to connect to databases and Redis
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-celery-beat-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: celery-beat
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to PostgreSQL via PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              application: db-connection-pooler
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+              component: server
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 18: Allow Nginx Egress to Django
 # ============================================================================
 # Nginx needs to proxy requests to Django backend
 # ============================================================================
@@ -671,6 +737,386 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 19: Allow Grafana Egress
+# ============================================================================
+# Grafana needs to:
+# - Connect to Prometheus, Loki, Tempo for data sources
+# - Download plugins from grafana.com
+# - Access external resources
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-grafana-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: grafana
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to Prometheus
+    - to:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    
+    # Allow to Loki
+    - to:
+        - podSelector:
+            matchLabels:
+              app: loki
+      ports:
+        - protocol: TCP
+          port: 3100
+    
+    # Allow to Tempo
+    - to:
+        - podSelector:
+            matchLabels:
+              app: tempo
+      ports:
+        - protocol: TCP
+          port: 3200
+    
+    # Allow to external services (plugin downloads, updates)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443  # HTTPS for grafana.com
+        - protocol: TCP
+          port: 80   # HTTP
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 20: Allow Fluent-bit Egress to Loki
+# ============================================================================
+# Fluent-bit needs to send logs to Loki
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-fluent-bit-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: fluent-bit
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to Loki
+    - to:
+        - podSelector:
+            matchLabels:
+              app: loki
+      ports:
+        - protocol: TCP
+          port: 3100
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 21: Allow Prometheus Egress
+# ============================================================================
+# Prometheus needs to scrape metrics from all pods
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: prometheus
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to all pods in namespace for metrics scraping
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8000  # Django metrics
+        - protocol: TCP
+          port: 9113  # Nginx exporter
+        - protocol: TCP
+          port: 9187  # PostgreSQL exporter
+        - protocol: TCP
+          port: 9121  # Redis exporter
+        - protocol: TCP
+          port: 26379 # Redis Sentinel exporter
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 21.5: Allow Fluent-bit → Loki Ingress
+# ============================================================================
+# Loki needs to accept log streams from Fluent-bit
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-fluent-bit-to-loki
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: loki
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from Fluent-bit pods
+    - from:
+        - podSelector:
+            matchLabels:
+              app: fluent-bit
+      ports:
+        - protocol: TCP
+          port: 3100
+
+---
+# ============================================================================
+# Policy 22: Allow Loki Egress
+# ============================================================================
+# Loki needs minimal egress for health checks
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-loki-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: loki
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 23: Allow Tempo Egress
+# ============================================================================
+# Tempo needs minimal egress for health checks
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-tempo-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: tempo
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 24: Allow OTel Collector Egress
+# ============================================================================
+# OpenTelemetry Collector needs to send traces to Tempo
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-otel-collector-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: otel-collector
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to Tempo
+    - to:
+        - podSelector:
+            matchLabels:
+              app: tempo
+      ports:
+        - protocol: TCP
+          port: 3200
+        - protocol: TCP
+          port: 4317  # OTLP gRPC
+        - protocol: TCP
+          port: 4318  # OTLP HTTP
+    
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# ============================================================================
+# Policy 25: Allow Redis Sentinel Egress
+# ============================================================================
+# Redis Sentinel needs to monitor Redis instances
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-sentinel-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      component: sentinel
+  policyTypes:
+    - Egress
+  egress:
+    # Allow to Redis servers
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+              component: server
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow to other Sentinels
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+              component: sentinel
+      ports:
+        - protocol: TCP
+          port: 26379
     
     # Allow DNS
     - to:

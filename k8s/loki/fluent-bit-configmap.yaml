@@ -56,11 +56,12 @@ data:
     [OUTPUT]
         Name loki
         Match kube.*
-        Host loki
+        Host loki.jewelry-shop.svc.cluster.local
         Port 3100
         Labels job=fluent-bit, namespace=$kubernetes['namespace_name'], pod=$kubernetes['pod_name'], container=$kubernetes['container_name'], app=$kubernetes['labels']['app']
         Auto_Kubernetes_Labels On
         Label_Keys $kubernetes['labels']
+        Retry_Limit 5
 
   parsers.conf: |
     [PARSER]

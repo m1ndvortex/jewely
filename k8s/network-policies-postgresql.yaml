@@ -51,6 +51,16 @@ spec:
           port: 5432
         - protocol: TCP
           port: 8008  # Patroni REST API
+    # Allow from Postgres Operator for management
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: postgres-operator
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 8008  # Patroni REST API
 
 ---
 # Policy 2: Allow Django to PgBouncer

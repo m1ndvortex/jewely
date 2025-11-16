@@ -106,9 +106,9 @@ spec:
               value: "production"
             - name: APP_VERSION
               value: "1.0.0"
-            # Database connection via PgBouncer
+            # Database connection via PgBouncer with SSL
             - name: DATABASE_URL
-              value: "postgresql://$(DB_USER):$(APP_DB_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable"
+              value: "postgresql://$(DB_USER):$(APP_DB_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=require&sslcert=/etc/postgresql-ssl/tls.crt&sslkey=/etc/postgresql-ssl/tls.key&sslrootcert=/etc/postgresql-ssl/tls.crt"
             - name: DB_USER
               valueFrom:
                 configMapKeyRef:
@@ -206,6 +206,9 @@ spec:
               mountPath: /app/logs
             - name: tmp
               mountPath: /tmp
+            - name: postgresql-ssl
+              mountPath: /etc/postgresql-ssl
+              readOnly: true
           
           # Security context for the container
           securityContext:
@@ -227,6 +230,10 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+        - name: postgresql-ssl
+          secret:
+            secretName: postgresql-client-certs
+            defaultMode: 0400
       
       # Pod affinity - spread pods across nodes
       affinity:

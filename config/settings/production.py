@@ -236,7 +236,12 @@ LANGUAGE_COOKIE_SECURE = True
 WAFFLE_SECURE = True
 
 # HTTPS and SSL Settings
-SECURE_SSL_REDIRECT = True
+# SSL is terminated at the proxy (Traefik/Nginx), not at Django
+# Django needs to trust the X-Forwarded-Proto header from the proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Allow disabling SSL redirect for local testing (default: True for production)
+SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True") == "True"
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True

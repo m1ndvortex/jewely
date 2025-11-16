@@ -1,0 +1,24 @@
+# Custom Grafana image with pre-installed plugins
+# Enterprise-ready: No internet access required at runtime
+FROM grafana/grafana:10.2.2
+
+USER root
+
+# Install plugins offline-ready
+# These will be baked into the image
+RUN grafana-cli --pluginsDir /var/lib/grafana/plugins plugins install grafana-clock-panel || true && \
+    grafana-cli --pluginsDir /var/lib/grafana/plugins plugins install grafana-piechart-panel || true && \
+    grafana-cli --pluginsDir /var/lib/grafana/plugins plugins install grafana-polystat-panel || true
+
+# Disable plugin installation at runtime
+ENV GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=""
+ENV GF_INSTALL_PLUGINS=""
+
+# Set to work offline
+ENV GF_ANALYTICS_REPORTING_ENABLED=false
+ENV GF_ANALYTICS_CHECK_FOR_UPDATES=false
+ENV GF_PLUGINS_ENABLE_ALPHA=false
+
+USER grafana
+
+EXPOSE 3000

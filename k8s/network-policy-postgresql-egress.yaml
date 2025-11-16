@@ -1,0 +1,64 @@
+# ============================================================================
+# Network Policy: PostgreSQL Egress Rules
+# ============================================================================
+# This policy allows PostgreSQL pods to make necessary outbound connections
+# for Patroni cluster coordination and inter-pod communication.
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgresql-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: spilo
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    
+    # Allow inter-pod communication for replication
+    - to:
+        - podSelector:
+            matchLabels:
+              application: spilo
+      ports:
+        - protocol: TCP
+          port: 5432  # PostgreSQL
+        - protocol: TCP
+          port: 8008  # Patroni REST API
+    
+    # Allow access to PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              application: db-connection-pooler
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow access to Kubernetes API for Patroni DCS
+    # This allows egress to port 443 and 6443 for K8s API access
+    - ports:
+        - protocol: TCP
+          port: 443
+    - ports:
+        - protocol: TCP
+          port: 6443

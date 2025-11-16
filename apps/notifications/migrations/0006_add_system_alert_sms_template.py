@@ -33,7 +33,7 @@ def reverse_create_system_alert_template(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('notifications', '0002_auto_20241113_0000'),  # Update this to your latest migration
+        ('notifications', '0005_customersegment_communicationlog_campaignanalytics_and_more'),
     ]
 
     operations = [

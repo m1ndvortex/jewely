@@ -42,9 +42,11 @@ spec:
         runAsUser: 472
         runAsNonRoot: true
       
+      # No init container needed - plugins are pre-built into custom image
+      
       containers:
       - name: grafana
-        image: grafana/grafana:10.2.2
+        image: jewelry-shop-grafana:latest
         imagePullPolicy: IfNotPresent
         
         ports:
@@ -73,8 +75,14 @@ spec:
             secretKeyRef:
               name: grafana-secrets
               key: secret-key
-        - name: GF_INSTALL_PLUGINS
-          value: "grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel"
+        # Disable internet-dependent features for air-gapped deployment
+        - name: GF_ANALYTICS_REPORTING_ENABLED
+          value: "false"
+        - name: GF_ANALYTICS_CHECK_FOR_UPDATES
+          value: "false"
+        - name: GF_PLUGINS_ENABLE_ALPHA
+          value: "false"
+        # Plugins are pre-built into custom image - no internet required
         
         resources:
           requests:

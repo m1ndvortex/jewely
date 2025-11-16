@@ -56,10 +56,10 @@ class SecurityHeadersMiddleware:
         """
         csp_directives = [
             "default-src 'self'",
-            # Scripts: Allow self, CDNs, and inline scripts (for HTMX/Alpine.js)
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com",
+            # Scripts: Allow self, CDNs, and inline scripts (for HTMX/Alpine.js/Tailwind)
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com",
             # Styles: Allow self, CDNs, and inline styles (for Tailwind)
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://fonts.googleapis.com",
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.tailwindcss.com",
             # Fonts: Allow self and Google Fonts
             "font-src 'self' https://fonts.gstatic.com data:",
             # Images: Allow self, data URIs, and blob URIs (for charts/uploads)

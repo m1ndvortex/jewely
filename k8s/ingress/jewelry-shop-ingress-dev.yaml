@@ -1,0 +1,31 @@
+# Development Ingress - HTTPS with self-signed certificate
+# For local testing with proper SSL
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jewelry-shop-ingress-dev
+  namespace: jewelry-shop
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  labels:
+    app: jewelry-shop
+    component: ingress
+    environment: development
+spec:
+  tls:
+    - hosts:
+        - jewelry-shop.local
+      secretName: jewelry-shop-tls-cert
+  rules:
+    - host: jewelry-shop.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 80
