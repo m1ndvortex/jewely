@@ -4,6 +4,7 @@ Maximum security and performance optimizations.
 """
 
 import os
+from copy import deepcopy
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
@@ -12,26 +13,43 @@ from .base import *  # noqa: F403,F405
 
 load_dotenv()
 
+# Check if we're just collecting static files (during Docker build)
+COLLECTSTATIC_ONLY = os.getenv("COLLECTSTATIC_ONLY", "0") == "1"
+
 # SECURITY WARNING: Use a strong secret key in production
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
-if not SECRET_KEY:
+if not SECRET_KEY and not COLLECTSTATIC_ONLY:
     raise ValueError("DJANGO_SECRET_KEY must be set in production environment!")
+elif not SECRET_KEY:
+    SECRET_KEY = "temporary-key-for-collectstatic-only"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
-if not ALLOWED_HOSTS or ALLOWED_HOSTS == [""]:
+if (not ALLOWED_HOSTS or ALLOWED_HOSTS == [""]) and not COLLECTSTATIC_ONLY:
     raise ValueError("DJANGO_ALLOWED_HOSTS must be set in production environment!")
+elif not ALLOWED_HOSTS or ALLOWED_HOSTS == [""]:
+    ALLOWED_HOSTS = ["*"]
 
 # Site URL
 SITE_URL = os.getenv("SITE_URL")
-if not SITE_URL:
+if not SITE_URL and not COLLECTSTATIC_ONLY:
     raise ValueError("SITE_URL must be set in production environment!")
+elif not SITE_URL:
+    SITE_URL = "http://localhost:8000"
 
-# Database with Prometheus monitoring
-DATABASES = {
-    "default": {
+# During collectstatic, use a dummy database backend that doesn't require a real DB
+if COLLECTSTATIC_ONLY:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.dummy",
+        }
+    }
+else:
+    # Database with Prometheus monitoring
+    DATABASES = {
+        "default": {
         "ENGINE": "django_prometheus.db.backends.postgresql",
         "NAME": os.getenv("POSTGRES_DB"),
         "USER": os.getenv("POSTGRES_USER") or os.getenv("DB_USER"),
@@ -57,66 +75,170 @@ if USE_PGBOUNCER:
     DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 
 # Redis Cache Configuration - Production
+REDIS_USE_SENTINEL = os.getenv("REDIS_USE_SENTINEL", "True").lower() == "true"
 redis_host = os.getenv("REDIS_HOST")
 redis_port = os.getenv("REDIS_PORT", "6379")
 redis_password = os.getenv("REDIS_PASSWORD", "")
+redis_db_default = os.getenv("REDIS_DB", "0")
 
-redis_url_base = (
-    f"redis://:{redis_password}@{redis_host}:{redis_port}"
-    if redis_password
-    else f"redis://{redis_host}:{redis_port}"
-)
+redis_url_base = None
+if redis_host:
+    redis_url_base = (
+        f"redis://:{redis_password}@{redis_host}:{redis_port}"
+        if redis_password
+        else f"redis://{redis_host}:{redis_port}"
+    )
+
+
+def parse_sentinel_hosts(raw_hosts: str):
+    hosts = []
+    for entry in raw_hosts.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if ":" not in entry:
+            raise ValueError(
+                "Each value in REDIS_SENTINEL_HOSTS must be in host:port format."
+            )
+        host, port = entry.rsplit(":", 1)
+        hosts.append((host.strip(), int(port.strip())))
+    return hosts
+
+
+sentinel_hosts_raw = os.getenv("REDIS_SENTINEL_HOSTS", "")
+sentinel_master_name = os.getenv("REDIS_SENTINEL_MASTER_NAME", "mymaster")
+sentinel_socket_timeout = os.getenv("REDIS_SENTINEL_SOCKET_TIMEOUT", "").strip()
+sentinel_kwargs: dict[str, object] = {}
+sentinel_endpoints = []
+
+if REDIS_USE_SENTINEL:
+    sentinel_endpoints = parse_sentinel_hosts(sentinel_hosts_raw)
+    if not sentinel_endpoints:
+        raise ValueError(
+            "REDIS_SENTINEL_HOSTS must be provided when REDIS_USE_SENTINEL is True."
+        )
+    if sentinel_socket_timeout:
+        sentinel_kwargs["socket_timeout"] = float(sentinel_socket_timeout)
+    sentinel_password = os.getenv("REDIS_SENTINEL_PASSWORD", "").strip()
+    if sentinel_password:
+        sentinel_kwargs["password"] = sentinel_password
+
+
+def redis_cache_location(db_index: str) -> str:
+    """
+    Build Redis location string for cache configuration.
+    For Sentinel: redis://sentinel-service-name/db
+    For direct: redis://host:port/db
+    """
+    if REDIS_USE_SENTINEL:
+        # For SentinelClient, location format is: redis://service-name/db
+        return f"redis://{sentinel_master_name}/{db_index}"
+    if not redis_url_base:
+        raise ValueError("REDIS_HOST must be set when Redis Sentinel is disabled.")
+    return f"{redis_url_base}/{db_index}"
+
+
+# Base cache options for all cache entries
+redis_cache_options_base: dict[str, object] = {
+    "SOCKET_CONNECT_TIMEOUT": 5,
+    "SOCKET_TIMEOUT": 5,
+    "RETRY_ON_TIMEOUT": True,
+    "MAX_CONNECTIONS": 100,
+}
+
+# Configure client class and options based on Sentinel usage
+if REDIS_USE_SENTINEL:
+    # Use our custom client that properly handles Sentinel
+    redis_cache_options_base["CLIENT_CLASS"] = "apps.core.cache.client.SentinelAwareClient"
+    redis_cache_options_base["SENTINELS"] = sentinel_endpoints
+    
+    # Sentinel-specific options passed to our factory
+    sentinel_options = {}
+    if sentinel_socket_timeout:
+        sentinel_options["socket_timeout"] = float(sentinel_socket_timeout)
+    # Password for Sentinel nodes (if they require authentication)
+    sentinel_password = os.getenv("REDIS_SENTINEL_PASSWORD", "").strip()
+    if sentinel_password:
+        sentinel_options["password"] = sentinel_password
+    if sentinel_options:
+        redis_cache_options_base["SENTINEL_KWARGS"] = sentinel_options
+    
+    # Password for Redis master nodes (not Sentinel nodes)
+    if redis_password:
+        redis_cache_options_base["PASSWORD"] = redis_password
+else:
+    # DefaultClient configuration for direct connection
+    redis_cache_options_base["CLIENT_CLASS"] = "django_redis.client.DefaultClient"
+    redis_cache_options_base["CONNECTION_POOL_KWARGS"] = {
+        "max_connections": 100,
+        "retry_on_timeout": True,
+    }
+    if redis_password:
+        redis_cache_options_base["PASSWORD"] = redis_password
+
+
+def build_cache_entry(db_index: str, prefix: str, timeout: int) -> dict[str, object]:
+    """Build a cache configuration entry."""
+    entry = {
+        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
+        "LOCATION": redis_cache_location(db_index),
+        "OPTIONS": deepcopy(redis_cache_options_base),
+        "KEY_PREFIX": prefix,
+        "TIMEOUT": timeout,
+    }
+    return entry
+
 
 CACHES = {
-    "default": {
-        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
-        "LOCATION": f"{redis_url_base}/0",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "SOCKET_CONNECT_TIMEOUT": 5,
-            "SOCKET_TIMEOUT": 5,
-            "RETRY_ON_TIMEOUT": True,
-            "MAX_CONNECTIONS": 100,
-            "CONNECTION_POOL_KWARGS": {
-                "max_connections": 100,
-                "retry_on_timeout": True,
-            },
-        },
-        "KEY_PREFIX": "jewelry_shop_prod",
-        "TIMEOUT": 300,
-    },
-    "query": {
-        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
-        "LOCATION": f"{redis_url_base}/1",
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient", "MAX_CONNECTIONS": 100},
-        "KEY_PREFIX": "jewelry_shop_prod_query",
-        "TIMEOUT": 900,
-    },
-    "template": {
-        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
-        "LOCATION": f"{redis_url_base}/2",
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient", "MAX_CONNECTIONS": 100},
-        "KEY_PREFIX": "jewelry_shop_prod_template",
-        "TIMEOUT": 600,
-    },
-    "api": {
-        "BACKEND": "django_prometheus.cache.backends.redis.RedisCache",
-        "LOCATION": f"{redis_url_base}/3",
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient", "MAX_CONNECTIONS": 100},
-        "KEY_PREFIX": "jewelry_shop_prod_api",
-        "TIMEOUT": 180,
-    },
+    "default": build_cache_entry("0", "jewelry_shop_prod", 300),
+    "query": build_cache_entry("1", "jewelry_shop_prod_query", 900),
+    "template": build_cache_entry("2", "jewelry_shop_prod_template", 600),
+    "api": build_cache_entry("3", "jewelry_shop_prod_api", 180),
 }
 
 # Celery Configuration - Production
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"{redis_url_base}/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", f"{redis_url_base}/0")
+celery_default_db = os.getenv("CELERY_REDIS_DB", redis_db_default)
+sentinel_credentials = f":{redis_password}@" if redis_password else ""
+
+if REDIS_USE_SENTINEL:
+    sentinel_urls = [
+        f"sentinel://{sentinel_credentials}{host}:{port}/{celery_default_db}"
+        for host, port in sentinel_endpoints
+    ]
+    default_celery_broker_url = ";".join(sentinel_urls)
+    CELERY_BROKER_TRANSPORT_OPTIONS = {
+        "master_name": sentinel_master_name,
+        "sentinels": sentinel_endpoints,
+    }
+    if sentinel_kwargs:
+        CELERY_BROKER_TRANSPORT_OPTIONS["sentinel_kwargs"] = sentinel_kwargs
+    if redis_password:
+        CELERY_BROKER_TRANSPORT_OPTIONS["password"] = redis_password
+    default_result_backend = sentinel_urls[0]
+else:
+    if not redis_url_base:
+        raise ValueError("REDIS_HOST must be configured when Sentinel is disabled.")
+    default_celery_broker_url = f"{redis_url_base}/{celery_default_db}"
+    CELERY_BROKER_TRANSPORT_OPTIONS = {}
+    default_result_backend = default_celery_broker_url
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", default_celery_broker_url)
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", default_result_backend)
+
+if REDIS_USE_SENTINEL:
+    CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = deepcopy(CELERY_BROKER_TRANSPORT_OPTIONS)
+else:
+    CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {}
+
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = (
     os.getenv("CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP", "true").lower() == "true"
 )
 
 # Email Configuration - Production
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+email_backend_env = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+)
+configured_email_backend = email_backend_env
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
@@ -124,7 +246,7 @@ if not DEFAULT_FROM_EMAIL:
     raise ValueError("DEFAULT_FROM_EMAIL must be set in production environment!")
 
 # Configure email provider
-if "anymail" in EMAIL_BACKEND.lower():
+if "anymail" in email_backend_env.lower():
     INSTALLED_APPS.append("anymail")
 
     email_provider = os.getenv("EMAIL_PROVIDER")
@@ -138,24 +260,24 @@ if "anymail" in EMAIL_BACKEND.lower():
             "SENDGRID_MERGE_FIELD_FORMAT": "-{}-",
             "SENDGRID_API_URL": "https://api.sendgrid.com/v3/",
         }
-        EMAIL_BACKEND = "anymail.backends.sendgrid.EmailBackend"
+        configured_email_backend = "anymail.backends.sendgrid.EmailBackend"
     elif email_provider == "mailgun":
         ANYMAIL = {
             "MAILGUN_API_KEY": os.getenv("MAILGUN_API_KEY"),
             "MAILGUN_SENDER_DOMAIN": os.getenv("MAILGUN_SENDER_DOMAIN"),
             "MAILGUN_API_URL": "https://api.mailgun.net/v3",
         }
-        EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+        configured_email_backend = "anymail.backends.mailgun.EmailBackend"
     elif email_provider == "ses":
         ANYMAIL = {
             "AMAZON_SES_REGION": os.getenv("AWS_SES_REGION", "us-east-1"),
             "AMAZON_SES_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
             "AMAZON_SES_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
         }
-        EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
+        configured_email_backend = "anymail.backends.amazon_ses.EmailBackend"
 
 # SMTP Configuration (fallback)
-if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
+if configured_email_backend == "django.core.mail.backends.smtp.EmailBackend":
     EMAIL_HOST = os.getenv("EMAIL_HOST")
     EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
     EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
@@ -167,6 +289,20 @@ if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
         raise ValueError(
             "EMAIL_HOST, EMAIL_HOST_USER, and EMAIL_HOST_PASSWORD must be set for SMTP!"
         )
+
+EMAIL_PRIMARY_BACKEND = configured_email_backend
+EMAIL_FAILOVER_ENABLED = os.getenv("EMAIL_FAILOVER_ENABLED", "True").lower() == "true"
+EMAIL_FAILOVER_BACKEND = os.getenv(
+    "EMAIL_FAILOVER_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_FAILOVER_SUPPRESS_EXCEPTIONS = (
+    os.getenv("EMAIL_FAILOVER_SUPPRESS_EXCEPTIONS", "True").lower() == "true"
+)
+
+if EMAIL_FAILOVER_ENABLED:
+    EMAIL_BACKEND = "apps.core.email.backends.ResilientEmailBackend"
+else:
+    EMAIL_BACKEND = configured_email_backend
 
 # Logging Configuration - Production (JSON format for log aggregation)
 LOGGING = {
@@ -248,7 +384,7 @@ SECURE_HSTS_PRELOAD = True
 
 # Django Compressor - Enabled with offline compression in production
 COMPRESS_ENABLED = True
-COMPRESS_OFFLINE = True  # Pre-compress assets during deployment
+COMPRESS_OFFLINE = False  # Disabled for now - TODO: Run compress during build
 COMPRESS_CSS_FILTERS = [
     "compressor.filters.css_default.CssAbsoluteFilter",
     "compressor.filters.cssmin.rCSSMinFilter",
@@ -342,8 +478,10 @@ GOLDAPI_KEY = os.getenv("GOLDAPI_KEY")
 METALS_API_KEY = os.getenv("METALS_API_KEY")
 FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY")
 
-if not FIELD_ENCRYPTION_KEY:
+if not FIELD_ENCRYPTION_KEY and not COLLECTSTATIC_ONLY:
     raise ValueError("FIELD_ENCRYPTION_KEY must be set in production!")
+elif not FIELD_ENCRYPTION_KEY:
+    FIELD_ENCRYPTION_KEY = "temporary-32-char-encryption-key"
 
 # Twilio SMS - Production
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
@@ -353,8 +491,10 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 # Alertmanager Webhook Token - Production
 # This token is used to authenticate webhook requests from Alertmanager
 ALERT_WEBHOOK_TOKEN = os.getenv("ALERT_WEBHOOK_TOKEN")
-if not ALERT_WEBHOOK_TOKEN:
+if not ALERT_WEBHOOK_TOKEN and not COLLECTSTATIC_ONLY:
     raise ValueError("ALERT_WEBHOOK_TOKEN must be set in production!")
+elif not ALERT_WEBHOOK_TOKEN:
+    ALERT_WEBHOOK_TOKEN = "temporary-webhook-token"
 
 # Stripe - Production (Live mode)
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
@@ -362,8 +502,13 @@ STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 STRIPE_LIVE_MODE = os.getenv("STRIPE_LIVE_MODE", "True") == "True"
 
-if STRIPE_LIVE_MODE and not all([STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET]):
+if STRIPE_LIVE_MODE and not all([STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET]) and not COLLECTSTATIC_ONLY:
     raise ValueError("All Stripe keys must be set when STRIPE_LIVE_MODE is True!")
+elif STRIPE_LIVE_MODE and not all([STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET]):
+    # During collectstatic, use dummy values
+    STRIPE_SECRET_KEY = "sk_test_dummy"
+    STRIPE_PUBLISHABLE_KEY = "pk_test_dummy"
+    STRIPE_WEBHOOK_SECRET = "whsec_dummy"
 
 # Rate Limiting - Strict in production
 RATELIMIT_ENABLE = True
@@ -379,7 +524,8 @@ SENTRY_ENVIRONMENT = "production"
 SENTRY_RELEASE = os.getenv("SENTRY_RELEASE")
 SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
 
-if SENTRY_DSN:
+# Validate SENTRY_DSN is a real Sentry URL, not a placeholder
+if SENTRY_DSN and not SENTRY_DSN.startswith("https://xxxx"):
     from apps.core.sentry_config import initialize_sentry
 
     initialize_sentry(
@@ -388,8 +534,13 @@ if SENTRY_DSN:
         traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
         release=SENTRY_RELEASE,
     )
+    print("✓ Sentry error tracking enabled")
 else:
-    print("WARNING: SENTRY_DSN not set. Error tracking is disabled!")
+    if SENTRY_DSN and SENTRY_DSN.startswith("https://xxxx"):
+        print("WARNING: SENTRY_DSN is a placeholder. Replace with real DSN to enable error tracking!")
+    else:
+        print("WARNING: SENTRY_DSN not set. Error tracking is disabled!")
+
 
 # Validate all required environment variables
 validate_required_env_vars()
@@ -405,8 +556,10 @@ if len(SECRET_KEY) < 50:
 print("✓ Production settings loaded successfully")
 print(f"✓ Site URL: {SITE_URL}")
 print(f"✓ Allowed hosts: {', '.join(ALLOWED_HOSTS)}")
-print(f"✓ Database: {DATABASES['default']['NAME']} @ {DATABASES['default']['HOST']}")
-print(f"✓ Redis: {redis_host}:{redis_port}")
-print(f"✓ PgBouncer: {'Enabled' if USE_PGBOUNCER else 'Disabled'}")
+if not COLLECTSTATIC_ONLY:
+    print(f"✓ Database: {DATABASES['default']['NAME']} @ {DATABASES['default']['HOST']}")
+    print(f"✓ Redis: {redis_host}:{redis_port}")
+    print(f"✓ PgBouncer: {'Enabled' if USE_PGBOUNCER else 'Disabled'}")
 print(f"✓ Sentry: {'Enabled' if SENTRY_DSN else 'Disabled'}")
 print(f"✓ Stripe: {'Live Mode' if STRIPE_LIVE_MODE else 'Test Mode'}")
+

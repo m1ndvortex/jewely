@@ -86,8 +86,35 @@ COPY --chown=appuser:appgroup . /app/
 USER appuser
 
 # Collect static files
-# This is done at build time for production
-RUN python manage.py collectstatic --noinput --clear || true
+# Set minimal environment variables needed for collectstatic
+ENV DJANGO_SETTINGS_MODULE=config.settings.production \
+    SECRET_KEY=build-time-secret-key-exactly-fifty-characters-long-value-here \
+    DJANGO_SECRET_KEY=build-time-secret-key-exactly-fifty-characters-long-value-here \
+    POSTGRES_DB=dummy \
+    POSTGRES_USER=dummy \
+    POSTGRES_PASSWORD=dummy \
+    POSTGRES_HOST=localhost \
+    POSTGRES_PORT=5432 \
+    SITE_URL=http://localhost:8000 \
+    ALLOWED_HOSTS=* \
+    DEBUG=False \
+    REDIS_USE_SENTINEL=False \
+    REDIS_URL=redis://localhost:6379/0 \
+    DEFAULT_FROM_EMAIL=noreply@example.com \
+    EMAIL_HOST=localhost \
+    FIELD_ENCRYPTION_KEY=build-time-encryption-key-32chars-long \
+    ALERT_WEBHOOK_TOKEN=build-time-webhook-token \
+    COLLECTSTATIC_ONLY=1
+
+# Run collectstatic with dummy database - ignore errors as files will still be collected
+RUN python manage.py collectstatic --noinput 2>&1 | tail -5 || true; \
+    if [ -d "/app/staticfiles/admin" ]; then \
+        echo "✓ Static files collected successfully"; \
+        ls -la /app/staticfiles/ | head -10; \
+    else \
+        echo "WARNING: Admin static files not found, but continuing..."; \
+        mkdir -p /app/staticfiles; \
+    fi
 
 # Compile translation messages
 RUN python manage.py compilemessages || true

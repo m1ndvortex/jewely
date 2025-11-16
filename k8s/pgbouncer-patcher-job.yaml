@@ -1,0 +1,159 @@
+# ============================================================================
+# PgBouncer Configuration Patcher Job
+# ============================================================================
+# This Job updates running PgBouncer pods with custom configuration parameters
+# to handle k3d cluster restarts gracefully.
+#
+# What it does:
+# 1. Finds all PgBouncer pods in the cluster
+# 2. Backs up their current configuration
+# 3. Applies custom retry/timeout settings
+# 4. Reloads PgBouncer without disconnecting existing clients (SIGHUP)
+#
+# Usage:
+#   kubectl apply -f k8s/pgbouncer-custom-config.yaml
+#   kubectl apply -f k8s/pgbouncer-patcher-job.yaml
+#   kubectl logs -n jewelry-shop job/pgbouncer-config-patcher -f
+# ============================================================================
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pgbouncer-config-patcher
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: database
+    tier: pooler
+spec:
+  ttlSecondsAfterFinished: 600  # Auto-delete after 10 minutes
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: jewelry-shop
+        job: pgbouncer-config-patcher
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: postgres-pod
+      containers:
+      - name: config-patcher
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          
+          echo "========================================="
+          echo "PgBouncer Configuration Patcher"
+          echo "========================================="
+          echo ""
+          
+          # Find all PgBouncer pods
+          PGBOUNCER_PODS=$(kubectl get pods -n jewelry-shop -l application=db-connection-pooler -o name | sed 's/pod\///')
+          
+          if [ -z "$PGBOUNCER_PODS" ]; then
+            echo "ERROR: No PgBouncer pods found!"
+            exit 1
+          fi
+          
+          echo "Found PgBouncer pods:"
+          echo "$PGBOUNCER_PODS"
+          echo ""
+          
+          # Update each PgBouncer pod
+          for POD in $PGBOUNCER_PODS; do
+            echo "========================================="
+            echo "Updating pod: $POD"
+            echo "========================================="
+            
+            # Check if pod is running
+            POD_STATUS=$(kubectl get pod -n jewelry-shop $POD -o jsonpath='{.status.phase}')
+            if [ "$POD_STATUS" != "Running" ]; then
+              echo "WARNING: Pod $POD is in $POD_STATUS state, skipping..."
+              continue
+            fi
+            
+            # Backup current configuration
+            echo "1. Backing up current configuration..."
+            kubectl exec -n jewelry-shop $POD -- sh -c "cp /etc/pgbouncer/pgbouncer.ini /tmp/pgbouncer.ini.backup.$(date +%s)" || true
+            
+            # Show current server_login_retry value
+            echo "2. Current server_login_retry setting:"
+            kubectl exec -n jewelry-shop $POD -- grep "^server_login_retry" /etc/pgbouncer/pgbouncer.ini || echo "   Not set (using default: 5)"
+            
+            # Apply new configuration parameters
+            echo "3. Applying new configuration parameters..."
+            
+            kubectl exec -n jewelry-shop $POD -- sh -c 'cat >> /etc/pgbouncer/pgbouncer.ini << EOF
+          
+# ===== Custom Configuration for k3d Restart Resilience =====
+# Added by pgbouncer-config-patcher job on $(date)
+          
+# CRITICAL: Increase login retry timeout for k3d cluster restarts
+server_login_retry = 60
+server_connect_timeout = 30
+server_lifetime = 3600
+server_idle_timeout = 600
+          
+# Query and transaction timeouts
+query_wait_timeout = 120
+query_timeout = 0
+idle_transaction_timeout = 600
+          
+# Pool configuration
+reserve_pool_timeout = 5
+server_reset_query_always = 1
+          
+# Connection lifecycle
+client_idle_timeout = 3600
+client_lifetime = 7200
+          
+# Logging for debugging
+log_connections = 1
+log_disconnections = 1
+log_pooler_errors = 1
+verbose = 1
+EOF'
+            
+            # Verify new configuration
+            echo "4. New server_login_retry setting:"
+            kubectl exec -n jewelry-shop $POD -- grep "^server_login_retry" /etc/pgbouncer/pgbouncer.ini | tail -1
+            
+            # Reload PgBouncer configuration without disconnecting clients
+            echo "5. Reloading PgBouncer configuration (SIGHUP)..."
+            kubectl exec -n jewelry-shop $POD -- sh -c 'kill -HUP $(cat /var/run/pgbouncer/pgbouncer.pid)' || \
+            kubectl exec -n jewelry-shop $POD -- sh -c 'killall -HUP pgbouncer'
+            
+            # Wait for reload to complete
+            sleep 2
+            
+            # Verify PgBouncer is still running
+            echo "6. Verifying PgBouncer is running..."
+            if kubectl exec -n jewelry-shop $POD -- pgrep pgbouncer > /dev/null; then
+              echo "   ✓ PgBouncer is running"
+            else
+              echo "   ✗ ERROR: PgBouncer is not running!"
+              exit 1
+            fi
+            
+            echo "✓ Successfully updated $POD"
+            echo ""
+          done
+          
+          echo "========================================="
+          echo "Configuration Update Complete!"
+          echo "========================================="
+          echo ""
+          echo "All PgBouncer pods have been updated with:"
+          echo "  - server_login_retry = 60 seconds (was 5)"
+          echo "  - server_connect_timeout = 30 seconds"
+          echo "  - Enhanced logging enabled"
+          echo ""
+          echo "Test the fix:"
+          echo "  1. Restart k3d cluster: k3d cluster stop jewelry-shop && k3d cluster start jewelry-shop"
+          echo "  2. Monitor PgBouncer logs: kubectl logs -n jewelry-shop -l application=db-connection-pooler -f"
+          echo "  3. Check Django pods: kubectl get pods -n jewelry-shop -l component=django"
+          echo ""
+          echo "PgBouncer should now automatically recover after cluster restarts!"

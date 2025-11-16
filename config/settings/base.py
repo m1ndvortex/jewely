@@ -366,13 +366,23 @@ def validate_required_env_vars():
         "POSTGRES_USER": "PostgreSQL username",
         "POSTGRES_PASSWORD": "PostgreSQL password",
         "POSTGRES_HOST": "PostgreSQL host",
-        "REDIS_HOST": "Redis host",
     }
 
     missing_vars = []
     for var, description in required_vars.items():
         if not os.getenv(var):
             missing_vars.append(f"{var} ({description})")
+
+    redis_use_sentinel = os.getenv("REDIS_USE_SENTINEL", "False").lower() == "true"
+    if redis_use_sentinel:
+        sentinel_hosts = os.getenv("REDIS_SENTINEL_HOSTS", "").strip()
+        if not sentinel_hosts:
+            missing_vars.append(
+                "REDIS_SENTINEL_HOSTS (Comma-separated host:port list for Redis Sentinel)"
+            )
+    else:
+        if not os.getenv("REDIS_HOST"):
+            missing_vars.append("REDIS_HOST (Redis host)")
 
     if missing_vars:
         error_msg = (
@@ -387,6 +397,10 @@ def validate_security_settings(debug_mode):
     """
     Validate security-critical settings based on environment.
     """
+    # Skip validation during static file collection
+    if os.getenv("COLLECTSTATIC_ONLY") == "1":
+        return
+    
     if not debug_mode:
         # Production security checks
         secret_key = os.getenv("DJANGO_SECRET_KEY", "")

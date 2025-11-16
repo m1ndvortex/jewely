@@ -1,0 +1,191 @@
+# ============================================================================
+# PgBouncer Custom Configuration for k3d Cluster Restart Resilience
+# ============================================================================
+# This ConfigMap provides custom PgBouncer parameters to handle k3d cluster
+# restarts gracefully without authentication failures.
+#
+# Key improvements:
+# 1. Increased server_login_retry from 5s to 60s for slow PostgreSQL startup
+# 2. Added server_connect_timeout for better connection handling
+# 3. Added query_timeout to prevent hanging connections
+# 4. Configured proper connection lifecycle timeouts
+#
+# These settings ensure PgBouncer can recover automatically when PostgreSQL
+# takes time to become ready after k3d cluster restart.
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-custom-config
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: database
+    tier: pooler
+data:
+  # Custom PgBouncer parameters to merge with operator defaults
+  pgbouncer_custom.ini: |
+    # ========================================================================
+    # Connection Retry and Timeout Settings
+    # ========================================================================
+    
+    # CRITICAL: Increase login retry timeout for k3d cluster restarts
+    # Default: 5 seconds (too short for PostgreSQL startup after restart)
+    # New: 60 seconds (allows PostgreSQL to fully initialize)
+    server_login_retry = 60
+    
+    # Maximum time allowed to connect to backend server
+    # If connection takes longer, PgBouncer will try another server
+    server_connect_timeout = 30
+    
+    # Close server connection if it has been connected longer
+    # Helps recover from stale connections after cluster restart
+    server_lifetime = 3600
+    
+    # Close server connection if it has been idle more than this
+    # Prevents keeping dead connections in the pool
+    server_idle_timeout = 600
+    
+    # ========================================================================
+    # TLS Configuration (PostgreSQL backend)
+    # ========================================================================
+    
+    # Force encrypted connections but skip CA verification because the
+    # PostgreSQL pods currently use self-signed certificates that are not
+    # distributed to PgBouncer pods. Without this override, PgBouncer never
+    # becomes ready and Django crash-loops after restarts.
+    server_tls_sslmode = require
+    server_tls_ca_file =
+    
+    # ========================================================================
+    # Query and Transaction Timeouts
+    # ========================================================================
+    
+    # Maximum time queries are allowed to spend waiting for execution
+    # If query waits longer, client will be disconnected
+    query_wait_timeout = 120
+    
+    # Queries running longer than this are canceled
+    # 0 = unlimited (safe for long-running analytics queries)
+    query_timeout = 0
+    
+    # If client has been in "idle in transaction" state longer,
+    # it will be disconnected
+    idle_transaction_timeout = 600
+    
+    # ========================================================================
+    # Pool Size Configuration
+    # ========================================================================
+    
+    # How many server connections to allow per user/database pair
+    default_pool_size = 25
+    
+    # How many additional connections to allow to a pool
+    reserve_pool_size = 12
+    
+    # If pool is full, try to create server connection but
+    # do not wait more than this many seconds
+    reserve_pool_timeout = 5
+    
+    # ========================================================================
+    # Connection Lifecycle
+    # ========================================================================
+    
+    # Perform server_reset_query (DISCARD ALL) on all pooled connections
+    # after they have been idle this long
+    # This prevents stale session state after cluster restart
+    server_reset_query_always = 1
+    
+    # Maximum time a client connection can be idle before disconnection
+    client_idle_timeout = 3600
+    
+    # Close client connection if it has been connected longer
+    client_lifetime = 7200
+    
+    # ========================================================================
+    # Logging (for debugging k3d restart issues)
+    # ========================================================================
+    
+    # Log successful logins (useful for monitoring recovery)
+    log_connections = 1
+    
+    # Log disconnections with reasons
+    log_disconnections = 1
+    
+    # Log each pooler error immediately (for debugging)
+    log_pooler_errors = 1
+    
+    # Verbosity: 0=quiet, 1=normal, 2=verbose, 3=debug
+    verbose = 1
+
+---
+# ============================================================================
+# PgBouncer Init Container to Apply Custom Configuration
+# ============================================================================
+# This script merges custom PgBouncer config with operator-generated config
+# ============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config-merger
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: database
+    tier: pooler
+data:
+  merge-config.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "Merging custom PgBouncer configuration..."
+    
+    # Backup original config
+    if [ -f /etc/pgbouncer/pgbouncer.ini ]; then
+      cp /etc/pgbouncer/pgbouncer.ini /etc/pgbouncer/pgbouncer.ini.orig
+      echo "Original config backed up to pgbouncer.ini.orig"
+    fi
+    
+    # Append custom config to existing config
+    if [ -f /etc/pgbouncer-custom/pgbouncer_custom.ini ]; then
+      echo "" >> /etc/pgbouncer/pgbouncer.ini
+      echo "# ===== Custom Configuration for k3d Restart Resilience =====" >> /etc/pgbouncer/pgbouncer.ini
+      cat /etc/pgbouncer-custom/pgbouncer_custom.ini >> /etc/pgbouncer/pgbouncer.ini
+      echo "Custom configuration merged successfully"
+    else
+      echo "WARNING: Custom config file not found, using defaults"
+    fi
+    
+    # Show final config for verification
+    echo "Final PgBouncer configuration:"
+    grep -E "server_login_retry|server_connect_timeout|server_lifetime" /etc/pgbouncer/pgbouncer.ini || true
+    
+    echo "Configuration merge complete"
+
+---
+# ============================================================================
+# Documentation: How to Apply This Configuration
+# ============================================================================
+# 
+# IMPORTANT: The Zalando Postgres Operator manages PgBouncer pods automatically,
+# so we cannot directly patch the deployment. Instead, we need to use the
+# operator's connectionPooler configuration.
+#
+# The proper way to apply custom PgBouncer settings with Zalando operator:
+#
+# 1. Update the postgresql CRD with custom PgBouncer parameters
+# 2. The operator will recreate PgBouncer pods with new configuration
+#
+# Alternatively, for immediate fix without operator restart:
+#
+# 1. Create a Job that patches running PgBouncer pods:
+#    kubectl create -f pgbouncer-patcher-job.yaml
+#
+# 2. The job will exec into each PgBouncer pod and update configuration
+#
+# 3. Reload PgBouncer without downtime:
+#    kubectl exec -n jewelry-shop <pgbouncer-pod> -- pkill -HUP pgbouncer
+#
+# ============================================================================

@@ -144,6 +144,12 @@ spec:
                 secretKeyRef:
                   name: jewelry-app.jewelry-shop-db.credentials.postgresql.acid.zalan.do
                   key: password
+            # Sentry Error Tracking
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SENTRY_DSN
           
           # Resource requests and limits
           resources:

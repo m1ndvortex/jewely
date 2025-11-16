@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-django-to-redis-sentinel
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+      component: sentinel
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: django
+      ports:
+        - protocol: TCP
+          port: 26379

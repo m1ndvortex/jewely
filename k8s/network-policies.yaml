@@ -563,12 +563,17 @@ spec:
     
     # Allow to external services (HTTPS)
     - to:
-        - namespaceSelector: {}
+        - ipBlock:
+            cidr: 0.0.0.0/0
       ports:
         - protocol: TCP
           port: 443  # HTTPS for external APIs
         - protocol: TCP
           port: 80   # HTTP for external APIs
+        - protocol: TCP
+          port: 587  # SMTP submission
+        - protocol: TCP
+          port: 465  # SMTPS legacy support
     
     # Allow DNS
     - to:
@@ -627,7 +632,8 @@ spec:
     
     # Allow to external services (for webhooks, notifications, etc.)
     - to:
-        - namespaceSelector: {}
+        - ipBlock:
+            cidr: 0.0.0.0/0
       ports:
         - protocol: TCP
           port: 443
@@ -706,6 +712,39 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
+
+---
+# ============================================================================
+# Policy 17.5: Allow PgBouncer Egress to PostgreSQL
+# ============================================================================
+# PgBouncer pods must open TLS connections to PostgreSQL. Without an explicit
+# egress exception, the namespace-wide default deny limited them to DNS only,
+# which left PgBouncer stuck in server_login_retry and prevented Django from
+# starting cleanly after restarts.
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pgbouncer-egress
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      application: db-connection-pooler
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              application: spilo
+      ports:
+        - protocol: TCP
+          port: 5432
 
 ---
 # ============================================================================

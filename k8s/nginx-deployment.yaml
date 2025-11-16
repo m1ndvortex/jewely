@@ -65,6 +65,34 @@ spec:
             runAsUser: 101
             runAsGroup: 101
             allowPrivilegeEscalation: false
+        
+        # Copy static files from Django image
+        - name: copy-static-files
+          image: jewelry-shop-django:static-fixed
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              echo "Checking for pre-collected static files in Django image..."
+              if [ -d "/app/staticfiles" ] && [ "$(ls -A /app/staticfiles 2>/dev/null)" ]; then
+                echo "Found static files, copying to nginx volume..."
+                cp -rv /app/staticfiles/* /static-volume/ 2>&1 | head -20
+                echo "Copy completed!"
+                ls -la /static-volume/ | head -15
+              else
+                echo "ERROR: No static files found in /app/staticfiles"
+                echo "Contents of /app:"
+                ls -la /app/
+                exit 1
+              fi
+          volumeMounts:
+            - name: static
+              mountPath: /static-volume
+          securityContext:
+            runAsUser: 101
+            runAsGroup: 101
+            allowPrivilegeEscalation: false
       
       containers:
         - name: nginx
