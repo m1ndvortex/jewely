@@ -68,7 +68,7 @@ spec:
         
         # Copy static files from Django image
         - name: copy-static-files
-          image: jewelry-shop-django:static-fixed
+          image: jewelry-shop-django:v1.0.0-secure
           imagePullPolicy: IfNotPresent
           command:
             - sh

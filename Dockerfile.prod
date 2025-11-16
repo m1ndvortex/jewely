@@ -40,8 +40,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy and install Python dependencies
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r /tmp/requirements.txt && \
-    pip install --no-cache-dir gunicorn==21.2.0
+    pip install --no-cache-dir -r /tmp/requirements.txt
+# Note: gunicorn is now in requirements.txt (version 23.0.0)
 
 # ============================================================================
 # Stage 2: Runtime - Create minimal production image
@@ -115,6 +115,9 @@ RUN python manage.py collectstatic --noinput 2>&1 | tail -5 || true; \
         echo "WARNING: Admin static files not found, but continuing..."; \
         mkdir -p /app/staticfiles; \
     fi
+
+# CRITICAL: Unset COLLECTSTATIC_ONLY so runtime uses real database!
+ENV COLLECTSTATIC_ONLY=""
 
 # Compile translation messages
 RUN python manage.py compilemessages || true

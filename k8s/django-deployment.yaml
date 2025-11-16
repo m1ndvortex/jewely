@@ -62,7 +62,7 @@ spec:
       
       containers:
         - name: django
-          image: jewelry-shop:latest  # Replace with your registry/image:tag
+          image: jewelry-shop-django:v1.0.0-secure  # Security-patched version
           imagePullPolicy: IfNotPresent  # Use local image if available
           command: ["gunicorn"]
           args:
