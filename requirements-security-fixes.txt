@@ -1,0 +1,54 @@
+# Security Fixes - Updated Package Versions
+# This file contains ONLY the packages that need security updates
+# Apply these updates to requirements.txt
+
+# CRITICAL: Django - 21 vulnerabilities (SQL injection, DoS, log injection)
+# Current: Django==4.2.11
+# Fix: Upgrade to latest LTS version
+Django==4.2.26  # Fixes PYSEC-2024-58, PYSEC-2024-57, PYSEC-2024-56, GHSA-q95w-c7qg-hrff, etc.
+
+# HIGH: gunicorn - 2 vulnerabilities (HTTP Request Smuggling)
+# Current: gunicorn==21.2.0
+# Fix: Upgrade to 22.0.0+
+gunicorn==23.0.0  # Fixes GHSA-w3h3-4rj7-4ph4, GHSA-hc5x-x2vx-497g
+
+# HIGH: cryptography - 2 vulnerabilities (OpenSSL issues)
+# Current: cryptography==42.0.5
+# Fix: Upgrade to 44.0.1+
+cryptography==44.0.1  # Fixes GHSA-h4gh-qq45-vh27, GHSA-79v4-65xg-pq4g
+
+# HIGH: requests - 2 vulnerabilities (cert verification, .netrc leak)
+# Current: requests==2.31.0
+# Fix: Upgrade to 2.32.4+
+requests==2.32.4  # Fixes GHSA-9wx4-h78v-vm56, GHSA-9hjg-9r4m-mvj7
+
+# MODERATE: Pillow - 1 vulnerability (buffer overflow)
+# Current: Pillow==10.2.0
+# Fix: Upgrade to 10.3.0+
+Pillow==11.0.0  # Fixes GHSA-44wm-f244-xhp3 (use latest stable)
+
+# MODERATE: djangorestframework - 1 vulnerability (XSS)
+# Current: djangorestframework==3.14.0
+# Fix: Upgrade to 3.15.2+
+djangorestframework==3.15.2  # Fixes GHSA-gw84-84pc-xp82
+
+# MODERATE: djangorestframework-simplejwt - 1 vulnerability (info disclosure)
+# Current: djangorestframework-simplejwt==5.3.1
+# Fix: Upgrade to 5.5.1+
+djangorestframework-simplejwt==5.5.1  # Fixes GHSA-5vcc-86wm-547q
+
+# MODERATE: sentry-sdk - 1 vulnerability (env variable exposure)
+# Current: sentry-sdk==1.40.6
+# Fix: Upgrade to 1.45.1+
+sentry-sdk==2.20.0  # Fixes GHSA-g92j-qhmh-64v2 (use latest)
+
+# MODERATE: black - 1 vulnerability (ReDoS)
+# Current: black==24.2.0
+# Fix: Upgrade to 24.3.0+
+black==25.1.0  # Fixes PYSEC-2024-48 (use latest)
+
+# Summary:
+# - Total vulnerabilities fixed: 32
+# - Critical: 21 (Django)
+# - High: 6 (gunicorn, cryptography, requests)
+# - Moderate: 5 (Pillow, DRF, simplejwt, sentry-sdk, black)
