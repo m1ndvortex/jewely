@@ -1,0 +1,63 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-locust-to-nginx
+  namespace: jewelry-shop
+spec:
+  podSelector:
+    matchLabels:
+      app: locust
+  policyTypes:
+  - Egress
+  egress:
+  # Allow Locust to connect to Nginx
+  - to:
+    - podSelector:
+        matchLabels:
+          component: nginx
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+  # Allow DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow Locust workers to connect to master
+  - to:
+    - podSelector:
+        matchLabels:
+          app: locust
+          role: master
+    ports:
+    - protocol: TCP
+      port: 5557
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nginx-from-locust
+  namespace: jewelry-shop
+spec:
+  podSelector:
+    matchLabels:
+      component: nginx
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow Locust to send traffic to Nginx
+  - from:
+    - podSelector:
+        matchLabels:
+          app: locust
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
