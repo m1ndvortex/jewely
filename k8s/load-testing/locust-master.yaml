@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-master
+  namespace: jewelry-shop
+  labels:
+    app: locust
+    role: master
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust
+      role: master
+  template:
+    metadata:
+      labels:
+        app: locust
+        role: master
+    spec:
+      containers:
+      - name: locust
+        image: locustio/locust:latest
+        ports:
+        - containerPort: 8089
+          name: web-ui
+        - containerPort: 5557
+          name: master-bind
+        volumeMounts:
+        - name: locust-scripts
+          mountPath: /home/locust
+        command:
+        - locust
+        - --master
+        - --web-host=0.0.0.0
+        - --expect-workers=3
+        - --host=http://nginx-service
+        env:
+        - name: LOCUST_LOCUSTFILE
+          value: /home/locust/locustfile.py
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+      volumes:
+      - name: locust-scripts
+        configMap:
+          name: locust-scripts
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-master
+  namespace: jewelry-shop
+  labels:
+    app: locust
+    role: master
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8089
+    targetPort: 8089
+    name: web-ui
+  - port: 5557
+    targetPort: 5557
+    name: master-bind
+  selector:
+    app: locust
+    role: master
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: locust-ingress
+  namespace: jewelry-shop
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    cert-manager.io/cluster-issuer: selfsigned-issuer
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - locust.jewelry-shop.local
+    secretName: locust-tls
+  rules:
+  - host: locust.jewelry-shop.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: locust-master
+            port:
+              number: 8089

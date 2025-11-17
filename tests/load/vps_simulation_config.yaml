@@ -1,0 +1,166 @@
+# VPS Resource Simulation Configuration
+# This simulates a production VPS with 4-6GB RAM and 2-3 CPU cores
+# 
+# Purpose: Test how the application performs on realistic production hardware
+# before deploying to actual VPS
+
+vps_specs:
+  # Starter VPS Configuration (what you're buying)
+  ram_gb: 4  # Can test with 4, 5, or 6
+  cpu_cores: 2  # Can test with 2 or 3
+  
+  # Resource allocation per component
+  # Total must not exceed VPS limits
+  components:
+    # Django Application
+    django:
+      replicas: 2  # Reduced from 3 for smaller VPS
+      cpu_request: "250m"  # 0.25 CPU cores
+      cpu_limit: "500m"    # 0.5 CPU cores
+      memory_request: "256Mi"
+      memory_limit: "512Mi"
+      
+    # Nginx Reverse Proxy
+    nginx:
+      replicas: 1  # Single instance for small VPS
+      cpu_request: "100m"
+      cpu_limit: "200m"
+      memory_request: "64Mi"
+      memory_limit: "128Mi"
+      
+    # PostgreSQL Database
+    postgresql:
+      replicas: 2  # Master + 1 replica (reduced from 3)
+      cpu_request: "500m"  # Database needs more CPU
+      cpu_limit: "1000m"   # 1 full core max
+      memory_request: "512Mi"
+      memory_limit: "1Gi"  # PostgreSQL needs memory for caching
+      
+    # Redis Cache
+    redis:
+      replicas: 2  # Master + 1 replica (reduced from 3)
+      cpu_request: "100m"
+      cpu_limit: "200m"
+      memory_request: "128Mi"
+      memory_limit: "256Mi"
+      
+    # Celery Workers
+    celery_worker:
+      replicas: 1  # Single worker for small VPS
+      cpu_request: "200m"
+      cpu_limit: "400m"
+      memory_request: "256Mi"
+      memory_limit: "512Mi"
+      
+    # Celery Beat Scheduler
+    celery_beat:
+      replicas: 1
+      cpu_request: "50m"
+      cpu_limit: "100m"
+      memory_request: "64Mi"
+      memory_limit: "128Mi"
+
+# Load Test Configuration for VPS
+load_test:
+  # Realistic production load for small business
+  scenarios:
+    # Light load (normal business hours)
+    light:
+      users: 20
+      spawn_rate: 2
+      duration: "10m"
+      expected_rps: 10-15
+      
+    # Medium load (busy hours)
+    medium:
+      users: 50
+      spawn_rate: 5
+      duration: "15m"
+      expected_rps: 25-40
+      
+    # Peak load (flash sale, promotion)
+    peak:
+      users: 100
+      spawn_rate: 10
+      duration: "20m"
+      expected_rps: 50-80
+      
+    # Stress test (find breaking point)
+    stress:
+      users: 200
+      spawn_rate: 10
+      duration: "10m"
+      expected_failure_rate: "<5%"
+
+# HPA Configuration for VPS
+autoscaling:
+  django:
+    min_replicas: 1  # Start with 1 to save resources
+    max_replicas: 3  # Max out at 3 for small VPS
+    cpu_threshold: 70
+    memory_threshold: 80
+    scale_up_behavior:
+      stabilization_window: 30  # Wait 30s before scaling up
+      policies:
+        - type: Pods
+          value: 1
+          period: 60  # Add 1 pod per minute max
+    scale_down_behavior:
+      stabilization_window: 300  # Wait 5min before scaling down
+      policies:
+        - type: Pods
+          value: 1
+          period: 120  # Remove 1 pod every 2min
+
+# Expected Performance Metrics
+performance_targets:
+  # Response times under different loads
+  response_times:
+    light_load:
+      p50: "<500ms"
+      p95: "<1000ms"
+      p99: "<2000ms"
+    medium_load:
+      p50: "<800ms"
+      p95: "<1500ms"
+      p99: "<3000ms"
+    peak_load:
+      p50: "<1200ms"
+      p95: "<2500ms"
+      p99: "<4000ms"
+  
+  # Error rates
+  error_rate:
+    acceptable: "<1%"
+    warning: "1-5%"
+    critical: ">5%"
+  
+  # Resource utilization
+  resource_usage:
+    cpu:
+      normal: "40-60%"
+      peak: "70-85%"
+      critical: ">90%"
+    memory:
+      normal: "50-70%"
+      peak: "75-85%"
+      critical: ">90%"
+
+# Recommendations based on VPS size
+recommendations:
+  4gb_2cpu:
+    suitable_for: "1-2 tenants, light usage"
+    max_concurrent_users: 50
+    notes: "Tight on resources, frequent scaling"
+    
+  6gb_3cpu:
+    suitable_for: "3-5 tenants, moderate usage"
+    max_concurrent_users: 100
+    notes: "Comfortable for small business, room to grow"
+    
+  upgrade_triggers:
+    - "CPU consistently >80% during normal hours"
+    - "Memory consistently >85%"
+    - "Response times >3s for p95"
+    - "Error rate >2%"
+    - "More than 5 active tenants"

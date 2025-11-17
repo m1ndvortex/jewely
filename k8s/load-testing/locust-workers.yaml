@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-worker
+  namespace: jewelry-shop
+  labels:
+    app: locust
+    role: worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: locust
+      role: worker
+  template:
+    metadata:
+      labels:
+        app: locust
+        role: worker
+    spec:
+      containers:
+      - name: locust
+        image: locustio/locust:latest
+        volumeMounts:
+        - name: locust-scripts
+          mountPath: /home/locust
+        command:
+        - locust
+        - --worker
+        - --master-host=locust-master
+        - --host=http://nginx-service
+        env:
+        - name: LOCUST_LOCUSTFILE
+          value: /home/locust/locustfile.py
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+      volumes:
+      - name: locust-scripts
+        configMap:
+          name: locust-scripts

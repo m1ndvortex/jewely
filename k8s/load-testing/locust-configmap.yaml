@@ -1,0 +1,227 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: locust-scripts
+  namespace: jewelry-shop
+data:
+  locustfile.py: |
+    """
+    Extreme Load Testing Suite for Jewelry Shop SaaS Platform
+    Simulates 1000 concurrent users with realistic behavior patterns
+    """
+    import random
+    from locust import HttpUser, task, between, events
+    from locust.exception import RescheduleTask
+    
+    
+    class TenantUser(HttpUser):
+        """
+        Simulates tenant portal users (60% of traffic)
+        """
+        weight = 60
+        wait_time = between(1, 3)
+        
+        def on_start(self):
+            """Login to tenant portal"""
+            self.client.verify = False
+            
+            response = self.client.get("/accounts/login/", name="Get Login Page")
+            
+            # Login with tenant credentials
+            self.client.post(
+                "/accounts/login/",
+                data={
+                    "username": "admin",
+                    "password": "admin123",
+                },
+                name="Tenant Login",
+                catch_response=True
+            )
+        
+        @task(10)
+        def view_dashboard(self):
+            """View tenant dashboard - highest frequency"""
+            with self.client.get("/dashboard/", catch_response=True, name="Dashboard") as response:
+                if response.status_code != 200:
+                    response.failure(f"Dashboard returned {response.status_code}")
+                elif response.elapsed.total_seconds() > 2:
+                    response.failure(f"Dashboard too slow: {response.elapsed.total_seconds():.2f}s")
+        
+        @task(8)
+        def view_inventory(self):
+            """Browse inventory items"""
+            with self.client.get("/inventory/", catch_response=True, name="Inventory List") as response:
+                if response.status_code != 200:
+                    response.failure(f"Inventory returned {response.status_code}")
+        
+        @task(6)
+        def search_inventory(self):
+            """Search for inventory items"""
+            search_terms = ["gold", "ring", "necklace", "bracelet", "earring"]
+            term = random.choice(search_terms)
+            with self.client.get(
+                f"/inventory/?search={term}", 
+                catch_response=True,
+                name="Inventory Search"
+            ) as response:
+                if response.status_code != 200:
+                    response.failure(f"Search returned {response.status_code}")
+        
+        @task(5)
+        def view_sales(self):
+            """View sales history"""
+            with self.client.get("/sales/", catch_response=True, name="Sales List") as response:
+                if response.status_code != 200:
+                    response.failure(f"Sales returned {response.status_code}")
+        
+        @task(4)
+        def view_customers(self):
+            """Browse customer list"""
+            with self.client.get("/crm/customers/", catch_response=True, name="Customer List") as response:
+                if response.status_code != 200:
+                    response.failure(f"Customers returned {response.status_code}")
+        
+        @task(3)
+        def view_reports(self):
+            """View reports page"""
+            with self.client.get("/reports/", catch_response=True, name="Reports") as response:
+                if response.status_code != 200:
+                    response.failure(f"Reports returned {response.status_code}")
+    
+    
+    class PlatformAdminUser(HttpUser):
+        """
+        Simulates platform admin users (10% of traffic)
+        """
+        weight = 10
+        wait_time = between(2, 5)
+        
+        def on_start(self):
+            """Login to platform admin portal"""
+            self.client.verify = False
+            
+            self.client.get("/platform/login/", name="Get Platform Login")
+            
+            self.client.post(
+                "/platform/login/",
+                data={
+                    "username": "platformadmin",
+                    "password": "PlatformAdmin123!",
+                },
+                name="Platform Admin Login",
+                catch_response=True
+            )
+        
+        @task(10)
+        def view_admin_dashboard(self):
+            """View platform admin dashboard"""
+            with self.client.get("/platform/dashboard/", catch_response=True, name="Admin Dashboard") as response:
+                if response.status_code != 200:
+                    response.failure(f"Admin dashboard returned {response.status_code}")
+        
+        @task(5)
+        def view_tenants(self):
+            """Browse tenant list"""
+            with self.client.get("/platform/tenants/", catch_response=True, name="Tenant List") as response:
+                if response.status_code != 200:
+                    response.failure(f"Tenant list returned {response.status_code}")
+        
+        @task(3)
+        def view_system_health(self):
+            """Check system health metrics"""
+            with self.client.get("/platform/monitoring/", catch_response=True, name="System Health") as response:
+                if response.status_code != 200:
+                    response.failure(f"System health returned {response.status_code}")
+    
+    
+    class APIUser(HttpUser):
+        """
+        Simulates API-only users (30% of traffic)
+        """
+        weight = 30
+        wait_time = between(0.5, 2)
+        
+        def on_start(self):
+            """Authenticate via API"""
+            self.client.verify = False
+            
+            # Get JWT token
+            response = self.client.post(
+                "/api/token/",
+                json={
+                    "username": "admin",
+                    "password": "admin123"
+                },
+                name="API Token",
+                catch_response=True
+            )
+            
+            if response.status_code == 200:
+                try:
+                    self.token = response.json().get("access")
+                    self.headers = {"Authorization": f"Bearer {self.token}"}
+                except:
+                    self.token = None
+                    self.headers = {}
+            else:
+                self.token = None
+                self.headers = {}
+        
+        @task(10)
+        def api_inventory_list(self):
+            """List inventory via API"""
+            with self.client.get(
+                "/api/inventory/",
+                headers=self.headers,
+                catch_response=True,
+                name="API Inventory List"
+            ) as response:
+                if response.status_code != 200:
+                    response.failure(f"API inventory returned {response.status_code}")
+        
+        @task(8)
+        def api_customers_list(self):
+            """List customers via API"""
+            with self.client.get(
+                "/api/crm/customers/",
+                headers=self.headers,
+                catch_response=True,
+                name="API Customer List"
+            ) as response:
+                if response.status_code != 200:
+                    response.failure(f"API customers returned {response.status_code}")
+        
+        @task(6)
+        def api_sales_list(self):
+            """List sales via API"""
+            with self.client.get(
+                "/api/sales/",
+                headers=self.headers,
+                catch_response=True,
+                name="API Sales List"
+            ) as response:
+                if response.status_code != 200:
+                    response.failure(f"API sales returned {response.status_code}")
+    
+    
+    # Event handlers for metrics
+    @events.test_start.add_listener
+    def on_test_start(environment, **kwargs):
+        print("=" * 80)
+        print("EXTREME LOAD TEST STARTING")
+        print("=" * 80)
+    
+    
+    @events.test_stop.add_listener
+    def on_test_stop(environment, **kwargs):
+        print("=" * 80)
+        print("EXTREME LOAD TEST COMPLETED")
+        print("=" * 80)
+        
+        stats = environment.stats
+        print(f"Total Requests: {stats.total.num_requests}")
+        print(f"Failed Requests: {stats.total.num_failures}")
+        print(f"Failure Rate: {stats.total.fail_ratio * 100:.2f}%")
+        print(f"Average Response Time: {stats.total.avg_response_time:.2f}ms")
+        print(f"Requests/sec: {stats.total.total_rps:.2f}")
+        print("=" * 80)
