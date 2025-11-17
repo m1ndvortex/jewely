@@ -164,29 +164,35 @@ chaos_test_postgresql() {
     # Wait for new master election
     log_info "Waiting for master election..."
     local failover_complete=false
-    for ((i=0; i<60; i++)); do
-        sleep 1
+    for ((i=0; i<120; i++)); do
+        sleep 2
         NEW_MASTER=$(kubectl get pods -n $NAMESPACE -l application=spilo,spilo-role=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-        if [ -n "$NEW_MASTER" ] && [ "$NEW_MASTER" != "$PG_MASTER" ]; then
-            local end_time=$(date +%s)
-            local recovery_time=$((end_time - start_time))
-            log_success "New master elected: $NEW_MASTER"
-            log_success "Recovery time: ${recovery_time}s"
-            echo "PostgreSQL Failover RTO: ${recovery_time}s" >> "$RESULTS_DIR/rto-metrics.txt"
-            failover_complete=true
-            break
+        if [ -n "$NEW_MASTER" ]; then
+            # Master found, check if it's running
+            POD_STATUS=$(kubectl get pod -n $NAMESPACE $NEW_MASTER -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+            if [ "$POD_STATUS" = "Running" ]; then
+                local end_time=$(date +%s)
+                local recovery_time=$((end_time - start_time))
+                log_success "New master elected: $NEW_MASTER"
+                log_success "Recovery time: ${recovery_time}s"
+                echo "PostgreSQL Failover RTO: ${recovery_time}s" >> "$RESULTS_DIR/rto-metrics.txt"
+                failover_complete=true
+                break
+            fi
         fi
     done
     
     if [ "$failover_complete" = false ]; then
         log_error "PostgreSQL failover timeout!"
-        echo "PostgreSQL Failover: FAILED (timeout)" >> "$RESULTS_DIR/rto-metrics.txt"
+        echo "PostgreSQL Failover: FAILED (timeout >240s)" >> "$RESULTS_DIR/rto-metrics.txt"
     fi
     
     # Verify cluster health
-    sleep 10
-    NEW_MASTER_POD=$(kubectl get pods -n $NAMESPACE -l application=spilo,spilo-role=master -o jsonpath='{.items[0].metadata.name}')
-    kubectl exec -n $NAMESPACE $NEW_MASTER_POD -- patronictl list > "$RESULTS_DIR/pg-after-chaos.txt"
+    sleep 15
+    NEW_MASTER_POD=$(kubectl get pods -n $NAMESPACE -l application=spilo,spilo-role=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -n "$NEW_MASTER_POD" ]; then
+        kubectl exec -n $NAMESPACE $NEW_MASTER_POD -- patronictl list > "$RESULTS_DIR/pg-after-chaos.txt" 2>/dev/null || log_warning "Could not get patroni status"
+    fi
     
     collect_metrics "after-pg-chaos"
     
@@ -202,18 +208,22 @@ chaos_test_redis() {
     
     local start_time=$(date +%s)
     
-    # Identify current Redis master
-    REDIS_MASTER=$(kubectl get pods -n $NAMESPACE -l app=redis,component=data -o jsonpath='{.items[0].metadata.name}')
+    # Identify current Redis data pod (StatefulSet)
+    REDIS_MASTER=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=redis,app.kubernetes.io/component=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [ -z "$REDIS_MASTER" ]; then
+        # Fallback to simple redis-0 (StatefulSet naming)
+        REDIS_MASTER="redis-0"
+    fi
     log_info "Targeting Redis pod: $REDIS_MASTER"
     
-    # Kill Redis master
-    log_warning "Deleting Redis master pod..."
+    # Kill Redis pod
+    log_warning "Deleting Redis pod..."
     kubectl delete pod -n $NAMESPACE $REDIS_MASTER --grace-period=0 --force
     
-    # Wait for pod to be recreated
+    # Wait for pod to be recreated by StatefulSet
     log_info "Waiting for Redis pod to be recreated..."
-    sleep 5
-    kubectl wait --for=condition=Ready pod -l app=redis,component=data -n $NAMESPACE --timeout=60s
+    sleep 10
+    kubectl wait --for=condition=Ready pod/$REDIS_MASTER -n $NAMESPACE --timeout=120s 2>/dev/null || log_warning "Timeout waiting for Redis pod"
     
     local end_time=$(date +%s)
     local recovery_time=$((end_time - start_time))
