@@ -1,0 +1,7 @@
++ Cluster: jewelry-shop-db (7572120880133582907) +-----------+----+-----------+
+| Member            | Host        | Role         | State     | TL | Lag in MB |
++-------------------+-------------+--------------+-----------+----+-----------+
+| jewelry-shop-db-0 | 10.42.0.97  | Leader       | running   | 19 |           |
+| jewelry-shop-db-1 | 10.42.2.100 | Sync Standby | streaming | 19 |         0 |
+| jewelry-shop-db-2 | 10.42.1.58  | Replica      | streaming | 19 |         0 |
++-------------------+-------------+--------------+-----------+----+-----------+

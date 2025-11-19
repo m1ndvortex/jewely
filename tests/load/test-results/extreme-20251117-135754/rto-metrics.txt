@@ -1,0 +1,5 @@
+PostgreSQL Failover RTO: 8s
+Redis Failover RTO: 16s
+Django Self-Healing RTO: 235s
+Node Drain Recovery RTO: 43s
+Network Partition Recovery RTO: 40s

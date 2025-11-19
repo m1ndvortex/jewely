@@ -1,0 +1,235 @@
+"""
+Extreme Load Test for Jewelry Shop
+Target: 700 concurrent users, 10min duration
+Combined with chaos engineering tests
+"""
+import random
+import time
+from locust import HttpUser, TaskSet, task, between, events
+import logging
+import re
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class TenantUserBehavior(TaskSet):
+    """Simulate tenant user workflows (70% of traffic)"""
+    
+    def on_start(self):
+        """Login as tenant user - using Django session auth"""
+        # Get login page to extract CSRF token
+        response = self.client.get('/accounts/login/', name='/accounts/login [GET]')
+        
+        if response.status_code == 200:
+            # Extract CSRF token
+            csrf_match = re.search(r'name=["\']csrfmiddlewaretoken["\'] value=["\'](.+?)["\']', response.text)
+            if csrf_match:
+                csrf_token = csrf_match.group(1)
+                
+                # Login with session auth (allauth)
+                login_response = self.client.post('/accounts/login/', 
+                    data={
+                        'login': 'admin@example.com',  # Default tenant admin email
+                        'password': 'admin',
+                        'csrfmiddlewaretoken': csrf_token
+                    },
+                    headers={
+                        'Referer': self.client.base_url + '/accounts/login/',
+                        'X-Tenant': 'default'  # Use default tenant
+                    },
+                    name='/accounts/login [POST]',
+                    allow_redirects=False
+                )
+                
+                if login_response.status_code in [200, 302]:
+                    logger.info("Tenant user logged in successfully")
+                else:
+                    logger.warning(f"Login failed with status {login_response.status_code}")
+            else:
+                logger.warning("Could not extract CSRF token from login page")
+    
+    @task(10)
+    def view_dashboard(self):
+        """View main dashboard"""
+        self.client.get('/api/dashboard/', name='/api/dashboard/')
+    
+    @task(8)
+    def list_products(self):
+        """Browse product catalog"""
+        page = random.randint(1, 5)
+        self.client.get(f'/api/products/?page={page}', name='/api/products/')
+    
+    @task(5)
+    def view_product_detail(self):
+        """View specific product"""
+        product_id = random.randint(1, 100)
+        self.client.get(f'/api/products/{product_id}/', name='/api/products/[id]/')
+    
+    @task(6)
+    def search_products(self):
+        """Search products"""
+        queries = ['ring', 'necklace', 'bracelet', 'earring', 'gold', 'silver']
+        query = random.choice(queries)
+        self.client.get(f'/api/products/?search={query}', name='/api/products/?search=[query]')
+    
+    @task(7)
+    def list_inventory(self):
+        """Check inventory"""
+        self.client.get('/api/inventory/', name='/api/inventory/')
+    
+    @task(4)
+    def create_sale(self):
+        """Create a sale transaction"""
+        self.client.post('/api/sales/', json={
+            'customer_name': f'Customer_{random.randint(1, 1000)}',
+            'items': [
+                {
+                    'product_id': random.randint(1, 50),
+                    'quantity': random.randint(1, 3),
+                    'price': random.uniform(100, 5000)
+                }
+            ],
+            'total_amount': random.uniform(100, 10000),
+            'payment_method': random.choice(['cash', 'card', 'transfer'])
+        }, name='/api/sales/ [POST]')
+    
+    @task(5)
+    def list_sales(self):
+        """View sales history"""
+        self.client.get('/api/sales/', name='/api/sales/')
+    
+    @task(3)
+    def view_reports(self):
+        """View sales reports"""
+        self.client.get('/api/reports/sales/', name='/api/reports/sales/')
+    
+    @task(2)
+    def check_notifications(self):
+        """Check notifications"""
+        self.client.get('/api/notifications/', name='/api/notifications/')
+
+
+class APIUserBehavior(TaskSet):
+    """Simulate API-only clients (25% of traffic)"""
+    
+    def on_start(self):
+        """Setup API authentication"""
+        self.client.headers.update({
+            'X-Tenant': 'tenant1',
+            'Accept': 'application/json',
+            'X-API-Key': 'test-api-key-123'
+        })
+    
+    @task(10)
+    def bulk_product_query(self):
+        """Query multiple products"""
+        self.client.get('/api/products/?limit=50', name='/api/products/?limit=50')
+    
+    @task(8)
+    def inventory_check(self):
+        """Bulk inventory check"""
+        self.client.get('/api/inventory/?low_stock=true', name='/api/inventory/?low_stock=true')
+    
+    @task(5)
+    def sales_analytics(self):
+        """Get sales analytics"""
+        date_from = '2025-01-01'
+        date_to = '2025-11-16'
+        self.client.get(
+            f'/api/reports/analytics/?from={date_from}&to={date_to}',
+            name='/api/reports/analytics/'
+        )
+    
+    @task(4)
+    def export_data(self):
+        """Export data endpoint"""
+        self.client.get('/api/export/products/', name='/api/export/products/')
+
+
+class PlatformAdminBehavior(TaskSet):
+    """Simulate platform admin workflows (5% of traffic)"""
+    
+    def on_start(self):
+        """Login as platform admin"""
+        response = self.client.post('/api/platform/auth/login/', json={
+            'username': 'platformadmin',
+            'password': 'PlatformAdmin123!'
+        }, name='/api/platform/auth/login')
+        
+        if response.status_code == 200:
+            try:
+                token = response.json().get('access')
+                if token:
+                    self.client.headers.update({'Authorization': f'Bearer {token}'})
+                    logger.info("Platform admin logged in successfully")
+            except:
+                logger.warning("Failed to parse admin login response")
+    
+    @task(8)
+    def list_tenants(self):
+        """View all tenants"""
+        self.client.get('/api/platform/tenants/', name='/api/platform/tenants/')
+    
+    @task(5)
+    def view_tenant_detail(self):
+        """View tenant details"""
+        tenant_id = random.randint(1, 10)
+        self.client.get(f'/api/platform/tenants/{tenant_id}/', name='/api/platform/tenants/[id]/')
+    
+    @task(3)
+    def system_health(self):
+        """Check system health"""
+        self.client.get('/api/platform/health/', name='/api/platform/health/')
+    
+    @task(2)
+    def view_metrics(self):
+        """View system metrics"""
+        self.client.get('/api/platform/metrics/', name='/api/platform/metrics/')
+
+
+class TenantUser(HttpUser):
+    """Tenant user (70% of total users)"""
+    tasks = [TenantUserBehavior]
+    wait_time = between(1, 5)  # Wait 1-5 seconds between requests
+    weight = 70
+
+
+class APIUser(HttpUser):
+    """API-only user (25% of total users)"""
+    tasks = [APIUserBehavior]
+    wait_time = between(0.5, 2)  # API users are faster
+    weight = 25
+
+
+class PlatformAdmin(HttpUser):
+    """Platform admin user (5% of total users)"""
+    tasks = [PlatformAdminBehavior]
+    wait_time = between(2, 8)  # Admins take more time to review
+    weight = 5
+
+
+# Event hooks for logging
+@events.request.add_listener
+def on_request(request_type, name, response_time, response_length, exception, **kwargs):
+    """Log slow requests"""
+    if response_time > 2000:  # Log requests over 2 seconds
+        logger.warning(f"SLOW REQUEST: {name} took {response_time}ms")
+
+
+@events.test_start.add_listener
+def on_test_start(environment, **kwargs):
+    """Log test start"""
+    logger.info("=" * 60)
+    logger.info("EXTREME LOAD TEST STARTED")
+    logger.info(f"Target: 200 concurrent users, 30min duration")
+    logger.info(f"Host: {environment.host}")
+    logger.info("=" * 60)
+
+
+@events.test_stop.add_listener
+def on_test_stop(environment, **kwargs):
+    """Log test completion"""
+    logger.info("=" * 60)
+    logger.info("EXTREME LOAD TEST COMPLETED")
+    logger.info("=" * 60)

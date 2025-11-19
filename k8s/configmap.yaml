@@ -19,7 +19,8 @@ data:
   # Django Configuration
   DJANGO_SETTINGS_MODULE: "config.settings.production"
   DJANGO_DEBUG: "False"
-  DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,jewelry-shop.local,*.jewelry-shop.local,django-service,nginx-service,*.jewelry-shop.svc.cluster.local"
+  # Wildcard to accept internal pod IPs for health checks (Prometheus, Kubernetes probes)
+  DJANGO_ALLOWED_HOSTS: "*"
   # SSL redirect enabled (production-ready)
   SECURE_SSL_REDIRECT: "True"
   

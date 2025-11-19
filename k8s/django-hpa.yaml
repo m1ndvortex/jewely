@@ -5,8 +5,8 @@
 # aggressive scale-up and gradual scale-down policies.
 #
 # Scaling Configuration:
-# - Min Replicas: 3 (high availability baseline)
-# - Max Replicas: 10 (handle peak loads)
+# - Min Replicas: 2 (ensures zero-downtime - always have backup pod)
+# - Max Replicas: 5 (optimized for 6GB RAM / 3 CPU VPS)
 # - CPU Threshold: 70% (scale up when CPU exceeds 70%)
 # - Memory Threshold: 80% (scale up when memory exceeds 80%)
 #
@@ -33,8 +33,8 @@ spec:
     name: django
   
   # Scaling boundaries
-  minReplicas: 3   # Maintain 3 pods minimum for high availability
-  maxReplicas: 10  # Scale up to 10 pods for peak loads
+  minReplicas: 2   # Maintain 2 pods minimum for zero-downtime (was 1, increased for HA)
+  maxReplicas: 5   # Scale up to 5 pods for peak loads (was 10, adjusted for 6GB/3CPU VPS)
   
   # Scaling metrics
   metrics:

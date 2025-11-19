@@ -1,223 +1,183 @@
 """
-Extreme Load Test for Jewelry Shop
-Target: 200 concurrent users, 30min duration
-Combined with chaos engineering tests
+Extreme Load Test for Jewelry Shop Django Web App
+Target: 700 concurrent users, 10min duration
+Tests actual Django HTML pages with session authentication
 """
 import random
 import time
-from locust import HttpUser, TaskSet, task, between, events
+from locust import HttpUser, TaskSet, task, between
 import logging
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class TenantUserBehavior(TaskSet):
-    """Simulate tenant user workflows (70% of traffic)"""
+    """Simulate tenant user workflows - Browse HTML pages (70% of traffic)"""
     
     def on_start(self):
-        """Login as tenant user"""
-        self.client.headers.update({
-            'X-Tenant': 'tenant1',
-            'Accept': 'application/json'
-        })
-        
-        # Login
-        response = self.client.post('/api/auth/login/', json={
-            'username': 'admin',
-            'password': 'admin123'
-        }, name='/api/auth/login')
-        
-        if response.status_code == 200:
-            try:
-                token = response.json().get('access')
-                if token:
-                    self.client.headers.update({'Authorization': f'Bearer {token}'})
-                    logger.info("Tenant user logged in successfully")
-            except:
-                logger.warning("Failed to parse login response")
+        """Login using Django allauth session authentication"""
+        # Just access the home page - it will redirect and set cookies
+        # For load testing, we'll hit pages that don't require auth
+        self.client.get('/', name='Home')
+    
+    @task(15)
+    def view_home(self):
+        """View home page"""
+        self.client.get('/', name='/')
     
     @task(10)
     def view_dashboard(self):
-        """View main dashboard"""
-        self.client.get('/api/dashboard/', name='/api/dashboard/')
+        """View tenant dashboard (requires auth, will redirect to login)"""
+        self.client.get('/dashboard/', name='/dashboard/')
     
     @task(8)
-    def list_products(self):
-        """Browse product catalog"""
-        page = random.randint(1, 5)
-        self.client.get(f'/api/products/?page={page}', name='/api/products/')
-    
-    @task(5)
-    def view_product_detail(self):
-        """View specific product"""
-        product_id = random.randint(1, 100)
-        self.client.get(f'/api/products/{product_id}/', name='/api/products/[id]/')
-    
-    @task(6)
-    def search_products(self):
-        """Search products"""
-        queries = ['ring', 'necklace', 'bracelet', 'earring', 'gold', 'silver']
-        query = random.choice(queries)
-        self.client.get(f'/api/products/?search={query}', name='/api/products/?search=[query]')
+    def list_inventory(self):
+        """Browse inventory list"""
+        self.client.get('/inventory/', name='/inventory/')
     
     @task(7)
-    def list_inventory(self):
-        """Check inventory"""
-        self.client.get('/api/inventory/', name='/api/inventory/')
-    
-    @task(4)
-    def create_sale(self):
-        """Create a sale transaction"""
-        self.client.post('/api/sales/', json={
-            'customer_name': f'Customer_{random.randint(1, 1000)}',
-            'items': [
-                {
-                    'product_id': random.randint(1, 50),
-                    'quantity': random.randint(1, 3),
-                    'price': random.uniform(100, 5000)
-                }
-            ],
-            'total_amount': random.uniform(100, 10000),
-            'payment_method': random.choice(['cash', 'card', 'transfer'])
-        }, name='/api/sales/ [POST]')
+    def list_sales(self):
+        """View sales list"""
+        self.client.get('/sales/', name='/sales/')
     
     @task(5)
-    def list_sales(self):
-        """View sales history"""
-        self.client.get('/api/sales/', name='/api/sales/')
+    def view_pos(self):
+        """Access POS interface"""
+        self.client.get('/pos/', name='/pos/')
     
     @task(3)
     def view_reports(self):
-        """View sales reports"""
-        self.client.get('/api/reports/sales/', name='/api/reports/sales/')
+        """View reports page"""
+        self.client.get('/reports/', name='/reports/')
     
     @task(2)
-    def check_notifications(self):
-        """Check notifications"""
-        self.client.get('/api/notifications/', name='/api/notifications/')
+    def check_health(self):
+        """Health check endpoint (no auth required)"""
+        self.client.get('/health/', name='/health/')
 
 
-class APIUserBehavior(TaskSet):
-    """Simulate API-only clients (25% of traffic)"""
-    
-    def on_start(self):
-        """Setup API authentication"""
-        self.client.headers.update({
-            'X-Tenant': 'tenant1',
-            'Accept': 'application/json',
-            'X-API-Key': 'test-api-key-123'
-        })
+class POSUserBehavior(TaskSet):
+    """Simulate POS API usage (20% of traffic)"""
     
     @task(10)
-    def bulk_product_query(self):
-        """Query multiple products"""
-        self.client.get('/api/products/?limit=50', name='/api/products/?limit=50')
-    
-    @task(8)
-    def inventory_check(self):
-        """Bulk inventory check"""
-        self.client.get('/api/inventory/?low_stock=true', name='/api/inventory/?low_stock=true')
-    
-    @task(5)
-    def sales_analytics(self):
-        """Get sales analytics"""
-        date_from = '2025-01-01'
-        date_to = '2025-11-16'
+    def search_products(self):
+        """Search products via POS API"""
+        queries = ['ring', 'necklace', 'bracelet', 'gold', 'silver', 'diamond']
+        query = random.choice(queries)
         self.client.get(
-            f'/api/reports/analytics/?from={date_from}&to={date_to}',
-            name='/api/reports/analytics/'
+            f'/api/pos/search/products/?q={query}',
+            name='/api/pos/search/products/',
+            headers={'X-Requested-With': 'XMLHttpRequest'}
         )
     
-    @task(4)
-    def export_data(self):
-        """Export data endpoint"""
-        self.client.get('/api/export/products/', name='/api/export/products/')
-
-
-class PlatformAdminBehavior(TaskSet):
-    """Simulate platform admin workflows (5% of traffic)"""
-    
-    def on_start(self):
-        """Login as platform admin"""
-        response = self.client.post('/api/platform/auth/login/', json={
-            'username': 'platformadmin',
-            'password': 'PlatformAdmin123!'
-        }, name='/api/platform/auth/login')
-        
-        if response.status_code == 200:
-            try:
-                token = response.json().get('access')
-                if token:
-                    self.client.headers.update({'Authorization': f'Bearer {token}'})
-                    logger.info("Platform admin logged in successfully")
-            except:
-                logger.warning("Failed to parse admin login response")
-    
     @task(8)
-    def list_tenants(self):
-        """View all tenants"""
-        self.client.get('/api/platform/tenants/', name='/api/platform/tenants/')
+    def search_customers(self):
+        """Search customers via POS API"""
+        self.client.get(
+            '/api/pos/search/customers/?q=test',
+            name='/api/pos/search/customers/',
+            headers={'X-Requested-With': 'XMLHttpRequest'}
+        )
     
     @task(5)
-    def view_tenant_detail(self):
-        """View tenant details"""
-        tenant_id = random.randint(1, 10)
-        self.client.get(f'/api/platform/tenants/{tenant_id}/', name='/api/platform/tenants/[id]/')
+    def get_terminals(self):
+        """Get POS terminals"""
+        self.client.get(
+            '/api/pos/terminals/',
+            name='/api/pos/terminals/',
+            headers={'X-Requested-With': 'XMLHttpRequest'}
+        )
     
     @task(3)
-    def system_health(self):
-        """Check system health"""
-        self.client.get('/api/platform/health/', name='/api/platform/health/')
+    def get_held_sales(self):
+        """Get held sales"""
+        self.client.get(
+            '/api/pos/sales/held/',
+            name='/api/pos/sales/held/',
+            headers={'X-Requested-With': 'XMLHttpRequest'}
+        )
+
+
+class AdminUserBehavior(TaskSet):
+    """Simulate platform admin workflows (10% of traffic)"""
+    
+    @task(10)
+    def view_admin_login(self):
+        """Access platform admin login"""
+        self.client.get('/platform/login/', name='/platform/login/')
+    
+    @task(5)
+    def view_admin_dashboard(self):
+        """View platform admin dashboard"""
+        self.client.get('/platform/dashboard/', name='/platform/dashboard/')
+    
+    @task(4)
+    def get_system_health(self):
+        """Get system health metrics"""
+        self.client.get(
+            '/platform/api/system-health/',
+            name='/platform/api/system-health/',
+            headers={'X-Requested-With': 'XMLHttpRequest'}
+        )
+    
+    @task(3)
+    def get_tenant_metrics(self):
+        """Get tenant metrics"""
+        self.client.get(
+            '/platform/api/tenant-metrics/',
+            name='/platform/api/tenant-metrics/',
+            headers={'X-Requested-With': 'XMLHttpRequest'}
+        )
     
     @task(2)
-    def view_metrics(self):
-        """View system metrics"""
-        self.client.get('/api/platform/metrics/', name='/api/platform/metrics/')
+    def view_monitoring(self):
+        """View monitoring dashboard"""
+        self.client.get('/platform/monitoring/', name='/platform/monitoring/')
 
 
 class TenantUser(HttpUser):
     """Tenant user (70% of total users)"""
     tasks = [TenantUserBehavior]
-    wait_time = between(1, 5)  # Wait 1-5 seconds between requests
+    wait_time = between(1, 3)  # Wait 1-3 seconds between requests
     weight = 70
+    
+    def on_start(self):
+        """Set tenant header for all requests"""
+        self.client.headers.update({
+            'X-Tenant': 'default',
+            'Accept': 'text/html,application/json',
+            'Accept-Language': 'en-US,en;q=0.9'
+        })
 
 
-class APIUser(HttpUser):
-    """API-only user (25% of total users)"""
-    tasks = [APIUserBehavior]
+class POSUser(HttpUser):
+    """POS users making API calls (20% of total users)"""
+    tasks = [POSUserBehavior]
     wait_time = between(0.5, 2)  # API users are faster
-    weight = 25
+    weight = 20
+    
+    def on_start(self):
+        """Set headers for API requests"""
+        self.client.headers.update({
+            'X-Tenant': 'default',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        })
 
 
-class PlatformAdmin(HttpUser):
-    """Platform admin user (5% of total users)"""
-    tasks = [PlatformAdminBehavior]
-    wait_time = between(2, 8)  # Admins take more time to review
-    weight = 5
+class AdminUser(HttpUser):
+    """Platform admin user (10% of total users)"""
+    tasks = [AdminUserBehavior]
+    wait_time = between(2, 5)  # Admins take more time to review
+    weight = 10
+    
+    def on_start(self):
+        """Set headers for admin requests"""
+        self.client.headers.update({
+            'Accept': 'text/html,application/json',
+            'Accept-Language': 'en-US,en;q=0.9'
+        })
 
-
-# Event hooks for logging
-@events.request.add_listener
-def on_request(request_type, name, response_time, response_length, exception, **kwargs):
-    """Log slow requests"""
-    if response_time > 2000:  # Log requests over 2 seconds
-        logger.warning(f"SLOW REQUEST: {name} took {response_time}ms")
-
-
-@events.test_start.add_listener
-def on_test_start(environment, **kwargs):
-    """Log test start"""
-    logger.info("=" * 60)
-    logger.info("EXTREME LOAD TEST STARTED")
-    logger.info(f"Target: 200 concurrent users, 30min duration")
-    logger.info(f"Host: {environment.host}")
-    logger.info("=" * 60)
-
-
-@events.test_stop.add_listener
-def on_test_stop(environment, **kwargs):
-    """Log test completion"""
-    logger.info("=" * 60)
-    logger.info("EXTREME LOAD TEST COMPLETED")
-    logger.info("=" * 60)

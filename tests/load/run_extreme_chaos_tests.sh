@@ -16,14 +16,24 @@ NC='\033[0m' # No Color
 
 # Configuration
 NAMESPACE="jewelry-shop"
-TEST_DURATION="30m"
-MAX_USERS=200
-SPAWN_RATE=10
-TARGET_HOST="http://nginx.${NAMESPACE}.svc.cluster.local"
+TEST_DURATION="10m"
+MAX_USERS=700
+SPAWN_RATE=50
+TARGET_HOST="http://nginx-service.${NAMESPACE}.svc.cluster.local"
 RESULTS_DIR="./test-results/extreme-$(date +%Y%m%d-%H%M%S)"
+PORT_FORWARD_PID=""
 
 # Create results directory
 mkdir -p "$RESULTS_DIR"
+
+# Cleanup function
+cleanup() {
+    log_info "Cleaning up..."
+    if [ -n "$PORT_FORWARD_PID" ]; then
+        kill $PORT_FORWARD_PID 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
 
 # Logging functions
 log_info() {
@@ -117,25 +127,27 @@ start_load_test() {
     log_info "Copying locustfile to pod: $LOCUST_POD"
     kubectl cp "$SCRIPT_DIR/locustfile_extreme.py" $NAMESPACE/$LOCUST_POD:/tmp/locustfile.py
     
-    # Start load test
-    log_info "Starting load test from pod: $LOCUST_POD"
+    # Start port-forward to Locust web UI
+    log_info "Starting port-forward to Locust web UI"
+    kubectl port-forward -n $NAMESPACE svc/locust-master 8089:8089 >/dev/null 2>&1 &
+    PORT_FORWARD_PID=$!
+    sleep 3
     
-    # Start test in background and save PID
-    kubectl exec -n $NAMESPACE $LOCUST_POD -- \
-        locust -f /tmp/locustfile.py \
-        --host=$TARGET_HOST \
-        --users=$MAX_USERS \
-        --spawn-rate=$SPAWN_RATE \
-        --run-time=$TEST_DURATION \
-        --headless \
-        --html=/tmp/report.html \
-        --csv=/tmp/stats \
-        > "$RESULTS_DIR/locust-output.log" 2>&1 &
+    # Start load test via Locust API
+    log_info "Starting load test via Locust web API"
     
-    LOAD_TEST_PID=$!
-    echo $LOAD_TEST_PID > "$RESULTS_DIR/load_test.pid"
+    # Start test via API
+    curl -s -X POST "http://localhost:8089/swarm" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "user_count=$MAX_USERS&spawn_rate=$SPAWN_RATE&host=$TARGET_HOST" > /dev/null
     
-    log_success "Load test started (PID: $LOAD_TEST_PID)"
+    if [ $? -eq 0 ]; then
+        log_success "Load test started via API"
+    else
+        log_error "Failed to start load test"
+        return 1
+    fi
+    
     log_info "Waiting 60 seconds for load to ramp up..."
     sleep 60
     
@@ -196,8 +208,8 @@ chaos_test_postgresql() {
     
     collect_metrics "after-pg-chaos"
     
-    log_info "Waiting 30s before next chaos test..."
-    sleep 30
+    log_info "Waiting 15s before next chaos test..."
+    sleep 15
 }
 
 # Chaos Test 2: Kill Redis Master
@@ -208,8 +220,8 @@ chaos_test_redis() {
     
     local start_time=$(date +%s)
     
-    # Identify current Redis data pod (StatefulSet)
-    REDIS_MASTER=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/name=redis,app.kubernetes.io/component=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    # Identify current Redis data pod (StatefulSet with correct labels)
+    REDIS_MASTER=$(kubectl get pods -n $NAMESPACE -l app=redis,component=server -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     if [ -z "$REDIS_MASTER" ]; then
         # Fallback to simple redis-0 (StatefulSet naming)
         REDIS_MASTER="redis-0"
@@ -233,8 +245,8 @@ chaos_test_redis() {
     
     collect_metrics "after-redis-chaos"
     
-    log_info "Waiting 30s before next chaos test..."
-    sleep 30
+    log_info "Waiting 15s before next chaos test..."
+    sleep 15
 }
 
 # Chaos Test 3: Kill Random Django Pods
@@ -277,8 +289,8 @@ chaos_test_django() {
     
     collect_metrics "after-django-chaos"
     
-    log_info "Waiting 30s before next chaos test..."
-    sleep 30
+    log_info "Waiting 15s before next chaos test..."
+    sleep 15
 }
 
 # Chaos Test 4: Node Drain Simulation
@@ -287,8 +299,8 @@ chaos_test_node_drain() {
     
     collect_metrics "before-node-drain"
     
-    # Get a node with pods
-    NODE=$(kubectl get pods -n $NAMESPACE -o wide | awk 'NR>1 {print $7}' | sort -u | head -1)
+    # Get a worker node (not control plane)
+    NODE=$(kubectl get nodes --no-headers | grep -v "control-plane" | awk '{print $1}' | head -1)
     log_info "Cordoning and draining node: $NODE"
     
     local start_time=$(date +%s)
@@ -316,8 +328,8 @@ chaos_test_node_drain() {
     
     collect_metrics "after-node-drain"
     
-    log_info "Waiting 30s before next chaos test..."
-    sleep 30
+    log_info "Waiting 15s before next chaos test..."
+    sleep 15
 }
 
 # Chaos Test 5: Network Partition
@@ -371,9 +383,9 @@ EOF
 monitor_hpa() {
     log_section "MONITORING HPA BEHAVIOR"
     
-    log_info "Monitoring HPA for next 10 minutes..."
+    log_info "Monitoring HPA for next 5 minutes..."
     
-    for ((i=0; i<120; i++)); do
+    for ((i=0; i<60; i++)); do
         {
             echo "=== HPA Status at $(date) ==="
             kubectl get hpa -n $NAMESPACE -o wide

@@ -1,0 +1,3 @@
+PostgreSQL Failover RTO: 9s
+Redis Failover RTO: 21s
+Django Self-Healing RTO: 345s

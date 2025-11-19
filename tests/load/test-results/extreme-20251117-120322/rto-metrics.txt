@@ -1,0 +1,2 @@
+PostgreSQL Failover RTO: 13s
+Redis Failover RTO: 26s

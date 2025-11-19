@@ -1,0 +1,87 @@
+=== Metrics: final ===
+Timestamp: 2025-11-17T10:31:29Z
+
+=== Pod Status ===
+NAME                                      READY   STATUS             RESTARTS         AGE     IP            NODE                        NOMINATED NODE   READINESS GATES
+celery-beat-58c4f688cc-7s4zd              1/1     Running            0                12m     10.42.0.88    k3d-jewelry-shop-server-0   <none>           <none>
+celery-worker-54b48ccdf-7f8s7             1/1     Running            1 (104m ago)     16h     10.42.1.62    k3d-jewelry-shop-agent-1    <none>           <none>
+django-c89969cc8-zz5ht                    1/1     Running            0                5m17s   10.42.1.68    k3d-jewelry-shop-agent-1    <none>           <none>
+fluent-bit-86r6q                          1/1     Running            0                70m     10.42.2.97    k3d-jewelry-shop-agent-0    <none>           <none>
+fluent-bit-86sz8                          1/1     Running            0                70m     10.42.0.80    k3d-jewelry-shop-server-0   <none>           <none>
+fluent-bit-spdxh                          1/1     Running            0                69m     10.42.1.66    k3d-jewelry-shop-agent-1    <none>           <none>
+jewelry-shop-db-0                         2/2     Running            0                8m22s   10.42.0.95    k3d-jewelry-shop-server-0   <none>           <none>
+jewelry-shop-db-1                         2/2     Running            0                12m     10.42.2.100   k3d-jewelry-shop-agent-0    <none>           <none>
+jewelry-shop-db-2                         2/2     Running            6 (104m ago)     47h     10.42.1.58    k3d-jewelry-shop-agent-1    <none>           <none>
+jewelry-shop-db-pooler-5f86bfffd7-h8vm6   1/1     Running            0                12m     10.42.0.90    k3d-jewelry-shop-server-0   <none>           <none>
+jewelry-shop-db-pooler-5f86bfffd7-j7xdr   1/1     Running            0                15h     10.42.1.51    k3d-jewelry-shop-agent-1    <none>           <none>
+locust-master-7c66f544f5-jszvf            1/1     Running            1 (104m ago)     16h     10.42.1.56    k3d-jewelry-shop-agent-1    <none>           <none>
+locust-worker-649946596f-4plh9            1/1     Running            12 (15h ago)     16h     10.42.1.53    k3d-jewelry-shop-agent-1    <none>           <none>
+locust-worker-649946596f-952fj            0/1     CrashLoopBackOff   12 (4m51s ago)   88m     10.42.0.77    k3d-jewelry-shop-server-0   <none>           <none>
+locust-worker-649946596f-zf9p9            1/1     Running            0                12m     10.42.0.94    k3d-jewelry-shop-server-0   <none>           <none>
+loki-7f8585d76b-z6t2c                     1/1     Running            0                45m     10.42.0.82    k3d-jewelry-shop-server-0   <none>           <none>
+nginx-66b7db4b46-lxkzb                    2/2     Running            1 (101m ago)     15h     10.42.1.50    k3d-jewelry-shop-agent-1    <none>           <none>
+nginx-66b7db4b46-qjkh6                    2/2     Running            0                12m     10.42.0.89    k3d-jewelry-shop-server-0   <none>           <none>
+redis-0                                   2/2     Running            0                7m43s   10.42.2.101   k3d-jewelry-shop-agent-0    <none>           <none>
+redis-1                                   2/2     Running            18 (104m ago)    5d13h   10.42.1.61    k3d-jewelry-shop-agent-1    <none>           <none>
+redis-2                                   2/2     Running            0                15h     10.42.0.73    k3d-jewelry-shop-server-0   <none>           <none>
+redis-sentinel-0                          2/2     Running            0                15h     10.42.0.72    k3d-jewelry-shop-server-0   <none>           <none>
+redis-sentinel-1                          2/2     Running            0                12m     10.42.2.102   k3d-jewelry-shop-agent-0    <none>           <none>
+redis-sentinel-2                          2/2     Running            4 (104m ago)     26h     10.42.1.63    k3d-jewelry-shop-agent-1    <none>           <none>
+
+=== Resource Usage ===
+NAME                                      CPU(cores)   MEMORY(bytes)   
+celery-beat-58c4f688cc-7s4zd              40m          192Mi           
+celery-worker-54b48ccdf-7f8s7             44m          389Mi           
+django-c89969cc8-zz5ht                    2m           312Mi           
+fluent-bit-86r6q                          2m           5Mi             
+fluent-bit-86sz8                          1m           6Mi             
+fluent-bit-spdxh                          2m           6Mi             
+jewelry-shop-db-0                         2m           122Mi           
+jewelry-shop-db-1                         2m           79Mi            
+jewelry-shop-db-2                         3m           163Mi           
+jewelry-shop-db-pooler-5f86bfffd7-h8vm6   1m           9Mi             
+jewelry-shop-db-pooler-5f86bfffd7-j7xdr   1m           9Mi             
+locust-master-7c66f544f5-jszvf            1m           57Mi            
+locust-worker-649946596f-4plh9            1m           53Mi            
+locust-worker-649946596f-zf9p9            1m           45Mi            
+loki-7f8585d76b-z6t2c                     4m           160Mi           
+nginx-66b7db4b46-lxkzb                    1m           37Mi            
+nginx-66b7db4b46-qjkh6                    1m           36Mi            
+redis-0                                   5m           6Mi             
+redis-1                                   4m           22Mi            
+redis-2                                   5m           22Mi            
+redis-sentinel-0                          6m           5Mi             
+redis-sentinel-1                          7m           5Mi             
+redis-sentinel-2                          84m          5Mi             
+
+=== HPA Status ===
+NAME                REFERENCE                  TARGETS                        MINPODS   MAXPODS   REPLICAS   AGE
+celery-worker-hpa   Deployment/celery-worker   cpu: 7%/70%, memory: 76%/80%   1         3         1          4d19h
+django-hpa          Deployment/django          cpu: 0%/70%, memory: 60%/80%   1         3         1          4d19h
+nginx-hpa           Deployment/nginx           cpu: 0%/70%, memory: 9%/80%    2         5         2          4d19h
+
+=== PostgreSQL Cluster ===
+NAME              TEAM           VERSION   PODS   VOLUME   CPU-REQUEST   MEMORY-REQUEST   AGE    STATUS
+jewelry-shop-db   jewelry-shop   15        3      100Gi    500m          1Gi              4d2h   Running
+
+=== Service Endpoints ===
+NAME                      ENDPOINTS                                                    AGE
+django-service            10.42.1.68:8000                                              5d16h
+grafana                   <none>                                                       3d19h
+jewelry-shop-db           10.42.0.95:5432                                              4d2h
+jewelry-shop-db-config    <none>                                                       4d2h
+jewelry-shop-db-metrics   10.42.0.95:9187,10.42.1.58:9187,10.42.2.100:9187             5d14h
+jewelry-shop-db-pooler    10.42.0.90:5432,10.42.1.51:5432                              5d14h
+jewelry-shop-db-repl      10.42.1.58:5432,10.42.2.100:5432                             4d2h
+jewelry-shop-db-sync      <none>                                                       103m
+locust-master             10.42.1.56:8089,10.42.1.56:5557                              16h
+loki                      10.42.0.82:3100,10.42.0.82:9096                              3d17h
+nginx-service             10.42.0.89:9113,10.42.1.50:9113,10.42.0.89:443 + 3 more...   5d15h
+otel-collector            <none>                                                       3d15h
+prometheus                <none>                                                       3d20h
+redis                     10.42.0.73:6379,10.42.1.61:6379,10.42.2.101:6379             5d13h
+redis-headless            10.42.0.73:6379,10.42.1.61:6379,10.42.2.101:6379             5d13h
+redis-sentinel            10.42.0.72:26379,10.42.1.63:26379,10.42.2.102:26379          5d13h
+redis-sentinel-headless   10.42.0.72:26379,10.42.1.63:26379,10.42.2.102:26379          5d13h
+tempo                     <none>                                                       3d15h
+
