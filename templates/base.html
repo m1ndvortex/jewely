@@ -401,7 +401,7 @@
     
     <!-- Django Messages -->
     {% if messages %}
-    <div class="fixed top-20 right-4 z-50 space-y-3" x-data="{ messages: [] }" x-init="
+    <div class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] space-y-3 w-full max-w-md px-4" x-data="{ messages: [] }" x-init="
         // Initialize messages from Django
         {% for message in messages %}
         messages.push({
@@ -420,8 +420,8 @@
         <template x-for="message in messages" :key="message.id">
             <div x-show="message.show"
                  x-transition:enter="transform ease-out duration-300 transition"
-                 x-transition:enter-start="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
-                 x-transition:enter-end="translate-y-0 opacity-100 sm:translate-x-0"
+                 x-transition:enter-start="-translate-y-2 opacity-0"
+                 x-transition:enter-end="translate-y-0 opacity-100"
                  x-transition:leave="transition ease-in duration-100"
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
@@ -431,7 +431,7 @@
                      'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 dark:border-yellow-700': message.type.includes('warning'),
                      'bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-700': message.type.includes('error') || message.type.includes('danger')
                  }"
-                 class="max-w-sm w-full shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border-l-4">
+                 class="w-full shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden border-l-4">
                 <div class="p-4">
                     <div class="flex items-start">
                         <div class="flex-shrink-0">
