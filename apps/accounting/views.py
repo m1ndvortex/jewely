@@ -14,6 +14,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from django_ledger.models import AccountModel
@@ -166,6 +167,7 @@ def account_balance_api(request, account_code):
     )
 
 
+@csrf_exempt
 @login_required
 @tenant_access_required
 @require_http_methods(["POST"])

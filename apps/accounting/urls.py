@@ -4,7 +4,7 @@ URL patterns for the accounting module.
 
 from django.urls import path
 
-from . import views
+from . import fixed_asset_views, views
 
 app_name = "accounting"
 
@@ -194,4 +194,10 @@ urlpatterns = [
         views.bank_reconciliation,
         name="bank_statement_import",
     ),
+    # Fixed Assets Management
+    path("fixed-assets/", fixed_asset_views.fixed_asset_list, name="fixed_asset_list"),
+    path("fixed-assets/create/", fixed_asset_views.fixed_asset_create, name="fixed_asset_create"),
+    path("fixed-assets/<uuid:asset_id>/", fixed_asset_views.fixed_asset_detail, name="fixed_asset_detail"),
+    path("fixed-assets/<uuid:asset_id>/dispose/", fixed_asset_views.fixed_asset_dispose, name="fixed_asset_dispose"),
+    path("reports/depreciation/", fixed_asset_views.depreciation_schedule, name="depreciation_schedule"),
 ]
