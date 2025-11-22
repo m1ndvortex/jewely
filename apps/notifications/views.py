@@ -748,10 +748,10 @@ class SegmentPreviewView(View):
 def alertmanager_webhook(request: HttpRequest) -> JsonResponse:
     """
     Webhook endpoint for receiving alerts from Prometheus Alertmanager.
-    
+
     This endpoint receives alert notifications from Alertmanager and sends
     SMS notifications to administrators for critical alerts.
-    
+
     Expected payload format from Alertmanager:
     {
         "alerts": [
@@ -775,55 +775,57 @@ def alertmanager_webhook(request: HttpRequest) -> JsonResponse:
         # Verify webhook token
         auth_header = request.headers.get("Authorization", "")
         expected_token = getattr(settings, "ALERT_WEBHOOK_TOKEN", "")
-        
+
         if expected_token and not auth_header.startswith("Bearer "):
             logger.warning("Alertmanager webhook: Missing or invalid Authorization header")
             return JsonResponse({"error": "Unauthorized"}, status=401)
-        
+
         if expected_token:
             provided_token = auth_header.replace("Bearer ", "")
             if provided_token != expected_token:
                 logger.warning("Alertmanager webhook: Invalid token")
                 return JsonResponse({"error": "Unauthorized"}, status=401)
-        
+
         # Parse the alert payload
         try:
             payload = json.loads(request.body)
         except json.JSONDecodeError:
             logger.error("Alertmanager webhook: Invalid JSON payload")
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-        
+
         alerts = payload.get("alerts", [])
         if not alerts:
             logger.warning("Alertmanager webhook: No alerts in payload")
             return JsonResponse({"error": "No alerts provided"}, status=400)
-        
+
         # Process each alert
         sent_count = 0
         for alert in alerts:
             status = alert.get("status", "unknown")
             labels = alert.get("labels", {})
             annotations = alert.get("annotations", {})
-            
+
             alertname = labels.get("alertname", "Unknown Alert")
             severity = labels.get("severity", "unknown")
             service = labels.get("service", "unknown")
             instance = labels.get("instance", "unknown")
             summary = annotations.get("summary", "No summary provided")
             description = annotations.get("description", "No description provided")
-            
+
             # Only send SMS for firing critical alerts
             if status == "firing" and severity == "critical":
                 # Get admin users who should receive alerts
                 from django.contrib.auth import get_user_model
+
                 User = get_user_model()
-                
+
                 # Get superusers or users with specific permission
-                admin_users = User.objects.filter(
-                    is_active=True,
-                    is_superuser=True
-                ).exclude(phone="").exclude(phone__isnull=True)
-                
+                admin_users = (
+                    User.objects.filter(is_active=True, is_superuser=True)
+                    .exclude(phone="")
+                    .exclude(phone__isnull=True)
+                )
+
                 # Construct SMS message
                 sms_message = (
                     f"🚨 CRITICAL ALERT\n"
@@ -832,10 +834,10 @@ def alertmanager_webhook(request: HttpRequest) -> JsonResponse:
                     f"Instance: {instance}\n"
                     f"{summary}"
                 )
-                
+
                 # Send SMS to each admin
                 from .services import send_alert_sms
-                
+
                 for admin in admin_users:
                     try:
                         send_alert_sms(
@@ -849,18 +851,21 @@ def alertmanager_webhook(request: HttpRequest) -> JsonResponse:
                                 "summary": summary,
                                 "description": description,
                                 "status": status,
-                            }
+                            },
                         )
                         sent_count += 1
                         logger.info(f"Sent alert SMS to {admin.username} for {alertname}")
                     except Exception as e:
                         logger.error(f"Failed to send alert SMS to {admin.username}: {str(e)}")
-        
-        return JsonResponse({
-            "status": "success",
-            "message": f"Processed {len(alerts)} alerts, sent {sent_count} SMS notifications"
-        }, status=200)
-    
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": f"Processed {len(alerts)} alerts, sent {sent_count} SMS notifications",
+            },
+            status=200,
+        )
+
     except Exception as e:
         logger.error(f"Alertmanager webhook error: {str(e)}", exc_info=True)
         return JsonResponse({"error": "Internal server error"}, status=500)

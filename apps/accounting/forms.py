@@ -516,8 +516,10 @@ class BillLineForm(forms.ModelForm):
                 .filter(
                     # Expense accounts
                     models.Q(role__istartswith="ex_")
-                    | models.Q(role__istartswith="cogs_")  # ex_regular, ex_depreciation, etc.
-                    |  # cogs_regular, etc.
+                    | models.Q(
+                        role__istartswith="cogs_"
+                    )  # ex_regular, ex_depreciation, etc.  # cogs_regular, etc.
+                    |
                     # Asset accounts
                     models.Q(role__istartswith="asset_")  # asset_ca_cash, asset_ppe_equip, etc.
                 )

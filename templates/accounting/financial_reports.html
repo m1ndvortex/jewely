@@ -5,30 +5,30 @@
     <!-- Date Range Filter -->
     <div class="lg:col-span-3">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Report Period</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{% trans "Report Period" %}</h3>
             <form method="get" class="flex flex-wrap items-end gap-4">
                 <div>
-                    <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                    <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{% trans "Start Date" %}</label>
                     <input type="date" id="start_date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" 
                            class="border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 </div>
                 <div>
-                    <label for="end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                    <label for="end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{% trans "End Date" %}</label>
                     <input type="date" id="end_date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" 
                            class="border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                 </div>
                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
-                    Update Reports
+                    {% trans "Update Reports" %}
                 </button>
                 {% if reports %}
                 <div class="flex gap-2 ml-4">
                     <a href="{% url 'accounting:export_reports_pdf' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm">
-                        Export PDF
+                        {% trans "Export PDF" %}
                     </a>
                     <a href="{% url 'accounting:export_reports_excel' %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm">
-                        Export Excel
+                        {% trans "Export Excel" %}
                     </a>
                 </div>
                 {% endif %}
@@ -43,19 +43,19 @@
     <!-- Balance Sheet -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Balance Sheet</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400">As of {{ end_date|date:'F j, Y' }}</p>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{% trans "Balance Sheet" %}</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{% trans "As of" %} {{ end_date|date:'F j, Y' }}</p>
         </div>
         <div class="p-6">
             {% if reports.balance_sheet %}
                 <div class="space-y-6">
                     <!-- Assets -->
                     <div>
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">ASSETS</h4>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">{% trans "ASSETS" %}</h4>
                         
                         {% if reports.balance_sheet.assets.current_assets %}
                         <div class="mb-4">
-                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Current Assets</h5>
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">{% trans "Current Assets" %}</h5>
                             <div class="space-y-1">
                                 {% for asset in reports.balance_sheet.assets.current_assets %}
                                 <div class="flex justify-between text-sm">
@@ -69,7 +69,7 @@
                         
                         {% if reports.balance_sheet.assets.fixed_assets %}
                         <div class="mb-4">
-                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Fixed Assets</h5>
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">{% trans "Fixed Assets" %}</h5>
                             <div class="space-y-1">
                                 {% for asset in reports.balance_sheet.assets.fixed_assets %}
                                 <div class="flex justify-between text-sm">
@@ -83,7 +83,7 @@
                         
                         <div class="border-t pt-2">
                             <div class="flex justify-between font-semibold">
-                                <span class="text-gray-900 dark:text-white">Total Assets</span>
+                                <span class="text-gray-900 dark:text-white">{% trans "Total Assets" %}</span>
                                 <span class="font-mono text-gray-900 dark:text-white">${{ reports.balance_sheet.assets.total_assets|floatformat:2 }}</span>
                             </div>
                         </div>
@@ -92,11 +92,11 @@
                     <!-- Liabilities -->
                     {% if reports.balance_sheet.liabilities.current_liabilities or reports.balance_sheet.liabilities.long_term_liabilities %}
                     <div>
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">LIABILITIES</h4>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-3 text-lg">{% trans "LIABILITIES" %}</h4>
                         
                         {% if reports.balance_sheet.liabilities.current_liabilities %}
                         <div class="mb-4">
-                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">Current Liabilities</h5>
+                            <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">{% trans "Current Liabilities" %}</h5>
                             <div class="space-y-1">
                                 {% for liability in reports.balance_sheet.liabilities.current_liabilities %}
                                 <div class="flex justify-between text-sm">

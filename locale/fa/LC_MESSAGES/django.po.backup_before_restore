@@ -1,0 +1,5237 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-29 21:04+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps/core/translation_utils.py:43
+#, python-format
+msgid "Welcome back, %(name)s!"
+msgstr "خوش آمدید، %(name)s!"
+
+#: apps/core/translation_utils.py:53
+#, python-format
+msgid "You have %(count)d item in your inventory."
+msgid_plural "You have %(count)d items in your inventory."
+msgstr[0] ""
+msgstr[1] ""
+
+#: apps/core/translation_utils.py:66
+#: tests/test_translation_infrastructure.py:143
+msgctxt "sale status"
+msgid "Completed"
+msgstr "تکمیل شده"
+
+#: apps/core/translation_utils.py:68
+msgctxt "sale status"
+msgid "Pending"
+msgstr "در انتظار"
+
+#: apps/core/translation_utils.py:70
+msgctxt "sale status"
+msgid "Cancelled"
+msgstr "لغو شده"
+
+#: apps/core/translation_utils.py:79
+msgid "This field is required."
+msgstr "این فیلد الزامی است."
+
+#: apps/core/translation_utils.py:80
+msgid "Please enter a valid email address."
+msgstr "لطفاً یک آدرس ایمیل معتبر وارد کنید."
+
+#: apps/core/translation_utils.py:81
+msgid "Please enter a valid phone number."
+msgstr "لطفاً یک شماره تلفن معتبر وارد کنید."
+
+#: apps/core/translation_utils.py:82
+msgid "Insufficient stock available."
+msgstr "موجودی کافی نیست."
+
+#: apps/core/translation_utils.py:83
+msgid "Invalid username or password."
+msgstr "نام کاربری یا رمز عبور نامعتبر است."
+
+#: apps/core/translation_utils.py:84
+msgid "You do not have permission to perform this action."
+msgstr "شما اجازه انجام این عمل را ندارید."
+
+#: apps/core/translation_utils.py:85
+msgid "The requested item was not found."
+msgstr "مورد درخواستی یافت نشد."
+
+#: apps/core/translation_utils.py:86
+msgid "An item with this information already exists."
+msgstr "موردی با این اطلاعات قبلاً وجود دارد."
+
+#: apps/core/translation_utils.py:95
+msgid "Item created successfully."
+msgstr "مورد با موفقیت ایجاد شد."
+
+#: apps/core/translation_utils.py:96
+msgid "Item updated successfully."
+msgstr "مورد با موفقیت به‌روزرسانی شد."
+
+#: apps/core/translation_utils.py:97
+#: templates/core/translation_example.html:170
+msgid "Item deleted successfully."
+msgstr "مورد با موفقیت حذف شد."
+
+#: apps/core/translation_utils.py:98
+msgid "Sale completed successfully."
+msgstr "فروش با موفقیت تکمیل شد."
+
+#: apps/core/translation_utils.py:99
+msgid "Customer added successfully."
+msgstr "مشتری با موفقیت اضافه شد."
+
+#: apps/core/translation_utils.py:100
+msgid "Email sent successfully."
+msgstr "ایمیل با موفقیت ارسال شد."
+
+#: apps/core/translation_utils.py:101
+msgid "Settings saved successfully."
+msgstr "تنظیمات با موفقیت ذخیره شد."
+
+#: apps/core/translation_utils.py:110
+#: templates/core/translation_example.html:168
+msgid "Are you sure you want to delete this item?"
+msgstr "آیا مطمئن هستید که می‌خواهید این مورد را حذف کنید؟"
+
+#: apps/core/translation_utils.py:111
+msgid "Are you sure you want to delete this customer?"
+msgstr "آیا مطمئن هستید که می‌خواهید این مشتری را حذف کنید؟"
+
+#: apps/core/translation_utils.py:112
+msgid "Are you sure you want to cancel this sale?"
+msgstr "آیا مطمئن هستید که می‌خواهید این فروش را لغو کنید؟"
+
+#: apps/core/translation_utils.py:113
+msgid "Are you sure you want to log out?"
+msgstr "آیا مطمئن هستید که می‌خواهید خارج شوید؟"
+
+#: apps/core/translation_utils.py:189
+#, python-format
+msgid "%(start)s to %(end)s"
+msgstr "%(start)s تا %(end)s"
+
+#: apps/core/translation_utils.py:200
+#, python-format
+msgid "%(amount)s %(currency)s"
+msgstr "%(amount)s %(currency)s"
+
+#: apps/core/views.py:81
+msgid "Please use your admin credentials to access this area."
+msgstr "لطفاً از اعتبارنامه مدیریتی خود برای دسترسی به این بخش استفاده کنید."
+
+#: apps/core/views.py:93
+msgid "Username and password are required."
+msgstr "نام کاربری و رمز عبور الزامی است."
+
+#: apps/core/views.py:104
+msgid "Access denied. This login is for platform administrators only."
+msgstr "دسترسی رد شد. این ورود فقط برای مدیران پلتفرم است."
+
+#: apps/core/views.py:110
+msgid "This account has been disabled."
+msgstr "این حساب غیرفعال شده است."
+
+#: apps/core/views.py:115
+msgid "Welcome back, {}!"
+msgstr "خوش آمدید!"
+
+#: apps/core/views.py:123 templates/admin/admin_login.html:62
+msgid "Invalid username or password. Please try again."
+msgstr "نام کاربری یا رمز عبور نامعتبر است. لطفاً دوباره تلاش کنید."
+
+#: apps/core/views.py:148 apps/core/views.py:154 apps/core/views.py:167
+#: apps/core/views.py:173
+msgid "You have been successfully logged out."
+msgstr "شما با موفقیت خارج شدید."
+
+#: apps/notifications/admin.py:39 apps/notifications/admin.py:112
+#: templates/admin/subscription_plan_form.html:26
+#: templates/notifications/segment_form.html:22
+msgid "Basic Information"
+msgstr "اطلاعات پایه"
+
+#: apps/notifications/admin.py:40 apps/notifications/admin.py:227
+#: apps/notifications/admin.py:464 templates/admin/tenant_list.html:109
+#: templates/admin/tenant_list.html:168
+#: templates/core/translation_example.html:99
+#: templates/pricing/override_list.html:23
+#: templates/pricing/override_list.html:62
+#: templates/procurement/goods_receipt_detail.html:61
+#: templates/procurement/goods_receipt_form.html:233
+#: templates/procurement/goods_receipt_list.html:27
+#: templates/procurement/goods_receipt_list.html:84
+msgid "Status"
+msgstr "وضعیت"
+
+#: apps/notifications/admin.py:41 apps/notifications/admin.py:55
+#: templates/procurement/goods_receipt_complete.html:71
+msgid "Action"
+msgstr "عمل"
+
+#: apps/notifications/admin.py:42 apps/notifications/admin.py:85
+#: apps/notifications/admin.py:118 apps/notifications/admin.py:188
+#: apps/notifications/admin.py:257 apps/notifications/admin.py:321
+#: apps/notifications/admin.py:421 apps/notifications/admin.py:510
+#: apps/notifications/admin.py:691
+msgid "Timestamps"
+msgstr "نشانه‌های زمانی"
+
+#: apps/notifications/admin.py:80
+msgid "Basic Settings"
+msgstr "تنظیمات پایه"
+
+#: apps/notifications/admin.py:82 apps/notifications/admin.py:94
+#: templates/notifications/preferences.html:163
+msgid "Quiet Hours"
+msgstr "ساعات سکوت"
+
+#: apps/notifications/admin.py:113
+msgid "Templates"
+msgstr "قالب‌ها"
+
+#: apps/notifications/admin.py:115
+msgid "Action Templates"
+msgstr "قالب‌های عمل"
+
+#: apps/notifications/admin.py:128 apps/notifications/admin.py:132
+msgid "Use Django template syntax. Available variables depend on context."
+msgstr ""
+"از سینتکس قالب جنگو استفاده کنید. متغیرهای در دسترس به زمینه بستگی دارد."
+
+#: apps/notifications/admin.py:179
+msgid "Email Details"
+msgstr "جزئیات ایمیل"
+
+#: apps/notifications/admin.py:183
+msgid "Status & Tracking"
+msgstr "وضعیت و ردیابی"
+
+#: apps/notifications/admin.py:186 apps/notifications/admin.py:304
+#: apps/notifications/admin.py:674
+msgid "Scheduling"
+msgstr "زمان‌بندی"
+
+#: apps/notifications/admin.py:255 apps/notifications/admin.py:496
+msgid "Template Details"
+msgstr "جزئیات قالب"
+
+#: apps/notifications/admin.py:256
+msgid "Email Content"
+msgstr "محتوای ایمیل"
+
+#: apps/notifications/admin.py:302 apps/notifications/admin.py:653
+msgid "Campaign Details"
+msgstr "جزئیات کمپین"
+
+#: apps/notifications/admin.py:303 apps/notifications/admin.py:664
+msgid "Targeting"
+msgstr "هدف‌گیری"
+
+#: apps/notifications/admin.py:306 apps/notifications/admin.py:678
+msgid "Statistics"
+msgstr "آمار"
+
+#: apps/notifications/admin.py:338 apps/notifications/admin.py:713
+#: templates/notifications/campaign_analytics.html:101
+#: templates/notifications/campaign_analytics.html:217
+msgid "Delivery Rate"
+msgstr "نرخ تحویل"
+
+#: apps/notifications/admin.py:347
+#: templates/notifications/campaign_analytics.html:145
+msgid "Open Rate"
+msgstr "نرخ باز شدن"
+
+#: apps/notifications/admin.py:396
+msgid "SMS Details"
+msgstr "جزئیات پیامک"
+
+#: apps/notifications/admin.py:410
+msgid "Delivery Status"
+msgstr "وضعیت تحویل"
+
+#: apps/notifications/admin.py:433
+msgid "Campaign & Cost"
+msgstr "کمپین و هزینه"
+
+#: apps/notifications/admin.py:506
+msgid "Message Content"
+msgstr "محتوای پیام"
+
+#: apps/notifications/admin.py:536
+msgid "Length"
+msgstr "طول"
+
+#: apps/notifications/admin.py:544
+
+#: apps/notifications/admin.py:583
+msgid "User"
+msgstr "کاربر"
+
+#: apps/notifications/admin.py:593
+msgid "Opt-out Preferences"
+msgstr "ترجیحات انصراف"
+
+#: apps/notifications/models.py:18 templates/core/translation_example.html:151
+msgid "Information"
+msgstr "اطلاعات"
+
+#: apps/notifications/models.py:19 templates/core/translation_example.html:136
+msgid "Success"
+msgstr "موفق"
+
+#: apps/notifications/models.py:20 templates/core/translation_example.html:141
+msgid "Warning"
+msgstr "هشدار"
+
+#: apps/notifications/models.py:21 templates/core/translation_example.html:146
+msgid "Error"
+msgstr "خطا"
+
+#: apps/notifications/models.py:22
+msgid "Low Stock Alert"
+msgstr "هشدار کمبود موجودی"
+
+#: apps/notifications/models.py:23
+msgid "Payment Reminder"
+msgstr "یادآوری پرداخت"
+
+#: apps/notifications/models.py:24
+msgid "Order Status Update"
+msgstr "به‌روزرسانی وضعیت سفارش"
+
+#: apps/notifications/models.py:25
+msgid "System Notification"
+msgstr "اعلان سیستمی"
+
+#: apps/notifications/models.py:26
+msgid "Promotion"
+msgstr "تبلیغ"
+
+#: apps/notifications/models.py:27
+msgid "Appointment Reminder"
+msgstr "یادآوری قرار ملاقات"
+
+#: apps/notifications/models.py:28
+msgid "Transactional Email"
+msgstr "ایمیل تراکنشی"
+
+#: apps/notifications/models.py:29
+msgid "Marketing Email"
+msgstr "ایمیل بازاریابی"
+
+#: apps/notifications/models.py:36
+msgid "User who will receive this notification"
+msgstr "کاربری که این اعلان را دریافت خواهد کرد"
+
+#: apps/notifications/models.py:38
+msgid "Notification title/subject"
+msgstr "عنوان/موضوع اعلان"
+
+#: apps/notifications/models.py:39
+msgid "Notification message content"
+msgstr "محتوای پیام اعلان"
+
+#: apps/notifications/models.py:44
+msgid "Type of notification for styling and filtering"
+msgstr "نوع اعلان برای استایل‌دهی و فیلتر"
+
+#: apps/notifications/models.py:47
+msgid "Whether the user has read this notification"
+msgstr "آیا کاربر این اعلان را خوانده است"
+
+#: apps/notifications/models.py:50
+msgid "When the notification was created"
+msgstr "زمان ایجاد اعلان"
+
+#: apps/notifications/models.py:53
+msgid "When the notification was marked as read"
+msgstr "زمان علامت‌گذاری به عنوان خوانده شده"
+
+#: apps/notifications/models.py:58
+msgid "URL to navigate to when notification is clicked"
+msgstr "آدرس برای هدایت هنگام کلیک بر روی اعلان"
+
+#: apps/notifications/models.py:64
+msgid "Text for action button (e.g., \"View Order\", \"Update Inventory\")"
+msgstr ""
+
+#: apps/notifications/models.py:67
+msgid "When this notification expires and should be hidden"
+msgstr "زمانی که این اعلان منقضی می‌شود و باید پنهان شود"
+
+#: apps/notifications/models.py:85
+msgid "Notification"
+msgstr "اعلان"
+
+#: apps/notifications/models.py:86 templates/base.html:331
+#: templates/notifications/partials/notification_dropdown.html:9
+msgid "Notifications"
+msgstr "اعلان‌ها"
+
+#: apps/notifications/models.py:112 apps/notifications/models.py:1079
+msgid "In-App Notification"
+msgstr "اعلان درون برنامه‌ای"
+
+#: apps/notifications/models.py:113 apps/notifications/models.py:1077
+#: templates/account/signup.html:71
+#: templates/notifications/partials/segment_preview.html:29
+msgid "Email"
+msgstr "ایمیل"
+
+#: apps/notifications/models.py:114 apps/notifications/models.py:1078
+msgid "SMS"
+msgstr "پیامک"
+
+#: apps/notifications/models.py:115
+msgid "Push Notification"
+msgstr "اعلان فشار"
+
+#: apps/notifications/models.py:122
+msgid "User these preferences belong to"
+msgstr "این ترجیحات متعلق به چه کاربری است"
+
+#: apps/notifications/models.py:127
+msgid "Type of notification this preference applies to"
+msgstr "نوع اعلان که این ترجیح برای آن اعمال می‌شود"
+
+#: apps/notifications/models.py:130
+msgid "Notification delivery channel"
+msgstr "کانال تحویل اعلان"
+
+#: apps/notifications/models.py:133
+msgid "Whether this notification type is enabled for this channel"
+msgstr "آیا این نوع اعلان برای این کانال فعال است"
+
+#: apps/notifications/models.py:136
+msgid "When this preference was created"
+msgstr "زمان ایجاد این ترجیح"
+
+#: apps/notifications/models.py:139
+msgid "When this preference was last updated"
+msgstr "آخرین زمان به‌روزرسانی این ترجیح"
+
+#: apps/notifications/models.py:144
+msgid "Start of quiet hours (no notifications sent)"
+msgstr "شروع ساعات سکوت (ارسال اعلان انجام نمی‌شود)"
+
+#: apps/notifications/models.py:146
+msgid "End of quiet hours"
+msgstr "پایان ساعات سکوت"
+
+#: apps/notifications/models.py:157
+msgid "Notification Preference"
+msgstr "ترجیح اعلان"
+
+#: apps/notifications/models.py:158 templates/notifications/preferences.html:5
+#: templates/notifications/preferences.html:15
+msgid "Notification Preferences"
+msgstr "ترجیحات اعلان"
+
+#: apps/notifications/models.py:186
+msgid "Unique name for this template"
+msgstr "نام یکتا برای این قالب"
+
+#: apps/notifications/models.py:191
+msgid "Type of notification this template is for"
+msgstr "نوع اعلان که این قالب برای آن است"
+
+#: apps/notifications/models.py:195
+msgid "Template for notification title (supports Django template syntax)"
+msgstr "قالب عنوان اعلان (پشتیبانی از سینتکس قالب جنگو)"
+
+#: apps/notifications/models.py:198
+msgid "Template for notification message (supports Django template syntax)"
+msgstr "قالب پیام اعلان (پشتیبانی از سینتکس قالب جنگو)"
+
+#: apps/notifications/models.py:201
+msgid "Template for action button text"
+msgstr "قالب متن دکمه عمل"
+
+#: apps/notifications/models.py:204
+msgid "Template for action URL"
+msgstr "قالب آدرس دکمه عمل"
+
+#: apps/notifications/models.py:207 apps/notifications/models.py:409
+#: apps/notifications/models.py:611
+msgid "Whether this template is active and can be used"
+msgstr "آیا این قالب فعال است و می‌توان از آن استفاده کرد"
+
+#: apps/notifications/models.py:210
+msgid "When this template was created"
+msgstr "زمان ایجاد این قالب"
+
+#: apps/notifications/models.py:213
+msgid "When this template was last updated"
+msgstr "آخرین زمان به‌روزرسانی این قالب"
+
+#: apps/notifications/models.py:224
+msgid "Notification Template"
+msgstr "قالب اعلان"
+
+#: apps/notifications/models.py:225
+msgid "Notification Templates"
+msgstr "قالب‌های اعلان"
+
+#: apps/notifications/models.py:262 apps/notifications/models.py:453
+#: templates/procurement/goods_receipt_detail.html:146
+#: templates/procurement/goods_receipt_detail.html:205
+
+#: apps/notifications/models.py:263 apps/notifications/models.py:455
+#: apps/notifications/models.py:697 apps/notifications/models.py:1192
+#: templates/notifications/campaign_analytics.html:214
+msgid "Sent"
+msgstr "ارسال شد"
+
+#: apps/notifications/models.py:264 apps/notifications/models.py:456
+msgid "Delivered"
+msgstr "تحویل داده شده"
+
+#: apps/notifications/models.py:265
+msgid "Bounced"
+msgstr "برگشتی"
+
+#: apps/notifications/models.py:266 apps/notifications/models.py:457
+#: templates/procurement/goods_receipt_detail.html:144
+#: templates/procurement/goods_receipt_detail.html:197
+msgid "Failed"
+msgstr "ناموفق"
+
+#: apps/notifications/models.py:267
+#: templates/notifications/communication_log.html:149
+msgid "Opened"
+msgstr "باز شده"
+
+#: apps/notifications/models.py:268
+#: templates/notifications/communication_log.html:154
+msgid "Clicked"
+msgstr "کلیک شده"
+
+#: apps/notifications/models.py:269
+msgid "Complained"
+msgstr "شاکی"
+
+#: apps/notifications/models.py:270
+msgid "Unsubscribed"
+msgstr "لغو اشتراک شده"
+
+#: apps/notifications/models.py:274 apps/notifications/models.py:462
+msgid "Transactional"
+msgstr "تراکنشی"
+
+#: apps/notifications/models.py:275 apps/notifications/models.py:463
+msgid "Marketing"
+msgstr "بازاریابی"
+
+#: apps/notifications/models.py:276 apps/notifications/models.py:464
+msgid "System"
+msgstr "سیستم"
+
+#: apps/notifications/models.py:284
+msgid "User who received this email"
+msgstr "کاربری که این ایمیل را دریافت کرد"
+
+#: apps/notifications/models.py:292 apps/notifications/models.py:481
+msgid "Associated in-app notification"
+msgstr "اعلان درون برنامه‌ای مرتبط"
+
+#: apps/notifications/models.py:296 apps/notifications/models.py:702
+msgid "Email subject"
+msgstr "موضوع ایمیل"
+
+#: apps/notifications/models.py:297
+msgid "Recipient email address"
+msgstr "آدرس ایمیل گیرنده"
+
+#: apps/notifications/models.py:298
+msgid "Sender email address"
+msgstr "آدرس ایمیل فرستنده"
+
+#: apps/notifications/models.py:300
+msgid "Email template used"
+msgstr "قالب ایمیل استفاده شده"
+
+#: apps/notifications/models.py:303
+msgid "Type of email"
+msgstr "نوع ایمیل"
+
+#: apps/notifications/models.py:311 apps/notifications/models.py:502
+msgid "Current delivery status"
+msgstr "وضعیت فعلی تحویل"
+
+#: apps/notifications/models.py:314
+msgid "Email service provider message ID"
+msgstr "شناسه پیام ارائه‌دهنده سرویس ایمیل"
+
+#: apps/notifications/models.py:328 apps/notifications/models.py:516
+msgid "Error message if delivery failed"
+msgstr "پیام خطا در صورت شکست تحویل"
+
+#: apps/notifications/models.py:331
+msgid "Reason for bounce if applicable"
+msgstr "دلیل برگشت در صورت وجود"
+
+#: apps/notifications/models.py:336
+msgid "When to send this email (for scheduled emails)"
+msgstr "زمان ارسال این ایمیل (برای ایمیل‌های زمان‌بندی شده)"
+
+#: apps/notifications/models.py:341
+msgid "Campaign ID for marketing emails"
+msgstr "شناسه کمپین برای ایمیل‌های بازاریابی"
+
+#: apps/notifications/models.py:354
+msgid "Email Notification"
+msgstr "اعلان ایمیلی"
+
+#: apps/notifications/models.py:355
+msgid "Email Notifications"
+msgstr "اعلان‌های ایمیل"
+
+#: apps/notifications/models.py:393
+msgid "Unique name for this email template"
+msgstr "نام یکتا برای این قالب ایمیل"
+
+#: apps/notifications/models.py:396
+msgid "Template for email subject (supports Django template syntax)"
+msgstr "قالب موضوع ایمیل (پشتیبانی از سینتکس قالب جنگو)"
+
+#: apps/notifications/models.py:398
+msgid "HTML template for email body"
+msgstr "قالب HTML برای بدنه ایمیل"
+
+#: apps/notifications/models.py:400
+msgid "Plain text template for email body (optional)"
+msgstr "قالب متن معمولی برای بدنه ایمیل (اختیاری)"
+
+#: apps/notifications/models.py:406
+msgid "Type of email this template is for"
+msgstr "نوع ایمیلی که این قالب برای آن است"
+
+#: apps/notifications/models.py:419
+#: templates/notifications/bulk_campaign.html:66
+msgid "Email Template"
+msgstr "قالب ایمیل"
+
+#: apps/notifications/models.py:420
+msgid "Email Templates"
+msgstr "قالب‌های ایمیل"
+
+#: apps/notifications/models.py:454
+msgid "Queued"
+msgstr "در صف"
+
+#: apps/notifications/models.py:458
+msgid "Undelivered"
+msgstr "تحویل نشده"
+
+#: apps/notifications/models.py:465
+msgid "Alert"
+msgstr "هشدار"
+
+#: apps/notifications/models.py:473
+msgid "User who received this SMS"
+msgstr "کاربری که این پیامک را دریافت کرد"
+
+#: apps/notifications/models.py:485
+msgid "SMS message content"
+msgstr "محتوای پیام پیامک"
+
+#: apps/notifications/models.py:486
+msgid "Recipient phone number"
+msgstr "شماره تلفن گیرنده"
+
+#: apps/notifications/models.py:488
+msgid "Sender phone number"
+msgstr "شماره تلفن فرستنده"
+
+#: apps/notifications/models.py:491
+msgid "SMS template used"
+msgstr "قالب پیامک استفاده شده"
+
+#: apps/notifications/models.py:494
+msgid "Type of SMS"
+msgstr "نوع پیامک"
+
+#: apps/notifications/models.py:505
+msgid "Twilio message SID"
+msgstr "شناسه پیام توییلیو"
+
+#: apps/notifications/models.py:519
+msgid "Twilio error code if applicable"
+msgstr "کد خطای توییلیو در صورت وجود"
+
+#: apps/notifications/models.py:524
+msgid "When to send this SMS (for scheduled SMS)"
+msgstr "زمان ارسال این پیامک (برای پیامک‌های زمان‌بندی شده)"
+
+#: apps/notifications/models.py:529
+msgid "Campaign ID for marketing SMS"
+msgstr "شناسه کمپین برای پیامک‌های بازاریابی"
+
+#: apps/notifications/models.py:538
+msgid "Cost of sending this SMS"
+msgstr "هزینه ارسال این پیامک"
+
+#: apps/notifications/models.py:541
+msgid "Currency unit for price"
+msgstr "واحد ارز برای قیمت"
+
+#: apps/notifications/models.py:554
+msgid "SMS Notification"
+msgstr "اعلان پیامکی"
+
+#: apps/notifications/models.py:555
+msgid "SMS Notifications"
+msgstr "اعلان‌های پیامکی"
+
+#: apps/notifications/models.py:599
+msgid "Unique name for this SMS template"
+msgstr "نام یکتا برای این قالب پیامک"
+
+#: apps/notifications/models.py:602
+msgid "SMS message template (supports Django template syntax)"
+msgstr "قالب پیام پیامک (پشتیبانی از سینتکس قالب جنگو)"
+
+#: apps/notifications/models.py:608
+msgid "Type of SMS this template is for"
+msgstr "نوع پیامکی که این قالب برای آن است"
+
+#: apps/notifications/models.py:621
+#: templates/notifications/bulk_campaign.html:95
+msgid "SMS Template"
+msgstr "قالب پیامک"
+
+#: apps/notifications/models.py:622
+msgid "SMS Templates"
+msgstr "قالب‌های پیامک"
+
+#: apps/notifications/models.py:652
+msgid "User who opted out of SMS"
+msgstr "کاربری که از پیامک انصراف داد"
+
+#: apps/notifications/models.py:654
+msgid "When the user opted out"
+msgstr "زمان انصراف کاربر"
+
+#: apps/notifications/models.py:656
+msgid "Reason for opting out"
+msgstr "دلیل انصراف"
+
+#: apps/notifications/models.py:661
+msgid "Opted out of transactional SMS"
+msgstr "انصراف از پیامک تراکنشی"
+
+#: apps/notifications/models.py:664
+msgid "Opted out of marketing SMS (default: True)"
+msgstr "انصراف از پیامک بازاریابی (پیش‌فرض: بله)"
+
+#: apps/notifications/models.py:666
+msgid "Opted out of system SMS"
+msgstr "انصراف از پیامک سیستمی"
+
+#: apps/notifications/models.py:667
+msgid "Opted out of alert SMS"
+msgstr "انصراف از پیامک هشدار"
+
+#: apps/notifications/models.py:671
+msgid "SMS Opt-Out"
+msgstr "انصراف از پیامک"
+
+#: apps/notifications/models.py:672
+msgid "SMS Opt-Outs"
+msgstr "انصرافات از پیامک"
+
+#: apps/notifications/models.py:694 apps/notifications/models.py:1189
+msgid "Draft"
+msgstr "پیش‌نویس"
+
+#: apps/notifications/models.py:695 apps/notifications/models.py:1190
+msgid "Scheduled"
+msgstr "زمان‌بندی شده"
+
+#: apps/notifications/models.py:696 apps/notifications/models.py:1191
+msgid "Sending"
+msgstr "در حال ارسال"
+
+#: apps/notifications/models.py:698 apps/notifications/models.py:1193
+
+#: apps/notifications/models.py:701 apps/notifications/models.py:957
+#: apps/notifications/models.py:1196
+msgid "Campaign name"
+msgstr "نام کمپین"
+
+#: apps/notifications/models.py:704
+msgid "Email template to use"
+msgstr "قالب ایمیل مورد استفاده"
+
+#: apps/notifications/models.py:709 apps/notifications/models.py:1203
+msgid "Specific users to target (leave empty for all users)"
+msgstr "کاربران خاص هدف (برای همه خالی بگذارید)"
+
+#: apps/notifications/models.py:712 apps/notifications/models.py:1206
+msgid "Customer segments to target"
+msgstr "بخش‌های مشتری هدف"
+
+#: apps/notifications/models.py:714 apps/notifications/models.py:1208
+msgid "User roles to target"
+msgstr "نقش‌های کاربری هدف"
+
+#: apps/notifications/models.py:716 apps/notifications/models.py:1210
+msgid "Tenant statuses to target"
+msgstr "وضعیت‌های مستأجر هدف"
+
+#: apps/notifications/models.py:722 apps/notifications/models.py:1216
+msgid "When to send this campaign"
+msgstr "زمان ارسال این کمپین"
+
+#: apps/notifications/models.py:749 apps/notifications/models.py:950
+msgid "Email Campaign"
+msgstr "کمپین ایمیلی"
+
+#: apps/notifications/models.py:750
+msgid "Email Campaigns"
+msgstr "کمپین‌های ایمیلی"
+
+#: apps/notifications/models.py:821
+msgid "Static Segment"
+msgstr "بخش ثابت"
+
+#: apps/notifications/models.py:822
+msgid "Dynamic Segment"
+msgstr "بخش پویا"
+
+#: apps/notifications/models.py:826
+msgid "Segment name"
+msgstr "نام بخش"
+
+#: apps/notifications/models.py:827
+msgid "Segment description"
+msgstr "توضیحات بخش"
+
+#: apps/notifications/models.py:832
+msgid "Type of segment (static or dynamic)"
+msgstr "نوع بخش (ثابت یا پویا)"
+
+#: apps/notifications/models.py:837
+msgid "Segmentation criteria for dynamic segments"
+msgstr "معیارهای بخش‌بندی برای بخش‌های پویا"
+
+#: apps/notifications/models.py:842
+msgid "Customers in this segment (for static segments)"
+msgstr "مشتریان در این بخش (برای بخش‌های ثابت)"
+
+#: apps/notifications/models.py:846
+msgid "Whether this segment is active"
+msgstr "آیا این بخش فعال است"
+
+#: apps/notifications/models.py:850
+msgid "User who created this segment"
+msgstr "کاربری که این بخش را ایجاد کرد"
+
+#: apps/notifications/models.py:854
+msgid "Number of customers in segment"
+msgstr "تعداد مشتریان در بخش"
+
+#: apps/notifications/models.py:856
+msgid "When segment was last calculated"
+msgstr "آخرین محاسبه بخش"
+
+#: apps/notifications/models.py:862
+msgid "Customer Segment"
+msgstr "بخش مشتری"
+
+#: apps/notifications/models.py:863
+#: templates/notifications/customer_segments.html:4
+#: templates/notifications/customer_segments.html:10
+msgid "Customer Segments"
+msgstr "بخش‌های مشتری"
+
+#: apps/notifications/models.py:951 apps/notifications/models.py:1243
+msgid "SMS Campaign"
+msgstr "کمپین پیامکی"
+
+#: apps/notifications/models.py:952
+msgid "Mixed Campaign"
+msgstr "کمپین ترکیبی"
+
+#: apps/notifications/models.py:956
+msgid "Campaign identifier"
+msgstr "شناسه کمپین"
+
+#: apps/notifications/models.py:959
+msgid "Type of campaign"
+msgstr "نوع کمپین"
+
+#: apps/notifications/models.py:968
+msgid "Customer segment targeted"
+msgstr "بخش مشتری هدف"
+
+#: apps/notifications/models.py:972
+msgid "Total recipients targeted"
+msgstr "مجموع گیرندگان هدف"
+
+#: apps/notifications/models.py:973
+msgid "Total messages sent"
+msgstr "مجموع پیام‌های ارسالی"
+
+#: apps/notifications/models.py:974
+msgid "Messages delivered"
+msgstr "پیام‌های تحویل شده"
+
+#: apps/notifications/models.py:975
+msgid "Messages failed"
+msgstr "پیام‌های ناموفق"
+
+#: apps/notifications/models.py:978
+msgid "Emails opened"
+msgstr "ایمیل‌های باز شده"
+
+#: apps/notifications/models.py:979
+msgid "Emails clicked"
+msgstr "ایمیل‌های کلیک شده"
+
+#: apps/notifications/models.py:980
+msgid "Emails bounced"
+msgstr "ایمیل‌های برگشتی"
+
+#: apps/notifications/models.py:981
+msgid "Unsubscribes from campaign"
+msgstr "لغو اشتراک از کمپین"
+
+#: apps/notifications/models.py:984
+msgid "Number of conversions"
+msgstr "تعداد تبدیل‌ها"
+
+#: apps/notifications/models.py:986
+msgid "Total value of conversions"
+msgstr "ارزش کل تبدیل‌ها"
+
+#: apps/notifications/models.py:991 apps/notifications/models.py:1233
+msgid "Total cost of campaign"
+msgstr "هزینه کل کمپین"
+
+#: apps/notifications/models.py:996
+msgid "Delivery rate percentage"
+msgstr "درصد نرخ تحویل"
+
+#: apps/notifications/models.py:999
+msgid "Open rate percentage (email only)"
+msgstr "درصد نرخ باز شدن (فقط ایمیل)"
+
+#: apps/notifications/models.py:1002
+msgid "Click rate percentage (email only)"
+msgstr "درصد نرخ کلیک (فقط ایمیل)"
+
+#: apps/notifications/models.py:1005
+msgid "Conversion rate percentage"
+msgstr "درصد نرخ تبدیل"
+
+#: apps/notifications/models.py:1008
+msgid "Return on investment percentage"
+msgstr "درصد بازگشت سرمایه"
+
+#: apps/notifications/models.py:1012
+msgid "When campaign was sent"
+msgstr "زمان ارسال کمپین"
+
+#: apps/notifications/models.py:1019 apps/notifications/models.py:1020
+#: templates/notifications/campaign_analytics.html:4
+msgid "Campaign Analytics"
+msgstr "تحلیل کمپین"
+
+#: apps/notifications/models.py:1080
+msgid "Phone Call"
+msgstr "تماس تلفنی"
+
+#: apps/notifications/models.py:1081
+msgid "In-Person Meeting"
+msgstr "جلسه حضوری"
+
+#: apps/notifications/models.py:1082
+msgid "Internal Note"
+msgstr "یادداشت داخلی"
+
+#: apps/notifications/models.py:1086
+msgid "Outbound"
+msgstr "خروجی"
+
+#: apps/notifications/models.py:1087
+msgid "Inbound"
+msgstr "ورودی"
+
+#: apps/notifications/models.py:1088
+msgid "Internal"
+msgstr "داخلی"
+
+#: apps/notifications/models.py:1098
+msgid "Customer this communication is with"
+msgstr "مشتری این ارتباط"
+
+#: apps/notifications/models.py:1103
+msgid "Type of communication"
+msgstr "نوع ارتباط"
+
+#: apps/notifications/models.py:1106
+msgid "Direction of communication"
+msgstr "جهت ارتباط"
+
+#: apps/notifications/models.py:1109
+msgid "Subject or title of communication"
+msgstr "موضوع یا عنوان ارتباط"
+
+#: apps/notifications/models.py:1111
+msgid "Content or summary of communication"
+msgstr "محتوا یا خلاصه ارتباط"
+
+#: apps/notifications/models.py:1115
+msgid "Campaign ID if this is part of a campaign"
+msgstr "شناسه کمپین در صورت بخشی از کمپین بودن"
+
+#: apps/notifications/models.py:1124
+msgid "Related email notification"
+msgstr "اعلان ایمیل مرتبط"
+
+#: apps/notifications/models.py:1131
+msgid "Related SMS notification"
+msgstr "اعلان پیامک مرتبط"
+
+#: apps/notifications/models.py:1135
+msgid "Whether message was opened"
+msgstr "آیا پیام باز شده است"
+
+#: apps/notifications/models.py:1136
+msgid "Whether links were clicked"
+msgstr "آیا لینک‌ها کلیک شده‌اند"
+
+#: apps/notifications/models.py:1138
+msgid "Whether this led to a conversion"
+msgstr "آیا این منجر به تبدیل شد"
+
+#: apps/notifications/models.py:1145
+msgid "Value of conversion if applicable"
+msgstr "ارزش تبدیل در صورت وجود"
+
+#: apps/notifications/models.py:1150
+msgid "Additional communication metadata"
+msgstr "متادیتای اضافی ارتباط"
+
+#: apps/notifications/models.py:1155
+msgid "When the communication occurred"
+msgstr "زمان وقوع ارتباط"
+
+#: apps/notifications/models.py:1163
+msgid "User who logged this communication"
+msgstr "کاربری که این ارتباط را ثبت کرد"
+
+#: apps/notifications/models.py:1169
+#: templates/notifications/communication_log.html:4
+msgid "Communication Log"
+msgstr "گزارش ارتباط"
+
+#: apps/notifications/models.py:1170
+msgid "Communication Logs"
+msgstr "گزارش‌های ارتباط"
+
+#: apps/notifications/models.py:1198
+msgid "SMS template to use"
+msgstr "قالب پیامک مورد استفاده"
+
+#: apps/notifications/models.py:1244
+msgid "SMS Campaigns"
+msgstr "کمپین‌های پیامکی"
+
+#: templates/account/login.html:10 templates/account/login.html:29
+msgid "Tenant Login"
+msgstr "ورود مستأجر"
+
+#: templates/account/login.html:30
+msgid "Sign in to your jewelry shop account"
+msgstr "ورود به حساب جواهرفروشی شما"
+
+#: templates/account/login.html:52
+msgid "Sign in with"
+msgstr "ورود با"
+
+#: templates/account/login.html:64
+msgid "Continue with Google"
+msgstr "ادامه با گوگل"
+
+#: templates/account/login.html:72
+msgid "Continue with GitHub"
+msgstr "ادامه با گیت‌هاب"
+
+#: templates/account/login.html:80
+msgid "Continue with Facebook"
+msgstr "ادامه با فیسبوک"
+
+#: templates/account/login.html:90
+msgid "Or continue with"
+msgstr "یا ادامه با"
+
+#: templates/account/login.html:101
+msgid "Username or Email"
+msgstr "نام کاربری یا ایمیل"
+
+#: templates/account/login.html:108
+msgid "Enter your username or email"
+msgstr "نام کاربری یا ایمیل خود را وارد کنید"
+
+#: templates/account/login.html:117 templates/account/signup.html:86
+#: templates/admin/admin_login.html:116
+msgid "Password"
+msgstr "رمز عبور"
+
+#: templates/account/login.html:124
+msgid "Enter your password"
+msgstr "رمز عبور خود را وارد کنید"
+
+#: templates/account/login.html:137
+msgid "Remember me"
+msgstr "مرا به خاطر بسپار"
+
+#: templates/account/login.html:140
+msgid "Forgot password?"
+msgstr "رمز عبور را فراموش کرده‌اید؟"
+
+#: templates/account/login.html:149
+msgid "Sign In"
+msgstr "ورود"
+
+#: templates/account/login.html:161
+msgid "Don't have an account?"
+msgstr "حساب کاربری ندارید؟"
+
+#: templates/account/login.html:163
+msgid "Sign up"
+msgstr "ثبت‌نام"
+
+#: templates/account/login.html:171 templates/admin/admin_login.html:9
+msgid "Platform Admin Login"
+msgstr "ورود مدیر پلتفرم"
+
+#: templates/account/login.html:180 templates/account/signup.html:143
+#: templates/admin/admin_login.html:170
+msgid "All rights reserved."
+msgstr "تمامی حقوق محفوظ است."
+
+#: templates/account/signup.html:9
+msgid "Sign Up"
+msgstr "ثبت نام"
+
+#: templates/account/signup.html:28 templates/account/signup.html:119
+msgid "Create Account"
+msgstr "ایجاد حساب کاربری"
+
+#: templates/account/signup.html:29
+msgid "Join our jewelry shop platform"
+msgstr "به پلتفرم جواهرفروشی ما بپیوندید"
+
+#: templates/account/signup.html:55 templates/admin/admin_login.html:89
+msgid "Username"
+msgstr "نام کاربری"
+
+#: templates/account/signup.html:62
+msgid "Choose a username"
+msgstr "یک نام کاربری انتخاب کنید"
+
+#: templates/account/signup.html:78
+msgid "Enter your email address"
+msgstr "آدرس ایمیل خود را وارد کنید"
+
+#: templates/account/signup.html:93
+msgid "Create a strong password"
+msgstr "یک رمز عبور قوی ایجاد کنید"
+
+#: templates/account/signup.html:96
+msgid "Minimum 12 characters"
+msgstr "حداقل 12 کاراکتر"
+
+#: templates/account/signup.html:102
+msgid "Confirm Password"
+msgstr "تایید رمز عبور"
+
+#: templates/account/signup.html:109
+msgid "Confirm your password"
+msgstr "رمز عبور خود را تأیید کنید"
+
+#: templates/account/signup.html:131
+msgid "Already have an account?"
+msgstr "قبلاً حساب کاربری دارید؟"
+
+#: templates/account/signup.html:133
+msgid "Sign in"
+msgstr "ورود"
+
+#: templates/admin/admin_login.html:28 templates/base.html:114
+#: templates/core/audit/audit_log_explorer.html:4
+msgid "Platform Admin"
+msgstr "مدیریت پلتفرم"
+
+#: templates/admin/admin_login.html:29
+msgid "Secure administrator access only"
+msgstr "فقط دسترسی امن مدیر"
+
+#: templates/admin/admin_login.html:56
+msgid "Login Failed"
+msgstr "ورود ناموفق"
+
+#: templates/admin/admin_login.html:76
+msgid "Restricted Access"
+msgstr "دسترسی محدود"
+
+#: templates/admin/admin_login.html:77
+
+#: templates/admin/admin_login.html:102
+msgid "Enter your admin username"
+msgstr "نام کاربری مدیر خود را وارد کنید"
+
+#: templates/admin/admin_login.html:129
+msgid "Enter your admin password"
+msgstr "رمز عبور مدیر خود را وارد کنید"
+
+#: templates/admin/admin_login.html:143
+msgid "Sign In Securely"
+msgstr "ورود امن"
+
+#: templates/admin/admin_login.html:155
+msgid "Are you a tenant user?"
+msgstr "کاربر مستأجر هستید؟"
+
+#: templates/admin/admin_login.html:161
+msgid "Go to Tenant Login"
+msgstr "به ورود مستأجر بروید"
+
+#: templates/admin/admin_login.html:173
+msgid "Protected by advanced security measures"
+msgstr "محافظت شده توسط اقدامات امنیتی پیشرفته"
+
+#: templates/admin/dashboard.html:5
+msgid "Admin Dashboard - Platform Management"
+msgstr "داشبورد مدیریت - مدیریت پلتفرم"
+
+#: templates/admin/dashboard.html:100
+msgid "Platform Admin Dashboard"
+msgstr "داشبورد مدیریت پلتفرم"
+
+#: templates/admin/dashboard.html:101
+msgid "Monitor platform health, tenant metrics, and system performance"
+msgstr "نظارت بر سلامت پلتفرم، معیارهای مستأجران و عملکرد سیستم"
+
+#: templates/admin/dashboard.html:107
+msgid "Quick Actions"
+msgstr "اقدامات سریع"
+
+#: templates/admin/dashboard.html:117
+msgid "Manage Tenants"
+msgstr "مدیریت مستأجران"
+
+#: templates/admin/dashboard.html:118
+msgid "View and manage all tenants"
+msgstr "مشاهده و مدیریت تمام مستأجران"
+
+#: templates/admin/dashboard.html:130
+msgid "Create Tenant"
+msgstr "ایجاد مستأجر"
+
+#: templates/admin/dashboard.html:131
+msgid "Add a new tenant account"
+msgstr "افزودن حساب مستأجر جدید"
+
+#: templates/admin/dashboard.html:143 templates/base.html:137
+msgid "Audit Logs"
+msgstr "گزارش‌های حسابرسی"
+
+#: templates/admin/dashboard.html:144
+msgid "Coming in Task 20"
+msgstr "در وظیفه 20 می‌آید"
+
+#: templates/admin/dashboard.html:153
+msgid "Tenant Metrics"
+msgstr "معیارهای مستأجر"
+
+#: templates/admin/dashboard.html:157 templates/admin/tenant_list.html:36
+msgid "Total Tenants"
+msgstr "مجموع مستأجران"
+
+#: templates/admin/dashboard.html:160
+#, python-format
+msgid "%(count)s new in last 30 days"
+msgid_plural "%(count)s new in last 30 days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/dashboard.html:166
+msgid "Active Tenants"
+msgstr "مستأجران فعال"
+
+#: templates/admin/dashboard.html:169
+#, python-format
+msgid "%(count)s new today"
+msgid_plural "%(count)s new today"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/dashboard.html:175 templates/admin/tenant_list.html:68
+#: templates/admin/tenant_list.html:198
+msgid "Suspended"
+msgstr "معلق شده"
+
+#: templates/admin/dashboard.html:178
+msgid "Requires attention"
+msgstr "نیاز به توجه دارد"
+
+#: templates/admin/dashboard.html:184 templates/admin/tenant_list.html:84
+#: templates/admin/tenant_list.html:202
+msgid "Pending Deletion"
+msgstr "در انتظار حذف"
+
+#: templates/admin/dashboard.html:187
+msgid "Scheduled for removal"
+msgstr "برنامه‌ریزی شده برای حذف"
+
+#: templates/admin/dashboard.html:195
+#: templates/notifications/campaign_analytics.html:167
+msgid "Revenue Metrics"
+msgstr "معیارهای درآمد"
+
+#: templates/admin/dashboard.html:199
+msgid "Monthly Recurring Revenue (MRR)"
+msgstr "درآمد متکرر ماهانه (MRR)"
+
+#: templates/admin/subscription_plan_form.html:12
+msgid "Configure subscription plan details and limits"
+msgstr "پیکربندی جزئیات و محدودیت‌های طرح اشتراک"
+
+#: templates/admin/subscription_plan_form.html:16
+#: templates/core/translation_example.html:85
+#: templates/notifications/bulk_campaign.html:152
+#: templates/notifications/segment_form.html:160
+#: templates/pricing/dashboard.html:184
+#: templates/procurement/goods_receipt_complete.html:178
+#: templates/procurement/goods_receipt_form.html:250
+#: templates/reporting/report_execute.html:219
+msgid "Cancel"
+msgstr "لغو"
+
+#: templates/admin/subscription_plan_form.html:30
+#, fuzzy
+#| msgid "Name"
+msgid "Plan Name"
+msgstr "نام"
+
+#: templates/admin/subscription_plan_form.html:39
+#: templates/notifications/segment_form.html:50
+#: templates/reporting/report_execute.html:64
+msgid "Description"
+msgstr "توضیحات"
+
+#: templates/admin/subscription_plan_form.html:48
+msgid "Display Order"
+msgstr "ترتیب نمایش"
+
+#: templates/admin/subscription_plan_form.html:86
+msgid "Resource Limits"
+msgstr ""
+
+#: templates/admin/subscription_plan_form.html:90
+msgid "User Limit"
+msgstr ""
+
+#: templates/admin/subscription_plan_form.html:96
+#, fuzzy
+#| msgid "Maximum Total Purchases"
+msgid "Maximum number of users"
+msgstr "حداکثر مجموع خریدها"
+
+#: templates/admin/subscription_plan_form.html:100
+#, fuzzy
+#| msgid "Branches"
+msgid "Branch Limit"
+msgstr "شعب"
+
+#: templates/admin/subscription_plan_form.html:106
+#, fuzzy
+#| msgid "Maximum Total Purchases"
+msgid "Maximum number of branches"
+msgstr "حداکثر مجموع خریدها"
+
+#: templates/admin/subscription_plan_form.html:110
+#, fuzzy
+#| msgid "Inventory Impact"
+msgid "Inventory Limit"
+msgstr "تأثیر موجودی"
+
+#: templates/admin/subscription_plan_form.html:116
+msgid "Maximum inventory items"
+msgstr "حداکثر اقلام موجودی"
+
+#: templates/admin/subscription_plan_form.html:120
+msgid "Storage Limit (GB)"
+msgstr ""
+
+#: templates/admin/subscription_plan_form.html:126
+msgid "Storage space for media files"
+msgstr "فضای ذخیره‌سازی برای فایل‌های رسانه"
+
+#: templates/admin/subscription_plan_form.html:130
+msgid "API Calls per Month"
+msgstr "تعداد فراخوانی API در ماه"
+
+#: templates/admin/subscription_plan_form.html:136
+msgid "Maximum API calls allowed per month"
+msgstr "حداکثر فراخوانی API مجاز در ماه"
+
+#: templates/admin/subscription_plan_form.html:143
+#, fuzzy
+#| msgid "Feature Flags"
+msgid "Features"
+msgstr "ویژگی‌ها"
+
+#: templates/admin/subscription_plan_form.html:151
+#, fuzzy
+#| msgid "Tenant Metrics"
+msgid "Multi-Branch Management"
+msgstr "معیارهای مستأجر"
+
+#: templates/admin/subscription_plan_form.html:153
+msgid "Enable management of multiple shop locations"
+msgstr "فعال‌سازی مدیریت چندین مکان فروشگاه"
+
+#: templates/admin/subscription_plan_form.html:162
+msgid "Advanced Reporting"
+msgstr "گزارش‌دهی پیشرفته"
+
+#: templates/admin/subscription_plan_form.html:164
+msgid "Enable advanced analytics and custom reports"
+msgstr "فعال‌سازی تحلیل پیشرفته و گزارش‌های سفارشی"
+
+#: templates/admin/subscription_plan_form.html:173
+msgid "API Access"
+msgstr "دسترسی API"
+
+#: templates/admin/subscription_plan_form.html:175
+msgid "Enable REST API for integrations"
+msgstr "فعال‌سازی REST API برای یکپارچه‌سازی"
+
+#: templates/admin/subscription_plan_form.html:184
+#, fuzzy
+#| msgid "Custom Format"
+msgid "Custom Branding"
+msgstr "قالب سفارشی"
+
+#: templates/admin/subscription_plan_form.html:186
+msgid "Enable custom logos, colors, and white-labeling"
+msgstr "فعال‌سازی لوگوهای سفارشی، رنگ‌ها و برچسب‌گذاری سفید"
+
+#: templates/admin/subscription_plan_form.html:195
+msgid "Priority Support"
+msgstr "پشتیبانی اولویت‌دار"
+
+#: templates/admin/subscription_plan_form.html:197
+msgid "Enable priority customer support"
+msgstr "فعال‌سازی پشتیبانی اولویت‌دار از مشتری"
+
+#: templates/admin/tenant_list.html:4 templates/admin/tenant_list.html:11
+#, fuzzy
+#| msgid "Tenant Metrics"
+msgid "Tenant Management"
+msgstr "مدیریت مستأجران"
+
+#: templates/admin/tenant_list.html:4
+msgid "Admin Panel"
+msgstr "پنل مدیریت"
+
+#: templates/admin/tenant_list.html:13
+msgid "Manage all tenant accounts on the platform"
+msgstr "مدیریت تمام حساب‌های مستأجر در پلتفرم"
+
+#: templates/admin/tenant_list.html:21
+#, fuzzy
+#| msgid "Create Tenant"
+msgid "Create New Tenant"
+msgstr "ایجاد مستأجر جدید"
+
+#: templates/admin/tenant_list.html:52 templates/admin/tenant_list.html:194
+#: templates/core/translation_example.html:112
+msgid "Active"
+msgstr "فعال"
+
+#: templates/admin/tenant_list.html:97
+#: templates/core/audit/audit_log_explorer.html:36
+#: templates/core/audit/audit_log_explorer.html:40
+#: templates/core/audit/audit_log_explorer.html:43
+#: templates/core/audit/audit_log_explorer.html:50
+#: templates/procurement/goods_receipt_list.html:22
+msgid "Search"
+msgstr "جستجو"
+
+#: templates/admin/tenant_list.html:103
+#, fuzzy
+#| msgid "Campaign name"
+msgid "Company name or slug"
+msgstr "نام شرکت یا شناسه"
+
+#: templates/admin/tenant_list.html:114 templates/pricing/override_list.html:26
+#: templates/procurement/goods_receipt_list.html:29
+msgid "All Statuses"
+msgstr "تمام وضعیت‌ها"
+
+#: templates/admin/tenant_list.html:123
+#, fuzzy
+#| msgid "Start Date"
+msgid "From Date"
+msgstr "از تاریخ"
+
+#: templates/admin/tenant_list.html:134
+#, fuzzy
+#| msgid "Date"
+msgid "To Date"
+msgstr "تا تاریخ"
+
+#: templates/admin/tenant_list.html:146
+#: templates/core/audit/audit_log_explorer.html:194
+#, fuzzy
+#| msgid "Apply Filters"
+msgid "Clear Filters"
+msgstr "پاک کردن فیلترها"
+
+#: templates/admin/tenant_list.html:150
+#: templates/core/audit/audit_log_explorer.html:188
+#: templates/notifications/campaign_analytics.html:52
+#: templates/notifications/communication_log.html:55
+msgid "Apply Filters"
+msgstr "اعمال فیلترها"
+
+#: templates/admin/tenant_list.html:162
+#, fuzzy
+#| msgid "Compare"
+msgid "Company"
+msgstr "شرکت"
+
+#: templates/admin/tenant_list.html:165
+msgid "Slug"
+msgstr "شناسه"
+
+#: templates/admin/tenant_list.html:171
+#, fuzzy
+#| msgid "Create New"
+msgid "Created"
+msgstr "ایجاد شده"
+
+#: templates/admin/tenant_list.html:174
+#: templates/core/translation_example.html:100
+#: templates/notifications/customer_segments.html:42
+#: templates/pricing/override_list.html:71
+#: templates/procurement/goods_receipt_list.html:87
+msgid "Actions"
+msgstr "اقدامات"
+
+#: templates/admin/tenant_list.html:212
+#: templates/pricing/override_list.html:113
+msgid "View"
+msgstr "مشاهده"
+
+#: templates/admin/tenant_list.html:216
+#: templates/core/translation_example.html:118
+msgid "Edit"
+msgstr "ویرایش"
+
+#: templates/base.html:10 templates/base.html:116
+#: templates/core/translation_example.html:6
+msgid "Jewelry Shop"
+msgstr "فروشگاه جواهرات"
+
+#: templates/base.html:81
+#, python-format
+msgid "Impersonating: %(username)s"
+msgstr "جعل هویت: %(username)s"
+
+#: templates/base.html:87
+
+#: templates/base.html:98
+msgid "Stop Impersonating"
+msgstr "توقف انتحال هویت"
+
+#: templates/base.html:125 templates/base.html:171
+#: templates/core/tenant_dashboard.html:13
+#: templates/core/translation_example.html:37
+#: templates/pricing/price_calculation_result.html:19
+#: tests/test_translation_infrastructure.py:100
+#: tests/test_translation_infrastructure.py:392
+msgid "Dashboard"
+msgstr "داشبورد"
+
+#: templates/base.html:128
+msgid "Tenants"
+msgstr "مستأجران"
+
+#: templates/base.html:131
+msgid "Subscriptions"
+msgstr "اشتراک‌ها"
+
+#: templates/base.html:134
+msgid "Monitoring"
+msgstr "نظارت"
+
+#: templates/base.html:142 templates/base.html:182
+msgid "More"
+msgstr "بیشتر"
+
+#: templates/base.html:158
+msgid "Backups"
+msgstr "پشتیبان‌ها"
+
+#: templates/base.html:159
+msgid "Security"
+msgstr "امنیت"
+
+#: templates/base.html:160
+msgid "Feature Flags"
+msgstr "پرچم‌های ویژگی"
+
+#: templates/base.html:161
+msgid "Announcements"
+msgstr "اعلانیه‌ها"
+
+#: templates/base.html:174
+msgid "POS"
+msgstr "صندوق فروش"
+
+#: templates/base.html:177 templates/core/translation_example.html:40
+#: templates/notifications/customer_segments.html:36
+msgid "Customers"
+msgstr "مشتریان"
+
+#: templates/base.html:198
+msgid "Accounting"
+msgstr "حسابداری"
+
+#: templates/base.html:199
+msgid "Repairs"
+msgstr "تعمیرات"
+
+#: templates/base.html:200
+msgid "Procurement"
+msgstr "خریداری"
+
+#: templates/base.html:201
+msgid "Branches"
+msgstr "شعب"
+
+#: templates/base.html:202 templates/reporting/prebuilt_reports.html:20
+#: templates/reporting/report_execute.html:17
+msgid "Reports"
+msgstr "گزارش‌ها"
+
+#: templates/base.html:203
+msgid "Settings"
+msgstr "تنظیمات"
+
+#: templates/base.html:276
+msgid "View notifications"
+msgstr "مشاهده اعلان‌ها"
+
+#: templates/base.html:310
+msgid "Open user menu"
+msgstr "باز کردن منوی کاربر"
+
+#: templates/base.html:335
+msgid "Notification Settings"
+msgstr "تنظیمات اعلان"
+
+#: templates/base.html:339
+msgid "Profile"
+msgstr "پروفایل"
+
+#: templates/base.html:343
+msgid "Sign out"
+msgstr "خروج"
+
+#: templates/core/audit/audit_log_explorer.html:4
+#: templates/core/audit/audit_log_explorer.html:10
+#, fuzzy
+#| msgid "Audit Logs"
+msgid "Audit Log Explorer"
+msgstr "مرورگر گزارش حسابرسی"
+
+#: templates/core/audit/audit_log_explorer.html:12
+msgid "Comprehensive audit trail of all system actions and events"
+msgstr "ردیابی کامل حسابرسی تمام اقدامات و رویدادهای سیستم"
+
+#: templates/core/audit/audit_log_explorer.html:19
+#, fuzzy
+#| msgid "Total Cost"
+msgid "Total Logs"
+msgstr "کل گزارش‌ها"
+
+#: templates/core/audit/audit_log_explorer.html:23
+#, fuzzy
+#| msgid "Actions"
+msgid "Admin Actions"
+msgstr "اقدامات مدیر"
+
+#: templates/core/audit/audit_log_explorer.html:27
+#, fuzzy
+#| msgid "Security"
+msgid "Security Events"
+msgstr "رویدادهای امنیتی"
+
+#: templates/core/audit/audit_log_explorer.html:31
+msgid "Critical"
+msgstr "بحرانی"
+
+#: templates/core/audit/audit_log_explorer.html:58
+msgid "Today"
+msgstr "امروز"
+
+#: templates/core/audit/audit_log_explorer.html:61
+msgid "Yesterday"
+msgstr "دیروز"
+
+#: templates/core/audit/audit_log_explorer.html:64
+#, fuzzy
+#| msgid "Last 7 days"
+msgid "Last 7 Days"
+msgstr "7 روز گذشته"
+
+#: templates/core/audit/audit_log_explorer.html:67
+#, fuzzy
+#| msgid "Last 30 days"
+msgid "Last 30 Days"
+msgstr "30 روز گذشته"
+
+#: templates/core/audit/audit_log_explorer.html:70
+#, fuzzy
+#| msgid "Last 90 days"
+msgid "Last 90 Days"
+msgstr "90 روز گذشته"
+
+#: templates/core/audit/audit_log_explorer.html:74
+#: templates/core/audit/audit_log_explorer.html:77
+#, fuzzy
+#| msgid "Advanced Reporting"
+msgid "Advanced Filters"
+msgstr "گزارش‌دهی پیشرفته"
+
+#: templates/core/audit/audit_log_explorer.html:200
+msgid "Export to CSV"
+msgstr "خروجی به CSV"
+
+#: templates/core/audit/audit_log_explorer.html:349
+#, fuzzy
+#| msgid "Requested by"
+msgid "API Request"
+msgstr "درخواست شده توسط"
+
+#: templates/core/formatting_example.html:5
+#: templates/core/formatting_example.html:9
+msgid "Number and Date Formatting Examples"
+msgstr "نمونه‌های قالب‌بندی اعداد و تاریخ"
+
+#: templates/core/formatting_example.html:13
+msgid "Number Formatting"
+msgstr "قالب‌بندی اعداد"
+
+#: templates/core/formatting_example.html:18
+msgid "Basic Number"
+msgstr "عدد ساده"
+
+#: templates/core/formatting_example.html:23
+msgid "With Decimal Places"
+msgstr "با اعشار"
+
+#: templates/core/formatting_example.html:28
+msgid "Persian Numerals Only"
+msgstr "فقط ارقام فارسی"
+
+#: templates/core/formatting_example.html:33
+msgid "Integer"
+msgstr "عدد صحیح"
+
+#: templates/core/formatting_example.html:42
+msgid "Currency Formatting"
+msgstr "قالب‌بندی ارز"
+
+#: templates/core/formatting_example.html:47
+msgid "US Dollar"
+msgstr "دلار آمریکا"
+
+#: templates/core/formatting_example.html:52
+msgid "Iranian Rial"
+msgstr "ریال ایران"
+
+#: templates/core/formatting_example.html:57
+msgid "Euro"
+msgstr "یورو"
+
+#: templates/core/formatting_example.html:62
+msgid "British Pound"
+msgstr "پوند انگلیس"
+
+#: templates/core/formatting_example.html:71
+msgid "Date Formatting"
+msgstr "قالب‌بندی تاریخ"
+
+#: templates/core/formatting_example.html:76
+#: templates/core/formatting_example.html:105
+msgid "Default Format"
+msgstr "قالب پیش‌فرض"
+
+#: templates/core/formatting_example.html:81
+msgid "Custom Format (YYYY/MM/DD)"
+msgstr "قالب سفارشی (YYYY/MM/DD)"
+
+#: templates/core/formatting_example.html:86
+msgid "Custom Format (DD-MM-YYYY)"
+msgstr "قالب سفارشی (DD-MM-YYYY)"
+
+#: templates/core/formatting_example.html:91
+msgid "With Month Name"
+msgstr "با نام ماه"
+
+#: templates/core/formatting_example.html:100
+msgid "DateTime Formatting"
+msgstr "قالب‌بندی تاریخ و زمان"
+
+#: templates/core/formatting_example.html:110
+msgid "Custom Format"
+msgstr "قالب سفارشی"
+
+#: templates/core/formatting_example.html:115
+msgid "Date and Time Separate"
+msgstr "تاریخ و زمان جداگانه"
+
+#: templates/core/formatting_example.html:120
+msgid "24-Hour Format"
+msgstr "قالب 24 ساعته"
+
+#: templates/core/formatting_example.html:129
+msgid "Using Inclusion Tags"
+msgstr "استفاده از برچسب‌های درج"
+
+#: templates/core/formatting_example.html:134
+msgid "Formatted Number Tag"
+msgstr "برچسب عدد قالب‌بندی شده"
+
+#: templates/core/formatting_example.html:139
+msgid "Formatted Currency Tag"
+msgstr "برچسب ارز قالب‌بندی شده"
+
+#: templates/core/formatting_example.html:149
+msgid "Note"
+msgstr "توجه"
+
+#: templates/core/formatting_example.html:151
+
+#: templates/core/tenant_dashboard.html:4
+msgid "Dashboard - Jewelry Shop"
+msgstr "داشبورد - فروشگاه جواهرات"
+
+#: templates/core/tenant_dashboard.html:15
+msgid "Welcome back! Here's what's happening with your jewelry shop today."
+msgstr "خوش آمدید! این اتفاقات امروز در فروشگاه جواهرات شماست."
+
+#: templates/core/tenant_dashboard.html:23
+#: templates/notifications/customer_segments.html:82
+msgid "Refresh"
+msgstr "بارگیری مجدد"
+
+#: templates/core/tenant_dashboard.html:46
+msgid "Today's Sales"
+msgstr "فروش امروز"
+
+#: templates/core/tenant_dashboard.html:61
+msgid "Increased"
+msgstr "افزایش یافت"
+
+#: templates/core/tenant_dashboard.html:61
+msgid "Decreased"
+msgstr "کاهش یافت"
+
+#: templates/core/tenant_dashboard.html:61
+msgid "by"
+msgstr "به میزان"
+
+#: templates/core/tenant_dashboard.html:65
+#, python-format
+msgid "%(count)s transaction"
+msgid_plural "%(count)s transactions"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/translation_example.html:6
+msgid "Translation Example"
+msgstr "نمونه ترجمه"
+
+#: templates/core/translation_example.html:11
+msgid "Translation Example Page"
+msgstr "صفحه نمونه ترجمه"
+
+#: templates/core/translation_example.html:15
+msgid "This page demonstrates how to use Django's translation system."
+msgstr "این صفحه نحوه استفاده از سیستم ترجمه جنگو را نشان می‌دهد."
+
+#: templates/core/translation_example.html:20
+#, python-format
+
+#: templates/core/translation_example.html:27
+#, python-format
+msgid_plural ""
+"\n"
+"        You have %(counter)s items in your inventory.\n"
+"        "
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/core/translation_example.html:38
+msgid "Inventory"
+msgstr "موجودی"
+
+#: templates/core/translation_example.html:39
+msgid "Sales"
+msgstr "فروش‌ها"
+
+#: templates/core/translation_example.html:50
+#: templates/notifications/customer_segments.html:30
+#: templates/reporting/report_execute.html:58
+msgid "Name"
+msgstr "نام"
+
+#: templates/core/translation_example.html:55
+msgid "Enter your name"
+msgstr "نام خود را وارد کنید"
+
+#: templates/core/translation_example.html:56
+msgid "Please enter your full name."
+msgstr "لطفاً نام کامل خود را وارد کنید."
+
+#: templates/core/translation_example.html:61
+msgid "Email Address"
+msgstr "آدرس ایمیل"
+
+#: templates/core/translation_example.html:66
+msgid "Enter your email"
+msgstr "ایمیل خود را وارد کنید"
+
+#: templates/core/translation_example.html:71
+msgid "Message"
+msgstr "پیام"
+
+#: templates/core/translation_example.html:76
+msgid "Enter your message"
+msgstr "پیام خود را وارد کنید"
+
+#: templates/core/translation_example.html:82
+msgid "Submit"
+msgstr "ارسال"
+
+#: templates/core/translation_example.html:95
+msgid "Product Name"
+msgstr "نام محصول"
+
+#: templates/core/translation_example.html:96
+#: templates/procurement/goods_receipt_complete.html:67
+#: templates/procurement/goods_receipt_detail.html:116
+msgid "SKU"
+msgstr "شناسه انبار"
+
+#: templates/core/translation_example.html:97
+msgid "Price"
+msgstr "قیمت"
+
+#: templates/core/translation_example.html:98
+msgid "Quantity"
+msgstr "تعداد"
+
+#: templates/core/translation_example.html:114
+msgid "Inactive"
+msgstr "غیرفعال"
+
+#: templates/core/translation_example.html:119
+msgid "Delete"
+msgstr "حذف"
+
+#: templates/core/translation_example.html:125
+msgid "No items found."
+msgstr "موردی یافت نشد."
+
+#: templates/core/translation_example.html:137
+msgid "Your changes have been saved successfully."
+msgstr "تغییرات شما با موفقیت ذخیره شد."
+
+#: templates/core/translation_example.html:142
+msgid "Please review your information before submitting."
+msgstr "لطفاً قبل از ارسال اطلاعات خود را بررسی کنید."
+
+#: templates/core/translation_example.html:147
+msgid "An error occurred while processing your request."
+msgstr "خطایی در پردازش درخواست شما رخ داد."
+
+#: templates/core/translation_example.html:152
+msgid "This is an informational message."
+msgstr "این یک پیام اطلاعاتی است."
+
+#: templates/core/translation_example.html:159
+msgid "Delete Item"
+msgstr "حذف مورد"
+
+#: templates/monitoring/dashboard.html:102
+#, fuzzy
+#| msgid "Monitoring"
+msgid "System Monitoring"
+msgstr "نظارت سیستم"
+
+#: templates/monitoring/dashboard.html:103
+msgid "Real-time platform health and performance metrics"
+msgstr "معیارهای سلامت و عملکرد پلتفرم در لحظه"
+
+#: templates/monitoring/dashboard.html:118
+#, fuzzy
+#| msgid "Delivery Status"
+msgid "Service Status"
+msgstr "وضعیت سرویس‌ها"
+
+#: templates/monitoring/dashboard.html:138
+msgid "System Overview"
+msgstr "بررسی اجمالی سیستم"
+
+#: templates/monitoring/dashboard.html:141
+msgid "Celery"
+msgstr "Celery"
+
+#: templates/monitoring/dashboard.html:150
+msgid "CPU Usage"
+msgstr "استفاده CPU"
+
+#: templates/monitoring/dashboard.html:162
+#: templates/monitoring/dashboard.html:279
+#, fuzzy
+#| msgid "Message"
+msgid "Memory Usage"
+msgstr "استفاده حافظه"
+
+#: templates/monitoring/dashboard.html:174
+msgid "Disk Usage"
+msgstr "استفاده دیسک"
+
+#: templates/monitoring/dashboard.html:186
+msgid "Network I/O"
+msgstr "ورودی/خروجی شبکه"
+
+#: templates/monitoring/dashboard.html:206
+msgid "Database Connections"
+msgstr "اتصالات پایگاه داده"
+
+#: templates/monitoring/dashboard.html:220
+msgid "Cache Hit Ratio"
+msgstr "نسبت برخورد کش"
+
+#: templates/monitoring/dashboard.html:232
+msgid "Database Size"
+msgstr "اندازه پایگاه داده"
+
+#: templates/monitoring/dashboard.html:242
+#, fuzzy
+#| msgid "Transactional Email"
+msgid "Transaction Activity"
+msgstr "فعالیت تراکنش"
+
+#: templates/monitoring/dashboard.html:266
+#, fuzzy
+#| msgid "Current Rate"
+msgid "Cache Hit Rate"
+msgstr "نرخ برخورد کش"
+
+#: templates/monitoring/dashboard.html:291
+#, fuzzy
+#| msgid "Total Cost"
+msgid "Total Keys"
+msgstr "کل کلیدها"
+
+#: templates/monitoring/dashboard.html:301
+msgid "Operations/sec"
+msgstr "عملیات/ثانیه"
+
+#: templates/monitoring/dashboard.html:316
+#, fuzzy
+#| msgid "Active Tenants"
+msgid "Active Workers"
+msgstr "کارگرهای فعال"
+
+#: templates/monitoring/dashboard.html:325
+#, fuzzy
+#| msgid "Pending"
+msgid "Pending Tasks"
+msgstr "وظایف در انتظار"
+
+#: templates/monitoring/dashboard.html:335
+#, fuzzy
+#| msgid "PO Status"
+msgid "System Status"
+msgstr "وضعیت سیستم"
+
+#: templates/monitoring/dashboard.html:516
+#, fuzzy
+#| msgid "No items found."
+msgid "No workers found"
+msgstr "کارگری یافت نشد"
+
+#: templates/notifications/bulk_campaign.html:4
+msgid "Bulk Campaign"
+msgstr "کمپین گروهی"
+
+#: templates/notifications/bulk_campaign.html:14
+msgid "Send targeted email or SMS campaigns to customer segments."
+msgstr "ارسال کمپین‌های ایمیل یا پیامک هدفمند به بخش‌های مشتری."
+
+#: templates/notifications/bulk_campaign.html:25
+#: templates/notifications/campaign_analytics.html:39
+msgid "Campaign Type"
+msgstr "نوع کمپین"
+
+#: templates/notifications/bulk_campaign.html:31
+#: templates/notifications/campaign_analytics.html:211
+#: templates/notifications/communication_log.html:81
+#: templates/notifications/customer_segments.html:33
+msgid "Type"
+msgstr "نوع"
+
+#: templates/notifications/bulk_campaign.html:44
+msgid "Target Segment"
+msgstr "بخش هدف"
+
+#: templates/notifications/bulk_campaign.html:48
+msgid "Select a segment..."
+msgstr "یک بخش انتخاب کنید..."
+
+#: templates/notifications/bulk_campaign.html:60
+msgid "Email Settings"
+msgstr "تنظیمات ایمیل"
+
+#: templates/notifications/bulk_campaign.html:70
+#: templates/notifications/bulk_campaign.html:99
+msgid "Select template..."
+msgstr "یک قالب انتخاب کنید..."
+
+#: templates/notifications/bulk_campaign.html:79
+msgid "Email Subject"
+msgstr "موضوع ایمیل"
+
+#: templates/notifications/bulk_campaign.html:90
+msgid "SMS Settings"
+msgstr "تنظیمات پیامک"
+
+#: templates/notifications/bulk_campaign.html:110
+msgid "Template Variables"
+msgstr "متغیرهای قالب"
+
+#: templates/notifications/bulk_campaign.html:113
+
+#: templates/notifications/bulk_campaign.html:124
+#: templates/notifications/bulk_campaign.html:200
+#: templates/procurement/goods_receipt_form.html:116
+msgid "Remove"
+msgstr "حذف"
+
+#: templates/notifications/bulk_campaign.html:131
+msgid "Add Variable"
+msgstr "افزودن متغیر"
+
+#: templates/notifications/bulk_campaign.html:138
+msgid "Campaign Summary"
+msgstr "خلاصه کمپین"
+
+#: templates/notifications/bulk_campaign.html:143
+msgid "Select a segment and template to see campaign summary."
+msgstr "یک بخش و قالب برای مشاهده خلاصه کمپین انتخاب کنید."
+
+#: templates/notifications/bulk_campaign.html:156
+#: templates/notifications/segment_form.html:141
+msgid "Preview"
+msgstr "پیش‌نمایش"
+
+#: templates/notifications/bulk_campaign.html:160
+#: templates/notifications/customer_segments.html:78
+msgid "Send Campaign"
+msgstr "ارسال کمپین"
+
+#: templates/notifications/bulk_campaign.html:223
+#: templates/notifications/notification_center.html:63
+msgid "Type:"
+msgstr "نوع:"
+
+#: templates/notifications/bulk_campaign.html:224
+msgid "Target:"
+msgstr "هدف:"
+
+#: templates/notifications/bulk_campaign.html:226
+msgid "Ready to send campaign to selected segment."
+msgstr "آماده برای ارسال کمپین به بخش انتخاب شده."
+
+#: templates/notifications/bulk_campaign.html:237
+
+#: templates/notifications/campaign_analytics.html:13
+msgid "Track the performance of your email and SMS campaigns."
+msgstr "عملکرد کمپین‌های ایمیل و پیامک خود را پیگیری کنید."
+
+#: templates/notifications/campaign_analytics.html:23
+#: templates/reporting/prebuilt_report.html:54
+msgid "Start Date"
+msgstr "تاریخ شروع"
+
+#: templates/notifications/campaign_analytics.html:31
+#: templates/reporting/prebuilt_report.html:63
+msgid "End Date"
+msgstr "تاریخ پایان"
+
+#: templates/notifications/campaign_analytics.html:65
+msgid "Total Campaigns"
+msgstr "مجموع کمپین‌ها"
+
+#: templates/notifications/campaign_analytics.html:83
+msgid "Messages Sent"
+msgstr "پیام‌های ارسال شده"
+
+#: templates/notifications/campaign_analytics.html:119
+msgid "Conversion Rate"
+msgstr "نرخ تبدیل"
+
+#: templates/notifications/campaign_analytics.html:139
+msgid "Email Metrics"
+msgstr "معیارهای ایمیل"
+
+#: templates/notifications/campaign_analytics.html:149
+msgid "Click Rate"
+msgstr "نرخ کلیک"
+
+#: templates/notifications/campaign_analytics.html:153
+msgid "Total Opened"
+msgstr "مجموع باز شده"
+
+#: templates/notifications/campaign_analytics.html:157
+msgid "Total Clicked"
+msgstr "مجموع کلیک شده"
+
+#: templates/notifications/campaign_analytics.html:173
+msgid "Total Conversions"
+msgstr "مجموع تبدیل‌ها"
+
+#: templates/notifications/campaign_analytics.html:177
+msgid "Conversion Value"
+msgstr "ارزش تبدیل"
+
+#: templates/notifications/campaign_analytics.html:181
+msgid "Total Cost"
+msgstr "هزینه کل"
+
+#: templates/notifications/campaign_analytics.html:185
+#: templates/notifications/campaign_analytics.html:223
+msgid "ROI"
+msgstr "بازگشت سرمایه"
+
+#: templates/notifications/campaign_analytics.html:199
+msgid "Recent Campaigns"
+msgstr "کمپین‌های اخیر"
+
+#: templates/notifications/campaign_analytics.html:208
+#: templates/notifications/communication_log.html:93
+msgid "Campaign"
+msgstr "کمپین"
+
+#: templates/notifications/campaign_analytics.html:220
+msgid "Conversions"
+msgstr "تبدیل‌ها"
+
+#: templates/notifications/campaign_analytics.html:266
+msgid "No campaigns found for the selected period."
+msgstr "کمپینی برای دوره انتخاب شده یافت نشد."
+
+#: templates/notifications/communication_log.html:13
+msgid "View all customer communications across all channels."
+msgstr "مشاهده تمام ارتباطات مشتری در تمام کانال‌ها."
+
+#: templates/notifications/communication_log.html:23
+msgid "Customer ID"
+msgstr "شناسه مشتری"
+
+#: templates/notifications/communication_log.html:26
+msgid "Enter customer ID..."
+msgstr "شناسه مشتری را وارد کنید..."
+
+#: templates/notifications/communication_log.html:32
+msgid "Communication Type"
+msgstr "نوع ارتباط"
+
+#: templates/notifications/communication_log.html:36
+msgid "All Types"
+msgstr "تمام انواع"
+
+#: templates/notifications/communication_log.html:45
+msgid "Campaign ID"
+msgstr "شناسه کمپین"
+
+#: templates/notifications/communication_log.html:48
+msgid "Enter campaign ID..."
+msgstr "شناسه کمپین را وارد کنید..."
+
+#: templates/notifications/communication_log.html:66
+msgid "Communication History"
+msgstr "تاریخچه ارتباطات"
+
+#: templates/notifications/communication_log.html:75
+#: templates/pricing/override_list.html:68
+msgid "Date"
+msgstr "تاریخ"
+
+#: templates/notifications/communication_log.html:78
+#: templates/notifications/partials/segment_preview.html:26
+msgid "Customer"
+msgstr "مشتری"
+
+#: templates/notifications/communication_log.html:84
+msgid "Direction"
+msgstr "جهت"
+
+#: templates/notifications/communication_log.html:87
+msgid "Subject"
+msgstr "موضوع"
+
+#: templates/notifications/communication_log.html:90
+msgid "Engagement"
+msgstr "تعامل"
+
+#: templates/notifications/communication_log.html:159
+msgid "Converted"
+msgstr "تبدیل شده"
+
+#: templates/notifications/communication_log.html:183
+msgid "No communications found."
+msgstr "ارتباطی یافت نشد."
+
+#: templates/notifications/communication_log.html:195
+#, python-format
+
+#: templates/notifications/communication_log.html:203
+#: templates/notifications/customer_segments.html:109
+#: templates/notifications/notification_center.html:194
+#: templates/notifications/notification_center.html:221
+#: templates/pricing/override_list.html:129
+#: templates/pricing/override_list.html:156
+#: templates/procurement/goods_receipt_list.html:160
+msgid "Previous"
+msgstr "قبلی"
+
+#: templates/notifications/communication_log.html:209
+#: templates/notifications/customer_segments.html:115
+#: templates/notifications/notification_center.html:200
+#: templates/notifications/notification_center.html:244
+#: templates/pricing/override_list.html:135
+#: templates/pricing/override_list.html:176
+#: templates/procurement/goods_receipt_list.html:174
+msgid "Next"
+msgstr "بعدی"
+
+#: templates/notifications/customer_segments.html:14
+#: templates/notifications/segment_form.html:164
+msgid "Create Segment"
+msgstr "ایجاد بخش"
+
+#: templates/notifications/customer_segments.html:21
+msgid "All Segments"
+msgstr "تمام بخش‌ها"
+
+#: templates/notifications/customer_segments.html:39
+#: templates/pricing/gold_rate_comparison.html:125
+msgid "Last Updated"
+msgstr "آخرین به‌روزرسانی"
+
+#: templates/notifications/customer_segments.html:89
+msgid "No customer segments found."
+msgstr "بخش مشتری یافت نشد."
+
+#: templates/notifications/customer_segments.html:101
+#, python-format
+
+#: templates/notifications/notification_center.html:4
+#: templates/notifications/notification_center.html:14
+msgid "Notification Center"
+msgstr "مرکز اعلان‌ها"
+
+#: templates/notifications/notification_center.html:17
+msgid "Manage your notifications and stay updated"
+msgstr "اعلان‌های خود را مدیریت کنید و به‌روز بمانید"
+
+#: templates/notifications/notification_center.html:27
+msgid "Preferences"
+msgstr "ترجیحات"
+
+#: templates/notifications/notification_center.html:35
+msgid "Mark All Read"
+msgstr "علامت همه به عنوان خوانده شده"
+
+#: templates/notifications/notification_center.html:56
+msgid "Unread only"
+msgstr "فقط خوانده نشده"
+
+#: templates/notifications/notification_center.html:68
+msgid "All types"
+msgstr "تمام انواع"
+
+#: templates/notifications/notification_center.html:81
+#, python-format
+msgid_plural ""
+"\n"
+"                                    %(counter)s unread notifications\n\nmsgid "Inventory Management"\nmsgstr "مدیریت موجودی"\n\n\nmsgid "Manage your jewelry inventory, track stock levels, and generate reports"\nmsgstr "موجودی جواهرات خود را مدیریت کنید، سطح موجودی را پیگیری کنید و گزارش تولید کنید"\n\n\nmsgid "Total Quantity"\nmsgstr "مقدار کل"\n\n\nmsgid "Total Items"\nmsgstr "کل کالاها"\n\n\nmsgid "Branch"\nmsgstr "شعبه"\n\n\nmsgid "All Branches"\nmsgstr "تمام شعبه‌ها"\n\n\nmsgid "All Karats"\nmsgstr "تمام عیارها"\n\n\nmsgid "All Categories"\nmsgstr "تمام دسته‌بندی‌ها"\n\n\nmsgid "Newest First"\nmsgstr "جدیدترین ابتدا"\n\n\nmsgid "All Status"\nmsgstr "تمام وضعیت‌ها"\n\n\nmsgid "No inventory items found"\nmsgstr "موردی در موجودی یافت نشد"\n\n\nmsgid "Get started by adding your first inventory item"\nmsgstr "با افزودن اولین کالای موجودی خود شروع کنید"\n\n\nmsgid "Add Inventory Item"\nmsgstr "افزودن کالای موجودی"\n\n\nmsgid "Bulk Actions"\nmsgstr "اقدامات گروهی"\n\n\nmsgid "Export Selected"\nmsgstr "خروجی از موارد انتخابی"\n\n\nmsgid "Bulk Print"\nmsgstr "چاپ گروهی"\n\n\nmsgid "SKU, name, serial, barcode..."\nmsgstr "شناسه انبار، نام، سریال، بارکد..."\n\n\nmsgid "Transaction Dashboard"\nmsgstr "داشبورد تراکنش"\n\n\nmsgid "Manage sales and customer transactions efficiently"\nmsgstr "مدیریت کارآمد فروش و تراکنش‌های مشتری"\n\n\nmsgid "CUSTOMER"\nmsgstr "مشتری"\n\n\nmsgid "Search customer"\nmsgstr "جستجوی مشتری"\n\n\nmsgid "TERMINAL"\nmsgstr "ترمینال"\n\n\nmsgid "Select Terminal"\nmsgstr "انتخاب ترمینال"\n\n\nmsgid "Not selected"\nmsgstr "انتخاب نشده"\n\n\nmsgid "CURRENT"\nmsgstr "فعلی"\n\n\nmsgid "PAYMENT"\nmsgstr "پرداخت"\n\n\nmsgid "ORDER SUMMARY"\nmsgstr "خلاصه سفارش"\n\n\nmsgid "Tax (10%)"\nmsgstr "مالیات (۱۰٪)"\n\n\nmsgid "Held Sales"\nmsgstr "فروش‌های نگه‌داری شده"\n\n\nmsgid "Reprint Receipt"\nmsgstr "چاپ مجدد رسید"\n\n\nmsgid "Search product name, SKU, or scan barcode"\nmsgstr "جستجوی نام محصول، شناسه انبار یا اسکن بارکد"\n\n\nmsgid "Recent Items"\nmsgstr "موارد اخیر"\n\n\nmsgid "Cart (0)"\nmsgstr "سبد خرید (۰)"\n\n\nmsgid "Your cart is empty"\nmsgstr "سبد خرید شما خالی است"\n\n\nmsgid "Add products to begin a new sale"\nmsgstr "محصولات را برای شروع فروش جدید اضافه کنید"\n\n\nmsgid "All Products"\nmsgstr "تمام محصولات"\n\n\nmsgid "Rings"\nmsgstr "حلقه‌ها"\n\n\nmsgid "Necklaces"\nmsgstr "گردنبندها"\n\n\nmsgid "Bracelets"\nmsgstr "دستبندها"\n\n\nmsgid "Earrings"\nmsgstr "گوشواره‌ها"\n\n\nmsgid "CATEGORIES"\nmsgstr "دسته‌بندی‌ها"\n\n\nmsgid "FILTERS"\nmsgstr "فیلترها"\n\n\nmsgid "PRICE RANGE"\nmsgstr "محدوده قیمت"\n\n\nmsgid "MATERIAL"\nmsgstr "جنس"\n\n\nmsgid "All Materials"\nmsgstr "تمام جنس‌ها"\n\n\nmsgid "Add New Customer"\nmsgstr "افزودن مشتری جدید"\n\n\nmsgid "Create a new customer profile"\nmsgstr "ایجاد پروفایل مشتری جدید"\n\n\nmsgid "Personal Information"\nmsgstr "اطلاعات شخصی"\n\n\nmsgid "Gender"\nmsgstr "جنسیت"\n\n\nmsgid "Select Gender"\nmsgstr "انتخاب جنسیت"\n\n\nmsgid "Date of Birth"\nmsgstr "تاریخ تولد"\n\n\nmsgid "Contact Information"\nmsgstr "اطلاعات تماس"\n\n\nmsgid "Alternate Phone"\nmsgstr "تلفن جایگزین"\n\n\nmsgid "Address Line 1"\nmsgstr "آدرس خط ۱"\n\n\nmsgid "Address Line 2"\nmsgstr "آدرس خط ۲"\n\n\nmsgid "State/Province"\nmsgstr "استان"\n\n\nmsgid "Preferred Communication"\nmsgstr "روش ارتباطی ترجیحی"\n\n\nmsgid "SMS Opt-In"\nmsgstr "دریافت پیامک"\n\n\nmsgid "Marketing Opt-In"\nmsgstr "دریافت اطلاعات بازاریابی"\n\n\nmsgid "Additional Information"\nmsgstr "اطلاعات اضافی"\n\n\nmsgid "Tags (comma-separated)"\nmsgstr "برچسب‌ها (جدا شده با کاما)"\n\n\nmsgid "VIP, Wedding, Corporate"\nmsgstr "VIP، عروسی، شرکتی"\n\n\nmsgid "Separate tags with commas"\nmsgstr "برچسب‌ها را با کاما جدا کنید"\n\n\nmsgid "Filters"\nmsgstr "فیلترها"\n\n\nmsgid "Categories"\nmsgstr "دسته‌بندی‌ها"\n\n\nmsgid "Transaction"\nmsgstr "تراکنش"\n\n\nmsgid "Transactions"\nmsgstr "تراکنش‌ها"\n\n\nmsgid "Modified"\nmsgstr "تغییر یافته"\n\n"
+"                                "
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/notifications/notification_center.html:87
+msgid "All notifications read"
+msgstr "تمام اعلان‌ها خوانده شد"
+
+#: templates/notifications/notification_center.html:147
+msgid "New"
+msgstr "جدید"
+
+#: templates/notifications/notification_center.html:207
+#: templates/pricing/override_list.html:142
+msgid "Showing"
+msgstr "نمایش"
+
+#: templates/notifications/notification_center.html:209
+#: templates/pricing/override_list.html:144
+msgid "to"
+msgstr "تا"
+
+#: templates/notifications/notification_center.html:211
+#: templates/pricing/override_list.html:146
+#: templates/procurement/goods_receipt_list.html:167
+msgid "of"
+msgstr "از"
+
+#: templates/notifications/notification_center.html:213
+msgid "notifications"
+msgstr "اعلان‌ها"
+
+#: templates/notifications/notification_center.html:262
+#: templates/notifications/partials/notification_list.html:78
+msgid "No notifications"
+msgstr "اعلانی وجود ندارد"
+
+#: templates/notifications/notification_center.html:265
+msgid "You're all caught up! No notifications to display."
+msgstr "همه چیز به‌روز است! اعلانی برای نمایش وجود ندارد."
+
+#: templates/notifications/notification_center.html:322
+msgid "Mark all notifications as read?"
+msgstr "علامت‌گذاری تمام اعلان‌ها به عنوان خوانده شده؟"
+
+#: templates/notifications/partials/notification_dropdown.html:13
+msgid "new"
+msgstr "جدید"
+
+#: templates/notifications/partials/notification_dropdown.html:29
+msgid "Mark all as read"
+msgstr "علامت‌گذاری همه به عنوان خوانده شده"
+
+#: templates/notifications/partials/notification_list.html:57
+#: templates/pricing/dashboard.html:88
+#: templates/pricing/gold_rate_comparison.html:77
+#: templates/pricing/gold_rate_comparison.html:181
+#: templates/pricing/gold_rate_widget.html:33
+msgid "ago"
+msgstr "پیش"
+
+#: templates/notifications/partials/notification_list.html:68
+msgid "View all notifications"
+msgstr "مشاهده تمام اعلان‌ها"
+
+#: templates/notifications/partials/segment_preview.html:5
+msgid "Error:"
+msgstr "خطا:"
+
+#: templates/notifications/partials/segment_preview.html:11
+#, python-format
+msgid "%(count)s customers match this criteria"
+msgstr ""
+
+#: templates/notifications/partials/segment_preview.html:15
+#, python-format
+msgid "Showing first %(showing)s of %(total)s"
+msgstr "نمایش %(showing)s اول از %(total)s"
+
+#: templates/notifications/partials/segment_preview.html:32
+msgid "Total Purchases"
+msgstr "کل خریدها"
+
+#: templates/notifications/partials/segment_preview.html:35
+msgid "Loyalty Tier"
+msgstr "رده وفاداری"
+
+#: templates/notifications/partials/segment_preview.html:61
+msgid "No customers match the current criteria."
+msgstr "هیچ مشتری با معیارهای فعلی مطابقت ندارد."
+
+#: templates/notifications/preferences.html:18
+msgid "Customize how and when you receive notifications"
+msgstr "نحوه و زمان دریافت اعلان‌ها را سفارشی کنید"
+
+#: templates/notifications/preferences.html:27
+msgid "Back to Notifications"
+msgstr "بازگشت به اعلان‌ها"
+
+#: templates/notifications/preferences.html:77
+msgid "Notification Types"
+msgstr "انواع اعلان"
+
+#: templates/notifications/preferences.html:80
+msgid "Choose how you want to receive different types of notifications"
+msgstr "انتخاب کنید که چگونه می‌خواهید انواع مختلف اعلان‌ها را دریافت کنید"
+
+#: templates/notifications/preferences.html:89
+msgid "Notification Type"
+msgstr "نوع اعلان"
+
+#: templates/notifications/preferences.html:166
+msgid "Set times when you don't want to receive non-critical notifications"
+msgstr "زمان‌هایی را تنظیم کنید که نمی‌خواهید اعلان‌های غیرحیاتی دریافت کنید"
+
+#: templates/notifications/preferences.html:174
+msgid "Start Time"
+msgstr "زمان شروع"
+
+#: templates/notifications/preferences.html:184
+msgid "End Time"
+msgstr "زمان پایان"
+
+#: templates/notifications/preferences.html:194
+
+#: templates/notifications/preferences.html:206
+msgid "Save Preferences"
+msgstr "ذخیره ترجیحات"
+
+#: templates/notifications/segment_form.html:4
+msgid "Create Customer Segment"
+msgstr "ایجاد بخش مشتری"
+
+#: templates/notifications/segment_form.html:28
+msgid "Segment Name"
+msgstr "نام بخش"
+
+#: templates/notifications/segment_form.html:36
+msgid "Segment Type"
+msgstr "نوع بخش"
+
+#: templates/notifications/segment_form.html:60
+msgid "Segmentation Criteria"
+msgstr "معیارهای بخش‌بندی"
+
+#: templates/notifications/segment_form.html:66
+msgid "Minimum Total Purchases"
+msgstr "حداقل مجموع خریدها"
+
+#: templates/notifications/segment_form.html:74
+msgid "Maximum Total Purchases"
+msgstr "حداکثر مجموع خریدها"
+
+#: templates/notifications/segment_form.html:82
+msgid "Last Purchase Within (Days)"
+msgstr "آخرین خرید در (روز)"
+
+#: templates/notifications/segment_form.html:90
+msgid "Loyalty Tiers"
+msgstr "سطوح وفاداری"
+
+#: templates/notifications/segment_form.html:102
+msgid "Customer Tags (comma-separated)"
+msgstr "برچسب‌های مشتری (جدا شده با کاما)"
+
+#: templates/notifications/segment_form.html:110
+msgid "Communication Preferences"
+msgstr "ترجیحات ارتباط"
+
+#: templates/notifications/segment_form.html:115
+msgid "Marketing Opt-in"
+msgstr "موافقت با بازاریابی"
+
+#: templates/notifications/segment_form.html:119
+msgid "SMS Opt-in"
+msgstr "موافقت با پیامک"
+
+#: templates/notifications/segment_form.html:129
+msgid "Select Customers"
+msgstr "انتخاب مشتریان"
+
+#: templates/notifications/segment_form.html:132
+msgid "For static segments, manually select customers to include."
+msgstr "برای بخش‌های ثابت، مشتریان را به صورت دستی انتخاب کنید."
+
+#: templates/notifications/segment_form.html:145
+msgid "Preview Customers"
+msgstr "پیش‌نمایش مشتریان"
+
+#: templates/notifications/segment_form.html:151
+msgid "Click 'Preview Customers' to see who would be included in this segment."
+msgstr ""
+"روی 'پیش‌نمایش مشتریان' کلیک کنید تا ببینید چه کسانی در این بخش شامل می‌شوند."
+
+#: templates/pricing/calculate_price.html:4
+#: templates/pricing/calculate_price.html:10
+#: templates/pricing/calculate_price.html:109
+#: templates/pricing/dashboard.html:15
+msgid "Calculate Price"
+msgstr "محاسبه قیمت"
+
+#: templates/pricing/calculate_price.html:14
+#: templates/pricing/gold_rate_comparison.html:19
+#: templates/pricing/gold_rate_history.html:23
+#: templates/pricing/override_list.html:14
+msgid "Back to Dashboard"
+msgstr "بازگشت به داشبورد"
+
+#: templates/pricing/calculate_price.html:22
+msgid "Price Calculator"
+msgstr "ماشین‌حساب قیمت"
+
+#: templates/pricing/calculate_price.html:28
+msgid "Current Gold Rate"
+msgstr "نرخ فعلی طلا"
+
+#: templates/pricing/calculate_price.html:40
+#: templates/pricing/price_calculation_result.html:33
+msgid "Karat"
+msgstr "عیار"
+
+#: templates/pricing/calculate_price.html:49
+msgid "Weight (grams)"
+msgstr "وزن (گرم)"
+
+#: templates/pricing/calculate_price.html:59
+#: templates/pricing/price_calculation_result.html:42
+msgid "Product Type"
+msgstr "نوع محصول"
+
+#: templates/pricing/calculate_price.html:62
+msgid "Any Type"
+msgstr "هر نوع"
+
+#: templates/pricing/calculate_price.html:73
+msgid "Craftsmanship Level"
+msgstr "سطح صنعتگری"
+
+#: templates/pricing/calculate_price.html:76
+msgid "Any Level"
+msgstr "هر سطح"
+
+#: templates/pricing/calculate_price.html:87
+#: templates/pricing/dashboard.html:173
+#: templates/pricing/price_calculation_result.html:53
+msgid "Customer Tier"
+msgstr "رده مشتری"
+
+#: templates/pricing/calculate_price.html:100
+#: templates/pricing/price_calculation_result.html:58
+msgid "Stone Value"
+msgstr "ارزش سنگ"
+
+#: templates/pricing/calculate_price.html:117
+#: templates/pricing/dashboard.html:37
+msgid "Active Pricing Rules"
+msgstr "قوانین قیمت‌گذاری فعال"
+
+#: templates/pricing/calculate_price.html:138
+msgid "No active pricing rules found. Please configure pricing rules first."
+msgstr ""
+"قانون قیمت‌گذاری فعالی یافت نشد. لطفاً ابتدا قوانین قیمت‌گذاری را پیکربندی کنید."
+
+#: templates/pricing/dashboard.html:4 templates/pricing/dashboard.html:10
+msgid "Pricing Dashboard"
+msgstr "داشبورد قیمت‌گذاری"
+
+#: templates/pricing/dashboard.html:20 templates/pricing/dashboard.html:162
+msgid "Recalculate Prices"
+msgstr "محاسبه مجدد قیمت‌ها"
+
+#: templates/pricing/dashboard.html:43
+msgid "Rules configured"
+msgstr "قوانین پیکربندی شده"
+
+#: templates/pricing/dashboard.html:49
+msgid "Pending Overrides"
+msgstr "نادیده‌گیری‌های در انتظار"
+
+#: templates/pricing/dashboard.html:55
+msgid "Awaiting approval"
+msgstr "در انتظار تأیید"
+
+#: templates/pricing/dashboard.html:67
+msgid "Recent Price Changes"
+msgstr "تغییرات اخیر قیمت"
+
+#: templates/pricing/dashboard.html:97
+msgid "View all changes"
+msgstr "مشاهده تمام تغییرات"
+
+#: templates/pricing/dashboard.html:102
+msgid "No recent price changes"
+msgstr "تغییر قیمت اخیری وجود ندارد"
+
+#: templates/pricing/dashboard.html:112
+msgid "Pending Override Requests"
+msgstr "درخواست‌های نادیده‌گیری در انتظار"
+
+#: templates/pricing/dashboard.html:125
+msgid "Requested by"
+msgstr "درخواست شده توسط"
+
+#: templates/pricing/dashboard.html:142
+msgid "View all requests"
+msgstr "مشاهده تمام درخواست‌ها"
+
+#: templates/pricing/dashboard.html:147
+msgid "No pending override requests"
+msgstr "درخواست نادیده‌گیری در انتظار وجود ندارد"
+
+#: templates/pricing/dashboard.html:167
+
+#: templates/pricing/dashboard.html:176
+msgid "Retail"
+msgstr "خرده‌فروشی"
+
+#: templates/pricing/dashboard.html:177
+msgid "Wholesale"
+msgstr "عمده‌فروشی"
+
+#: templates/pricing/dashboard.html:178
+msgid "VIP"
+msgstr "VIP"
+
+#: templates/pricing/dashboard.html:188
+msgid "Recalculate"
+msgstr "محاسبه مجدد"
+
+#: templates/pricing/gold_rate_comparison.html:4
+#: templates/pricing/gold_rate_comparison.html:10
+msgid "Gold Rate Comparison"
+msgstr "مقایسه نرخ طلا"
+
+#: templates/pricing/gold_rate_comparison.html:15
+#: templates/pricing/gold_rate_comparison.html:88
+msgid "View History"
+msgstr "مشاهده تاریخچه"
+
+#: templates/pricing/gold_rate_comparison.html:36
+msgid "Highest"
+msgstr "بالاترین"
+
+#: templates/pricing/gold_rate_comparison.html:51
+msgid "Same as base"
+msgstr "همانند پایه"
+
+#: templates/pricing/gold_rate_comparison.html:61
+#: templates/pricing/gold_rate_comparison.html:116
+#: templates/pricing/gold_rate_history.html:142
+#: templates/pricing/gold_rate_history.html:218
+msgid "Per Tola"
+msgstr "به ازای تولا"
+
+#: templates/pricing/gold_rate_comparison.html:65
+#: templates/pricing/gold_rate_comparison.html:119
+#: templates/pricing/gold_rate_history.html:145
+#: templates/pricing/gold_rate_history.html:226
+msgid "Per Ounce"
+msgstr "به ازای اونس"
+
+#: templates/pricing/gold_rate_comparison.html:69
+msgid "Currency"
+msgstr "واحد پول"
+
+#: templates/pricing/gold_rate_comparison.html:77
+#: templates/pricing/gold_rate_widget.html:33
+msgid "Updated"
+msgstr "به‌روزرسانی شده"
+
+#: templates/pricing/gold_rate_comparison.html:79
+#: templates/pricing/gold_rate_history.html:148
+msgid "Source"
+msgstr "منبع"
+
+#: templates/pricing/gold_rate_comparison.html:99
+msgid "Detailed Comparison"
+msgstr "مقایسه دقیق"
+
+#: templates/pricing/gold_rate_comparison.html:102
+msgid "All rates compared to"
+msgstr "تمام نرخ‌ها در مقایسه با"
+
+#: templates/pricing/gold_rate_comparison.html:102
+msgid "market"
+msgstr "بازار"
+
+#: templates/pricing/gold_rate_comparison.html:110
+#: templates/pricing/gold_rate_history.html:33
+msgid "Market"
+msgstr "بازار"
+
+#: templates/pricing/gold_rate_comparison.html:113
+#: templates/pricing/gold_rate_history.html:139
+#: templates/pricing/gold_rate_history.html:210
+msgid "Per Gram"
+msgstr "به ازای گرم"
+
+#: templates/pricing/gold_rate_comparison.html:122
+msgid "Difference"
+msgstr "تفاوت"
+
+#: templates/pricing/gold_rate_comparison.html:139
+msgid "Base"
+msgstr "پایه"
+
+#: templates/pricing/gold_rate_comparison.html:175
+msgid "Same"
+msgstr "یکسان"
+
+#: templates/pricing/gold_rate_comparison.html:197
+msgid "Refresh Rates"
+msgstr "تازه‌سازی نرخ‌ها"
+
+#: templates/pricing/gold_rate_comparison.html:207
+msgid "No Rate Data Available"
+msgstr "داده نرخی موجود نیست"
+
+#: templates/pricing/gold_rate_comparison.html:210
+msgid "No gold rate data is currently available for comparison."
+msgstr "در حال حاضر داده نرخ طلایی برای مقایسه موجود نیست."
+
+#: templates/pricing/gold_rate_history.html:4
+#: templates/pricing/gold_rate_history.html:14
+msgid "Gold Rate History"
+msgstr "تاریخچه نرخ طلا"
+
+#: templates/pricing/gold_rate_history.html:19
+msgid "Compare Markets"
+msgstr "مقایسه بازارها"
+
+#: templates/pricing/gold_rate_history.html:46
+msgid "Time Period"
+msgstr "دوره زمانی"
+
+#: templates/pricing/gold_rate_history.html:49
+msgid "Last 7 days"
+msgstr "۷ روز گذشته"
+
+#: templates/pricing/gold_rate_history.html:50
+msgid "Last 30 days"
+msgstr "۳۰ روز گذشته"
+
+#: templates/pricing/gold_rate_history.html:51
+msgid "Last 90 days"
+msgstr "۹۰ روز گذشته"
+
+#: templates/pricing/gold_rate_history.html:52
+msgid "Last year"
+msgstr "سال گذشته"
+
+#: templates/pricing/gold_rate_history.html:57
+msgid "Update"
+msgstr "به‌روزرسانی"
+
+#: templates/pricing/gold_rate_history.html:67
+msgid "Current Rate"
+msgstr "نرخ فعلی"
+
+#: templates/pricing/gold_rate_history.html:79
+msgid "Period Change"
+msgstr "تغییر دوره"
+
+#: templates/pricing/gold_rate_history.html:91
+msgid "Highest Rate"
+msgstr "بالاترین نرخ"
+
+#: templates/pricing/gold_rate_history.html:103
+msgid "Lowest Rate"
+msgstr "پایین‌ترین نرخ"
+
+#: templates/pricing/gold_rate_history.html:117
+msgid "Rate Trend"
+msgstr "روند نرخ"
+
+#: templates/pricing/gold_rate_history.html:128
+msgid "Historical Data"
+msgstr "داده‌های تاریخی"
+
+#: templates/pricing/gold_rate_history.html:136
+#: templates/pricing/gold_rate_history.html:259
+msgid "Date & Time"
+msgstr "تاریخ و زمان"
+
+#: templates/pricing/gold_rate_history.html:183
+msgid "No Historical Data"
+msgstr "داده تاریخی وجود ندارد"
+
+#: templates/pricing/gold_rate_history.html:186
+msgid "No gold rate data available for the selected market and time period."
+msgstr "داده نرخ طلا برای بازار و دوره زمانی انتخاب شده موجود نیست."
+
+#: templates/pricing/gold_rate_history.html:269
+msgid "Rate (USD)"
+msgstr "نرخ (دلار)"
+
+#: templates/pricing/gold_rate_widget.html:11
+msgid "Live Gold Rates"
+msgstr "نرخ‌های زنده طلا"
+
+#: templates/pricing/gold_rate_widget.html:16
+msgid "History"
+msgstr "تاریخچه"
+
+#: templates/pricing/gold_rate_widget.html:20
+msgid "Compare"
+msgstr "مقایسه"
+
+#: templates/pricing/gold_rate_widget.html:64
+msgid "No change"
+msgstr "بدون تغییر"
+
+#: templates/pricing/gold_rate_widget.html:70
+msgid "Tola"
+msgstr "تولا"
+
+#: templates/pricing/gold_rate_widget.html:71
+msgid "Oz"
+msgstr "اونس"
+
+#: templates/pricing/gold_rate_widget.html:80
+msgid "No gold rates available"
+msgstr "نرخ طلا موجود نیست"
+
+#: templates/pricing/gold_rate_widget.html:81
+msgid "Rates will appear when data is fetched from external APIs"
+msgstr "نرخ‌ها هنگامی نمایش داده می‌شوند که داده از APIهای خارجی دریافت شود"
+
+#: templates/pricing/gold_rate_widget.html:89
+msgid "Auto-refreshes every 30 seconds"
+msgstr "تازه‌سازی خودکار هر 30 ثانیه"
+
+#: templates/pricing/override_list.html:4
+#: templates/pricing/override_list.html:10
+msgid "Price Override Requests"
+msgstr "درخواست‌های نادیده‌گیری قیمت"
+
+#: templates/pricing/override_list.html:36
+#: templates/procurement/goods_receipt_list.html:62
+msgid "Filter"
+msgstr "فیلتر"
+
+#: templates/pricing/override_list.html:50
+#: templates/procurement/goods_receipt_complete.html:66
+#: templates/procurement/goods_receipt_detail.html:115
+#: templates/procurement/goods_receipt_form.html:114
+msgid "Item"
+msgstr "مورد"
+
+#: templates/pricing/override_list.html:53
+msgid "Current Price"
+msgstr "قیمت فعلی"
+
+#: templates/pricing/override_list.html:56
+msgid "Requested Price"
+msgstr "قیمت درخواستی"
+
+#: templates/pricing/override_list.html:59
+msgid "Deviation"
+msgstr "انحراف"
+
+#: templates/pricing/override_list.html:65
+msgid "Requested By"
+msgstr "درخواست شده توسط"
+
+#: templates/pricing/override_list.html:148
+msgid "results"
+msgstr "نتیجه"
+
+#: templates/pricing/override_list.html:187
+msgid "No price override requests found."
+msgstr "درخواست نادیده‌گیری قیمتی یافت نشد."
+
+#: templates/pricing/price_calculation_result.html:4
+#: templates/pricing/price_calculation_result.html:10
+msgid "Price Calculation Result"
+msgstr "نتیجه محاسبه قیمت"
+
+#: templates/pricing/price_calculation_result.html:15
+msgid "Calculate Another"
+msgstr "محاسبه دیگری"
+
+#: templates/pricing/price_calculation_result.html:28
+msgid "Calculation Details"
+msgstr "جزئیات محاسبه"
+
+#: templates/pricing/price_calculation_result.html:37
+msgid "Weight"
+msgstr "وزن"
+
+#: templates/pricing/price_calculation_result.html:48
+msgid "Craftsmanship"
+msgstr "صنعتگری"
+
+#: templates/pricing/price_calculation_result.html:68
+msgid "Gold Rate"
+msgstr "نرخ طلا"
+
+#: templates/pricing/price_calculation_result.html:72
+msgid "Rule Applied"
+msgstr "قانون اعمال شده"
+
+#: templates/pricing/price_calculation_result.html:81
+msgid "Price Breakdown"
+msgstr "تفکیک قیمت"
+
+#: templates/pricing/price_calculation_result.html:86
+msgid "Gold Value"
+msgstr "ارزش طلا"
+
+#: templates/pricing/price_calculation_result.html:90
+msgid "Markup Amount"
+msgstr "مقدار افزایش قیمت"
+
+#: templates/pricing/price_calculation_result.html:94
+msgid "Making Charges"
+msgstr "هزینه ساخت"
+
+#: templates/pricing/price_calculation_result.html:99
+msgid "Stone Charges"
+msgstr "هزینه سنگ"
+
+#: templates/pricing/price_calculation_result.html:105
+msgid "Fixed Markup"
+msgstr "افزایش قیمت ثابت"
+
+#: templates/pricing/price_calculation_result.html:114
+msgid "Total Price"
+msgstr "قیمت کل"
+
+#: templates/pricing/price_calculation_result.html:124
+msgid "Pricing by Customer Tier"
+msgstr "قیمت‌گذاری بر اساس رده مشتری"
+
+#: templates/pricing/price_calculation_result.html:134
+msgid "Selected"
+msgstr "انتخاب شده"
+
+#: templates/pricing/price_calculation_result.html:142
+msgid "Markup"
+msgstr "افزایش قیمت"
+
+#: templates/procurement/goods_receipt_complete.html:4
+#: templates/procurement/goods_receipt_complete.html:11
+msgid "Complete Goods Receipt"
+msgstr "تکمیل رسید کالا"
+
+#: templates/procurement/goods_receipt_complete.html:13
+msgid "Back to Receipt"
+msgstr "بازگشت به رسید"
+
+#: templates/procurement/goods_receipt_complete.html:22
+msgid "Completion Confirmation"
+msgstr "تأیید تکمیل"
+
+#: templates/procurement/goods_receipt_complete.html:26
+msgid "What happens when you complete this receipt?"
+msgstr "هنگام تکمیل این رسید چه اتفاقی می‌افتد؟"
+
+#: templates/procurement/goods_receipt_complete.html:28
+msgid "Inventory levels will be updated for all accepted items"
+msgstr "سطوح موجودی برای تمام اقلام پذیرفته شده به‌روزرسانی می‌شود"
+
+#: templates/procurement/goods_receipt_complete.html:29
+msgid "New inventory items will be created if they don't exist"
+msgstr "اقلام موجودی جدید در صورت عدم وجود ایجاد می‌شوند"
+
+#: templates/procurement/goods_receipt_complete.html:30
+msgid "Purchase order status will be updated"
+msgstr "وضعیت سفارش خرید به‌روزرسانی می‌شود"
+
+#: templates/procurement/goods_receipt_complete.html:31
+msgid "The receipt status will be marked as completed"
+msgstr "وضعیت رسید به عنوان تکمیل شده علامت‌گذاری می‌شود"
+
+#: templates/procurement/goods_receipt_complete.html:37
+msgid "Three-Way Matching Warning"
+msgstr "هشدار تطبیق سه‌طرفه"
+
+#: templates/procurement/goods_receipt_complete.html:39
+
+#: templates/procurement/goods_receipt_complete.html:46
+msgid "Discrepancy Warning"
+msgstr "هشدار عدم تطابق"
+
+#: templates/procurement/goods_receipt_complete.html:48
+
+#: templates/procurement/goods_receipt_complete.html:58
+msgid "Items to be Added to Inventory"
+msgstr "اقلامی که به موجودی اضافه می‌شوند"
+
+#: templates/procurement/goods_receipt_complete.html:68
+msgid "Quantity Accepted"
+msgstr "تعداد پذیرفته شده"
+
+#: templates/procurement/goods_receipt_complete.html:69
+msgid "Unit Price"
+msgstr "قیمت واحد"
+
+#: templates/procurement/goods_receipt_complete.html:70
+#: templates/procurement/goods_receipt_complete.html:158
+msgid "Total Value"
+msgstr "ارزش کل"
+
+#: templates/procurement/goods_receipt_complete.html:85
+msgid "Update Existing"
+msgstr "به‌روزرسانی موجود"
+
+#: templates/procurement/goods_receipt_complete.html:87
+msgid "Create New"
+msgstr "ایجاد جدید"
+
+#: templates/procurement/goods_receipt_complete.html:99
+msgid "No items to add to inventory"
+msgstr "موردی برای افزودن به موجودی وجود ندارد"
+
+#: templates/procurement/goods_receipt_complete.html:110
+msgid "Receipt Summary"
+msgstr "خلاصه رسید"
+
+#: templates/procurement/goods_receipt_complete.html:114
+#: templates/procurement/goods_receipt_detail.html:36
+#: templates/procurement/goods_receipt_list.html:80
+msgid "Receipt Number"
+msgstr "شماره رسید"
+
+#: templates/procurement/goods_receipt_complete.html:117
+#: templates/procurement/goods_receipt_detail.html:39
+#: templates/procurement/goods_receipt_list.html:38
+#: templates/procurement/goods_receipt_list.html:81
+msgid "Purchase Order"
+msgstr "سفارش خرید"
+
+#: templates/procurement/goods_receipt_complete.html:120
+#: templates/procurement/goods_receipt_detail.html:47
+#: templates/procurement/goods_receipt_form.html:224
+#: templates/procurement/goods_receipt_list.html:82
+msgid "Supplier"
+msgstr "تامین‌کننده"
+
+#: templates/procurement/goods_receipt_complete.html:123
+#: templates/procurement/goods_receipt_detail.html:55
+#: templates/procurement/goods_receipt_list.html:83
+msgid "Received Date"
+msgstr "تاریخ دریافت"
+
+#: templates/procurement/goods_receipt_complete.html:126
+msgid "Current Status"
+msgstr "وضعیت فعلی"
+
+#: templates/procurement/goods_receipt_complete.html:137
+msgid "Inventory Impact"
+msgstr "تأثیر موجودی"
+
+#: templates/procurement/goods_receipt_complete.html:150
+msgid "Items Added"
+msgstr "اقلام اضافه شده"
+
+#: templates/procurement/goods_receipt_complete.html:174
+msgid "Complete Receipt & Update Inventory"
+msgstr "تکمیل رسید و به‌روزرسانی موجودی"
+
+#: templates/procurement/goods_receipt_complete.html:186
+
+#: templates/procurement/goods_receipt_detail.html:4
+#: templates/procurement/goods_receipt_detail.html:11
+msgid "Goods Receipt"
+msgstr "رسید کالا"
+
+#: templates/procurement/goods_receipt_detail.html:16
+#: templates/procurement/goods_receipt_list.html:136
+msgid "Complete Receipt"
+msgstr "تکمیل رسید"
+
+#: templates/procurement/goods_receipt_detail.html:20
+#: templates/procurement/goods_receipt_form.html:13
+msgid "Back to List"
+msgstr "بازگشت به لیست"
+
+#: templates/procurement/goods_receipt_detail.html:30
+#: templates/procurement/goods_receipt_form.html:25
+msgid "Receipt Information"
+msgstr "اطلاعات رسید"
+
+#: templates/procurement/goods_receipt_detail.html:74
+#: templates/procurement/goods_receipt_list.html:85
+msgid "Received By"
+msgstr "دریافت شده توسط"
+
+#: templates/procurement/goods_receipt_detail.html:77
+msgid "Invoice Number"
+msgstr "شماره فاکتور"
+
+#: templates/procurement/goods_receipt_detail.html:80
+msgid "Tracking Number"
+msgstr "شماره پیگیری"
+
+#: templates/procurement/goods_receipt_detail.html:88
+msgid "Inspection Notes"
+msgstr "یادداشت‌های بازرسی"
+
+#: templates/procurement/goods_receipt_detail.html:96
+msgid "Discrepancy Notes"
+msgstr "یادداشت‌های عدم تطابق"
+
+#: templates/procurement/goods_receipt_detail.html:107
+#: templates/procurement/goods_receipt_form.html:102
+msgid "Receipt Items"
+msgstr "اقلام رسید"
+
+#: templates/procurement/goods_receipt_detail.html:117
+msgid "Ordered"
+msgstr "سفارش داده شده"
+
+#: templates/procurement/goods_receipt_detail.html:118
+msgid "Received"
+msgstr "دریافت شده"
+
+#: templates/procurement/goods_receipt_detail.html:119
+msgid "Accepted"
+msgstr "پذیرفته شده"
+
+#: templates/procurement/goods_receipt_detail.html:120
+msgid "Rejected"
+msgstr "رد شده"
+
+#: templates/procurement/goods_receipt_detail.html:121
+msgid "Quality"
+msgstr "کیفیت"
+
+#: templates/procurement/goods_receipt_detail.html:122
+msgid "Notes"
+msgstr "یادداشت‌ها"
+
+#: templates/procurement/goods_receipt_detail.html:142
+#: templates/procurement/goods_receipt_detail.html:191
+msgid "Passed"
+msgstr "قبول شده"
+
+#: templates/procurement/goods_receipt_detail.html:169
+msgid "No items in this receipt"
+msgstr "موردی در این رسید وجود ندارد"
+
+#: templates/procurement/goods_receipt_detail.html:180
+msgid "Quality Check Summary"
+msgstr "خلاصه کنترل کیفیت"
+
+#: templates/procurement/goods_receipt_detail.html:219
+msgid "Three-Way Matching"
+msgstr "تطبیق سه‌طرفه"
+
+#: templates/procurement/goods_receipt_detail.html:226
+msgid "Match Complete"
+msgstr "تطبیق کامل"
+
+#: templates/procurement/goods_receipt_detail.html:227
+msgid "PO, receipt, and invoice quantities match"
+msgstr "تعداد سفارش خرید، رسید و فاکتور مطابقت دارند"
+
+#: templates/procurement/goods_receipt_detail.html:232
+msgid "Pending Match"
+msgstr "تطبیق در انتظار"
+
+#: templates/procurement/goods_receipt_detail.html:233
+msgid "Quantities do not match or receipt incomplete"
+msgstr "تعداد مطابقت ندارد یا رسید ناقص است"
+
+#: templates/procurement/goods_receipt_detail.html:243
+msgid "Purchase Order Summary"
+msgstr "خلاصه سفارش خرید"
+
+#: templates/procurement/goods_receipt_detail.html:247
+#: templates/procurement/goods_receipt_form.html:221
+msgid "PO Number"
+msgstr "شماره سفارش خرید"
+
+#: templates/procurement/goods_receipt_detail.html:250
+#: templates/procurement/goods_receipt_form.html:227
+msgid "Order Date"
+msgstr "تاریخ سفارش"
+
+#: templates/procurement/goods_receipt_detail.html:253
+#: templates/procurement/goods_receipt_form.html:230
+msgid "Total Amount"
+msgstr "مقدار کل"
+
+#: templates/procurement/goods_receipt_detail.html:256
+msgid "PO Status"
+msgstr "وضعیت سفارش خرید"
+
+#: templates/procurement/goods_receipt_detail.html:265
+msgid "View Purchase Order"
+msgstr "مشاهده سفارش خرید"
+
+#: templates/procurement/goods_receipt_form.html:4
+#: templates/procurement/goods_receipt_form.html:11
+#: templates/procurement/goods_receipt_form.html:247
+#: templates/procurement/goods_receipt_list.html:192
+msgid "Create Goods Receipt"
+msgstr "ایجاد رسید کالا"
+
+#: templates/procurement/goods_receipt_form.html:104
+msgid "Add Item"
+msgstr "افزودن کالا"
+
+#: templates/procurement/goods_receipt_form.html:124
+msgid "Purchase Order Item"
+msgstr "مورد سفارش خرید"
+
+#: templates/procurement/goods_receipt_form.html:137
+msgid "Quantity Received"
+msgstr "تعداد دریافت شده"
+
+#: templates/procurement/goods_receipt_form.html:149
+msgid "Quantity Rejected"
+msgstr "تعداد رد شده"
+
+#: templates/procurement/goods_receipt_form.html:163
+msgid "Quality Check"
+msgstr "کنترل کیفیت"
+
+#: templates/procurement/goods_receipt_form.html:174
+msgid "Quality Notes"
+msgstr "یادداشت‌های کیفیت"
+
+#: templates/procurement/goods_receipt_form.html:186
+msgid "Discrepancy Reason"
+msgstr "دلیل عدم تطابق"
+
+#: templates/procurement/goods_receipt_form.html:217
+msgid "Purchase Order Details"
+msgstr "جزئیات سفارش خرید"
+
+#: templates/procurement/goods_receipt_form.html:280
+msgid "Please select a purchase order first to add items."
+msgstr "لطفاً ابتدا یک سفارش خرید برای افزودن اقلام انتخاب کنید."
+
+#: templates/procurement/goods_receipt_form.html:307
+msgid "Rejected quantity cannot exceed received quantity"
+msgstr "تعداد رد شده نمی‌تواند از تعداد دریافت شده بیشتر باشد"
+
+#: templates/procurement/goods_receipt_list.html:4
+#: templates/procurement/goods_receipt_list.html:11
+msgid "Goods Receipts"
+msgstr "رسیدهای کالا"
+
+#: templates/procurement/goods_receipt_list.html:13
+msgid "New Goods Receipt"
+msgstr "رسید کالای جدید"
+
+#: templates/procurement/goods_receipt_list.html:24
+msgid "Receipt number, PO number, invoice..."
+msgstr "شماره رسید، شماره سفارش خرید، فاکتور..."
+
+#: templates/procurement/goods_receipt_list.html:40
+msgid "All Purchase Orders"
+msgstr "تمام سفارش‌های خرید"
+
+#: templates/procurement/goods_receipt_list.html:49
+#: templates/procurement/goods_receipt_list.html:86
+msgid "Discrepancy"
+msgstr "عدم تطابق"
+
+#: templates/procurement/goods_receipt_list.html:51
+msgid "All"
+msgstr "همه"
+
+#: templates/procurement/goods_receipt_list.html:53
+msgid "Has Discrepancy"
+msgstr "دارای عدم تطابق"
+
+#: templates/procurement/goods_receipt_list.html:56
+msgid "No Discrepancy"
+msgstr "بدون عدم تطابق"
+
+#: templates/procurement/goods_receipt_list.html:65
+msgid "Clear"
+msgstr "پاک کردن"
+
+#: templates/procurement/goods_receipt_list.html:122
+msgid "Has discrepancy"
+msgstr "دارای عدم تطابق"
+
+#: templates/procurement/goods_receipt_list.html:125
+msgid "No discrepancy"
+msgstr "بدون عدم تطابق"
+
+#: templates/procurement/goods_receipt_list.html:131
+msgid "View Details"
+msgstr "مشاهده جزئیات"
+
+#: templates/procurement/goods_receipt_list.html:150
+msgid "Goods receipts pagination"
+msgstr "صفحه‌بندی رسیدهای کالا"
+
+#: templates/procurement/goods_receipt_list.html:155
+msgid "First"
+msgstr "اول"
+
+#: templates/procurement/goods_receipt_list.html:167
+msgid "Page"
+msgstr "صفحه"
+
+#: templates/procurement/goods_receipt_list.html:179
+msgid "Last"
+msgstr "آخر"
+
+#: templates/procurement/goods_receipt_list.html:189
+msgid "No goods receipts found"
+msgstr "رسید کالایی یافت نشد"
+
+#: templates/procurement/goods_receipt_list.html:190
+msgid "Create your first goods receipt to track received shipments."
+msgstr "اولین رسید کالای خود را برای پیگیری محموله‌های دریافتی ایجاد کنید."
+
+#: templates/reporting/prebuilt_report.html:12
+msgid "Back to Reports"
+msgstr "بازگشت به گزارش‌ها"
+
+#: templates/reporting/prebuilt_report.html:34
+#: templates/reporting/report_execute.html:103
+msgid "Report Parameters"
+msgstr "پارامترهای گزارش"
+
+#: templates/reporting/prebuilt_report.html:83
+msgid "Select..."
+msgstr "انتخاب..."
+
+#: templates/reporting/prebuilt_report.html:106
+#: templates/reporting/report_execute.html:182
+msgid "Output Format"
+msgstr "قالب خروجی"
+
+#: templates/reporting/prebuilt_report.html:122
+#: templates/reporting/report_execute.html:201
+msgid "Email Recipients"
+msgstr "گیرندگان ایمیل"
+
+#: templates/reporting/prebuilt_report.html:122
+msgid "optional"
+msgstr "اختیاری"
+
+#: templates/reporting/prebuilt_report.html:127
+#: templates/reporting/report_execute.html:207
+msgid "Enter email addresses separated by commas"
+msgstr "آدرس‌های ایمیل را با کاما جدا کنید"
+
+#: templates/reporting/prebuilt_report.html:130
+msgid "Leave empty to download directly"
+msgstr "برای دانلود مستقیم خالی بگذارید"
+
+#: templates/reporting/prebuilt_report.html:138
+msgid "Generate Report"
+msgstr "تولید گزارش"
+
+#: templates/reporting/prebuilt_report.html:149
+#: templates/reporting/report_execute.html:53
+msgid "Report Information"
+msgstr "اطلاعات گزارش"
+
+#: templates/reporting/prebuilt_report.html:155
+#: templates/reporting/report_execute.html:70
+msgid "Category"
+msgstr "دسته‌بندی"
+
+#: templates/reporting/prebuilt_report.html:164
+msgid "Available Formats"
+msgstr "قالب‌های موجود"
+
+#: templates/reporting/prebuilt_report.html:179
+msgid "Parameters"
+msgstr "پارامترها"
+
+#: templates/reporting/prebuilt_report.html:182
+msgid "parameter(s)"
+msgstr "پارامتر(ها)"
+
+#: templates/reporting/prebuilt_reports.html:4
+#: templates/reporting/prebuilt_reports.html:10
+msgid "Pre-built Reports"
+msgstr "گزارش‌های از پیش ساخته شده"
+
+#: templates/reporting/prebuilt_reports.html:13
+msgid "Ready-to-use reports for common business analysis needs"
+msgstr "گزارش‌های آماده برای نیازهای تحلیل کسب‌وکار رایج"
+
+#: templates/reporting/prebuilt_reports.html:48
+msgid "Run Report"
+msgstr "اجرای گزارش"
+
+#: templates/reporting/report_execute.html:4
+#: templates/reporting/report_execute.html:42
+#: templates/reporting/report_execute.html:225
+msgid "Execute Report"
+msgstr "اجرای گزارش"
+
+#: templates/reporting/report_execute.html:32
+msgid "Execute"
+msgstr "اجرا"
+
+#: templates/reporting/report_execute.html:75
+msgid "Output Formats"
+msgstr "قالب‌های خروجی"
+
+#: templates/reporting/report_execute.html:93
+msgid "Execution Parameters"
+msgstr "پارامترهای اجرا"
+
+#: templates/reporting/report_execute.html:149
+msgid "Enable"
+msgstr "فعال کردن"
+
+#: templates/reporting/report_execute.html:159
+msgid "Select an option"
+msgstr "یک گزینه انتخاب کنید"
+
+#: templates/reporting/report_execute.html:193
+msgid "Choose the format for the generated report"
+msgstr "قالب را برای گزارش تولید شده انتخاب کنید"
+
+#: templates/reporting/report_execute.html:201
+msgid "Optional"
+msgstr "اختیاری"
+
+#: templates/reporting/report_execute.html:210
+
+#: templates/reporting/report_execute.html:239
+msgid "Execution Information"
+msgstr "اطلاعات اجرا"
+
+#: templates/reporting/report_execute.html:243
+msgid "Report execution may take several minutes for large datasets"
+msgstr "اجرای گزارش ممکن است برای مجموعه داده‌های بزرگ چند دقیقه طول بکشد"
+
+#: templates/reporting/report_execute.html:244
+msgid "You will be notified when the report is ready"
+msgstr "هنگامی که گزارش آماده شد به شما اطلاع داده می‌شود"
+
+#: templates/reporting/report_execute.html:245
+msgid "View All →"
+msgstr "مشاهده همه ←"
+
+msgid "REPORTS"
+msgstr "گزارش‌ها"
+
+msgid "Balance Sheet, Income Statement, Cash Flow, Trial Balance with PDF/Excel export"
+msgstr "ترازنامه، صورت سود و زیان، جریان وجوه نقد، تراز آزمایشی با خروجی PDF/Excel"
+
+msgid "ACCOUNTS"
+msgstr "حساب‌ها"
+
+msgid "Manage account structure, view balances, Assets, Liabilities, Equity, Revenue, Expenses"
+msgstr "مدیریت ساختار حساب‌ها، مشاهده موجودی، دارایی‌ها، بدهی‌ها، سرمایه، درآمد، هزینه‌ها"
+
+msgid "ENTRIES"
+msgstr "ثبت‌ها"
+
+msgid "View and manage all journal entries, automatic double-entry bookkeeping transactions"
+msgstr "مشاهده و مدیریت تمام ثبت‌های روزنامه، تراکنش‌های خودکار دفترداری دوطرفه"
+
+msgid "LEDGER"
+msgstr "دفتر کل"
+
+msgid "Complete transaction history, account movements, and audit trail for all entries"
+msgstr "تاریخچه کامل تراکنش‌ها، حرکت‌های حساب و ردیابی حسابرسی برای همه ثبت‌ها"
+
+msgid "PAYABLES"
+msgstr "پرداختنی‌ها"
+
+msgid "Manage supplier bills, track payments, aging reports, and outstanding payables"
+msgstr "مدیریت صورتحساب‌های تامین‌کننده، پیگیری پرداخت‌ها، گزارش‌های قدمت و پرداختنی‌های معوق"
+
+msgid "SUPPLIERS"
+msgstr "تامین‌کنندگان"
+
+msgid "View supplier accounting details, statements, and payment history"
+msgstr "مشاهده جزئیات حسابداری تامین‌کننده، صورت‌حساب‌ها و تاریخچه پرداخت"
+
+msgid "INVOICES"
+msgstr "فاکتورها"
+
+msgid "Manage customer invoices, track payments, aging reports, and credit memos"
+msgstr "مدیریت فاکتورهای مشتری، پیگیری پرداخت‌ها، گزارش‌های قدمت و یادداشت‌های اعتباری"
+
+msgid "CUSTOMERS"
+msgstr "مشتریان"
+
+msgid "View customer accounting details, invoices, statements, and credit limits"
+msgstr "مشاهده جزئیات حسابداری مشتری، فاکتورها، صورت‌حساب‌ها و محدودیت‌های اعتباری"
+
+msgid "RECEIVABLES"
+msgstr "دریافتنی‌ها"
+
+msgid "Track customer invoices, payments due, and manage outstanding receivables"
+msgstr "پیگیری فاکتورهای مشتری، پرداخت‌های سررسید و مدیریت دریافتنی‌های معوق"
+
+msgid "Manage bank accounts, track balances, reconciliation status, and transactions"
+msgstr "مدیریت حساب‌های بانکی، پیگیری موجودی، وضعیت تطبیق و تراکنش‌ها"
+
+msgid "BANKING"
+msgstr "بانکداری"
+
+msgid "Match bank statements with ledger entries, reconcile accounts automatically"
+msgstr "تطبیق صورت‌حساب‌های بانکی با ثبت‌های دفتر کل، تطبیق خودکار حساب‌ها"
+
+msgid "Manage fixed assets register, track depreciation, asset disposal, and book values"
+msgstr "مدیریت ثبت دارایی‌های ثابت، پیگیری استهلاک، واگذاری دارایی و ارزش دفتری"
+
+msgid "View projected depreciation for all assets, export to PDF/Excel for planning"
+msgstr "مشاهده استهلاک پیش‌بینی شده برای همه دارایی‌ها، خروجی به PDF/Excel برای برنامه‌ریزی"
+
+msgid "SETTINGS"
+msgstr "تنظیمات"
+
+msgid "Manage fiscal year, accounting periods, currencies, and system preferences"
+msgstr "مدیریت سال مالی، دوره‌های حسابداری، ارزها و تنظیمات سیستم"
+
+msgid "All financial transactions are automatically recorded using double-entry bookkeeping. Data is synchronized in real-time from sales, purchases, and expenses."
+msgstr "تمام تراکنش‌های مالی به صورت خودکار با استفاده از دفترداری دوطرفه ثبت می‌شوند. داده‌ها در زمان واقعی از فروش، خرید و هزینه‌ها همگام‌سازی می‌شوند."
+
+msgid "Check our documentation or contact support for assistance with accounting features."
+msgstr "مستندات ما را بررسی کنید یا برای کمک در ویژگی‌های حسابداری با پشتیبانی تماس بگیرید."
+
+msgid "SKU, name, serial, barcode..."
+msgstr "شناسه، نام، سریال، بارکد..."
+
+msgid "Name A-Z"
+msgstr "نام الف-ی"
+
+msgid "Name Z-A"
+msgstr "نام ی-الف"
+
+msgid "SKU A-Z"
+msgstr "شناسه الف-ی"
+
+msgid "Price High-Low"
+msgstr "قیمت بالا-پایین"
+
+msgid "Price Low-High"
+msgstr "قیمت پایین-بالا"
+
+msgid "Stock High-Low"
+msgstr "موجودی بالا-پایین"
+
+msgid "Stock Low-High"
+msgstr "موجودی پایین-بالا"
+
+msgid "Get started by adding your first inventory item."
+msgstr "با افزودن اولین مورد موجودی خود شروع کنید."
+
+msgid "Store"
+msgstr "فروشگاه"
+
+msgid "Price Range"
+msgstr "محدوده قیمت"
+
+msgid "Material"
+msgstr "جنس"
+
+msgid "Cart (0)"
+msgstr "سبد خرید (0)"
+
+msgid "Search customer..."
+msgstr "جستجوی مشتری..."
+
+msgid "Current"
+msgstr "فعلی"
+
+msgid "Payment"
+msgstr "پرداخت"
+
+msgid "Order Summary"
+msgstr "خلاصه سفارش"
+
+msgid "Tax (10%)"
+msgstr "مالیات (10%)"
+
+msgid "Manage your customer relationships"
+msgstr "مدیریت روابط مشتریان خود"
+
+msgid "Search by name, phone, email, or customer number..."
+msgstr "جستجو بر اساس نام، تلفن، ایمیل یا شماره مشتری..."
+
+msgid "All Tiers"
+msgstr "همه سطوح"
+
+msgid "Tag"
+msgstr "برچسب"
+
+msgid "All Tags"
+msgstr "همه برچسب‌ها"
+
+msgid "Highest Spending"
+msgstr "بیشترین خرج"
+
+msgid "Lowest Spending"
+msgstr "کمترین خرج"
+
+msgid "Most Points"
+msgstr "بیشترین امتیاز"
+
+msgid "Name (A-Z)"
+msgstr "نام (الف-ی)"
+
+msgid "Name (Z-A)"
+msgstr "نام (ی-الف)"
+
+msgid "No customers found"
+msgstr "هیچ مشتری یافت نشد"
+
+msgid "Get started by adding your first customer"
+msgstr "با افزودن اولین مشتری خود شروع کنید"
+
+
+#: templates/reporting/report_execute.html:246
+msgid "Otherwise, you can download the report from the execution history"
+msgstr "در غیر این صورت، می‌توانید گزارش را از تاریخچه اجرا دانلود کنید"
+
+#: tests/test_translation_infrastructure.py:122
+#: tests/test_translation_infrastructure.py:130
+#, python-format
+msgid "You have %(count)d item."
+msgid_plural "You have %(count)d items."
+msgstr[0] ""
+msgstr[1] ""
+msgid "Accounting & Finance"
+msgstr "حسابداری و امور مالی"
+msgid "View Reports"
+msgstr "مشاهده گزارش‌ها"
+msgid "Export"
+msgstr "خروجی"
+msgid "Total Revenue"
+msgstr "درآمد کل"
+msgid "Total Expenses"
+msgstr "هزینه‌های کل"
+msgid "Net Income"
+msgstr "درآمد خالص"
+msgid "Total Assets"
+msgstr "دارایی‌های کل"
+msgid "vs last period"
+msgstr "در مقایسه با دوره قبل"
+msgid "profit margin"
+msgstr "حاشیه سود"
+msgid "liabilities"
+msgstr "بدهی‌ها"
+msgid "Accounting Modules"
+msgstr "ماژول‌های حسابداری"
+msgid "View All"
+msgstr "مشاهده همه"
+msgid "Financial Reports"
+msgstr "گزارش‌های مالی"
+msgid "Balance Sheet"
+msgstr "ترازنامه"
+msgid "Income Statement"
+msgstr "صورت سود و زیان"
+msgid "Cash Flow"
+msgstr "جریان وجه نقد"
+msgid "Trial Balance"
+msgstr "ترازآزمایشی"
+msgid "with PDF/Excel export"
+msgstr "با امکان خروجی PDF/Excel"
+msgid "Open Reports"
+msgstr "گزارش‌ها"
+msgid "Chart of Accounts"
+msgstr "صورت حساب‌ها"
+msgid "Manage account structure"
+msgstr "مدیریت ساختار حساب‌ها"
+msgid "view balances"
+msgstr "مشاهده مانده‌ها"
+msgid "Assets"
+msgstr "دارایی‌ها"
+msgid "Liabilities"
+msgstr "بدهی‌ها"
+msgid "Equity"
+msgstr "حقوق صاحبان سهام"
+msgid "Revenue"
+msgstr "درآمد"
+msgid "Expenses"
+msgstr "هزینه‌ها"
+msgid "Manage Accounts"
+msgstr "مدیریت حساب‌ها"
+msgid "Journal Entries"
+msgstr "ثبت‌های روزنامه"
+msgid "View and manage all journal entries"
+msgstr "مشاهده و مدیریت همه ثبت‌های روزنامه"
+msgid "automatic double-entry bookkeeping transactions"
+msgstr "تراکنش‌های خودکار دفترداری دوطرفه"
+msgid "View Entries"
+msgstr "مشاهده ثبت‌ها"
+msgid "General Ledger"
+msgstr "دفتر کل"
+msgid "Complete transaction history"
+msgstr "تاریخچه کامل تراکنش‌ها"
+msgid "account movements"
+msgstr "جابجایی‌های حساب"
+msgid "audit trail for all entries"
+msgstr "ردیاب حسابرسی برای همه ثبت‌ها"
+msgid "View Ledger"
+msgstr "مشاهده دفتر کل"
+msgid "Bills & Payables"
+msgstr "قبوض و حساب‌های پرداختنی"
+msgid "Manage supplier bills"
+msgstr "مدیریت قبوض تأمین‌کنندگان"
+msgid "track payments"
+msgstr "پیگیری پرداخت‌ها"
+msgid "aging reports"
+msgstr "گزارش‌های سنی"
+msgid "outstanding payables"
+msgstr "حساب‌های پرداختنی معوق"
+msgid "Manage Bills"
+msgstr "مدیریت قبوض"
+msgid "Suppliers"
+msgstr "تأمین‌کنندگان"
+msgid "View supplier accounting details"
+msgstr "مشاهده جزئیات حسابداری تأمین‌کننده"
+msgid "statements"
+msgstr "صورت‌حساب‌ها"
+msgid "payment history"
+msgstr "تاریخچه پرداخت‌ها"
+msgid "View Suppliers"
+msgstr "مشاهده تأمین‌کنندگان"
+msgid "Invoices & Receivables"
+msgstr "فاکتورها و حساب‌های دریافتنی"
+msgid "Manage customer invoices"
+msgstr "مدیریت فاکتورهای مشتریان"
+msgid "credit memos"
+msgstr "یادداشت‌های اعتباری"
+msgid "Manage Invoices"
+msgstr "مدیریت فاکتورها"
+msgid "View customer accounting details"
+msgstr "مشاهده جزئیات حسابداری مشتری"
+msgid "invoices"
+msgstr "فاکتورها"
+msgid "credit limits"
+msgstr "محدودیت‌های اعتباری"
+msgid "View Customers"
+msgstr "مشاهده مشتریان"
+msgid "Accounts Receivable"
+msgstr "حساب‌های دریافتنی"
+msgid "Track customer invoices"
+msgstr "پیگیری فاکتورهای مشتریان"
+msgid "payments due"
+msgstr "پرداخت‌های سررسید"
+msgid "manage outstanding receivables"
+msgstr "مدیریت دریافتنی‌های معوق"
+msgid "Manage Receivables"
+msgstr "مدیریت دریافتنی‌ها"
+msgid "Bank Accounts"
+msgstr "حساب‌های بانکی"
+msgid "Manage bank accounts"
+msgstr "مدیریت حساب‌های بانکی"
+msgid "track balances"
+msgstr "پیگیری مانده‌ها"
+msgid "reconciliation status"
+msgstr "وضعیت تطبیق"
+msgid "transactions"
+msgstr "تراکنش"
+msgid "Bank Reconciliation"
+msgstr "تطبیق بانکی"
+msgid "Match bank statements with ledger entries"
+msgstr "تطبیق صورت‌حساب‌های بانکی با ثبت‌های دفتر"
+msgid "reconcile accounts automatically"
+msgstr "تطبیق خودکار حساب‌ها"
+msgid "Reconcile Accounts"
+msgstr "تطبیق حساب‌ها"
+msgid "Fixed Assets"
+msgstr "دارایی‌های ثابت"
+msgid "Fixed Assets Register"
+msgstr "ثبت دارایی‌های ثابت"
+msgid "Manage fixed assets register"
+msgstr "مدیریت ثبت دارایی‌های ثابت"
+msgid "track depreciation"
+msgstr "پیگیری استهلاک"
+msgid "asset disposal"
+msgstr "واگذاری دارایی"
+msgid "book values"
+msgstr "ارزش دفتری"
+msgid "Manage Assets"
+msgstr "مدیریت دارایی‌ها"
+msgid "Register New Asset"
+msgstr "ثبت دارایی جدید"
+msgid "Total Acquisition Cost"
+msgstr "هزینه خرید کل"
+msgid "Accumulated Depreciation"
+msgstr "استهلاک انباشته"
+msgid "Net Book Value"
+msgstr "ارزش دفتری خالص"
+msgid "Depreciation Schedule"
+msgstr "جدول استهلاک"
+msgid "View projected depreciation for all assets"
+msgstr "مشاهده استهلاک پیش‌بینی شده برای همه دارایی‌ها"
+msgid "export to PDF/Excel for planning"
+msgstr "خروجی PDF/Excel برای برنامه‌ریزی"
+msgid "View Schedule"
+msgstr "مشاهده جدول"
+msgid "Configuration"
+msgstr "تنظیمات"
+msgid "Manage fiscal year"
+msgstr "مدیریت سال مالی"
+msgid "accounting periods"
+msgstr "دوره‌های حسابداری"
+msgid "currencies"
+msgstr "ارزها"
+msgid "system preferences"
+msgstr "تنظیمات سیستم"
+msgid "Configure"
+msgstr "پیکربندی"
+msgid "Current Period Overview"
+msgstr "نمای کلی دوره جاری"
+msgid "Fiscal Period"
+msgstr "دوره مالی"
+msgid "Accounting Status"
+msgstr "وضعیت حسابداری"
+msgid "Active & Synchronized"
+msgstr "فعال و همگام‌سازی شده"
+msgid "All financial transactions are automatically recorded"
+msgstr "همه تراکنش‌های مالی به صورت خودکار ثبت می‌شوند"
+msgid "using double-entry bookkeeping"
+msgstr "با استفاده از دفترداری دوطرفه"
+msgid "Data is synchronized in real-time"
+msgstr "داده‌ها به صورت لحظه‌ای همگام‌سازی می‌شوند"
+msgid "from sales, purchases, and expenses"
+msgstr "از فروش، خرید و هزینه‌ها"
+msgid "Auto Journal Entries"
+msgstr "ثبت‌های روزنامه خودکار"
+msgid "Real-time Sync"
+msgstr "همگام‌سازی لحظه‌ای"
+msgid "Audit Trail"
+msgstr "ردیابی ممیزی"
+msgid "Add Account"
+msgstr "افزودن حساب"
+msgid "Export Data"
+msgstr "خروجی داده‌ها"
+msgid "Need Help?"
+msgstr "نیاز به کمک؟"
+msgid "Check our documentation"
+msgstr "مستندات ما را بررسی کنید"
+msgid "or contact support"
+msgstr "یا با پشتیبانی تماس بگیرید"
+msgid "for assistance with accounting features"
+msgstr "برای کمک در ویژگی‌های حسابداری"
+msgid "Accounting System Not Configured"
+msgstr "سیستم حسابداری پیکربندی نشده است"
+msgid "Your accounting system needs to be initialized"
+msgstr "سیستم حسابداری شما نیاز به راه‌اندازی اولیه دارد"
+msgid "before you can access financial features"
+msgstr "قبل از دسترسی به ویژگی‌های مالی"
+msgid "This one-time setup will create your chart of accounts"
+msgstr "این راه‌اندازی یکبار انجام خواهد شد و دفتر حساب‌های شما را ایجاد می‌کند"
+msgid "and configure the double-entry accounting system"
+msgstr "و سیستم حسابداری دوطرفه را پیکربندی می‌کند"
+msgid "Initialize Accounting System"
+msgstr "راه‌اندازی سیستم حسابداری"
+msgid "Learn More"
+msgstr "بیشتر بدانید"
+msgid "Toggle theme"
+msgstr "تغییر پوسته"
+msgid "Skip to main content"
+msgstr "رفتن به محتوای اصلی"
+msgid "Skip to navigation"
+msgstr "رفتن به ناوبری"
+msgid "Main navigation"
+msgstr "ناوبری اصلی"
+msgid "Main content"
+msgstr "محتوای اصلی"
+msgid "Breadcrumb"
+msgstr "مسیر صفحه"
+msgid "Create"
+msgstr "ایجاد"
+msgid "Save"
+msgstr "ذخیره"
+msgid "Sort"
+msgstr "مرتب‌سازی"
+msgid "Close"
+msgstr "بستن"
+msgid "Confirm"
+msgstr "تایید"
+msgid "Back"
+msgstr "بازگشت"
+msgid "Continue"
+msgstr "ادامه"
+msgid "Published"
+msgstr "منتشر شده"
+msgid "Tomorrow"
+msgstr "فردا"
+msgid "This Week"
+msgstr "این هفته"
+msgid "This Month"
+msgstr "این ماه"
+msgid "This Year"
+msgstr "امسال"
+msgid "Custom Range"
+msgstr "بازه سفارشی"
+msgid "Info"
+msgstr "اطلاعات"
+msgid "Loading"
+msgstr "در حال بارگذاری"
+msgid "Please wait"
+msgstr "لطفا صبر کنید"
+msgid "No data available"
+msgstr "داده‌ای موجود نیست"
+msgid "No results found"
+msgstr "نتیجه‌ای یافت نشد"
+msgid "Are you sure?"
+msgstr "آیا مطمئن هستید؟"
+msgid "This action cannot be undone"
+msgstr "این عملیات قابل بازگشت نیست"
+msgid "Asset Name"
+msgstr "نام دارایی"
+msgid "Asset Number"
+msgstr "شماره دارایی"
+msgid "Acquisition Date"
+msgstr "تاریخ خرید"
+msgid "Acquisition Cost"
+msgstr "هزینه خرید"
+msgid "Salvage Value"
+msgstr "ارزش باقیمانده"
+msgid "Useful Life (Years)"
+msgstr "عمر مفید (سال)"
+msgid "Depreciation Method"
+msgstr "روش استهلاک"
+msgid "Straight Line"
+msgstr "خط مستقیم"
+msgid "Declining Balance"
+msgstr "مانده نزولی"
+msgid "Units of Production"
+msgstr "واحدهای تولید"
+msgid "Equipment"
+msgstr "تجهیزات"
+msgid "Fixtures"
+msgstr "وسایل ثابت"
+msgid "Furniture"
+msgstr "مبلمان"
+msgid "Vehicles"
+msgstr "وسایل نقلیه"
+msgid "Buildings"
+msgstr "ساختمان‌ها"
+msgid "Computers & IT Equipment"
+msgstr "کامپیوتر و تجهیزات فناوری اطلاعات"
+msgid "Tools"
+msgstr "ابزار"
+msgid "Other"
+msgstr "سایر"
+msgid "Disposed"
+msgstr "واگذار شده"
+msgid "Fully Depreciated"
+msgstr "کاملاً مستهلک شده"
+msgid "Disposal Date"
+msgstr "تاریخ واگذاری"
+msgid "Disposal Method"
+msgstr "روش واگذاری"
+msgid "Disposal Proceeds"
+msgstr "عواید واگذاری"
+msgid "Book Value at Disposal"
+msgstr "ارزش دفتری در هنگام واگذاری"
+msgid "Gain/Loss on Disposal"
+msgstr "سود/زیان واگذاری"
+
+msgid "Inventory Value"
+msgstr "ارزش موجودی"
+msgid "Stock Alerts"
+msgstr "هشدارهای موجودی"
+msgid "Pending Orders"
+msgstr "سفارش‌های در انتظار"
+msgid "Recent Sales"
+msgstr "فروش‌های اخیر"
+msgid "New Customers"
+msgstr "مشتریان جدید"
+msgid "Top Products"
+msgstr "محصولات برتر"
+msgid "Sales Trend"
+msgstr "روند فروش"
+msgid "No recent sales"
+msgstr "فروش اخیری وجود ندارد"
+msgid "No new customers"
+msgstr "مشتری جدیدی وجود ندارد"
+msgid "items"
+msgstr "اقلام"
+msgid "qty"
+msgstr "تعداد"
+msgid "low"
+msgstr "کم"
+msgid "out"
+msgstr "تمام شده"
+msgid "overdue"
+msgstr "معوق"
+msgid "vs previous period"
+msgstr "در مقایسه با دوره قبل"
+msgid "Increased by"
+msgstr "افزایش یافته به میزان"
+msgid "Decreased by"
+msgstr "کاهش یافته به میزان"
+msgid "Add Product"
+msgstr "افزودن محصول"
+msgid "Product Code"
+msgstr "کد محصول"
+msgid "Subcategory"
+msgstr "زیر دسته"
+msgid "Barcode"
+msgstr "بارکد"
+msgid "Stock Quantity"
+msgstr "موجودی انبار"
+msgid "Reorder Level"
+msgstr "سطح سفارش مجدد"
+msgid "Cost Price"
+msgstr "قیمت تمام شده"
+msgid "Selling Price"
+msgstr "قیمت فروش"
+msgid "Discount"
+msgstr "تخفیف"
+msgid "Tax Rate"
+msgstr "نرخ مالیات"
+msgid "Brand"
+msgstr "برند"
+msgid "Dimensions"
+msgstr "ابعاد"
+msgid "Metal Type"
+msgstr "نوع فلز"
+msgid "Purity"
+msgstr "عیار"
+msgid "Gemstone"
+msgstr "سنگ قیمتی"
+msgid "Carat"
+msgstr "قیراط"
+msgid "Size"
+msgstr "سایز"
+msgid "Color"
+msgstr "رنگ"
+msgid "Clarity"
+msgstr "شفافیت"
+msgid "Cut"
+msgstr "برش"
+msgid "Certificate"
+msgstr "گواهی"
+msgid "Serial Number"
+msgstr "شماره سریال"
+msgid "In Stock"
+msgstr "موجود در انبار"
+msgid "Out of Stock"
+msgstr "ناموجود"
+msgid "Low Stock"
+msgstr "موجودی کم"
+msgid "Discontinued"
+msgstr "متوقف شده"
+msgid "Edit Product"
+msgstr "ویرایش محصول"
+msgid "Delete Product"
+msgstr "حذف محصول"
+msgid "Stock History"
+msgstr "تاریخچه موجودی"
+msgid "Adjust Stock"
+msgstr "تنظیم موجودی"
+msgid "Add Stock"
+msgstr "افزودن موجودی"
+msgid "Remove Stock"
+msgstr "کاهش موجودی"
+msgid "Transfer Stock"
+msgstr "انتقال موجودی"
+msgid "Stock Take"
+msgstr "شمارش موجودی"
+msgid "Batch Number"
+msgstr "شماره دسته"
+msgid "Expiry Date"
+msgstr "تاریخ انقضا"
+msgid "Manufacturing Date"
+msgstr "تاریخ تولید"
+msgid "Warranty Period"
+msgstr "دوره گارانتی"
+msgid "Return Policy"
+msgstr "سیاست بازگشت"
+msgid "Images"
+msgstr "تصاویر"
+msgid "Upload Image"
+msgstr "بارگذاری تصویر"
+msgid "Product Images"
+msgstr "تصاویر محصول"
+msgid "Thumbnail"
+msgstr "تصویر کوچک"
+msgid "Gallery"
+msgstr "گالری"
+msgid "Specifications"
+msgstr "مشخصات فنی"
+msgid "Materials"
+msgstr "مواد"
+msgid "Care Instructions"
+msgstr "دستورالعمل نگهداری"
+msgid "Tags"
+msgstr "برچسب‌ها"
+msgid "Internal Notes"
+msgstr "یادداشت‌های داخلی"
+msgid "Customer Notes"
+msgstr "یادداشت‌های مشتری"
+msgid "Point of Sale"
+msgstr "صندوق فروش"
+msgid "New Sale"
+msgstr "فروش جدید"
+msgid "Cart"
+msgstr "سبد خرید"
+msgid "Add to Cart"
+msgstr "افزودن به سبد"
+msgid "Remove from Cart"
+msgstr "حذف از سبد"
+msgid "Clear Cart"
+msgstr "پاک کردن سبد"
+msgid "Subtotal"
+msgstr "جمع جزء"
+msgid "Tax"
+msgstr "مالیات"
+msgid "Total"
+msgstr "جمع کل"
+msgid "Amount Paid"
+msgstr "مبلغ پرداختی"
+msgid "Change"
+msgstr "باقیمانده"
+msgid "Payment Method"
+msgstr "روش پرداخت"
+msgid "Cash"
+msgstr "نقدی"
+msgid "Card"
+msgstr "کارت"
+msgid "Credit"
+msgstr "بستانکار"
+msgid "Bank Transfer"
+msgstr "انتقال بانکی"
+msgid "Digital Wallet"
+msgstr "کیف پول دیجیتال"
+msgid "Complete Sale"
+msgstr "تکمیل فروش"
+msgid "Cancel Sale"
+msgstr "لغو فروش"
+msgid "Hold Sale"
+msgstr "نگه‌داری فروش"
+msgid "Resume Sale"
+msgstr "ادامه فروش"
+msgid "Print Receipt"
+msgstr "چاپ رسید"
+msgid "Email Receipt"
+msgstr "ارسال رسید به ایمیل"
+msgid "Customer Info"
+msgstr "اطلاعات مشتری"
+msgid "Select Customer"
+msgstr "انتخاب مشتری"
+msgid "Add Customer"
+msgstr "افزودن مشتری"
+msgid "Apply Discount"
+msgstr "اعمال تخفیف"
+msgid "Discount Type"
+msgstr "نوع تخفیف"
+msgid "Percentage"
+msgstr "درصدی"
+msgid "Fixed Amount"
+msgstr "مبلغ ثابت"
+msgid "Discount Reason"
+msgstr "دلیل تخفیف"
+msgid "Unit"
+msgstr "واحد"
+msgid "Line Total"
+msgstr "جمع ردیف"
+msgid "Item Discount"
+msgstr "تخفیف کالا"
+msgid "Split Payment"
+msgstr "پرداخت تقسیمی"
+msgid "Partial Payment"
+msgstr "پرداخت جزئی"
+msgid "Installments"
+msgstr "اقساط"
+msgid "Payment Terms"
+msgstr "شرایط پرداخت"
+msgid "Due Date"
+msgstr "تاریخ سررسید"
+msgid "Transaction ID"
+msgstr "شناسه تراکنش"
+msgid "Cashier"
+msgstr "صندوقدار"
+msgid "Terminal"
+msgstr "ترمینال"
+msgid "Session"
+msgstr "جلسه"
+msgid "Open Drawer"
+msgstr "باز کردن کشو"
+msgid "Close Drawer"
+msgstr "بستن کشو"
+msgid "Count Cash"
+msgstr "شمارش وجه نقد"
+msgid "End of Day"
+msgstr "پایان روز"
+msgid "Cash Report"
+msgstr "گزارش وجه نقد"
+msgid "Orders"
+msgstr "سفارش‌ها"
+msgid "Sales Report"
+msgstr "گزارش فروش"
+msgid "Order Details"
+msgstr "جزئیات سفارش"
+msgid "Order Status"
+msgstr "وضعیت سفارش"
+msgid "Processing"
+msgstr "در حال پردازش"
+msgid "Refunded"
+msgstr "بازگشت داده شده"
+msgid "On Hold"
+msgstr "در انتظار"
+msgid "Shipped"
+msgstr "ارسال شده"
+msgid "Delivery Date"
+msgstr "تاریخ تحویل"
+msgid "Shipping Address"
+msgstr "آدرس ارسال"
+msgid "Billing Address"
+msgstr "آدرس صورت‌حساب"
+msgid "Shipping Method"
+msgstr "روش ارسال"
+msgid "Shipping Cost"
+msgstr "هزینه ارسال"
+msgid "Order Notes"
+msgstr "یادداشت‌های سفارش"
+msgid "Sales Person"
+msgstr "فروشنده"
+msgid "Commission"
+msgstr "کمیسیون"
+msgid "Profit"
+msgstr "سود"
+msgid "Margin"
+msgstr "حاشیه سود"
+msgid "Cost of Goods"
+msgstr "بهای تمام شده کالا"
+msgid "Gross Profit"
+msgstr "سود ناخالص"
+msgid "Net Profit"
+msgstr "سود خالص"
+msgid "Return"
+msgstr "مرجوعی"
+msgid "Exchange"
+msgstr "تعویض"
+msgid "Refund"
+msgstr "بازپرداخت"
+msgid "Store Credit"
+msgstr "اعتبار فروشگاه"
+msgid "Void Transaction"
+msgstr "ابطال تراکنش"
+msgid "Customer List"
+msgstr "لیست مشتریان"
+msgid "Customer Details"
+msgstr "جزئیات مشتری"
+msgid "First Name"
+msgstr "نام"
+msgid "Last Name"
+msgstr "نام خانوادگی"
+msgid "Full Name"
+msgstr "نام کامل"
+msgid "Phone"
+msgstr "تلفن"
+msgid "Mobile"
+msgstr "موبایل"
+msgid "Address"
+msgstr "آدرس"
+msgid "City"
+msgstr "شهر"
+msgid "State"
+msgstr "استان"
+msgid "Country"
+msgstr "کشور"
+msgid "Postal Code"
+msgstr "کد پستی"
+msgid "Customer Type"
+msgstr "نوع مشتری"
+msgid "Regular"
+msgstr "عادی"
+msgid "Customer Group"
+msgstr "گروه مشتری"
+msgid "Loyalty Points"
+msgstr "امتیاز وفاداری"
+msgid "Credit Limit"
+msgstr "سقف اعتبار"
+msgid "Balance"
+msgstr "موجودی"
+msgid "Outstanding"
+msgstr "بدهی"
+msgid "Paid"
+msgstr "پرداخت شده"
+msgid "Unpaid"
+msgstr "پرداخت نشده"
+msgid "Purchase History"
+msgstr "تاریخچه خرید"
+msgid "Last Purchase"
+msgstr "آخرین خرید"
+msgid "Average Order Value"
+msgstr "میانگین ارزش سفارش"
+msgid "Lifetime Value"
+msgstr "ارزش طول عمر"
+msgid "Preferred Contact"
+msgstr "روش تماس ترجیحی"
+msgid "Marketing Consent"
+msgstr "رضایت بازاریابی"
+msgid "Newsletter"
+msgstr "خبرنامه"
+msgid "Birthday"
+msgstr "تاریخ تولد"
+msgid "Anniversary"
+msgstr "سالگرد"
+msgid "Referral Source"
+msgstr "منبع ارجاع"
+msgid "Customer Since"
+msgstr "مشتری از تاریخ"
+msgid "Verified"
+msgstr "تایید شده"
+msgid "Blocked"
+msgstr "مسدود شده"
+msgid "Analytics"
+msgstr "تحلیل‌ها"
+msgid "Summary"
+msgstr "خلاصه"
+msgid "Detailed Report"
+msgstr "گزارش تفصیلی"
+msgid "Export to Excel"
+msgstr "خروجی به اکسل"
+msgid "Export to PDF"
+msgstr "خروجی به PDF"
+msgid "Print"
+msgstr "چاپ"
+msgid "Date Range"
+msgstr "بازه زمانی"
+msgid "Apply Filter"
+msgstr "اعمال فیلتر"
+msgid "Clear Filter"
+msgstr "پاک کردن فیلتر"
+msgid "Sort By"
+msgstr "مرتب‌سازی بر اساس"
+msgid "Ascending"
+msgstr "صعودی"
+msgid "Descending"
+msgstr "نزولی"
+msgid "Group By"
+msgstr "گروه‌بندی بر اساس"
+msgid "Chart Type"
+msgstr "نوع نمودار"
+msgid "Line Chart"
+msgstr "نمودار خطی"
+msgid "Bar Chart"
+msgstr "نمودار میله‌ای"
+msgid "Pie Chart"
+msgstr "نمودار دایره‌ای"
+msgid "Table View"
+msgstr "نمای جدولی"
+msgid "Graph View"
+msgstr "نمای نمودار"
+msgid "Performance"
+msgstr "عملکرد"
+msgid "Metrics"
+msgstr "معیارها"
+msgid "KPI"
+msgstr "شاخص‌های کلیدی عملکرد"
+msgid "Target"
+msgstr "هدف"
+msgid "Actual"
+msgstr "واقعی"
+msgid "Variance"
+msgstr "واریانس"
+msgid "Trend"
+msgstr "روند"
+msgid "Forecast"
+msgstr "پیش‌بینی"
+msgid "Comparison"
+msgstr "مقایسه"
+msgid "Year over Year"
+msgstr "سال به سال"
+msgid "Month over Month"
+msgstr "ماه به ماه"
+msgid "Accounts"
+msgstr "حساب‌ها"
+msgid "Journal Entry"
+msgstr "سند حسابداری"
+msgid "Debit"
+msgstr "بدهکار"
+msgid "Accounts Payable"
+msgstr "حساب‌های پرداختنی"
+msgid "Cost of Sales"
+msgstr "بهای تمام شده فروش"
+msgid "Operating Expenses"
+msgstr "هزینه‌های عملیاتی"
+msgid "Financial Year"
+msgstr "سال مالی"
+msgid "Closing Date"
+msgstr "تاریخ بسته شدن"
+msgid "Opening Balance"
+msgstr "مانده اول دوره"
+msgid "Closing Balance"
+msgstr "مانده پایان دوره"
+msgid "Reconciliation"
+msgstr "تطبیق"
+msgid "Voucher"
+msgstr "سند"
+msgid "Payment Voucher"
+msgstr "سند پرداخت"
+msgid "Receipt Voucher"
+msgstr "سند دریافت"
+msgid "Transaction Type"
+msgstr "نوع تراکنش"
+msgid "Reference Number"
+msgstr "شماره مرجع"
+msgid "Narration"
+msgstr "شرح"
+msgid "Attachment"
+msgstr "پیوست"
+msgid "Approved"
+msgstr "تایید شده"
+msgid "Posted"
+msgstr "ثبت شده"
+msgid "Account Settings"
+msgstr "تنظیمات حساب"
+msgid "User Management"
+msgstr "مدیریت کاربران"
+msgid "Roles"
+msgstr "نقش‌ها"
+msgid "Permissions"
+msgstr "مجوزها"
+msgid "Change Password"
+msgstr "تغییر رمز عبور"
+msgid "Two Factor Authentication"
+msgstr "احراز هویت دو مرحله‌ای"
+msgid "Login History"
+msgstr "تاریخچه ورود"
+msgid "Activity Log"
+msgstr "گزارش فعالیت"
+msgid "Tax Settings"
+msgstr "تنظیمات مالیات"
+msgid "Language"
+msgstr "زبان"
+msgid "Time Zone"
+msgstr "منطقه زمانی"
+msgid "Date Format"
+msgstr "قالب تاریخ"
+msgid "Number Format"
+msgstr "قالب اعداد"
+msgid "Backup"
+msgstr "پشتیبان‌گیری"
+msgid "Restore"
+msgstr "بازیابی"
+msgid "Import"
+msgstr "ورودی"
+msgid "Integration"
+msgstr "یکپارچه‌سازی"
+msgid "API Keys"
+msgstr "کلیدهای API"
+msgid "Webhooks"
+msgstr "وب‌هوک‌ها"
+msgid "Add"
+msgstr "افزودن"
+msgid "Open"
+msgstr "باز کردن"
+msgid "Download"
+msgstr "دانلود"
+msgid "Upload"
+msgstr "بارگذاری"
+msgid "Select"
+msgstr "انتخاب"
+msgid "Select All"
+msgstr "انتخاب همه"
+msgid "Deselect All"
+msgstr "لغو انتخاب همه"
+msgid "Yes"
+msgstr "بله"
+msgid "No"
+msgstr "خیر"
+msgid "OK"
+msgstr "تایید"
+msgid "Apply"
+msgstr "اعمال"
+msgid "Reset"
+msgstr "بازنشانی"
+msgid "Reload"
+msgstr "بارگیری مجدد"
+msgid "Duplicate"
+msgstr "کپی"
+msgid "Archive"
+msgstr "بایگانی"
+msgid "Disable"
+msgstr "غیرفعال کردن"
+msgid "Activate"
+msgstr "فعال‌سازی"
+msgid "Deactivate"
+msgstr "غیرفعال‌سازی"
+msgid "Required"
+msgstr "الزامی"
+msgid "Invalid"
+msgstr "نامعتبر"
+msgid "Valid"
+msgstr "معتبر"
+msgid "Saving"
+msgstr "در حال ذخیره"
+msgid "Record saved successfully"
+msgstr "رکورد با موفقیت ذخیره شد"
+msgid "Record updated successfully"
+msgstr "رکورد با موفقیت به‌روزرسانی شد"
+msgid "Record deleted successfully"
+msgstr "رکورد با موفقیت حذف شد"
+msgid "Operation completed successfully"
+msgstr "عملیات با موفقیت انجام شد"
+msgid "Operation failed"
+msgstr "عملیات ناموفق بود"
+msgid "Please fill in all required fields"
+msgstr "لطفا تمام فیلدهای الزامی را پر کنید"
+msgid "Invalid input"
+msgstr "ورودی نامعتبر"
+msgid "Email is required"
+msgstr "ایمیل الزامی است"
+msgid "Phone is required"
+msgstr "تلفن الزامی است"
+msgid "Password is required"
+msgstr "رمز عبور الزامی است"
+msgid "Passwords do not match"
+msgstr "رمزهای عبور مطابقت ندارند"
+msgid "Invalid email format"
+msgstr "قالب ایمیل نامعتبر است"
+msgid "Field cannot be empty"
+msgstr "فیلد نمی‌تواند خالی باشد"
+msgid "Menu"
+msgstr "منو"
+msgid "Home"
+msgstr "خانه"
+msgid "Logout"
+msgstr "خروج"
+msgid "Login"
+msgstr "ورود"
+msgid "Register"
+msgstr "ثبت‌نام"
+msgid "Forgot Password"
+msgstr "فراموشی رمز عبور"
+msgid "Remember Me"
+msgstr "مرا به خاطر بسپار"
+msgid "New Password"
+msgstr "رمز عبور جدید"
+msgid "Current Password"
+msgstr "رمز عبور فعلی"
+msgid "Show"
+msgstr "نمایش"
+msgid "Hide"
+msgstr "مخفی کردن"
+msgid "Less"
+msgstr "کمتر"
+msgid "Expand"
+msgstr "گسترش"
+msgid "Collapse"
+msgstr "جمع کردن"
+msgid "Details"
+msgstr "جزئیات"
+msgid "Time"
+msgstr "زمان"
+msgid "Amount"
+msgstr "مبلغ"
+msgid "Options"
+msgstr "گزینه‌ها"
+msgid "Help"
+msgstr "راهنما"
+msgid "Support"
+msgstr "پشتیبانی"
+msgid "Documentation"
+msgstr "مستندات"
+msgid "About"
+msgstr "درباره"
+msgid "Version"
+msgstr "نسخه"
+msgid "Contact"
+msgstr "تماس"
+msgid "Privacy"
+msgstr "حریم خصوصی"
+msgid "Terms"
+msgstr "شرایط"
+msgid "Copyright"
+msgstr "حق نشر"
+msgid "All Rights Reserved"
+msgstr "تمامی حقوق محفوظ است"
+msgid "Text for action button (e.g., "View Order", "Update Inventory")"
+msgstr "متن برای دکمه اقدام (مثلا "مشاهده سفارش"، "به‌روزرسانی موجودی")"
+msgid "Financial Overview"
+msgstr "نمای کلی مالی"
+msgid "Accounting Dashboard"
+msgstr "داشبورد حسابداری"
+msgid "Setup Accounting"
+msgstr "راه‌اندازی حسابداری"
+msgid "Click here to initialize the accounting system for your tenant"
+msgstr "برای راه‌اندازی سیستم حسابداری اینجا کلیک کنید"
+msgid "Initialize Now"
+msgstr "راه‌اندازی اکنون"
+msgid "View all accounts"
+msgstr "مشاهده تمام حساب‌ها"
+msgid "Record transactions"
+msgstr "ثبت تراکنش‌ها"
+msgid "View reports"
+msgstr "مشاهده گزارش‌ها"
+msgid "Reconcile accounts"
+msgstr "تطبیق حساب‌ها"
+msgid "Tax Management"
+msgstr "مدیریت مالیات"
+msgid "Manage taxes"
+msgstr "مدیریت مالیات‌ها"
+msgid "Manage assets"
+msgstr "مدیریت دارایی‌ها"
+msgid "Purchase Date"
+msgstr "تاریخ خرید"
+msgid "Purchase Price"
+msgstr "قیمت خرید"
+msgid "Useful Life"
+msgstr "عمر مفید"
+msgid "Current Value"
+msgstr "ارزش فعلی"
+msgid "Book Value"
+msgstr "ارزش دفتری"
+msgid "Gain/Loss"
+msgstr "سود/زیان"
+msgid "View Asset"
+msgstr "مشاهده دارایی"
+msgid "Dispose Asset"
+msgstr "واگذاری دارایی"
+msgid "Account Code"
+msgstr "کد حساب"
+msgid "Account Name"
+msgstr "نام حساب"
+msgid "Account Type"
+msgstr "نوع حساب"
+msgid "Parent Account"
+msgstr "حساب والد"
+msgid "Profit & Loss"
+msgstr "سود و زیان"
+msgid "Cash Flow Statement"
+msgstr "صورت جریان وجوه نقد"
+msgid "Subsidiary Ledger"
+msgstr "دفتر معین"
+msgid "Journal"
+msgstr "دفتر روزنامه"
+msgid "Entry Date"
+msgstr "تاریخ ثبت"
+msgid "Reference"
+msgstr "مرجع"
+msgid "Unposted"
+msgstr "ثبت نشده"
+msgid "Post Entry"
+msgstr "ثبت سند"
+msgid "Approve Entry"
+msgstr "تایید سند"
+msgid "Reverse Entry"
+msgstr "برگشت سند"
+msgid "Inventory Management"
+msgstr "مدیریت موجودی"
+msgid "Manage your jewelry inventory, track stock levels, and generate reports"
+msgstr "مدیریت موجودی جواهرات، پیگیری سطح موجودی و ایجاد گزارش"
+msgid "Total Quantity"
+msgstr "تعداد کل"
+msgid "Total Items"
+msgstr "کل اقلام"
+msgid "Categories"
+msgstr "دسته‌بندی‌ها"
+msgid "Filters"
+msgstr "فیلترها"
+msgid "All Categories"
+msgstr "تمام دسته‌بندی‌ها"
+msgid "All Branches"
+msgstr "تمام شعبات"
+msgid "All Karats"
+msgstr "تمام عیارها"
+msgid "All Status"
+msgstr "تمام وضعیت‌ها"
+msgid "Branch"
+msgstr "شعبه"
+msgid "Newest First"
+msgstr "جدیدترین"
+msgid "Oldest First"
+msgstr "قدیمی‌ترین"
+msgid "Price Low to High"
+msgstr "قیمت کم به زیاد"
+msgid "Price High to Low"
+msgstr "قیمت زیاد به کم"
+msgid "Stock Low to High"
+msgstr "موجودی کم به زیاد"
+msgid "Stock High to Low"
+msgstr "موجودی زیاد به کم"
+msgid "SKU, name, serial, barcode"
+msgstr "SKU، نام، سریال، بارکد"
+msgid "No inventory items found"
+msgstr "موجودی یافت نشد"
+msgid "Get started by adding your first inventory item"
+msgstr "با افزودن اولین مورد موجودی شروع کنید"
+msgid "Add Inventory Item"
+msgstr "افزودن مورد موجودی"
+msgid "Bulk Actions"
+msgstr "اقدامات گروهی"
+msgid "Transaction Dashboard"
+msgstr "داشبورد تراکنش"
+msgid "Manage sales and customer transactions efficiently"
+msgstr "مدیریت فروش و تراکنش‌های مشتری به‌طور کارآمد"
+msgid "CUSTOMER"
+msgstr "مشتری"
+msgid "Search customer"
+msgstr "جستجوی مشتری"
+msgid "TERMINAL"
+msgstr "ترمینال"
+msgid "Select Terminal"
+msgstr "انتخاب ترمینال"
+msgid "Not selected"
+msgstr "انتخاب نشده"
+msgid "CURRENT"
+msgstr "فعلی"
+msgid "PAYMENT"
+msgstr "پرداخت"
+msgid "ORDER SUMMARY"
+msgstr "خلاصه سفارش"
+msgid "Held Sales"
+msgstr "فروش‌های نگهداری شده"
+msgid "Reprint Receipt"
+msgstr "چاپ مجدد رسید"
+msgid "STORE"
+msgstr "فروشگاه"
+msgid "Jewelry POS"
+msgstr "صندوق فروش جواهرات"
+msgid "CATEGORIES"
+msgstr "دسته‌بندی‌ها"
+msgid "All Products"
+msgstr "تمام محصولات"
+msgid "Rings"
+msgstr "انگشترها"
+msgid "Necklaces"
+msgstr "گردنبندها"
+msgid "Bracelets"
+msgstr "دستبندها"
+msgid "Earrings"
+msgstr "گوشواره‌ها"
+msgid "FILTERS"
+msgstr "فیلترها"
+msgid "PRICE RANGE"
+msgstr "محدوده قیمت"
+msgid "MATERIAL"
+msgstr "جنس"
+msgid "All Materials"
+msgstr "تمام مواد"
+msgid "Recent Items"
+msgstr "اقلام اخیر"
+msgid "Your cart is empty"
+msgstr "سبد خرید شما خالی است"
+msgid "Add products to begin a new sale"
+msgstr "محصولات را برای شروع فروش جدید اضافه کنید"
+msgid "Search product name, SKU, or scan barcode"
+msgstr "نام محصول، SKU یا اسکن بارکد را جستجو کنید"
+msgid "Add New Customer"
+msgstr "افزودن مشتری جدید"
+msgid "Create a new customer profile"
+msgstr "ایجاد پروفایل مشتری جدید"
+msgid "Personal Information"
+msgstr "اطلاعات شخصی"
+msgid "Gender"
+msgstr "جنسیت"
+msgid "Select Gender"
+msgstr "انتخاب جنسیت"
+msgid "Date of Birth"
+msgstr "تاریخ تولد"
+msgid "Contact Information"
+msgstr "اطلاعات تماس"
+msgid "Alternate Phone"
+msgstr "تلفن جایگزین"
+msgid "Address Line 1"
+msgstr "آدرس خط ۱"
+msgid "Address Line 2"
+msgstr "آدرس خط ۲"
+msgid "State/Province"
+msgstr "استان"
+msgid "Preferred Communication"
+msgstr "روش تماس ترجیحی"
+msgid "SMS Opt-In"
+msgstr "دریافت پیامک"
+msgid "Marketing Opt-In"
+msgstr "دریافت اطلاعات بازاریابی"
+msgid "Additional Information"
+msgstr "اطلاعات تکمیلی"
+msgid "Tags (comma-separated)"
+msgstr "برچسب‌ها (با کاما جدا شوند)"
+msgid "VIP, Wedding, Corporate"
+msgstr "VIP، عروسی، شرکتی"
+msgid "Separate tags with commas"
+msgstr "برچسب‌ها را با کاما جدا کنید"
+msgid "4-step process to restore from backup"
+msgstr "فرآیند ۴ مرحله‌ای برای بازیابی از پشتیبان"
+msgid "About Backups"
+msgstr "درباره پشتیبان‌گیری"
+msgid "Accounting has not been set up for your shop yet. Please contact support or set up accounting to view financial reports."
+msgstr "حسابداری هنوز برای فروشگاه شما راه‌اندازی نشده است. لطفا با پشتیبانی تماس بگیرید یا حسابداری را راه‌اندازی کنید تا گزارش‌های مالی را مشاهده کنید."
+msgid "Activating will restore full access for all tenant users and cancel any scheduled deletion."
+msgstr "فعال‌سازی دسترسی کامل را برای تمام کاربران مستاجر بازیابی می‌کند و حذف برنامه‌ریزی شده را لغو می‌کند."
+msgid "Add Admin Note"
+msgstr "افزودن یادداشت مدیر"
+msgid "Add Branch"
+msgstr "افزودن شعبه"
+msgid "Add Communication"
+msgstr "افزودن ارتباط"
+msgid "Add Communication Record"
+msgstr "افزودن رکورد ارتباط"
+msgid "Add Credit"
+msgstr "افزودن اعتبار"
+msgid "Add Holiday"
+msgstr "افزودن تعطیلی"
+msgid "Add New Branch"
+msgstr "افزودن شعبه جدید"
+msgid "Add Note"
+msgstr "افزودن یادداشت"
+msgid "Add Store Credit"
+msgstr "افزودن اعتبار فروشگاه"
+msgid "Add Terminal"
+msgstr "افزودن ترمینال"
+msgid "Add holidays when your business will be closed."
+msgstr "تعطیلاتی که کسب‌وکار شما بسته خواهد بود را اضافه کنید."
+msgid "Add products to begin"
+msgstr "محصولات را برای شروع اضافه کنید"
+msgid "Add products to begin a new sale."
+msgstr "محصولات را برای شروع فروش جدید اضافه کنید."
+msgid "Add store credit to get started"
+msgstr "برای شروع اعتبار فروشگاه اضافه کنید"
+msgid "Additional Metadata"
+msgstr "ابرداده‌های اضافی"
+msgid "Additional Notes"
+msgstr "یادداشت‌های اضافی"
+msgid "Address:"
+msgstr "آدرس:"
+msgid "Alert Created:"
+msgstr "هشدار ایجاد شد:"
+msgid "Amount to Add"
+msgstr "مبلغ برای افزودن"
+msgid "Are you sure you want to cancel this gift card? This action cannot be undone."
+msgstr "آیا مطمئن هستید که می‌خواهید این کارت هدیه را لغو کنید؟ این عملیات قابل بازگشت نیست."
+msgid "Automatically create journal entries for sales and purchases"
+msgstr "اسناد حسابداری را به‌طور خودکار برای فروش و خرید ایجاد کنید"
+msgid "All Change Types"
+msgstr "تمام انواع تغییر"
+msgid "All Log Types"
+msgstr "تمام انواع گزارش"
+msgid "All Status Codes"
+msgstr "تمام کدهای وضعیت"
+msgid "All Tenant Statuses"
+msgstr "تمام وضعیت‌های مستاجر"
+msgid "Amount to Redeem"
+msgstr "مبلغ برای بازخرید"
+msgid "Amount to Use"
+msgstr "مبلغ برای استفاده"
+msgid "Balance Type"
+msgstr "نوع مانده"
+msgid "Branch Name *"
+msgstr "نام شعبه *"
+msgid "By acknowledging this announcement, you confirm that you have read and understood its contents. This action will be recorded with your name and timestamp."
+msgstr "با تایید این اعلان، شما تایید می‌کنید که محتوای آن را خوانده و درک کرده‌اید. این عملیات با نام و زمان شما ثبت خواهد شد."
+msgid "Card Number"
+msgstr "شماره کارت"
+msgid "Change Status"
+msgstr "تغییر وضعیت"
+msgid "Change Tenant Status"
+msgstr "تغییر وضعیت مستاجر"
+msgid "Change Type"
+msgstr "نوع تغییر"
+msgid "Choose Type"
+msgstr "انتخاب نوع"
+msgid "Code"
+msgstr "کد"
+msgid "Company name or slug..."
+msgstr "نام شرکت یا نام مستعار..."
+msgid "Complete performance metrics for all job types"
+msgstr "معیارهای عملکرد کامل برای تمام انواع کار"
+msgid "Configure payment gateways, SMS providers, and email services"
+msgstr "پیکربندی درگاه‌های پرداخت، ارائه‌دهندگان پیامک و سرویس‌های ایمیل"
+msgid "Customize invoice templates, numbering schemes, and display options"
+msgstr "سفارشی‌سازی قالب‌های فاکتور، طرح‌های شماره‌گذاری و گزینه‌های نمایش"
+msgid "Data Type"
+msgstr "نوع داده"
+msgid "Date From"
+msgstr "از تاریخ"
+msgid "4xx Client Error"
+msgstr "خطای کلاینت ۴xx"
+msgid "5xx Server Error"
+msgstr "خطای سرور ۵xx"
+msgid "Confirm & Restore"
+msgstr "تایید و بازیابی"
+msgid "Confirm Acknowledgment"
+msgstr "تایید پذیرش"
+msgid "Confirm Before Sending"
+msgstr "قبل از ارسال تایید کنید"
+msgid "Confirm Deletion"
+msgstr "تایید حذف"
+msgid "Confirm Send Message"
+msgstr "تایید ارسال پیام"
+msgid "Confirm deletion of webhook"
+msgstr "تایید حذف webhook"
+msgid "Error Details"
+msgstr "جزئیات خطا"
+msgid "Error Message"
+msgstr "پیام خطا"
+msgid "Error feed will be available after Sentry integration"
+msgstr "فید خطا پس از یکپارچه‌سازی Sentry در دسترس خواهد بود"
+msgid "Error loading inventory"
+msgstr "خطا در بارگذاری موجودی"
+msgid "If you continue to have problems, please contact our support team."
+msgstr "اگر همچنان مشکل دارید، لطفا با تیم پشتیبانی ما تماس بگیرید."
+msgid "If you have any questions about this report or need assistance with the reporting system, please contact your system administrator."
+msgstr "اگر سوالی درباره این گزارش دارید یا به کمک سیستم گزارش‌دهی نیاز دارید، لطفا با مدیر سیستم تماس بگیرید."
+msgid "Immediate attention is required."
+msgstr "توجه فوری مورد نیاز است."
+msgid "Order Confirmation"
+msgstr "تایید سفارش"
+msgid "Please correct the following errors:"
+msgstr "لطفا خطاهای زیر را اصلاح کنید:"
+msgid "Please take immediate action."
+msgstr "لطفا فورا اقدام کنید."
+msgid "Recent Errors"
+msgstr "خطاهای اخیر"
+msgid "Share tips, warnings, and best practices with other admins"
+msgstr "نکات، هشدارها و بهترین شیوه‌ها را با سایر مدیران به اشتراک بگذارید"
+msgid "Step 4: Confirm Restore"
+msgstr "مرحله ۴: تایید بازیابی"
+msgid "Successfully completed tasks"
+msgstr "کارهای با موفقیت انجام شده"
+msgid "Tasks that encountered errors"
+msgstr "کارهایی که با خطا مواجه شدند"
+msgid "There were errors with your submission"
+msgstr "در ارسال شما خطاهایی وجود داشت"
+msgid "This is an official message from the platform administration team. If you have any questions, please contact our support team."
+msgstr "این پیام رسمی از تیم مدیریت پلتفرم است. اگر سوالی دارید، لطفا با تیم پشتیبانی ما تماس بگیرید."
+msgid "This message failed to deliver. Please check the logs for details."
+msgstr "این پیام ارسال نشد. لطفا گزارش‌ها را برای جزئیات بررسی کنید."
+msgid "Users will be required to change their password after this many days"
+msgstr "کاربران ملزم به تغییر رمز عبور خود پس از این تعداد روز خواهند بود"
+msgid "A/B Tests"
+msgstr "تست‌های A/B"
+msgid "ACTIVE"
+msgstr "فعال"
+msgid "AES-256 (Fernet)"
+msgstr "AES-256 (Fernet)"
+msgid "API"
+msgstr "API"
+msgid "API Calls/Month"
+msgstr "تماس API در ماه"
+msgid "API Key"
+msgstr "کلید API"
+msgid "API Key / Account SID"
+msgstr "کلید API / Account SID"
+msgid "API Request Log"
+msgstr "گزارش درخواست API"
+msgid "API Requests"
+msgstr "درخواست‌های API"
+msgid "API Requests Only"
+msgstr "فقط درخواست‌های API"
+msgid "API Secret / Auth Token"
+msgstr "رمز API / توکن احراز هویت"
+msgid "ASSETS"
+msgstr "دارایی‌ها"
+msgid "About Bank Reconciliation"
+msgstr "درباره تطبیق بانکی"
+msgid "About Loyalty Tiers"
+msgstr "درباره سطوح وفاداری"
+msgid "About Referral Program"
+msgstr "درباره برنامه ارجاع"
+msgid "About Webhook Security"
+msgstr "درباره امنیت Webhook"
+msgid "About Webhook Testing"
+msgstr "درباره تست Webhook"
+msgid "Accounting Configuration"
+msgstr "پیکربندی حسابداری"
+msgid "Accounting Not Set Up"
+msgstr "حسابداری راه‌اندازی نشده"
+msgid "Acknowledge"
+msgstr "تایید"
+msgid "Acknowledge Announcement"
+msgstr "تایید اعلان"
+msgid "Acknowledged"
+msgstr "تایید شده"
+msgid "Activate Kill Switch"
+msgstr "فعال‌سازی کلید اضطراری"
+msgid "Activate Plan"
+msgstr "فعال‌سازی طرح"
+msgid "Activate Subscription"
+msgstr "فعال‌سازی اشتراک"
+msgid "Activation"
+msgstr "فعال‌سازی"
+msgid "Active Branches"
+msgstr "شعبات فعال"
+msgid "Active Customers"
+msgstr "مشتریان فعال"
+msgid "Active Features"
+msgstr "ویژگی‌های فعال"
+msgid "Active Gift Cards"
+msgstr "کارت‌های هدیه فعال"
+msgid "Active Impersonation Sessions"
+msgstr "جلسات جعل هویت فعال"
+msgid "Active Integrations"
+msgstr "یکپارچه‌سازی‌های فعال"
+msgid "Active Members"
+msgstr "اعضای فعال"
+msgid "Active Products"
+msgstr "محصولات فعال"
+msgid "Active Sales"
+msgstr "فروش‌های فعال"
+msgid "Active Sessions"
+msgstr "جلسات فعال"
+msgid "Active Subscriptions"
+msgstr "اشتراک‌های فعال"
+msgid "Active Terminals"
+msgstr "ترمینال‌های فعال"
+msgid "Active Tests"
+msgstr "تست‌های فعال"
+msgid "Active Users"
+msgstr "کاربران فعال"
+msgid "Activity"
+msgstr "فعالیت"
+msgid "Activity Feed"
+msgstr "فید فعالیت"
+msgid "Activity Logs"
+msgstr "گزارش‌های فعالیت"
+msgid "Add Alert"
+msgstr "افزودن هشدار"
+msgid "Add Announcement"
+msgstr "افزودن اعلان"
+msgid "Add Asset"
+msgstr "افزودن دارایی"
+msgid "Add Backup"
+msgstr "افزودن پشتیبان"
+msgid "Add Category"
+msgstr "افزودن دسته‌بندی"
+msgid "Add Entry"
+msgstr "افزودن ورودی"
+msgid "Add Feature"
+msgstr "افزودن ویژگی"
+msgid "Add Field"
+msgstr "افزودن فیلد"
+msgid "Add Filter"
+msgstr "افزودن فیلتر"
+msgid "Add Gift Card"
+msgstr "افزودن کارت هدیه"
+msgid "Add Integration"
+msgstr "افزودن یکپارچه‌سازی"
+msgid "Add Journal Entry"
+msgstr "افزودن سند حسابداری"
+msgid "Add Member"
+msgstr "افزودن عضو"
+msgid "Add New"
+msgstr "افزودن جدید"
+msgid "Add New Asset"
+msgstr "افزودن دارایی جدید"
+msgid "Add New Category"
+msgstr "افزودن دسته‌بندی جدید"
+msgid "Add Report"
+msgstr "افزودن گزارش"
+msgid "Add Role"
+msgstr "افزودن نقش"
+msgid "Add Rule"
+msgstr "افزودن قانون"
+msgid "Add Sale"
+msgstr "افزودن فروش"
+msgid "Add Segment"
+msgstr "افزودن بخش"
+msgid "Add SKU"
+msgstr "افزودن SKU"
+msgid "Add Tag"
+msgstr "افزودن برچسب"
+msgid "Add Tax"
+msgstr "افزودن مالیات"
+msgid "Add Template"
+msgstr "افزودن قالب"
+msgid "Add Tenant"
+msgstr "افزودن مستاجر"
+msgid "Add Test"
+msgstr "افزودن تست"
+msgid "Add Tier"
+msgstr "افزودن سطح"
+msgid "Add Transaction"
+msgstr "افزودن تراکنش"
+msgid "Add User"
+msgstr "افزودن کاربر"
+msgid "Add Variant"
+msgstr "افزودن نوع"
+msgid "Add Webhook"
+msgstr "افزودن Webhook"
+msgid "Admin"
+msgstr "مدیر"
+msgid "Admin Dashboard"
+msgstr "داشبورد مدیر"
+msgid "Admin Notes"
+msgstr "یادداشت‌های مدیر"
+msgid "Admin Portal"
+msgstr "پورتال مدیر"
+msgid "Admin Settings"
+msgstr "تنظیمات مدیر"
+msgid "Admin Tools"
+msgstr "ابزارهای مدیر"
+msgid "Admin User"
+msgstr "کاربر مدیر"
+msgid "Administrative"
+msgstr "مدیریتی"
+msgid "Advanced"
+msgstr "پیشرفته"
+msgid "Advanced Analytics"
+msgstr "تحلیل‌های پیشرفته"
+msgid "Advanced Options"
+msgstr "گزینه‌های پیشرفته"
+msgid "Advanced Search"
+msgstr "جستجوی پیشرفته"
+msgid "Advanced Settings"
+msgstr "تنظیمات پیشرفته"
+msgid "Alert Details"
+msgstr "جزئیات هشدار"
+msgid "Alert History"
+msgstr "تاریخچه هشدار"
+msgid "Alert Level"
+msgstr "سطح هشدار"
+msgid "Alert Type"
+msgstr "نوع هشدار"
+msgid "Alerts"
+msgstr "هشدارها"
+msgid "None"
+msgstr "هیچکدام"
+msgid "Deselect"
+msgstr "لغو انتخاب"
+msgid "Copy"
+msgstr "کپی"
+msgid "Paste"
+msgstr "چسباندن"
+msgid "Undo"
+msgstr "لغو"
+msgid "Redo"
+msgstr "بازگشت"
+msgid "Enabled"
+msgstr "فعال"
+msgid "Disabled"
+msgstr "غیرفعال"
+msgid "Online"
+msgstr "آنلاین"
+msgid "Offline"
+msgstr "آفلاین"
+msgid "Available"
+msgstr "موجود"
+msgid "Unavailable"
+msgstr "ناموجود"

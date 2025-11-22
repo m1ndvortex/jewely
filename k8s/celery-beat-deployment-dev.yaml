@@ -1,0 +1,207 @@
+# ============================================================================
+# Celery Beat Development Deployment (Skaffold)
+# ============================================================================
+# IDENTICAL to production except:
+# - DEBUG=True
+# - Using jewelry-shop-django:latest image
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-beat
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: celery-beat
+    tier: backend
+spec:
+  replicas: 1  # MUST be 1 - only one beat scheduler should run
+  strategy:
+    type: Recreate  # Recreate strategy for singleton
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: celery-beat
+  template:
+    metadata:
+      labels:
+        app: jewelry-shop
+        component: celery-beat
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      
+      # Init container to wait for dependencies
+      initContainers:
+        - name: wait-for-dependencies
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Redis to be ready..."
+              until nc -z -v -w30 redis.jewelry-shop.svc.cluster.local 6379; do
+                echo "Waiting for Redis connection..."
+                sleep 2
+              done
+              echo "Redis is ready!"
+              
+              echo "Waiting for PostgreSQL to be ready..."
+              until nc -z -v -w30 jewelry-shop-db-pooler.jewelry-shop.svc.cluster.local 5432; do
+                echo "Waiting for PostgreSQL connection..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+              
+              echo "Dependencies ready, starting Celery beat..."
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      
+      containers:
+        - name: celery-beat
+          image: jewelry-shop-django:latest  # Dev: Skaffold-managed image
+          imagePullPolicy: IfNotPresent  # Use local image
+          command: ["celery"]
+          args:
+            - "-A"
+            - "config"
+            - "beat"
+            - "--loglevel=info"
+            - "--scheduler=django_celery_beat.schedulers:DatabaseScheduler"
+          
+          # Environment variables from ConfigMap and Secrets
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "config.settings.production"
+            - name: DEBUG
+              value: "True"  # Dev: Enable debug
+            - name: SECURE_SSL_REDIRECT
+              value: "False"  # Dev: Disable SSL redirect
+            # Database configuration - override with PostgreSQL operator credentials
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jewelry-app.jewelry-shop-db.credentials.postgresql.acid.zalan.do
+                  key: password
+            # Celery-specific environment variables
+            - name: C_FORCE_ROOT
+              value: "false"
+            - name: CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP
+              value: "true"
+            # Optional: Sentry DSN (suppress warning if not set)
+            - name: SENTRY_DSN
+              value: ""  # Empty string to suppress warning
+          
+          # Resource requests and limits (beat is less resource-intensive)
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          
+          # Liveness probe - restart if beat is not responding
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import sys
+                  try:
+                      from celery import Celery
+                      app = Celery('config')
+                      app.config_from_object('django.conf:settings', namespace='CELERY')
+                      sys.exit(0)
+                  except Exception as e:
+                      print(f"Health check failed: {e}")
+                      sys.exit(1)
+            initialDelaySeconds: 180  # 3 minutes to allow full startup
+            periodSeconds: 30
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Readiness probe - check if beat is running
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import sys
+                  try:
+                      from celery import Celery
+                      app = Celery('config')
+                      app.config_from_object('django.conf:settings', namespace='CELERY')
+                      sys.exit(0)
+                  except Exception:
+                      sys.exit(1)
+            initialDelaySeconds: 120  # 2 minutes 
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          
+          # No startup probe - let liveness handle it after initial delay
+          
+          # Volume mounts
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+            - name: celery-beat-schedule
+              mountPath: /app/celerybeat-schedule
+          
+          # Security context for the container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+      
+      # Volumes
+      volumes:
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: celery-beat-schedule
+          emptyDir: {}
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Termination grace period
+      terminationGracePeriodSeconds: 30

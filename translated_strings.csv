@@ -1,0 +1,541 @@
+English,Persian,Context,File
+Confirm Post Journal Entry,ورود پست مجله را تأیید کنید,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:10
+Review the entry before posting to the general ledger,قبل از ارسال به دفتر کل، مدخل را مرور کنید,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:12
+Important Notice,اطلاعیه مهم,,"apps/accounting/templates/accounting/journal_entries/confirm_post.html:26, templates/accounting/fixed_assets/disposal_form.html:197"
+"Once posted, this journal entry will:",پس از ارسال، این مدخل مجله:,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:29
+Become immutable and cannot be edited or deleted,تغییرناپذیر می شود و نمی توان آن را ویرایش یا حذف کرد,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:31
+Update all affected account balances,تمام موجودی حساب های تحت تاثیر را به روز کنید,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:32
+Be included in financial reports,در گزارش های مالی لحاظ شود,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:33
+Require a reversing entry to undo,برای خنثیسازی به ورودی معکوس نیاز است,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:34
+Debit,بدهی,,"apps/accounting/templates/accounting/journal_entries/confirm_post.html:68, apps/accounting/templates/accounting/journal_entries/detail.html:93, apps/accounting/templates/accounting/journal_entries/form.html:143 ... (5 more)"
+Entry is balanced and ready to post,ورودی متعادل و آماده ارسال است,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:130
+Entry is not balanced and cannot be posted,ورودی متعادل نیست و قابل ارسال نیست,,apps/accounting/templates/accounting/journal_entries/confirm_post.html:137
+Posted - Entry is Immutable,ارسال شده - ورودی تغییرناپذیر است,,apps/accounting/templates/accounting/journal_entries/detail.html:34
+Unposted - Entry Can Be Edited,پست نشده - ورودی قابل ویرایش است,,apps/accounting/templates/accounting/journal_entries/detail.html:41
+Entry ID,شناسه ورودی,,"apps/accounting/templates/accounting/journal_entries/detail.html:60, templates/accounting/journal_entries.html:71"
+Posted,ارسال شده است,,"apps/accounting/templates/accounting/journal_entries/detail.html:67, apps/accounting/templates/accounting/journal_entries/list.html:54, apps/accounting/templates/accounting/journal_entries/list.html:140 ... (4 more)"
+Unposted,پست نشده,,"apps/accounting/templates/accounting/journal_entries/detail.html:69, apps/accounting/templates/accounting/journal_entries/list.html:55, apps/accounting/templates/accounting/journal_entries/list.html:147 ... (1 more)"
+Journal Entry Lines,خطوط ورودی مجله,,"apps/accounting/templates/accounting/journal_entries/detail.html:79, apps/accounting/templates/accounting/journal_entries/form.html:101"
+Entry is Balanced,ورودی متعادل است,,apps/accounting/templates/accounting/journal_entries/detail.html:152
+Entry is Not Balanced,ورودی متعادل نیست,,apps/accounting/templates/accounting/journal_entries/detail.html:159
+Audit Trail,مسیر حسابرسی,,"apps/accounting/templates/accounting/journal_entries/detail.html:171, templates/accounting/dashboard.html:725"
+Entry must be balanced before posting,ورودی قبل از ارسال باید متعادل باشد,,apps/accounting/templates/accounting/journal_entries/detail.html:223
+Post Entry,پست ورودی,,apps/accounting/templates/accounting/journal_entries/detail.html:227
+Post Journal Entry,ورودی مجله پست,,"apps/accounting/templates/accounting/journal_entries/detail.html:250, templates/accounting/journal_entries/confirm_post.html:39"
+"Are you sure you want to post this journal entry? Once posted, the entry becomes immutable and will affect account balances.",Are you sure you want to post this journal entry? پس از ارسال، ورودی تغییرناپذیر می شود و بر موجودی حساب تأثیر می گذارد.,,apps/accounting/templates/accounting/journal_entries/detail.html:253
+"Yes, Post Entry",بله، پست ورودی,,apps/accounting/templates/accounting/journal_entries/detail.html:261
+Create a manual journal entry with balanced debits and credits,یک مدخل مجله دستی با بدهی و اعتبار متعادل ایجاد کنید,,apps/accounting/templates/accounting/journal_entries/form.html:34
+Validation Error,خطای اعتبارسنجی,,apps/accounting/templates/accounting/journal_entries/form.html:122
+Save Entry,ذخیره ورودی,,apps/accounting/templates/accounting/journal_entries/form.html:244
+New Journal Entry,ورودی مجله جدید,,"apps/accounting/templates/accounting/journal_entries/list.html:16, apps/accounting/templates/accounting/journal_entries/list.html:202, templates/accounting/journal_entries/form.html:9 ... (1 more)"
+Backup & Recovery Center,مرکز پشتیبان گیری و بازیابی,,"apps/backups/templates/backups/dashboard.html:229, templates/backups/dashboard.html:206"
+Enterprise-grade data protection and disaster recovery management,حفاظت از داده ها در سطح سازمانی و مدیریت بازیابی فاجعه,,"apps/backups/templates/backups/dashboard.html:232, templates/backups/dashboard.html:209"
+Trigger Backup,راه اندازی پشتیبان گیری,,"apps/backups/templates/backups/dashboard.html:238, templates/backups/dashboard.html:215"
+Excellent,عالی,,"apps/backups/templates/backups/dashboard.html:270, templates/backups/dashboard.html:247"
+Good,خوب,,"apps/backups/templates/backups/dashboard.html:272, templates/backups/dashboard.html:249"
+Real-time PostgreSQL Write-Ahead Log archiving monitoring and management,نظارت و مدیریت بایگانی گزارش بلادرنگ PostgreSQL Write-Ahead,,"apps/backups/templates/backups/dashboard.html:339, templates/backups/dashboard.html:329"
+Backup Manager,مدیر پشتیبان گیری,,"apps/backups/templates/backups/dashboard.html:354, templates/backups/dashboard.html:344"
+"Browse, filter, and manage all database backups with advanced search capabilities",با قابلیت های جستجوی پیشرفته، تمام نسخه های پشتیبان پایگاه داده را مرور، فیلتر و مدیریت کنید,,"apps/backups/templates/backups/dashboard.html:356, templates/backups/dashboard.html:346"
+Restore Wizard,بازیابی جادوگر,,"apps/backups/templates/backups/dashboard.html:371, templates/backups/dashboard.html:361"
+"Step-by-step guided restoration process with full, merge, and selective restore modes",فرآیند بازیابی هدایت شده گام به گام با حالت های بازیابی کامل، ادغام و انتخابی,,"apps/backups/templates/backups/dashboard.html:373, templates/backups/dashboard.html:363"
+Disaster Recovery,بازیابی بلایا,,"apps/backups/templates/backups/dashboard.html:388, templates/backups/dashboard.html:378"
+Comprehensive DR runbook and automated failover procedures for critical incidents,Runbook جامع DR و رویه های خودکار خطا برای حوادث بحرانی,,"apps/backups/templates/backups/dashboard.html:390, templates/backups/dashboard.html:380"
+View Runbook,Runbook را مشاهده کنید,,"apps/backups/templates/backups/dashboard.html:393, templates/backups/dashboard.html:383"
+No active alerts at this time,در حال حاضر هیچ هشدار فعالی وجود ندارد,,apps/backups/templates/backups/dashboard.html:506
+Real-time monitoring of PostgreSQL Write-Ahead Log archiving,نظارت بر زمان واقعی بایگانی گزارش نوشتن پیش از ارسال PostgreSQL,,apps/backups/templates/backups/wal_monitoring.html:192
+Since inception,از بدو تاسیس,,apps/backups/templates/backups/wal_monitoring.html:212
+Last 24 Hours,24 ساعت گذشته,,apps/backups/templates/backups/wal_monitoring.html:216
+per hour,در ساعت,,apps/backups/templates/backups/wal_monitoring.html:220
+saved,ذخیره شده است,,apps/backups/templates/backups/wal_monitoring.html:236
+Last Archive,آخرین آرشیو,,apps/backups/templates/backups/wal_monitoring.html:242
+Archive Interval,فاصله بایگانی,,apps/backups/templates/backups/wal_monitoring.html:268
+Modified By,اصلاح شده توسط,,apps/backups/templates/backups/wal_monitoring.html:282
+Storage Distribution,توزیع ذخیره سازی,,apps/backups/templates/backups/wal_monitoring.html:303
+Local Storage,محل ذخیره سازی,,"apps/backups/templates/backups/wal_monitoring.html:308, apps/backups/templates/backups/wal_monitoring.html:435"
+Cloudflare R2,Cloudflare R2,,"apps/backups/templates/backups/wal_monitoring.html:317, apps/backups/templates/backups/wal_monitoring.html:440"
+Backblaze B2,Backblaze B2,,"apps/backups/templates/backups/wal_monitoring.html:326, apps/backups/templates/backups/wal_monitoring.html:445"
+Total Size (24h),اندازه کل (24 ساعت),,apps/backups/templates/backups/wal_monitoring.html:335
+All systems operational,همه سیستم ها عملیاتی هستند,,apps/backups/templates/backups/wal_monitoring.html:376
+Size,اندازه,,"apps/backups/templates/backups/wal_monitoring.html:395, templates/backups/dashboard.html:483"
+Too many failed login attempts. Your IP has been temporarily blocked. Please try again in {} minutes.,تعداد زیادی تلاش برای ورود ناموفق. IP شما به طور موقت مسدود شده است. لطفاً {} دقیقه دیگر دوباره امتحان کنید.,,"apps/core/brute_force_protection.py:109, apps/core/brute_force_protection.py:129"
+units,واحدها,,apps/core/templates/core/cached_dashboard_example.html:70
+low stock,موجودی کم,,apps/core/templates/core/cached_dashboard_example.html:88
+Walk-in,پیاده روی,,apps/core/templates/core/cached_dashboard_example.html:153
+You have %(count)d item in your inventory.,شما %(count)d مورد در موجودی خود دارید.,,apps/core/translation_utils.py:53
+Too many login attempts. Please wait a moment and try again.,تلاش های زیادی برای ورود به سیستم لطفاً یک لحظه صبر کنید و دوباره امتحان کنید.,,apps/core/views.py:114
+Enter SKU,SKU را وارد کنید,,apps/inventory/forms.py:65
+Selling price,قیمت فروش,,apps/inventory/forms.py:126
+Minimum quantity threshold,حداقل آستانه مقدار,,apps/inventory/forms.py:138
+Lot number (optional),شماره قطعه (اختیاری),,apps/inventory/forms.py:150
+Supplier SKU (optional),SKU تامین کننده (اختیاری),,apps/inventory/forms.py:162
+Selling price cannot be less than cost price.,قیمت فروش نمی تواند کمتر از قیمت تمام شده باشد.,,apps/inventory/forms.py:204
+Minimum quantity cannot be negative.,حداقل مقدار نمی تواند منفی باشد.,,apps/inventory/forms.py:215
+Weight must be greater than zero.,وزن باید بزرگتر از صفر باشد.,,apps/inventory/forms.py:220
+Purchase/Receiving,خرید/دریافت,,apps/inventory/forms.py:236
+Damage/Loss,خسارت / ضرر,,apps/inventory/forms.py:239
+Theft,دزدی,,apps/inventory/forms.py:240
+Stock Count Adjustment,تعدیل تعداد سهام,,apps/inventory/forms.py:241
+Transfer,انتقال,,apps/inventory/forms.py:242
+Other,دیگر,,"apps/inventory/forms.py:243, templates/accounting/bank_accounts/list.html:112"
+Reason,دلیل,,"apps/inventory/forms.py:272, templates/accounting/credit_memos/form.html:125, templates/accounting/fixed_assets/detail.html:286"
+Additional notes (optional),نکات اضافی (اختیاری),,apps/inventory/forms.py:281
+Enter category description (optional),توضیحات دسته را وارد کنید (اختیاری),,apps/inventory/forms.py:323
+Auto-generated from name if left empty,در صورت خالی ماندن از نام به صورت خودکار تولید می شود,,apps/inventory/forms.py:335
+0,0,,apps/inventory/forms.py:341
+SEO title (optional),عنوان سئو (اختیاری),,apps/inventory/forms.py:347
+SEO description (optional),توضیحات سئو (اختیاری),,apps/inventory/forms.py:354
+No parent (top-level category),بدون والدین (دسته سطح بالا),,apps/inventory/forms.py:378
+Error validating image: %(error)s,خطا در اعتبارسنجی تصویر: %(error)s,,apps/inventory/forms.py:417
+A category cannot be its own parent.,یک دسته نمی تواند والد خودش باشد.,,apps/inventory/forms.py:429
+This would create a circular parent relationship.,این یک رابطه والدین دایره ای ایجاد می کند.,,apps/inventory/forms.py:436
+Image processing is not available. Please ensure Pillow is installed.,پردازش تصویر در دسترس نیست. لطفاً مطمئن شوید که Pillow نصب شده است.,,apps/inventory/forms.py:515
+Image processing failed: %(error)s,پردازش تصویر ناموفق بود: %(error)s,,apps/inventory/forms.py:519
+Unexpected error processing image: %(error)s,خطای غیرمنتظره در پردازش تصویر: %(error)s,,apps/inventory/forms.py:523
+Cannot decrease quantity below zero.,نمی توان مقدار را زیر صفر کاهش داد.,,apps/inventory/web_views.py:343
+Stock adjusted successfully. New quantity: {},سهام با موفقیت تنظیم شد. مقدار جدید: {},,apps/inventory/web_views.py:356
+No tenant associated with your account.,هیچ مستاجری با حساب شما مرتبط نیست.,,"apps/inventory/web_views.py:501, apps/inventory/web_views.py:567, apps/inventory/web_views.py:665 ... (2 more)"
+Security error: Tenant mismatch detected.,خطای امنیتی: عدم تطابق مستاجر شناسایی شد.,,"apps/inventory/web_views.py:582, apps/inventory/web_views.py:685"
+Please correct the errors below.,لطفا خطاهای زیر را اصلاح کنید.,,"apps/inventory/web_views.py:593, apps/inventory/web_views.py:697"
+Image processing error: {},خطای پردازش تصویر: {},,"apps/inventory/web_views.py:597, apps/inventory/web_views.py:701"
+"Cannot delete category ""{}"". It has {} items. Please move or delete the items first.","نمی توان دسته ""{}"" را حذف کرد. دارای {} مورد است. لطفا ابتدا موارد را جابجا یا حذف کنید.",,apps/inventory/web_views.py:768
+"Cannot delete category ""{}"". It has subcategories. Please delete subcategories first.","نمی توان دسته ""{}"" را حذف کرد. زیرمجموعه هایی دارد. لطفا ابتدا زیر مجموعه ها را حذف کنید.",,apps/inventory/web_views.py:775
+Use Django template syntax. Keep under 160 characters for single SMS. Available variables depend on context.,از نحو قالب جنگو استفاده کنید. کمتر از 160 کاراکتر برای پیامک تک نگه دارید. متغیرهای موجود به زمینه بستگی دارد.,,apps/notifications/admin.py:544
+"Text for action button (e.g., ""View Order"", ""Update Inventory"")","دکمه متن برای اقدام (به عنوان مثال، ""مشاهده سفارش""، ""به روز رسانی موجودی"")",,apps/notifications/models.py:64
+Add,اضافه کنید,,"templates/accounting/account_form.html:35, templates/accounting/bank_accounts/form.html:46"
+"Unique account code (e.g., 1004 for bank accounts)",کد حساب منحصر به فرد (به عنوان مثال، 1004 برای حساب های بانکی),,templates/accounting/account_form.html:67
+Assets,دارایی ها,,templates/accounting/account_form.html:90
+Prepaid Expenses,هزینه های پیش پرداخت,,templates/accounting/account_form.html:94
+Equipment,تجهیزات,,templates/accounting/account_form.html:97
+Liabilities,بدهی ها,,templates/accounting/account_form.html:99
+Accounts Payable,حساب های پرداختنی,,"templates/accounting/account_form.html:100, templates/accounting/accounts_payable.html:5, templates/accounting/accounts_payable.html:14 ... (2 more)"
+Taxes Payable,مالیات های قابل پرداخت,,templates/accounting/account_form.html:101
+Other Current Liabilities,سایر بدهی های جاری,,templates/accounting/account_form.html:102
+Equity,حقوق صاحبان سهام,,templates/accounting/account_form.html:105
+Owner's Equity,حقوق صاحبان سهام,,templates/accounting/account_form.html:106
+Sales Revenue,درآمد فروش,,templates/accounting/account_form.html:110
+Other Income,سایر درآمدها,,templates/accounting/account_form.html:111
+Expenses,مخارج,,templates/accounting/account_form.html:113
+Cost of Goods Sold,بهای تمام شده کالای فروخته شده,,templates/accounting/account_form.html:114
+"Assets & Expenses: Debit | Liabilities, Equity & Revenue: Credit",دارایی ها و هزینه ها: بدهی | بدهی ها، حقوق صاحبان سهام و درآمد: اعتبار,,templates/accounting/account_form.html:132
+Optional description of this account,شرح اختیاری این حساب,,templates/accounting/account_form.html:144
+Account Code Guidelines:,دستورالعمل کد حساب:,,templates/accounting/account_form.html:178
+1000-1999: Assets (1000-1099 for bank accounts),1000-1999: دارایی ها (1000-1099 برای حساب های بانکی),,templates/accounting/account_form.html:180
+2000-2999: Liabilities,2000-2999: بدهی ها,,templates/accounting/account_form.html:181
+3000-3999: Equity,3000-3999: حقوق صاحبان سهام,,templates/accounting/account_form.html:182
+4000-4999: Revenue,4000-4999: درآمد,,templates/accounting/account_form.html:183
+5000-5999: Expenses,5000-5999: مخارج,,templates/accounting/account_form.html:184
+Expected Delivery,تحویل مورد انتظار,,templates/accounting/accounts_payable.html:100
+No outstanding payables,بدون پرداخت معوق,,templates/accounting/accounts_payable.html:147
+All purchase orders have been completed or paid.,تمامی سفارشات خرید تکمیل یا پرداخت شده است.,,templates/accounting/accounts_payable.html:149
+Reconciled Balance,تعادل آشتی,,"templates/accounting/bank_accounts/detail.html:98, templates/accounting/bank_accounts/list.html:165"
+Unreconciled Balance,تعادل ناسازگار,,templates/accounting/bank_accounts/detail.html:114
+Bank,بانک,,templates/accounting/bank_accounts/detail.html:137
+Linked GL Account,حساب GL مرتبط,,templates/accounting/bank_accounts/detail.html:154
+View in Chart of Accounts,مشاهده در نمودار حساب,,templates/accounting/bank_accounts/detail.html:161
+Not linked to Chart of Accounts,به نمودار حساب ها مرتبط نیست,,templates/accounting/bank_accounts/detail.html:171
+Link to GL Account,پیوند به حساب GL,,templates/accounting/bank_accounts/detail.html:175
+SWIFT Code,کد سوئیفت,,templates/accounting/bank_accounts/detail.html:188
+Last Reconciled,آخرین آشتی,,"templates/accounting/bank_accounts/detail.html:220, templates/accounting/bank_accounts/list.html:171"
+Days Ago,روزها پیش,,templates/accounting/bank_accounts/detail.html:224
+This account needs reconciliation,این حساب نیاز به تطبیق دارد,,templates/accounting/bank_accounts/detail.html:235
+Set as Default,به عنوان پیش فرض تنظیم کنید,,templates/accounting/bank_accounts/detail.html:260
+Unreconciled Transactions,معاملات ناسازگار,,"templates/accounting/bank_accounts/detail.html:286, templates/accounting/bank_reconciliation/detail.html:189"
+Recent Reconciliations,آشتی های اخیر,,templates/accounting/bank_accounts/detail.html:337
+In Progress,در حال انجام است,,"templates/accounting/bank_accounts/detail.html:374, templates/accounting/bank_reconciliation/detail.html:47, templates/accounting/bank_reconciliation/detail.html:86 ... (2 more)"
+Edit Bank Account,ویرایش حساب بانکی,,"templates/accounting/bank_accounts/form.html:7, templates/accounting/bank_accounts/form.html:21"
+GL Account (Chart of Accounts),حساب GL (نمودار حساب ها),,templates/accounting/bank_accounts/form.html:118
+Recommended,توصیه می شود,,templates/accounting/bank_accounts/form.html:119
+Link this bank account to a General Ledger account from your Chart of Accounts. This connects your physical bank account to your accounting records.,این حساب بانکی را به یک حساب دفتر کل از نمودار حساب های خود پیوند دهید. این حساب بانکی فیزیکی شما را به سوابق حسابداری شما متصل می کند.,,templates/accounting/bank_accounts/form.html:126
+"For security, consider entering only the last 4 digits",برای امنیت، فقط 4 رقم آخر را وارد کنید,,templates/accounting/bank_accounts/form.html:145
+Opening Balance,موجودی افتتاحیه,,"templates/accounting/bank_accounts/form.html:171, templates/accounting/suppliers/statement.html:149, templates/accounting/suppliers/statement.html:215"
+Balance when adding this account to the system,موجودی هنگام افزودن این حساب به سیستم,,templates/accounting/bank_accounts/form.html:178
+SWIFT/BIC Code,کد SWIFT/BIC,,templates/accounting/bank_accounts/form.html:204
+The default account will be pre-selected in transactions,حساب پیش فرض در تراکنش ها از قبل انتخاب می شود,,templates/accounting/bank_accounts/form.html:253
+Import Bank Statement,صورتحساب بانک واردات,,"templates/accounting/bank_accounts/import.html:5, templates/accounting/bank_accounts/import.html:14"
+Upload a bank statement file to automatically import transactions,برای وارد کردن خودکار تراکنش‌ها، فایل صورت‌حساب بانکی را آپلود کنید,,templates/accounting/bank_accounts/import.html:17
+Supported File Formats:,فرمت های فایل پشتیبانی شده:,,templates/accounting/bank_accounts/import.html:51
+"Comma-separated values with Date, Description, Amount columns",مقادیر جدا شده با کاما با ستون‌های Date، Description، Amount,,templates/accounting/bank_accounts/import.html:54
+QuickBooks Online format,فرمت QuickBooks Online,,templates/accounting/bank_accounts/import.html:57
+Your CSV file should have the following columns:,فایل CSV شما باید دارای ستون های زیر باشد:,,templates/accounting/bank_accounts/import.html:66
+What Happens During Import:,آنچه در هنگام واردات اتفاق می افتد:,,templates/accounting/bank_accounts/import.html:77
+The system parses your file and extracts transactions,سیستم فایل شما را تجزیه می کند و تراکنش ها را استخراج می کند,,templates/accounting/bank_accounts/import.html:80
+Duplicate transactions are automatically detected and skipped,تراکنش های تکراری به طور خودکار شناسایی و نادیده گرفته می شوند,,templates/accounting/bank_accounts/import.html:81
+The system attempts to match transactions with existing journal entries,این سیستم تلاش می‌کند تراکنش‌ها را با ورودی‌های ژورنال موجود مطابقت دهد,,templates/accounting/bank_accounts/import.html:82
+Unmatched transactions can be manually reconciled later,تراکنش های بی همتا را می توان بعداً به صورت دستی تطبیق داد,,templates/accounting/bank_accounts/import.html:83
+Upload Statement File,آپلود فایل بیانیه,,templates/accounting/bank_accounts/import.html:92
+Please correct the following errors:,لطفا خطاهای زیر را اصلاح کنید:,,"templates/accounting/bank_accounts/import.html:105, templates/accounting/bills/form.html:211, templates/accounting/bills/payment_form.html:98 ... (6 more)"
+Upload a file,یک فایل آپلود کنید,,"templates/accounting/bank_accounts/import.html:147, templates/inventory/category_form.html:324"
+or drag and drop,یا بکشید و رها کنید,,"templates/accounting/bank_accounts/import.html:150, templates/inventory/category_form.html:325"
+up to 10MB,تا 10 مگابایت,,templates/accounting/bank_accounts/import.html:153
+Imported,وارداتی,,templates/accounting/bank_accounts/import.html:228
+Matched,مطابقت دارد,,templates/accounting/bank_accounts/import.html:231
+Partial,جزئی,,"templates/accounting/bank_accounts/import.html:270, templates/accounting/bills/list.html:297, templates/accounting/customers/accounting_detail.html:249 ... (2 more)"
+Need Reconciliation,نیاز به آشتی,,templates/accounting/bank_accounts/list.html:83
+Checking,چک کردن,,templates/accounting/bank_accounts/list.html:107
+Credit Card,کارت اعتباری,,templates/accounting/bank_accounts/list.html:110
+Needs Reconciliation,نیاز به آشتی دارد,,templates/accounting/bank_accounts/list.html:135
+Recently Reconciled,اخیرا آشتی کرده است,,templates/accounting/bank_accounts/list.html:136
+days ago,روز قبل,,templates/accounting/bank_accounts/list.html:227
+Never,هرگز,,templates/accounting/bank_accounts/list.html:231
+Reconcile,آشتی کن,,templates/accounting/bank_accounts/list.html:258
+Add Your First Bank Account,اولین حساب بانکی خود را اضافه کنید,,templates/accounting/bank_accounts/list.html:281
+Statement Beginning,شروع بیانیه,,templates/accounting/bank_reconciliation/detail.html:104
+Deposits:,سپرده ها:,,templates/accounting/bank_reconciliation/detail.html:148
+Withdrawals:,برداشت ها:,,templates/accounting/bank_reconciliation/detail.html:149
+Mark Selected as Reconciled,علامت‌گذاری به‌عنوان تطبیق‌شده,,templates/accounting/bank_reconciliation/detail.html:201
+Deposits,سپرده ها,,"templates/accounting/bank_reconciliation/detail.html:229, templates/accounting/bank_reconciliation/detail.html:340, templates/accounting/reports/bank_reconciliation.html:189"
+Withdrawals,برداشت ها,,"templates/accounting/bank_reconciliation/detail.html:232, templates/accounting/bank_reconciliation/detail.html:343, templates/accounting/reports/bank_reconciliation.html:244"
+Deposit,سپرده گذاری,,"templates/accounting/bank_reconciliation/detail.html:255, templates/accounting/bank_reconciliation/detail.html:364, templates/accounting/bank_reconciliation/detail.html:554"
+Withdrawal,برداشت,,"templates/accounting/bank_reconciliation/detail.html:259, templates/accounting/bank_reconciliation/detail.html:368, templates/accounting/bank_reconciliation/detail.html:555"
+Unreconciled Totals:,مجموع ناسازگار:,,templates/accounting/bank_reconciliation/detail.html:286
+There are no unreconciled transactions for this period.,برای این دوره هیچ معامله ناسازگاری وجود ندارد.,,templates/accounting/bank_reconciliation/detail.html:307
+Reconciled Totals:,مجموع مصالحه شده:,,templates/accounting/bank_reconciliation/detail.html:404
+Cancel Reconciliation,لغو آشتی,,templates/accounting/bank_reconciliation/detail.html:449
+Edit Statement Ending Balance,تراز پایانی بیانیه را ویرایش کنید,,templates/accounting/bank_reconciliation/detail.html:493
+Statement Ending Balance,تراز پایانی بیانیه,,templates/accounting/bank_reconciliation/detail.html:500
+ transaction(s) as reconciled?,معامله (ها) به عنوان مصالحه؟,,templates/accounting/bank_reconciliation/detail.html:629
+The reconciliation has a difference of $,تطبیق تفاوت دلاری دارد,,templates/accounting/bank_reconciliation/detail.html:639
+Start your first bank reconciliation to track and match your transactions.,اولین تطبیق بانکی خود را برای ردیابی و مطابقت تراکنش های خود شروع کنید.,,templates/accounting/bank_reconciliation/list.html:135
+Start Reconciliation,آشتی را شروع کنید,,templates/accounting/bank_reconciliation/list.html:140
+Bill,لایحه,,"templates/accounting/bills/detail.html:16, templates/accounting/suppliers/statement.html:237"
+Bills,صورت حساب ها,,"templates/accounting/bills/detail.html:30, templates/accounting/bills/form.html:174, templates/accounting/bills/list.html:16 ... (4 more)"
+Paid,پرداخت شده است,,"templates/accounting/bills/detail.html:72, templates/accounting/bills/list.html:148, templates/accounting/bills/list.html:293 ... (4 more)"
+Partially Paid,تا حدی پرداخت شده است,,"templates/accounting/bills/detail.html:76, templates/accounting/bills/list.html:147, templates/accounting/invoices/detail.html:76"
+Approved,تصویب شد,,"templates/accounting/bills/detail.html:80, templates/accounting/bills/list.html:146, templates/accounting/bills/list.html:301 ... (3 more)"
+Void,باطل,,"templates/accounting/bills/detail.html:84, templates/accounting/bills/list.html:149, templates/accounting/bills/list.html:305 ... (4 more)"
+Amount Due,مبلغ سررسید,,"templates/accounting/bills/detail.html:120, templates/accounting/bills/list.html:250, templates/accounting/customers/accounting_detail.html:221 ... (3 more)"
+Tax:,مالیات:,,"templates/accounting/bills/detail.html:251, templates/accounting/bills/form.html:656, templates/accounting/invoices/detail.html:251 ... (1 more)"
+Remaining Balance:,موجودی باقیمانده:,,"templates/accounting/bills/detail.html:337, templates/accounting/invoices/detail.html:337"
+No payments have been recorded for this bill yet.,هنوز هیچ پرداختی برای این صورتحساب ثبت نشده است.,,templates/accounting/bills/detail.html:354
+Add items and services to this bill,موارد و خدمات را به این صورتحساب اضافه کنید,,templates/accounting/bills/form.html:422
+Please add at least one line item.,لطفا حداقل یک مورد خط اضافه کنید.,,"templates/accounting/bills/form.html:874, templates/accounting/invoices/form.html:874"
+Saving...,در حال ذخیره...,,"templates/accounting/bills/form.html:880, templates/accounting/invoices/form.html:880"
+New Bill,لایحه جدید,,"templates/accounting/bills/list.html:47, templates/accounting/bills/list.html:362, templates/accounting/suppliers/accounting_detail.html:55"
+Due This Month,سررسید این ماه,,templates/accounting/bills/list.html:90
+Bills List,لیست قبوض,,templates/accounting/bills/list.html:221
+days,روز,,"templates/accounting/bills/list.html:278, templates/accounting/customers/accounting_detail.html:167, templates/accounting/invoices/list.html:246 ... (1 more)"
+Due today,سررسید امروز,,"templates/accounting/bills/list.html:282, templates/accounting/invoices/list.html:250"
+Record payment,ثبت پرداخت,,"templates/accounting/bills/list.html:334, templates/accounting/invoices/list.html:306"
+No bills,بدون صورتحساب,,"templates/accounting/bills/list.html:352, templates/accounting/suppliers/accounting_detail.html:251"
+Amount Paid,مبلغ پرداختی,,"templates/accounting/bills/payment_form.html:74, templates/accounting/invoices/payment_form.html:74"
+Remaining Balance,تعادل باقی مانده,,"templates/accounting/bills/payment_form.html:79, templates/accounting/invoices/payment_form.html:79"
+Maximum:,حداکثر:,,"templates/accounting/bills/payment_form.html:139, templates/accounting/invoices/payment_form.html:139"
+Code,کد,,templates/accounting/chart_of_accounts.html:31
+Accounting has not been set up for this tenant.,حسابداری برای این مستاجر تنظیم نشده است.,,templates/accounting/chart_of_accounts.html:92
+Credit Memo,یادداشت اعتباری,,"templates/accounting/credit_memos/form.html:37, templates/accounting/invoices/list.html:47"
+Original Invoice,اصل فاکتور,,templates/accounting/credit_memos/form.html:137
+Credit Limit Exceeded,بیش از حد اعتبار,,templates/accounting/customers/accounting_detail.html:72
+"
+                            This customer has exceeded their credit limit. Outstanding balance: $%(balance)s, Credit limit: $%(limit)s
+                            ",این مشتری از سقف اعتبار خود فراتر رفته است. مانده مانده: $%(موجودی)s، حد اعتبار: $%(limit)s,,templates/accounting/customers/accounting_detail.html:76
+Credit Limit,محدودیت اعتباری,,templates/accounting/customers/accounting_detail.html:104
+No limit,بدون محدودیت,,templates/accounting/customers/accounting_detail.html:109
+Tax Exempt,معافیت مالیاتی,,templates/accounting/customers/accounting_detail.html:114
+Outstanding Balance,موجودی معوق,,"templates/accounting/customers/accounting_detail.html:142, templates/accounting/suppliers/accounting_detail.html:110"
+of credit limit,حد اعتبار,,templates/accounting/customers/accounting_detail.html:148
+Avg Days to Pay,میانگین روزهای پرداخت,,templates/accounting/customers/accounting_detail.html:163
+out of 100,از 100,,templates/accounting/customers/accounting_detail.html:184
+Recent Payment History,تاریخچه پرداخت های اخیر,,"templates/accounting/customers/accounting_detail.html:306, templates/accounting/suppliers/accounting_detail.html:262"
+Print,چاپ کنید,,"templates/accounting/customers/statement.html:63, templates/accounting/suppliers/statement.html:63"
+This is a computer-generated statement and does not require a signature.,این یک عبارت کامپیوتری است و نیازی به امضا ندارد.,,"templates/accounting/customers/statement.html:258, templates/accounting/suppliers/statement.html:309"
+"For questions about this statement, please contact your accounting department.",برای سؤال در مورد این بیانیه، لطفاً با بخش حسابداری خود تماس بگیرید.,,"templates/accounting/customers/statement.html:260, templates/accounting/suppliers/statement.html:311"
+"
+                            Current Amount Due: $%(amount)s
+                            ",مبلغ جاری: $%(amount)s,,templates/accounting/customers/statement.html:264
+vs last period,در مقابل آخرین دوره,,"templates/accounting/dashboard.html:160, templates/accounting/dashboard.html:192"
+profit margin,حاشیه سود,,templates/accounting/dashboard.html:220
+liabilities,بدهی ها,,templates/accounting/dashboard.html:248
+REPORTS,گزارش ها,,"templates/accounting/dashboard.html:275, templates/accounting/dashboard.html:611"
+"Balance Sheet, Income Statement, Cash Flow, Trial Balance with PDF/Excel export",ترازنامه، صورت درآمد، جریان نقدی، تراز آزمایشی با صادرات PDF/Excel,,templates/accounting/dashboard.html:282
+ACCOUNTS,حساب ها,,"templates/accounting/dashboard.html:303, templates/accounting/dashboard.html:527"
+"Manage account structure, view balances, Assets, Liabilities, Equity, Revenue, Expenses",مدیریت ساختار حساب، مشاهده مانده ها، دارایی ها، بدهی ها، حقوق صاحبان سهام، درآمد، هزینه ها,,templates/accounting/dashboard.html:310
+ENTRIES,ورودی ها,,templates/accounting/dashboard.html:331
+Journal Entries,مدخل های مجله,,"templates/accounting/dashboard.html:335, templates/accounting/journal_entries.html:5, templates/accounting/journal_entries.html:16 ... (6 more)"
+"View and manage all journal entries, automatic double-entry bookkeeping transactions",مشاهده و مدیریت تمام ورودی های مجله، تراکنش های حسابداری دو ورودی خودکار,,templates/accounting/dashboard.html:338
+LEDGER,LEDGER,,templates/accounting/dashboard.html:359
+"Complete transaction history, account movements, and audit trail for all entries",تاریخچه تراکنش کامل، حرکات حساب، و دنباله حسابرسی برای همه ورودی ها,,templates/accounting/dashboard.html:366
+PAYABLES,قابل پرداخت,,templates/accounting/dashboard.html:387
+Bills & Payables,قبوض و پرداختنی ها,,templates/accounting/dashboard.html:391
+"Manage supplier bills, track payments, aging reports, and outstanding payables",صورت‌حساب‌های تامین‌کننده، پیگیری پرداخت‌ها، گزارش‌های قدیمی و بدهی‌های معوق را مدیریت کنید,,templates/accounting/dashboard.html:394
+SUPPLIERS,تامین کنندگان,,templates/accounting/dashboard.html:415
+"View supplier accounting details, statements, and payment history",جزئیات حسابداری تامین کننده، بیانیه ها و تاریخچه پرداخت را مشاهده کنید,,templates/accounting/dashboard.html:422
+INVOICES,فاکتورها,,templates/accounting/dashboard.html:443
+Invoices & Receivables,فاکتورها و مطالبات,,templates/accounting/dashboard.html:447
+"Manage customer invoices, track payments, aging reports, and credit memos",فاکتورهای مشتری را مدیریت کنید، پرداخت ها را پیگیری کنید، گزارش های قدیمی و یادداشت های اعتباری,,templates/accounting/dashboard.html:450
+CUSTOMERS,مشتریان,,templates/accounting/dashboard.html:471
+"View customer accounting details, invoices, statements, and credit limits",جزئیات حسابداری مشتری، فاکتورها، صورتحساب ها و محدودیت های اعتباری را مشاهده کنید,,templates/accounting/dashboard.html:478
+RECEIVABLES,مطالبات,,templates/accounting/dashboard.html:499
+"Track customer invoices, payments due, and manage outstanding receivables",فاکتورهای مشتری، پرداخت های سررسید را پیگیری کنید و مطالبات معوق را مدیریت کنید,,templates/accounting/dashboard.html:506
+"Manage bank accounts, track balances, reconciliation status, and transactions",مدیریت حساب های بانکی، ردیابی مانده ها، وضعیت آشتی و تراکنش ها,,templates/accounting/dashboard.html:534
+BANKING,بانکداری,,templates/accounting/dashboard.html:555
+"Match bank statements with ledger entries, reconcile accounts automatically",صورت‌حساب‌های بانکی را با ورودی‌های دفتر مطابقت دهید، حساب‌ها را به‌طور خودکار تطبیق دهید,,templates/accounting/dashboard.html:562
+ASSETS,دارایی ها,,"templates/accounting/dashboard.html:583, templates/accounting/financial_reports.html:54"
+Fixed Assets,دارایی های ثابت,,"templates/accounting/dashboard.html:587, templates/accounting/financial_reports.html:72, templates/accounting/fixed_assets/detail.html:5 ... (5 more)"
+"Manage fixed assets register, track depreciation, asset disposal, and book values",مدیریت ثبت دارایی های ثابت، پیگیری استهلاک، دفع دارایی و ارزش دفتری,,templates/accounting/dashboard.html:590
+"View projected depreciation for all assets, export to PDF/Excel for planning",مشاهده استهلاک پیش بینی شده برای همه دارایی ها، صادرات به PDF/Excel برای برنامه ریزی,,templates/accounting/dashboard.html:618
+SETTINGS,تنظیمات,,templates/accounting/dashboard.html:640
+"Manage fiscal year, accounting periods, currencies, and system preferences",مدیریت سال مالی، دوره های حسابداری، ارزها و ترجیحات سیستم,,templates/accounting/dashboard.html:647
+Active & Synchronized,فعال و همگام شده,,templates/accounting/dashboard.html:699
+"All financial transactions are automatically recorded using double-entry bookkeeping. Data is synchronized in real-time from sales, purchases, and expenses.",همه تراکنش های مالی به صورت خودکار با استفاده از حسابداری دوبار ثبت می شوند. داده ها در زمان واقعی از فروش، خرید و هزینه ها هماهنگ می شوند.,,templates/accounting/dashboard.html:706
+Auto Journal Entries,ورودی های ژورنال خودکار,,templates/accounting/dashboard.html:713
+Real-time Sync,همگام سازی در زمان واقعی,,templates/accounting/dashboard.html:719
+Need Help?,به کمک نیاز دارید؟,,templates/accounting/dashboard.html:801
+Check our documentation or contact support for assistance with accounting features.,اسناد ما را بررسی کنید یا برای کمک در مورد ویژگی های حسابداری با پشتیبانی تماس بگیرید.,,templates/accounting/dashboard.html:802
+This will initialize the accounting system for your shop. This includes creating the chart of accounts and configuring double-entry bookkeeping. Continue?,با این کار سیستم حسابداری فروشگاه شما راه اندازی می شود. این شامل ایجاد نمودار حساب ها و پیکربندی حسابداری دوبار ورود است. ادامه دهید؟,,templates/accounting/dashboard.html:832
+Initializing...,در حال شروع...,,templates/accounting/dashboard.html:836
+Export as Excel,صادرات به عنوان اکسل,,templates/accounting/dashboard.html:917
+Editable spreadsheet format,فرمت صفحه گسترده قابل ویرایش,,templates/accounting/dashboard.html:918
+Balance Sheet,ترازنامه,,templates/accounting/financial_reports.html:46
+As of,از,,"templates/accounting/financial_reports.html:47, templates/accounting/reports/aged_payables.html:17, templates/accounting/reports/aged_receivables.html:17"
+LIABILITIES,تعهدات,,templates/accounting/financial_reports.html:95
+Dispose Asset,دور ریختن دارایی,,"templates/accounting/fixed_assets/detail.html:49, templates/accounting/fixed_assets/disposal_form.html:5, templates/accounting/fixed_assets/disposal_form.html:217 ... (1 more)"
+Disposed,دور انداخته شد,,"templates/accounting/fixed_assets/detail.html:69, templates/accounting/fixed_assets/list.html:233"
+Fully Depreciated,کاملا مستهلک شده,,"templates/accounting/fixed_assets/detail.html:73, templates/accounting/fixed_assets/list.html:237"
+Accumulated Depreciation,استهلاک انباشته,,"templates/accounting/fixed_assets/detail.html:95, templates/accounting/fixed_assets/detail.html:238, templates/accounting/fixed_assets/detail.html:311 ... (4 more)"
+Department,بخش,,templates/accounting/fixed_assets/detail.html:144
+Vendor,فروشنده,,templates/accounting/fixed_assets/detail.html:177
+Method,روش,,templates/accounting/fixed_assets/detail.html:205
+Useful Life,زندگی مفید,,templates/accounting/fixed_assets/detail.html:209
+months,ماه ها,,"templates/accounting/fixed_assets/detail.html:210, templates/accounting/reports/depreciation_schedule.html:100"
+Depreciation Start,شروع استهلاک,,templates/accounting/fixed_assets/detail.html:213
+Monthly Depreciation,استهلاک ماهانه,,templates/accounting/fixed_assets/detail.html:221
+General Ledger Accounts,حساب های دفتر کل,,"templates/accounting/fixed_assets/detail.html:230, templates/accounting/fixed_assets/form.html:259"
+Depreciation Expense,هزینه استهلاک,,templates/accounting/fixed_assets/detail.html:242
+Disposal Method,روش دفع,,templates/accounting/fixed_assets/detail.html:261
+Gain/Loss,سود / ضرر,,templates/accounting/fixed_assets/detail.html:269
+Buyer,خریدار,,templates/accounting/fixed_assets/detail.html:280
+No depreciation has been recorded yet.,هنوز استهلاکی ثبت نشده است.,,templates/accounting/fixed_assets/detail.html:340
+Projected Depreciation (Next 12 Months),استهلاک پیش بینی شده (12 ماه آینده),,templates/accounting/fixed_assets/detail.html:349
+Dispose Fixed Asset,دارایی های ثابت را از بین ببرید,,templates/accounting/fixed_assets/disposal_form.html:16
+Dispose,در معرض قرار دادن,,templates/accounting/fixed_assets/disposal_form.html:45
+Asset to Dispose,دارایی برای دفع,,templates/accounting/fixed_assets/disposal_form.html:56
+Disposing this asset will:,دفع این دارایی:,,templates/accounting/fixed_assets/disposal_form.html:198
+Mark the asset as disposed and prevent further depreciation,دارایی را به عنوان واگذار شده علامت گذاری کنید و از استهلاک بیشتر جلوگیری کنید,,templates/accounting/fixed_assets/disposal_form.html:200
+Create journal entries to remove the asset from the books,برای حذف دارایی از کتاب ها، مدخل های مجله ایجاد کنید,,templates/accounting/fixed_assets/disposal_form.html:201
+Calculate and record any gain or loss on disposal,سود یا زیان ناشی از واگذاری را محاسبه و ثبت کنید,,templates/accounting/fixed_assets/disposal_form.html:202
+This action cannot be easily undone,این عمل به راحتی قابل برگشت نیست,,templates/accounting/fixed_assets/disposal_form.html:203
+Register Asset,ثبت دارایی,,templates/accounting/fixed_assets/form.html:349
+Fixed Assets Register,ثبت دارایی های ثابت,,templates/accounting/fixed_assets/list.html:16
+Register New Asset,ثبت دارایی جدید,,templates/accounting/fixed_assets/list.html:47
+Asset,دارایی,,templates/accounting/fixed_assets/list.html:158
+Register Your First Asset,اولین دارایی خود را ثبت کنید,,templates/accounting/fixed_assets/list.html:278
+No payments have been recorded for this invoice yet.,هنوز هیچ پرداختی برای این فاکتور ثبت نشده است.,,templates/accounting/invoices/detail.html:354
+Add items and services to this invoice,موارد و خدمات را به این فاکتور اضافه کنید,,templates/accounting/invoices/form.html:422
+Aged Receivables,مطالبات قدیمی,,templates/accounting/invoices/list.html:40
+No journal entries,بدون نوشته های مجله,,"templates/accounting/journal_entries.html:120, templates/accounting/journal_entries/list.html:301"
+Are you sure you want to post this journal entry to the general ledger? This action cannot be undone.,آیا مطمئن هستید که می خواهید این مدخل مجله را در دفتر کل پست کنید؟ این عمل قابل بازگشت نیست.,,templates/accounting/journal_entries/confirm_post.html:43
+"Once posted, this entry cannot be edited or deleted. You can only reverse it by creating a reversing entry.",پس از ارسال، این نوشته قابل ویرایش یا حذف نیست. فقط با ایجاد یک ورودی معکوس می توانید آن را معکوس کنید.,,templates/accounting/journal_entries/confirm_post.html:78
+I have verified that all amounts are correct,من تأیید کردم که همه مقادیر صحیح است,,templates/accounting/journal_entries/confirm_post.html:91
+I have verified that all accounts are correct,من تأیید کرده ام که همه حساب ها درست هستند,,templates/accounting/journal_entries/confirm_post.html:99
+I confirm the accounting period is correct,من تأیید می کنم که دوره حسابداری درست است,,templates/accounting/journal_entries/confirm_post.html:107
+Post to General Ledger,ارسال به دفتر کل,,templates/accounting/journal_entries/confirm_post.html:130
+Journal Entry,ورودی مجله,,"templates/accounting/journal_entries/detail.html:5, templates/accounting/journal_entries/detail.html:16"
+Post to GL,ارسال به GL,,templates/accounting/journal_entries/detail.html:59
+Reverse Entry,ورود معکوس,,templates/accounting/journal_entries/detail.html:68
+Posted to General Ledger,ارسال شده به دفتر کل,,templates/accounting/journal_entries/detail.html:218
+Draft - Not Posted,پیش نویس - ارسال نشده است,,templates/accounting/journal_entries/detail.html:220
+Locked:,قفل شده:,,templates/accounting/journal_entries/detail.html:225
+This entry is locked and cannot be modified,این ورودی قفل شده است و نمی توان آن را تغییر داد,,templates/accounting/journal_entries/detail.html:226
+Metadata,فراداده,,templates/accounting/journal_entries/detail.html:239
+Ledger,دفتر کل,,templates/accounting/journal_entries/detail.html:259
+Parent Entry,ورود والدین,,"templates/accounting/journal_entries/detail.html:266, templates/accounting/journal_entries/detail.html:285"
+Edit Journal Entry,ویرایش مدخل مجله,,"templates/accounting/journal_entries/form.html:7, templates/accounting/journal_entries/form.html:35"
+Must be $0.00,باید 0.00 دلار باشد,,templates/accounting/journal_entries/form.html:212
+Debits and credits must be equal. Please adjust the amounts.,بدهی و اعتبار باید برابر باشد. لطفا مقادیر را تنظیم کنید.,,templates/accounting/journal_entries/form.html:232
+You must have at least one line item.,شما باید حداقل یک مورد خط داشته باشید.,,templates/accounting/journal_entries/form.html:364
+New Entry,ورودی جدید,,"templates/accounting/journal_entries/list.html:40, templates/accounting/journal_entries/list.html:311"
+Reversed,معکوس شد,,templates/accounting/journal_entries/list.html:78
+Post,ارسال کنید,,templates/accounting/journal_entries/list.html:194
+Reverse,معکوس,,templates/accounting/journal_entries/list.html:203
+Aged Payables Report,گزارش بدهی های مسن,,"templates/accounting/reports/aged_payables.html:5, templates/accounting/reports/aged_payables.html:14"
+bill(s),صورت حساب,,templates/accounting/reports/aged_payables.html:145
+TOTAL,TOTAL,,"templates/accounting/reports/aged_payables.html:204, templates/accounting/reports/aged_receivables.html:204"
+No unpaid bills,بدون صورتحساب پرداخت نشده,,templates/accounting/reports/aged_payables.html:234
+There are no unpaid bills to display in the aged payables report.,هیچ صورت حساب پرداخت نشده ای برای نمایش در گزارش بدهی های قدیمی وجود ندارد.,,templates/accounting/reports/aged_payables.html:237
+About This Report,درباره این گزارش,,"templates/accounting/reports/aged_payables.html:259, templates/accounting/reports/aged_receivables.html:259, templates/accounting/reports/bank_reconciliation.html:317"
+This report shows amounts owed to suppliers grouped by how many days past due they are. Use this report to:,این گزارش مبالغ بدهی به تامین کنندگان را بر اساس چند روز سررسید آنها گروه بندی می کند. از این گزارش برای موارد زیر استفاده کنید:,,templates/accounting/reports/aged_payables.html:263
+Identify overdue payments that need immediate attention,پرداخت های معوق که نیاز به توجه فوری دارند را شناسایی کنید,,templates/accounting/reports/aged_payables.html:266
+Monitor cash flow and payment obligations,نظارت بر جریان نقدی و تعهدات پرداخت,,templates/accounting/reports/aged_payables.html:267
+Maintain good supplier relationships by paying on time,با پرداخت به موقع، روابط خوب با تامین کنندگان را حفظ کنید,,templates/accounting/reports/aged_payables.html:268
+Plan for upcoming cash requirements,برای نیازهای نقدی آینده برنامه ریزی کنید,,templates/accounting/reports/aged_payables.html:269
+Aged Receivables Report,گزارش مطالبات مسن,,"templates/accounting/reports/aged_receivables.html:5, templates/accounting/reports/aged_receivables.html:14"
+invoice(s),فاکتور(های),,templates/accounting/reports/aged_receivables.html:145
+No unpaid invoices,بدون فاکتور پرداخت نشده,,templates/accounting/reports/aged_receivables.html:234
+There are no unpaid invoices to display in the aged receivables report.,هیچ فاکتور پرداخت نشده ای برای نمایش در گزارش دریافتنی های قدیمی وجود ندارد.,,templates/accounting/reports/aged_receivables.html:237
+This report shows amounts owed by customers grouped by how many days past due they are. Use this report to:,این گزارش مبالغ بدهی مشتریان را بر اساس چند روز سررسید آنها گروه بندی می کند. از این گزارش برای موارد زیر استفاده کنید:,,templates/accounting/reports/aged_receivables.html:263
+Identify overdue invoices that need immediate follow-up,فاکتورهای معوق که نیاز به پیگیری فوری دارند را شناسایی کنید,,templates/accounting/reports/aged_receivables.html:266
+Monitor cash flow and expected receipts,نظارت بر جریان نقدی و دریافت های مورد انتظار,,templates/accounting/reports/aged_receivables.html:267
+Track customer payment patterns and creditworthiness,الگوهای پرداخت و اعتبار مشتری را دنبال کنید,,templates/accounting/reports/aged_receivables.html:268
+Plan collection efforts and cash requirements,تلاش های جمع آوری و نیازهای نقدی را برنامه ریزی کنید,,templates/accounting/reports/aged_receivables.html:269
+Beginning Balance,تعادل ابتدایی,,"templates/accounting/reports/bank_reconciliation.html:108, templates/accounting/reports/bank_reconciliation.html:149"
+Add: Deposits,افزودن: سپرده ها,,templates/accounting/reports/bank_reconciliation.html:114
+Less: Withdrawals,کمتر: برداشت ها,,templates/accounting/reports/bank_reconciliation.html:120
+Add/Less: Adjustments,افزودن/کمتر: تنظیمات,,templates/accounting/reports/bank_reconciliation.html:127
+Ending Balance,تعادل پایانی,,"templates/accounting/reports/bank_reconciliation.html:134, templates/accounting/reports/bank_reconciliation.html:155"
+Book Balance,موجودی کتاب,,templates/accounting/reports/bank_reconciliation.html:145
+Total Withdrawals:,کل برداشت ها:,,templates/accounting/reports/bank_reconciliation.html:283
+"This report shows the completed bank reconciliation, including all reconciled transactions and the final balance comparison between the bank statement and your accounting records.",این گزارش تطبیق بانکی تکمیل شده، شامل تمام تراکنش های تطبیق شده و مقایسه مانده نهایی بین صورت حساب بانکی و سوابق حسابداری شما را نشان می دهد.,,templates/accounting/reports/bank_reconciliation.html:321
+Note: This reconciliation has a variance. Review the transactions and consider creating adjusting entries if needed.,توجه: این آشتی دارای یک واریانس است. تراکنش ها را مرور کنید و در صورت نیاز، ورودی های تنظیمی ایجاد کنید.,,templates/accounting/reports/bank_reconciliation.html:325
+Depreciation Schedule Report,گزارش جدول زمانبندی استهلاک,,"templates/accounting/reports/depreciation_schedule.html:5, templates/accounting/reports/depreciation_schedule.html:14"
+Projected depreciation for active fixed assets,استهلاک پیش بینی شده برای دارایی های ثابت فعال,,templates/accounting/reports/depreciation_schedule.html:17
+Assets with Projections,دارایی ها با پیش بینی ها,,templates/accounting/reports/depreciation_schedule.html:75
+Method:,روش:,,templates/accounting/reports/depreciation_schedule.html:97
+Remaining:,باقی مانده:,,templates/accounting/reports/depreciation_schedule.html:100
+No projected depreciation periods,بدون دوره استهلاک پیش بینی شده,,templates/accounting/reports/depreciation_schedule.html:181
+There are no active fixed assets with remaining depreciation.,هیچ دارایی ثابت فعالی با استهلاک باقیمانده وجود ندارد.,,templates/accounting/reports/depreciation_schedule.html:195
+Add Fixed Asset,اضافه کردن دارایی ثابت,,templates/accounting/reports/depreciation_schedule.html:200
+Tax ID,شناسه مالیاتی,,templates/accounting/suppliers/accounting_detail.html:78
+1099 Vendor,1099 فروشنده,,templates/accounting/suppliers/accounting_detail.html:82
+Try adjusting your search or filter criteria.,معیارهای جستجو یا فیلتر خود را تنظیم کنید.,,templates/accounting/suppliers/list.html:213
+Period Bills,صورت حساب های دوره,,templates/accounting/suppliers/statement.html:155
+Closing Balance,تراز پایانی,,"templates/accounting/suppliers/statement.html:167, templates/accounting/suppliers/statement.html:277"
+This area is for platform administrators only. All login attempts are logged and monitored.,این منطقه فقط برای مدیران پلتفرم است. تمام تلاش‌های ورود به سیستم ثبت و نظارت می‌شوند.,,"templates/admin/admin_login.html:315, templates/admin/login.html:315"
+View system audit trail and security events,مشاهده مسیر حسابرسی سیستم و رویدادهای امنیتی,,"templates/admin/dashboard.html:171, templates/admin/dashboard_modern.html:538"
+new today,امروز جدید,,"templates/admin/dashboard.html:206, templates/admin/dashboard.html:498, templates/admin/dashboard_modern.html:573"
+Loading recent activity...,در حال بارگیری فعالیت اخیر...,,templates/admin/dashboard.html:338
+No recent activity,هیچ فعالیت اخیری وجود ندارد,,templates/admin/dashboard.html:581
+Unable to load activity,بارگیری فعالیت ممکن نیست,,templates/admin/dashboard.html:619
+Healthy,سالم,,templates/admin/dashboard_modern.html:626
+%(count)s new in last 30 days,%(count)s جدید در 30 روز گذشته,,templates/admin/dashboard_old_backup.html:235
+%(count)s new today,%(count)s امروز جدید است,,templates/admin/dashboard_old_backup.html:244
+Database & System Management,پایگاه داده و مدیریت سیستم,,templates/admin/login.html:260
+Resource Limits,محدودیت منابع,,templates/admin/subscription_plan_form.html:86
+User Limit,محدودیت کاربر,,templates/admin/subscription_plan_form.html:90
+Storage Limit (GB),محدودیت فضای ذخیره سازی (گیگابایت),,templates/admin/subscription_plan_form.html:120
+API Calls per Month,تماس‌های API در ماه,,templates/admin/subscription_plan_form.html:130
+Successfully verified,با موفقیت تأیید شد,,templates/backups/dashboard.html:285
+Weekly Backup Monitoring,نظارت هفتگی پشتیبان گیری,,templates/backups/weekly_backup_monitoring.html:4
+You are viewing this account as a platform administrator. All actions are logged.,شما در حال مشاهده این حساب به عنوان یک سرپرست پلتفرم هستید. همه اقدامات ثبت شده است.,,templates/base.html:110
+Main navigation,ناوبری اصلی,,templates/base.html:132
+Today,امروز,,templates/core/audit/audit_log_explorer.html:58
+The formatting automatically adapts based on your selected language. Switch to Persian to see Jalali calendar dates and Persian numerals.,قالب بندی به طور خودکار بر اساس زبان انتخابی شما سازگار می شود. برای دیدن تاریخ های تقویم جلالی و اعداد فارسی به فارسی بروید.,,templates/core/formatting_example.html:151
+%(count)s transaction,%(count)s تراکنش,,templates/core/tenant_dashboard.html:65
+"
+        Welcome back, %(name)s! We're glad to see you again.
+        ",خوش آمدید، %(name)s! خوشحالیم که دوباره شما را می بینیم.,,templates/core/translation_example.html:20
+"
+        You have %(counter)s item in your inventory.
+        ",شما %(counter)s مورد در موجودی خود دارید.,,templates/core/translation_example.html:27
+Try adjusting your search or filters,جستجو یا فیلترهای خود را تنظیم کنید,,templates/crm/customer_list.html:212
+Too Many Requests,درخواست های خیلی زیاد,,"templates/errors/429.html:4, templates/errors/429.html:16"
+You have made too many requests. Please wait a moment and try again.,شما درخواست های زیادی کرده اید. لطفاً یک لحظه صبر کنید و دوباره امتحان کنید.,,templates/errors/429.html:22
+"This is a security measure to protect against automated attacks. If you believe this is an error, please contact support.",این یک اقدام امنیتی برای محافظت در برابر حملات خودکار است. اگر فکر می کنید این یک خطا است، لطفا با پشتیبانی تماس بگیرید.,,templates/errors/429.html:40
+Go Back,به عقب برگرد,,"templates/errors/429.html:49, templates/errors/csrf_failure.html:51"
+Home,صفحه اصلی,,templates/errors/429.html:52
+CSRF Verification Failed,تأیید CSRF ناموفق بود,,"templates/errors/csrf_failure.html:4, templates/errors/csrf_failure.html:16"
+What happened?,چه اتفاقی افتاد؟,,templates/errors/csrf_failure.html:32
+Your request could not be processed because the security token was missing or invalid. This usually happens when:,درخواست شما قابل پردازش نیست زیرا کد امنیتی موجود نیست یا نامعتبر است. این معمولا زمانی اتفاق می افتد که:,,templates/errors/csrf_failure.html:36
+Your session has expired,جلسه شما تمام شده است,,templates/errors/csrf_failure.html:39
+You opened the form in multiple tabs,شما فرم را در چندین برگه باز کردید,,templates/errors/csrf_failure.html:40
+Your browser cookies are disabled,کوکی های مرورگر شما غیرفعال هستند,,templates/errors/csrf_failure.html:41
+Go to Home,به خانه بروید,,templates/errors/csrf_failure.html:56
+Technical reason:,دلیل فنی:,,templates/errors/csrf_failure.html:62
+Parent:,والدین:,,"templates/inventory/category_delete.html:46, templates/inventory/category_detail.html:33"
+Cannot Delete Category,نمی توان دسته را حذف کرد,,templates/inventory/category_delete.html:69
+"
+                                    This category contains %(counter)s item. Please move or delete the item before deleting this category.
+                                    ",این دسته شامل %(counter)s مورد است. لطفاً قبل از حذف این دسته، مورد را منتقل یا حذف کنید.,,templates/inventory/category_delete.html:75
+This category has subcategories. Please delete or reassign the subcategories before deleting this category.,این دسته دارای زیرمجموعه هایی است. لطفاً قبل از حذف این دسته، زیرمجموعه ها را حذف یا دوباره اختصاص دهید.,,templates/inventory/category_delete.html:84
+This action cannot be undone. The category will be permanently deleted.,این عمل قابل بازگشت نیست. دسته برای همیشه حذف خواهد شد.,,templates/inventory/category_delete.html:105
+No description provided,هیچ توضیحی ارائه نشده است,,templates/inventory/category_detail.html:78
+Subcategories,زیر مجموعه ها,,"templates/inventory/category_detail.html:89, templates/inventory/category_detail.html:198, templates/inventory/category_list.html:274"
+Create a new product category with its organizational details.,یک دسته بندی محصول جدید با جزئیات سازمانی آن ایجاد کنید.,,templates/inventory/category_form.html:167
+Title for search engines,عنوان برای موتورهای جستجو,,"templates/inventory/category_form.html:206, templates/inventory/category_form.html:418"
+Description for search engines,توضیحات برای موتورهای جستجو,,"templates/inventory/category_form.html:207, templates/inventory/category_form.html:435"
+Essential category details.,جزئیات دسته بندی ضروری,,templates/inventory/category_form.html:218
+"e.g. Rings, Necklaces, Bracelets",به عنوان مثال انگشتر، گردنبند، دستبند,,templates/inventory/category_form.html:233
+Provide a detailed description of this category.,شرح مفصلی از این دسته ارائه دهید.,,templates/inventory/category_form.html:271
+Inactive categories are hidden from the store.,دسته‌های غیرفعال از فروشگاه پنهان می‌شوند.,,templates/inventory/category_form.html:291
+Upload an image to represent this category.,یک تصویر برای نشان دادن این دسته آپلود کنید.,,templates/inventory/category_form.html:301
+"Only PNG, JPG, and GIF files are supported",فقط فایل های PNG، JPG و GIF پشتیبانی می شوند,,templates/inventory/category_form.html:306
+File size must be less than 10MB,حجم فایل باید کمتر از 10 مگابایت باشد,,templates/inventory/category_form.html:307
+"PNG, JPG, GIF up to 10MB",PNG، JPG، GIF تا 10 مگابایت,,templates/inventory/category_form.html:327
+URL and search engine optimization.,URL و بهینه سازی موتور جستجو,,templates/inventory/category_form.html:366
+e.g. gold-engagement-rings,به عنوان مثال حلقه های نامزدی طلا,,templates/inventory/category_form.html:382
+SEO Title (Optional),عنوان سئو (اختیاری),,templates/inventory/category_form.html:409
+SEO Meta Description (Optional),توضیحات متا SEO (اختیاری),,templates/inventory/category_form.html:427
+Search Engine Snippet Preview,پیش نمایش قطعه موتور جستجو,,templates/inventory/category_form.html:454
+Manage your jewelry product categories with hierarchical organization,دسته بندی محصولات جواهرات خود را با سازماندهی سلسله مراتبی مدیریت کنید,,templates/inventory/category_list.html:45
+subcategories,زیر مجموعه ها,,templates/inventory/category_list.html:233
+Try adjusting your search terms.,سعی کنید عبارات جستجوی خود را تنظیم کنید.,,templates/inventory/category_list.html:317
+MAIN CATEGORIES,دسته بندی های اصلی,,templates/inventory/category_list_new.html:102
+Subcategories:,زیر مجموعه ها:,,templates/inventory/category_list_new.html:189
+Icon:,نماد:,,templates/inventory/category_list_new.html:225
+Subcategories of,زیر مجموعه های,,templates/inventory/category_list_new.html:279
+Icon,نماد,,templates/inventory/category_list_new.html:291
+Subcats,زیرگربه ها,,templates/inventory/category_list_new.html:300
+No subcategories,بدون زیرمجموعه,,templates/inventory/category_list_new.html:382
+This category doesn't have any subcategories yet.,این دسته هنوز هیچ زیرمجموعه ای ندارد.,,templates/inventory/category_list_new.html:384
+Add First Subcategory,اضافه کردن اولین زیر مجموعه,,templates/inventory/category_list_new.html:392
+Choose a category from the sidebar to view its details and subcategories.,یک دسته را از نوار کناری انتخاب کنید تا جزئیات و زیرمجموعه های آن را مشاهده کنید.,,templates/inventory/category_list_new.html:411
+Create First Category,ایجاد دسته اول,,templates/inventory/category_list_new.html:421
+Complete all required fields to add inventory item,برای افزودن آیتم موجودی، تمام فیلدهای لازم را تکمیل کنید,,templates/inventory/inventory_form.html:16
+Barcode,بارکد,,templates/inventory/inventory_form.html:274
+Try adjusting your filters or search terms.,سعی کنید فیلترها یا عبارات جستجوی خود را تنظیم کنید.,,templates/inventory/inventory_list.html:500
+Dead Stock Items,اقلام سهام مرده,,templates/inventory/reports.html:134
+Turnover Ratio,نسبت گردش مالی,,templates/inventory/reports.html:159
+left,سمت چپ,,templates/inventory/reports.html:226
+Min:,حداقل:,,templates/inventory/reports.html:229
+All items are well stocked!,همه اقلام به خوبی انبار شده اند!,,templates/inventory/reports.html:241
+No items are out of stock!,هیچ کالایی در انبار موجود نیست!,,templates/inventory/reports.html:285
+Dead Stock Analysis,تجزیه و تحلیل سهام مرده,,templates/inventory/reports.html:297
+Items with no sales in 90 days,اقلام بدون فروش در 90 روز,,templates/inventory/reports.html:300
+each,هر کدام,,templates/inventory/reports.html:325
+No dead stock detected!,هیچ سهام مرده ای شناسایی نشد!,,templates/inventory/reports.html:337
+Inventory Valuation Report,گزارش ارزش گذاری موجودی,,templates/inventory/reports.html:348
+Current inventory value breakdown,تفکیک ارزش موجودی فعلی,,templates/inventory/reports.html:351
+Cost price basis,مبنای قیمت تمام شده,,templates/inventory/reports.html:362
+Avg Value/Item,میانگین مقدار/مورد,,templates/inventory/reports.html:382
+Add custom variables to personalize your campaign. Use these in your templates as {{ variable_name }}.,متغیرهای سفارشی را برای شخصی سازی کمپین خود اضافه کنید. از اینها در الگوهای خود به عنوان {{ variable_name }} استفاده کنید.,,templates/notifications/bulk_campaign.html:113
+Are you sure you want to send this campaign? This action cannot be undone.,آیا مطمئن هستید که می خواهید این کمپین را ارسال کنید؟ این عمل قابل بازگشت نیست.,,templates/notifications/bulk_campaign.html:237
+"
+                        Showing %(start)s to %(end)s of %(total)s communications
+                    ",نمایش %(start)s تا %(end)s از %(total)s ارتباطات,,templates/notifications/communication_log.html:195
+"
+                        Showing %(start)s to %(end)s of %(total)s segments
+                    ",نمایش %(start)s تا %(end)s از %(total)s بخش,,templates/notifications/customer_segments.html:101
+"
+                                    %(counter)s unread notification
+                                ",%(counter)s اعلان خوانده نشده,,templates/notifications/notification_center.html:81
+%(count)s customers match this criteria,%(count)s مشتریان با این معیار مطابقت دارند,,templates/notifications/partials/segment_preview.html:11
+"During quiet hours, you'll only receive critical notifications (errors and system alerts)",در ساعات خلوت، فقط اعلان‌های مهم (خطاها و هشدارهای سیستم) را دریافت خواهید کرد.,,templates/notifications/preferences.html:194
+This will recalculate prices for all inventory items based on current gold rates and pricing rules.,با این کار قیمت تمام اقلام موجودی بر اساس نرخ فعلی طلا و قوانین قیمت گذاری دوباره محاسبه می شود.,,templates/pricing/dashboard.html:167
+The quantities in this receipt do not match the purchase order. Please review the items before completing.,مقادیر موجود در این رسید با سفارش خرید مطابقت ندارد. لطفا قبل از تکمیل موارد را بررسی کنید.,,templates/procurement/goods_receipt_complete.html:39
+This receipt has discrepancies. Completing it will still update inventory with accepted quantities only.,این رسید دارای مغایرت هایی است. تکمیل آن همچنان موجودی را فقط با مقادیر پذیرفته شده به روز می کند.,,templates/procurement/goods_receipt_complete.html:48
+This action cannot be undone. Make sure all information is correct before proceeding.,این عمل قابل بازگشت نیست. قبل از ادامه، مطمئن شوید که همه اطلاعات صحیح هستند.,,templates/procurement/goods_receipt_complete.html:186
+Tax ID:,شناسه مالیاتی:,,templates/procurement/supplier_detail.html:81
+Follow-up Required,پیگیری لازم است,,templates/procurement/supplier_detail.html:157
+Uploaded,آپلود شد,,templates/procurement/supplier_detail.html:189
+Expired,منقضی شده است,,templates/procurement/supplier_detail.html:202
+Expires Soon,به زودی منقضی می شود,,templates/procurement/supplier_detail.html:206
+Valid,معتبر است,,templates/procurement/supplier_detail.html:210
+No documents uploaded yet.,هنوز هیچ سندی آپلود نشده است.,,templates/procurement/supplier_detail.html:221
+Pending Follow-ups,پیگیری های در انتظار,,templates/procurement/supplier_detail.html:243
+Expiring Docs,اسناد در حال انقضا,,templates/procurement/supplier_detail.html:247
+Upload Document,بارگذاری سند,,templates/procurement/supplier_detail.html:281
+Running,در حال دویدن,,templates/reporting/execution_detail.html:31
+Run Again,دوباره اجرا کن,,templates/reporting/execution_detail.html:68
+Rows,ردیف ها,,templates/reporting/execution_detail.html:84
+File Size,اندازه فایل,,templates/reporting/execution_detail.html:104
+Trigger Type,نوع ماشه,,templates/reporting/execution_detail.html:191
+Manual,دستی,,templates/reporting/execution_detail.html:198
+API,API,,templates/reporting/execution_detail.html:212
+Task ID,شناسه وظیفه,,templates/reporting/execution_detail.html:239
+Download,دانلود کنید,,templates/reporting/report_detail.html:162
+Are you sure you want to delete this report? All execution history and schedules will also be deleted. This action cannot be undone.,آیا مطمئن هستید که می خواهید این گزارش را حذف کنید؟ تمام تاریخچه اجرا و زمان‌بندی‌ها نیز حذف خواهند شد. این عمل قابل بازگشت نیست.,,templates/reporting/report_detail.html:291
+"Leave empty to download directly, or enter email addresses to send the report via email",برای دانلود مستقیم آن را خالی بگذارید یا آدرس های ایمیل را برای ارسال گزارش از طریق ایمیل وارد کنید,,templates/reporting/report_execute.html:210
+"If email recipients are specified, the report will be sent automatically",اگر گیرندگان ایمیل مشخص شده باشند، گزارش به صورت خودکار ارسال خواهد شد,,templates/reporting/report_execute.html:245
+Select one or more output formats for this report,یک یا چند فرمت خروجی را برای این گزارش انتخاب کنید,,templates/reporting/report_form.html:107
+Query Configuration (JSON),پیکربندی پرس و جو (JSON),,templates/reporting/report_form.html:120
+Save & Continue Editing,ذخیره و ادامه ویرایش,,templates/reporting/report_form.html:200
+Invalid JSON format,قالب JSON نامعتبر است,,templates/reporting/report_form.html:227
+"Search product name, SKU, or scan barcode",نام محصول، SKU یا اسکن بارکد را جستجو کنید,,templates/sales/pos_interface.html:452
+Download PDF,PDF را دانلود کنید,,templates/sales/sale_detail.html:46
+Employee,کارمند,,templates/sales/sale_detail.html:202
+"Note: You can only edit customer, payment method, discount, and notes. To change items, you must void this sale and create a new one.",توجه: فقط می توانید مشتری، روش پرداخت، تخفیف و یادداشت ها را ویرایش کنید. برای تغییر موارد، باید این فروش را لغو کنید و یک مورد جدید ایجاد کنید.,,templates/sales/sale_edit.html:69
+Search customer by name or phone...,جستجوی مشتری با نام یا تلفن...,,templates/sales/sale_edit.html:83
+Fixed Amount,مبلغ ثابت,,templates/sales/sale_edit.html:124
+Percentage,درصد,,templates/sales/sale_edit.html:127
+Add any notes about this sale...,هر گونه یادداشتی در مورد این فروش اضافه کنید...,,templates/sales/sale_edit.html:158
+Try adjusting your filters or create a new sale.,سعی کنید فیلترهای خود را تنظیم کنید یا یک فروش جدید ایجاد کنید.,,templates/sales/sale_list.html:198
+You have %(count)d item.,شما %(count)d مورد دارید.,,"tests/test_translation_infrastructure.py:122, tests/test_translation_infrastructure.py:130"

@@ -1,0 +1,18 @@
+English,Persian,Context,File
+You have %(count)d item in your inventory.,,,apps/core/translation_utils.py:53
+"
+                            This customer has exceeded their credit limit. Outstanding balance: $%(balance)s, Credit limit: $%(limit)s
+                            ",,,templates/accounting/customers/accounting_detail.html:76
+%(count)s new in last 30 days,,,templates/admin/dashboard_old_backup.html:235
+%(count)s new today,,,templates/admin/dashboard_old_backup.html:244
+%(count)s transaction,,,templates/core/tenant_dashboard.html:65
+"
+        You have %(counter)s item in your inventory.
+        ",,,templates/core/translation_example.html:27
+"
+                                    This category contains %(counter)s item. Please move or delete the item before deleting this category.
+                                    ",,,templates/inventory/category_delete.html:75
+"
+                                    %(counter)s unread notification
+                                ",,,templates/notifications/notification_center.html:81
+You have %(count)d item.,,,"tests/test_translation_infrastructure.py:122, tests/test_translation_infrastructure.py:130"

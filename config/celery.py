@@ -12,6 +12,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 # Initialize OpenTelemetry tracing for Celery workers
 from apps.core.tracing import configure_tracing
+
 configure_tracing()
 
 app = Celery("jewelry_shop")

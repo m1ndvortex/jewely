@@ -1,0 +1,60 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: jewelry-shop-dev
+
+build:
+  local:
+    push: false
+    useBuildkit: true
+  artifacts:
+    - image: jewelry-shop-django
+      docker:
+        dockerfile: Dockerfile.prod
+      sync:
+        manual:
+          # Python source code
+          - src: "**/*.py"
+            dest: /app
+          # Django templates
+          - src: "templates/**/*.html"
+            dest: /app/templates
+          # Static files
+          - src: "static/**/*.css"
+            dest: /app/static
+          - src: "static/**/*.js"
+            dest: /app/static
+          - src: "static/**/*.png"
+            dest: /app/static
+          - src: "static/**/*.jpg"
+            dest: /app/static
+          - src: "static/**/*.svg"
+            dest: /app/static
+          - src: "static/**/*.ico"
+            dest: /app/static
+          # Translations
+          - src: "locale/**/*.po"
+            dest: /app/locale
+          - src: "locale/**/*.mo"
+            dest: /app/locale
+
+manifests:
+  rawYaml:
+    - k8s/django-deployment-dev.yaml
+    - k8s/celery-worker-deployment-dev.yaml
+    - k8s/celery-beat-deployment-dev.yaml
+
+deploy:
+  kubectl: {}
+
+portForward:
+  - resourceType: service
+    resourceName: nginx-service
+    namespace: jewelry-shop
+    port: 443
+    localPort: 8443
+  - resourceType: service
+    resourceName: django
+    namespace: jewelry-shop
+    port: 8000
+    localPort: 8000

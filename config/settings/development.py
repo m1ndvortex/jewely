@@ -18,6 +18,8 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key-change-in-production
 DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,web,0.0.0.0").split(",")
+# Add wildcard support for subdomain-based tenant routing in development
+ALLOWED_HOSTS.extend([".localhost", ".localhost:8000"])
 
 # Site URL for email templates and notifications
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
@@ -141,9 +143,16 @@ CSRF_COOKIE_SECURE = False
 LANGUAGE_COOKIE_SECURE = False
 WAFFLE_SECURE = False
 
-# Django Compressor - Disabled in development
-COMPRESS_ENABLED = False
-COMPRESS_OFFLINE = False
+# Django Compressor - Enabled for production-like behavior
+COMPRESS_ENABLED = True
+COMPRESS_OFFLINE = False  # Keep False for development auto-reload
+
+# Add CompressorFinder to STATICFILES_FINDERS (required for django-compressor)
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "compressor.finders.CompressorFinder",
+]
 
 # Django Silk - Enabled in development
 SILKY_PYTHON_PROFILER = True
@@ -164,19 +173,11 @@ SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
         "AUTH_PARAMS": {"access_type": "online", "prompt": "select_account"},
-        "APP": {
-            "client_id": os.getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
-            "secret": os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", ""),
-            "key": "",
-        },
+        # APP configuration moved to database (SocialApp model)
     },
     "github": {
         "SCOPE": ["user", "user:email"],
-        "APP": {
-            "client_id": os.getenv("GITHUB_OAUTH_CLIENT_ID", ""),
-            "secret": os.getenv("GITHUB_OAUTH_CLIENT_SECRET", ""),
-            "key": "",
-        },
+        # APP configuration moved to database (SocialApp model)
     },
 }
 

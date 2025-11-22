@@ -1,0 +1,15 @@
+English,Persian,Context,File
+You have %(count)d item in your inventory.,شما %(count)d مورد در موجودی خود دارید.,,apps/core/translation_utils.py:53
+%(count)s new in last 30 days,%(count)s جدید در 30 روز گذشته,,templates/admin/dashboard_old_backup.html:235
+%(count)s new today,%(count)s امروز جدید است,,templates/admin/dashboard_old_backup.html:244
+%(count)s transaction,%(count)s تراکنش,,templates/core/tenant_dashboard.html:65
+"
+        You have %(counter)s item in your inventory.
+        ",شما %(counter)s مورد در موجودی خود دارید.,,templates/core/translation_example.html:27
+"
+                                    This category contains %(counter)s item. Please move or delete the item before deleting this category.
+                                    ",این دسته شامل %(counter)s مورد است. لطفاً قبل از حذف این دسته، مورد را منتقل یا حذف کنید.,,templates/inventory/category_delete.html:75
+"
+                                    %(counter)s unread notification
+                                ",%(counter)s اعلان خوانده نشده,,templates/notifications/notification_center.html:81
+You have %(count)d item.,شما %(count)d مورد دارید.,,"tests/test_translation_infrastructure.py:122, tests/test_translation_infrastructure.py:130"

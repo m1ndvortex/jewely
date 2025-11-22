@@ -329,12 +329,12 @@ function posApp() {
                         </svg>
                     </div>
                     <div>
-                        <p class="text-xs uppercase tracking-[0.3em] text-purple-400">Store</p>
-                        <p class="text-lg font-semibold">Jewelry POS</p>
+                        <p class="text-xs uppercase tracking-[0.3em] text-purple-400">{% trans "Store" %}</p>
+                        <p class="text-lg font-semibold">{% trans "Jewelry POS" %}</p>
                     </div>
                 </div>
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 mb-3">Categories</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 mb-3">{% trans "Categories" %}</p>
                     <nav class="space-y-2">
                         <button type="button"
                                 @click="activeCategory = 'all'"
@@ -346,7 +346,7 @@ function posApp() {
                                 <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
                                 <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
                             </svg>
-                            <span>All Products</span>
+                            <span>{% trans "All Products" %}</span>
                         </button>
                         <button type="button"
                                 @click="activeCategory = 'rings'"
@@ -356,7 +356,7 @@ function posApp() {
                                 <circle cx="12" cy="13" r="5"></circle>
                                 <path d="M9 6l3-4 3 4" stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
-                            <span>Rings</span>
+                            <span>{% trans "Rings" %}</span>
                         </button>
                         <button type="button"
                                 @click="activeCategory = 'necklaces'"
@@ -366,7 +366,7 @@ function posApp() {
                                 <path d="M6 4a6 6 0 0012 0" stroke-linecap="round"></path>
                                 <path d="M5 14c0 3.866 3.134 7 7 7s7-3.134 7-7" stroke-linecap="round"></path>
                             </svg>
-                            <span>Necklaces</span>
+                            <span>{% trans "Necklaces" %}</span>
                         </button>
                         <button type="button"
                                 @click="activeCategory = 'bracelets'"
@@ -376,7 +376,7 @@ function posApp() {
                                 <path d="M7 7h10v10H7z" stroke-linejoin="round"></path>
                                 <path d="M9 3h6M3 9v6m18-6v6m-6 6H9" stroke-linecap="round"></path>
                             </svg>
-                            <span>Bracelets</span>
+                            <span>{% trans "Bracelets" %}</span>
                         </button>
                         <button type="button"
                                 @click="activeCategory = 'earrings'"
@@ -386,15 +386,15 @@ function posApp() {
                                 <path d="M12 2v6" stroke-linecap="round"></path>
                                 <circle cx="12" cy="14" r="4"></circle>
                             </svg>
-                            <span>Earrings</span>
+                            <span>{% trans "Earrings" %}</span>
                         </button>
                     </nav>
                 </div>
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 mb-3">Filters</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 mb-3">{% trans "Filters" %}</p>
                     <div class="space-y-4">
                         <div>
-                            <p class="text-xs text-gray-400 uppercase tracking-[0.3em] mb-2">Price Range</p>
+                            <p class="text-xs text-gray-400 uppercase tracking-[0.3em] mb-2">{% trans "Price Range" %}</p>
                             <div class="flex items-center justify-between px-4 py-3 rounded-2xl border border-purple-100 bg-[#f8f5ff] text-sm text-gray-600">
                                 <span>$0</span>
                                 <div class="h-1 flex-1 mx-3 bg-purple-100 rounded-full">
@@ -404,9 +404,9 @@ function posApp() {
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400 uppercase tracking-[0.3em] mb-2">Material</p>
+                            <p class="text-xs text-gray-400 uppercase tracking-[0.3em] mb-2">{% trans "Material" %}</p>
                             <button type="button" class="w-full flex items-center justify-between px-4 py-3 rounded-2xl border border-purple-100 bg-white text-sm text-gray-600 font-medium hover:border-purple-200 transition">
-                                <span>All Materials</span>
+                                <span>{% trans "All Materials" %}</span>
                                 <svg class="w-4 h-4 text-purple-400" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.084l3.71-3.854a.75.75 0 011.08 1.04l-4.24 4.4a.75.75 0 01-1.08 0l-4.24-4.4a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                                 </svg>
@@ -421,13 +421,13 @@ function posApp() {
                 <main class="flex-1 flex flex-col gap-6">
                     <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <h1 class="text-[34px] leading-tight font-semibold text-gray-900">Transaction Dashboard</h1>
-                            <p class="text-gray-500 mt-2">Manage sales and customer transactions efficiently</p>
+                            <h1 class="text-[34px] leading-tight font-semibold text-gray-900">{% trans "Transaction Dashboard" %}</h1>
+                            <p class="text-gray-500 mt-2">{% trans "Manage sales and customer transactions efficiently" %}</p>
                         </div>
                         <div class="flex items-center gap-4">
                             <div class="flex items-center gap-2 text-sm font-medium text-gray-600">
                                 <span :class="isOnline ? 'bg-emerald-500' : 'bg-red-500'" class="w-2.5 h-2.5 rounded-full animate-pulse"></span>
-                                <span x-text="isOnline ? 'Online' : 'Offline'"></span>
+                                <span x-text="isOnline ? '{% trans "Online" %}' : '{% trans "Offline" %}'"></span>
                             </div>
                             <div class="flex items-center gap-2 text-sm text-gray-500">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -449,7 +449,7 @@ function posApp() {
                                 x-model="searchQuery"
                                 @input.debounce.300ms="searchProducts()"
                                 @keydown.enter="searchProducts()"
-                                placeholder="Search product name, SKU, or scan barcode"
+                                placeholder="{% trans "Search product name, SKU, or scan barcode" %}"
                                 class="w-full pl-14 pr-4 py-4 bg-[#f9f6ff] border border-transparent rounded-2xl text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:bg-white"
                             >
                         </div>
@@ -462,13 +462,13 @@ function posApp() {
                                         @click="activeCartTab = 'cart'"
                                         :class="activeCartTab === 'cart' ? 'text-purple-600 border-purple-500' : 'text-gray-400 border-transparent hover:text-gray-600'"
                                         class="pb-2 border-b-2 transition-all">
-                                    Cart (<span x-text="cart.length"></span>)
+                                    {% trans "Cart" %} (<span x-text="cart.length"></span>)
                                 </button>
                                 <button type="button"
                                         @click="activeCartTab = 'recent'"
                                         :class="activeCartTab === 'recent' ? 'text-purple-600 border-purple-500' : 'text-gray-400 border-transparent hover:text-gray-600'"
                                         class="pb-2 border-b-2 transition-all">
-                                    Recent Items
+                                    {% trans "Recent Items" %}
                                 </button>
                             </div>
                         </div>
@@ -479,8 +479,8 @@ function posApp() {
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l1 5m0 0h12l1.2-3.6A1 1 0 0018.2 3H6l1 5zm0 0L5 21h14l-2-12H7z" />
                                     </svg>
                                 </div>
-                                <p class="text-lg font-semibold text-gray-600">Your cart is empty</p>
-                                <p class="text-sm text-gray-400 mt-2">Add products to begin a new sale.</p>
+                                <p class="text-lg font-semibold text-gray-600">{% trans "Your cart is empty" %}</p>
+                                <p class="text-sm text-gray-400 mt-2">{% trans "Add products to begin a new sale." %}</p>
                             </div>
                             <div x-show="cart.length > 0" class="space-y-5">
                                 <template x-for="(item, index) in cart" :key="item.id">
@@ -574,7 +574,7 @@ function posApp() {
                 <aside class="w-[320px] shrink-0 flex flex-col gap-5">
                     <div class="rounded-3xl border border-purple-100 bg-white p-6 shadow-sm">
                         <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em]">Customer</h2>
+                            <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em]">{% trans "Customer" %}</h2>
                             <button type="button" @click="showCustomerQuickAdd = true" class="flex h-9 w-9 items-center justify-center rounded-2xl bg-purple-500 text-white hover:bg-purple-600 transition">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
@@ -588,7 +588,7 @@ function posApp() {
                             <input type="text"
                                    x-model="customerSearch"
                                    @input.debounce.300ms="searchCustomers()"
-                                   placeholder="Search customer..."
+                                   placeholder="{% trans "Search customer..." %}"
                                    class="w-full rounded-2xl border border-transparent bg-[#f9f6ff] py-3 pl-12 pr-4 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:bg-white">
                         </div>
                         <div x-show="customerResults.length > 0" x-cloak class="mt-3 max-h-40 overflow-y-auto rounded-2xl border border-purple-100 bg-white shadow-lg">
@@ -615,56 +615,56 @@ function posApp() {
                     </div>
 
                     <div class="rounded-3xl border border-purple-100 bg-white p-6 shadow-sm">
-                        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em] mb-4">Terminal</h2>
+                        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em] mb-4">{% trans "Terminal" %}</h2>
                         <select x-model="selectedTerminalId"
                                 @change="loadTerminal()"
                                 class="w-full rounded-2xl border border-transparent bg-[#f9f6ff] px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:bg-white">
-                            <option value="">Select Terminal</option>
+                            <option value="">{% trans "Select Terminal" %}</option>
                             {% for terminal in terminals %}
                             <option value="{{ terminal.id }}">{{ terminal.terminal_id }} - {{ terminal.branch.name }}</option>
                             {% endfor %}
                         </select>
-                        <p class="mt-3 text-xs uppercase tracking-[0.3em] text-gray-400">Current</p>
-                        <p class="text-sm font-semibold text-gray-700 mt-1" x-text="selectedTerminal ? selectedTerminal.terminal_id : 'Not selected'"></p>
+                        <p class="mt-3 text-xs uppercase tracking-[0.3em] text-gray-400">{% trans "Current" %}</p>
+                        <p class="text-sm font-semibold text-gray-700 mt-1" x-text="selectedTerminal ? selectedTerminal.terminal_id : '{% trans "Not selected" %}'"></p>
                     </div>
 
                     <div class="rounded-3xl border border-purple-100 bg-white p-6 shadow-sm">
-                        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em] mb-4">Payment</h2>
+                        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em] mb-4">{% trans "Payment" %}</h2>
                         <div class="flex flex-wrap gap-3">
                             <button type="button"
                                     @click="paymentMethod = 'CASH'"
                                     :class="paymentMethod === 'CASH' ? 'bg-purple-500 text-white shadow-sm border-purple-500' : 'bg-[#f9f6ff] text-gray-600 border-transparent hover:border-purple-200'"
                                     class="flex-1 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all">
-                                Cash
+                                {% trans "Cash" %}
                             </button>
                             <button type="button"
                                     @click="paymentMethod = 'CARD'"
                                     :class="paymentMethod === 'CARD' ? 'bg-purple-500 text-white shadow-sm border-purple-500' : 'bg-[#f9f6ff] text-gray-600 border-transparent hover:border-purple-200'"
                                     class="flex-1 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all">
-                                Card
+                                {% trans "Card" %}
                             </button>
                             <button type="button"
                                     @click="paymentMethod = 'STORE_CREDIT'"
                                     :class="paymentMethod === 'STORE_CREDIT' ? 'bg-purple-500 text-white shadow-sm border-purple-500' : 'bg-[#f9f6ff] text-gray-600 border-transparent hover:border-purple-200'"
                                     class="flex-1 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all">
-                                Store Credit
+                                {% trans "Store Credit" %}
                             </button>
                         </div>
                     </div>
 
                     <div class="rounded-3xl border border-purple-100 bg-white p-6 shadow-sm space-y-4">
-                        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em]">Order Summary</h2>
+                        <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-[0.3em]">{% trans "Order Summary" %}</h2>
                         <div class="space-y-3 text-sm text-gray-500">
                             <div class="flex items-center justify-between">
-                                <span>Subtotal</span>
+                                <span>{% trans "Subtotal" %}</span>
                                 <span class="font-semibold text-gray-800">$<span x-text="subtotal.toFixed(2)"></span></span>
                             </div>
                             <div class="flex items-center justify-between">
-                                <span>Tax (10%)</span>
+                                <span>{% trans "Tax (10%)" %}</span>
                                 <span class="font-semibold text-gray-800">$<span x-text="tax.toFixed(2)"></span></span>
                             </div>
                             <div class="flex items-center justify-between gap-3">
-                                <span>Discount</span>
+                                <span>{% trans "Discount" %}</span>
                                 <input type="number"
                                        x-model.number="discount"
                                        min="0"
@@ -675,7 +675,7 @@ function posApp() {
                             </div>
                         </div>
                         <div class="flex items-center justify-between border-t border-purple-100 pt-4">
-                            <span class="text-base font-semibold text-gray-500">Total</span>
+                            <span class="text-base font-semibold text-gray-500">{% trans "Total" %}</span>
                             <span class="text-2xl font-semibold text-gray-900">$<span x-text="total.toFixed(2)"></span></span>
                         </div>
                         <div class="grid gap-3 pt-2">
@@ -686,7 +686,7 @@ function posApp() {
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l3 3" />
                                 </svg>
-                                Hold Sale
+                                {% trans "Hold Sale" %}
                             </button>
                             <button type="button"
                                     @click="completeSale()"
@@ -695,12 +695,12 @@ function posApp() {
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
-                                <span x-text="processing ? 'Processing...' : 'Complete Sale'"></span>
+                                <span x-text="processing ? '{% trans "Processing..." %}' : '{% trans "Complete Sale" %}'"></span>
                             </button>
                         </div>
                         <div class="grid grid-cols-2 gap-3 text-xs font-semibold text-gray-500">
-                            <button type="button" class="rounded-2xl border border-purple-100 bg-white px-3 py-3 text-left hover:border-purple-200 transition">Reprint Receipt</button>
-                            <button type="button" class="rounded-2xl border border-purple-100 bg-white px-3 py-3 text-left hover:border-purple-200 transition">Held Sales</button>
+                            <button type="button" class="rounded-2xl border border-purple-100 bg-white px-3 py-3 text-left hover:border-purple-200 transition">{% trans "Reprint Receipt" %}</button>
+                            <button type="button" class="rounded-2xl border border-purple-100 bg-white px-3 py-3 text-left hover:border-purple-200 transition">{% trans "Held Sales" %}</button>
                         </div>
                     </div>
                 </aside>

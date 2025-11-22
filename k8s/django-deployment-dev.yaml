@@ -1,0 +1,235 @@
+# ============================================================================
+# Django Development Deployment (Skaffold)
+# ============================================================================
+# IDENTICAL to production deployment except:
+# - 1 replica (vs 3)
+# - gunicorn --reload flag enabled
+# - DEBUG=True
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: django
+    tier: backend
+spec:
+  replicas: 1  # Dev: 1 replica for faster iteration
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: django
+  template:
+    metadata:
+      labels:
+        app: jewelry-shop
+        component: django
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      
+      containers:
+        - name: django
+          image: jewelry-shop-django:latest
+          imagePullPolicy: IfNotPresent
+          command: ["gunicorn"]
+          args:
+            - "config.wsgi:application"
+            - "--bind"
+            - "0.0.0.0:8000"
+            - "--workers"
+            - "2"
+            - "--timeout"
+            - "120"
+            - "--reload"  # Dev: Auto-reload on code changes
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          
+          # Same env as production
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "config.settings.production"
+            - name: PORT
+              value: "8000"
+            - name: DEBUG
+              value: "True"  # Dev: Enable debug mode
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: "jewelry-shop-django"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
+            - name: ENVIRONMENT
+              value: "development"  # Dev: Mark as development
+            - name: SECURE_SSL_REDIRECT
+              value: "False"  # Dev: Disable SSL redirect for health probes
+            - name: APP_VERSION
+              value: "1.0.0"
+            - name: DATABASE_URL
+              value: "postgresql://$(DB_USER):$(APP_DB_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=require&sslcert=/etc/postgresql-ssl/tls.crt&sslkey=/etc/postgresql-ssl/tls.key&sslrootcert=/etc/postgresql-ssl/tls.crt"
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_USER
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jewelry-app.jewelry-shop-db.credentials.postgresql.acid.zalan.do
+                  key: password
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jewelry-app.jewelry-shop-db.credentials.postgresql.acid.zalan.do
+                  key: password
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SENTRY_DSN
+          
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          
+          livenessProbe:
+            httpGet:
+              path: /health/live/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          
+          readinessProbe:
+            httpGet:
+              path: /health/ready/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 2
+          
+          startupProbe:
+            httpGet:
+              path: /health/startup/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 30
+          
+          volumeMounts:
+            - name: media
+              mountPath: /app/media
+            - name: static
+              mountPath: /app/staticfiles
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+            - name: postgresql-ssl
+              mountPath: /etc/postgresql-ssl
+              readOnly: true
+          
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+      
+      volumes:
+        - name: media
+          emptyDir: {}
+        - name: static
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: postgresql-ssl
+          secret:
+            secretName: postgresql-client-certs
+            defaultMode: 0400
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - django
+                topologyKey: kubernetes.io/hostname
+      
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

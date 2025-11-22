@@ -400,7 +400,7 @@ def validate_security_settings(debug_mode):
     # Skip validation during static file collection
     if os.getenv("COLLECTSTATIC_ONLY") == "1":
         return
-    
+
     if not debug_mode:
         # Production security checks
         secret_key = os.getenv("DJANGO_SECRET_KEY", "")

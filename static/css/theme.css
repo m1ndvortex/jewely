@@ -7,6 +7,25 @@
  */
 
 /* ============================================
+   GLOBAL STYLES - Remove Underlines (Force Override)
+   ============================================ */
+a {
+  text-decoration: none !important;
+}
+
+a:hover {
+  text-decoration: none !important;
+}
+
+a:focus {
+  text-decoration: none !important;
+}
+
+a:active {
+  text-decoration: none !important;
+}
+
+/* ============================================
    LIGHT THEME (Default)
    ============================================ */
 :root,

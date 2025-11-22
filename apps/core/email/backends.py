@@ -32,9 +32,7 @@ class ResilientEmailBackend(BaseEmailBackend):
             "django.core.mail.backends.console.EmailBackend",
         )
         self.failover_enabled = getattr(settings, "EMAIL_FAILOVER_ENABLED", True)
-        self.suppress_exceptions = getattr(
-            settings, "EMAIL_FAILOVER_SUPPRESS_EXCEPTIONS", True
-        )
+        self.suppress_exceptions = getattr(settings, "EMAIL_FAILOVER_SUPPRESS_EXCEPTIONS", True)
         self.primary_backend_kwargs = kwargs.copy()
         self.failover_backend_kwargs = kwargs.copy()
         super().__init__(fail_silently=fail_silently, **kwargs)

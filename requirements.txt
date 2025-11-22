@@ -20,6 +20,7 @@ isort==5.13.2
 mypy==1.8.0
 django-stubs==4.2.7
 pre-commit==3.6.2
+watchdog==4.0.0  # For translation hot reload in development
 
 # Testing
 pytest==8.0.2

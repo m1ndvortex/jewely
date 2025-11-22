@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load i18n %}
 
-{% block title %}Customers - Jewelry Shop SaaS{% endblock %}
+{% block title %}{% trans "Customers" %} - Jewelry Shop SaaS{% endblock %}
 
 {% block content %}
 <div class="min-h-screen bg-gray-100 p-6">
@@ -8,13 +9,13 @@
         <!-- Header -->
         <div class="mb-6 flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Customers</h1>
-                <p class="text-gray-600 mt-1">Manage your customer relationships</p>
+                <h1 class="text-3xl font-bold text-gray-900">{% trans "Customers" %}</h1>
+                <p class="text-gray-600 mt-1">{% trans "Manage your customer relationships" %}</p>
             </div>
             <a href="{% url 'crm:customer_create' %}" 
                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium inline-flex items-center">
                 <i class="fas fa-plus mr-2"></i>
-                Add Customer
+                {% trans "Add Customer" %}
             </a>
         </div>
 
@@ -27,13 +28,13 @@
                         <input type="text" 
                                name="q" 
                                value="{{ search_query }}"
-                               placeholder="Search by name, phone, email, or customer number..."
+                               placeholder="{% trans 'Search by name, phone, email, or customer number...' %}"
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                     <button type="submit" 
                             class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
                         <i class="fas fa-search mr-2"></i>
-                        Search
+                        {% trans "Search" %}
                     </button>
                 </div>
 
@@ -41,10 +42,10 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <!-- Loyalty Tier Filter -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Loyalty Tier</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Loyalty Tier" %}</label>
                         <select name="tier" 
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="">All Tiers</option>
+                            <option value="">{% trans "All Tiers" %}</option>
                             {% for tier in loyalty_tiers %}
                             <option value="{{ tier.id }}" {% if tier_filter == tier.id|stringformat:"s" %}selected{% endif %}>
                                 {{ tier.name }}
@@ -55,21 +56,21 @@
 
                     <!-- Status Filter -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Status" %}</label>
                         <select name="status" 
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="">All Status</option>
-                            <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
-                            <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>Inactive</option>
+                            <option value="">{% trans "All Status" %}</option>
+                            <option value="active" {% if status_filter == "active" %}selected{% endif %}>{% trans "Active" %}</option>
+                            <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>{% trans "Inactive" %}</option>
                         </select>
                     </div>
 
                     <!-- Tag Filter -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tag</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Tag" %}</label>
                         <select name="tag" 
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="">All Tags</option>
+                            <option value="">{% trans "All Tags" %}</option>
                             {% for tag in all_tags %}
                             <option value="{{ tag }}" {% if tag_filter == tag %}selected{% endif %}>{{ tag }}</option>
                             {% endfor %}
@@ -78,16 +79,16 @@
 
                     <!-- Sort By -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Sort By" %}</label>
                         <select name="sort" 
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest First</option>
-                            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest First</option>
-                            <option value="-total_purchases" {% if sort_by == "-total_purchases" %}selected{% endif %}>Highest Spending</option>
-                            <option value="total_purchases" {% if sort_by == "total_purchases" %}selected{% endif %}>Lowest Spending</option>
-                            <option value="-loyalty_points" {% if sort_by == "-loyalty_points" %}selected{% endif %}>Most Points</option>
-                            <option value="first_name" {% if sort_by == "first_name" %}selected{% endif %}>Name (A-Z)</option>
-                            <option value="-first_name" {% if sort_by == "-first_name" %}selected{% endif %}>Name (Z-A)</option>
+                            <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>{% trans "Newest First" %}</option>
+                            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>{% trans "Oldest First" %}</option>
+                            <option value="-total_purchases" {% if sort_by == "-total_purchases" %}selected{% endif %}>{% trans "Highest Spending" %}</option>
+                            <option value="total_purchases" {% if sort_by == "total_purchases" %}selected{% endif %}>{% trans "Lowest Spending" %}</option>
+                            <option value="-loyalty_points" {% if sort_by == "-loyalty_points" %}selected{% endif %}>{% trans "Most Points" %}</option>
+                            <option value="first_name" {% if sort_by == "first_name" %}selected{% endif %}>{% trans "Name (A-Z)" %}</option>
+                            <option value="-first_name" {% if sort_by == "-first_name" %}selected{% endif %}>{% trans "Name (Z-A)" %}</option>
                         </select>
                     </div>
                 </div>
@@ -113,25 +114,25 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Customer
+                                {% trans "Customer" %}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Contact
+                                {% trans "Contact" %}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Loyalty Tier
+                                {% trans "Loyalty Tier" %}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Points
+                                {% trans "Points" %}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Total Purchases
+                                {% trans "Total Purchases" %}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Status
+                                {% trans "Status" %}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
+                                {% trans "Actions" %}
                             </th>
                         </tr>
                     </thead>
@@ -167,7 +168,7 @@
                                     {{ customer.loyalty_tier.name }}
                                 </span>
                                 {% else %}
-                                <span class="text-sm text-gray-500">No Tier</span>
+                                <span class="text-sm text-gray-500">{% trans "No Tier" %}</span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -179,22 +180,22 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {% if customer.is_active %}
                                 <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                    Active
+                                    {% trans "Active" %}
                                 </span>
                                 {% else %}
                                 <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                    Inactive
+                                    {% trans "Inactive" %}
                                 </span>
                                 {% endif %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <a href="{% url 'crm:customer_detail' customer.id %}" 
                                    class="text-blue-600 hover:text-blue-900 mr-3">
-                                    <i class="fas fa-eye"></i> View
+                                    <i class="fas fa-eye"></i> {% trans "View" %}
                                 </a>
                                 <a href="{% url 'crm:customer_edit' customer.id %}" 
                                    class="text-green-600 hover:text-green-900">
-                                    <i class="fas fa-edit"></i> Edit
+                                    <i class="fas fa-edit"></i> {% trans "Edit" %}
                                 </a>
                             </td>
                         </tr>
@@ -205,18 +206,18 @@
             {% else %}
             <div class="text-center py-12">
                 <i class="fas fa-users text-gray-400 text-5xl mb-4"></i>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">{% trans "No customers found" %}</h3>
                 <p class="text-gray-500 mb-4">
                     {% if search_query or tier_filter or status_filter or tag_filter %}
-                    Try adjusting your search or filters
+                    {% trans "Try adjusting your search or filters" %}
                     {% else %}
-                    Get started by adding your first customer
+                    {% trans "Get started by adding your first customer" %}
                     {% endif %}
                 </p>
                 <a href="{% url 'crm:customer_create' %}" 
                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
                     <i class="fas fa-plus mr-2"></i>
-                    Add Customer
+                    {% trans "Add Customer" %}
                 </a>
             </div>
             {% endif %}

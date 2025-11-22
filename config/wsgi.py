@@ -15,6 +15,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 # Initialize OpenTelemetry tracing before Django application
 from apps.core.tracing import configure_tracing
+
 configure_tracing()
 
 application = get_wsgi_application()

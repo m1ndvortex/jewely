@@ -14,6 +14,9 @@
 # ============================================================================
 FROM python:3.11-slim as builder
 
+# Build argument to bust cache
+ARG CACHE_BUST=1
+
 # Set build-time environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

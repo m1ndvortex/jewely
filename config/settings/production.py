@@ -50,21 +50,21 @@ else:
     # Database with Prometheus monitoring
     DATABASES = {
         "default": {
-        "ENGINE": "django_prometheus.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER") or os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD") or os.getenv("APP_DB_PASSWORD"),
-        "HOST": os.getenv("POSTGRES_HOST"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
-        "ATOMIC_REQUESTS": True,
-        "CONN_MAX_AGE": 600,
-        "OPTIONS": {
-            "connect_timeout": 10,
-            "options": "-c statement_timeout=30000",  # 30 second query timeout
-            "sslmode": os.getenv("DB_SSLMODE", "prefer"),  # SSL mode for PostgreSQL
-        },
+            "ENGINE": "django_prometheus.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB"),
+            "USER": os.getenv("POSTGRES_USER") or os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD") or os.getenv("APP_DB_PASSWORD"),
+            "HOST": os.getenv("POSTGRES_HOST"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "ATOMIC_REQUESTS": True,
+            "CONN_MAX_AGE": 600,
+            "OPTIONS": {
+                "connect_timeout": 10,
+                "options": "-c statement_timeout=30000",  # 30 second query timeout
+                "sslmode": os.getenv("DB_SSLMODE", "prefer"),  # SSL mode for PostgreSQL
+            },
+        }
     }
-}
 
 # PgBouncer Configuration - Recommended for production
 USE_PGBOUNCER = os.getenv("USE_PGBOUNCER", "True") == "True"
@@ -97,9 +97,7 @@ def parse_sentinel_hosts(raw_hosts: str):
         if not entry:
             continue
         if ":" not in entry:
-            raise ValueError(
-                "Each value in REDIS_SENTINEL_HOSTS must be in host:port format."
-            )
+            raise ValueError("Each value in REDIS_SENTINEL_HOSTS must be in host:port format.")
         host, port = entry.rsplit(":", 1)
         hosts.append((host.strip(), int(port.strip())))
     return hosts
@@ -114,9 +112,7 @@ sentinel_endpoints = []
 if REDIS_USE_SENTINEL:
     sentinel_endpoints = parse_sentinel_hosts(sentinel_hosts_raw)
     if not sentinel_endpoints:
-        raise ValueError(
-            "REDIS_SENTINEL_HOSTS must be provided when REDIS_USE_SENTINEL is True."
-        )
+        raise ValueError("REDIS_SENTINEL_HOSTS must be provided when REDIS_USE_SENTINEL is True.")
     if sentinel_socket_timeout:
         sentinel_kwargs["socket_timeout"] = float(sentinel_socket_timeout)
     sentinel_password = os.getenv("REDIS_SENTINEL_PASSWORD", "").strip()
@@ -151,7 +147,7 @@ if REDIS_USE_SENTINEL:
     # Use our custom client that properly handles Sentinel
     redis_cache_options_base["CLIENT_CLASS"] = "apps.core.cache.client.SentinelAwareClient"
     redis_cache_options_base["SENTINELS"] = sentinel_endpoints
-    
+
     # Sentinel-specific options passed to our factory
     sentinel_options = {}
     if sentinel_socket_timeout:
@@ -162,7 +158,7 @@ if REDIS_USE_SENTINEL:
         sentinel_options["password"] = sentinel_password
     if sentinel_options:
         redis_cache_options_base["SENTINEL_KWARGS"] = sentinel_options
-    
+
     # Password for Redis master nodes (not Sentinel nodes)
     if redis_password:
         redis_cache_options_base["PASSWORD"] = redis_password
@@ -235,9 +231,7 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = (
 )
 
 # Email Configuration - Production
-email_backend_env = os.getenv(
-    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
-)
+email_backend_env = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 configured_email_backend = email_backend_env
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
@@ -374,7 +368,7 @@ WAFFLE_SECURE = True
 # HTTPS and SSL Settings
 # SSL is terminated at the proxy (Traefik/Nginx), not at Django
 # Django needs to trust the X-Forwarded-Proto header from the proxy
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Allow disabling SSL redirect for local testing (default: True for production)
 SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True") == "True"
@@ -502,9 +496,15 @@ STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 STRIPE_LIVE_MODE = os.getenv("STRIPE_LIVE_MODE", "True") == "True"
 
-if STRIPE_LIVE_MODE and not all([STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET]) and not COLLECTSTATIC_ONLY:
+if (
+    STRIPE_LIVE_MODE
+    and not all([STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET])
+    and not COLLECTSTATIC_ONLY
+):
     raise ValueError("All Stripe keys must be set when STRIPE_LIVE_MODE is True!")
-elif STRIPE_LIVE_MODE and not all([STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET]):
+elif STRIPE_LIVE_MODE and not all(
+    [STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET]
+):
     # During collectstatic, use dummy values
     STRIPE_SECRET_KEY = "sk_test_dummy"
     STRIPE_PUBLISHABLE_KEY = "pk_test_dummy"
@@ -537,7 +537,9 @@ if SENTRY_DSN and not SENTRY_DSN.startswith("https://xxxx"):
     print("✓ Sentry error tracking enabled")
 else:
     if SENTRY_DSN and SENTRY_DSN.startswith("https://xxxx"):
-        print("WARNING: SENTRY_DSN is a placeholder. Replace with real DSN to enable error tracking!")
+        print(
+            "WARNING: SENTRY_DSN is a placeholder. Replace with real DSN to enable error tracking!"
+        )
     else:
         print("WARNING: SENTRY_DSN not set. Error tracking is disabled!")
 
@@ -562,4 +564,3 @@ if not COLLECTSTATIC_ONLY:
     print(f"✓ PgBouncer: {'Enabled' if USE_PGBOUNCER else 'Disabled'}")
 print(f"✓ Sentry: {'Enabled' if SENTRY_DSN else 'Disabled'}")
 print(f"✓ Stripe: {'Live Mode' if STRIPE_LIVE_MODE else 'Test Mode'}")
-

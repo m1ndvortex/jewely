@@ -9,12 +9,14 @@ from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from django_otp import user_has_device
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, permissions, status
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -29,6 +31,13 @@ from .serializers import (
 )
 
 User = get_user_model()
+
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """Session authentication without CSRF validation for language switcher"""
+
+    def enforce_csrf(self, request):
+        return  # Skip CSRF check
 
 
 @require_http_methods(["GET"])
@@ -426,6 +435,7 @@ class LanguageSwitchView(APIView):
     Task 26.5 - Create language switcher
     """
 
+    authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):

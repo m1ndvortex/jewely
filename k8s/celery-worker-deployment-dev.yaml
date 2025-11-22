@@ -1,0 +1,249 @@
+# ============================================================================
+# Celery Worker Development Deployment (Skaffold)
+# ============================================================================
+# IDENTICAL to production except:
+# - 1 replica (vs 3)
+# - DEBUG=True
+# - Using jewelry-shop-django:latest image
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: jewelry-shop
+  labels:
+    app: jewelry-shop
+    component: celery-worker
+    tier: backend
+spec:
+  replicas: 1  # Dev: 1 worker for faster iteration
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1  # Allow one worker to be down during updates
+  selector:
+    matchLabels:
+      app: jewelry-shop
+      component: celery-worker
+  template:
+    metadata:
+      labels:
+        app: jewelry-shop
+        component: celery-worker
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context for the pod
+      securityContext:
+        fsGroup: 1000
+      
+      # Init container to wait for dependencies and stagger startup
+      initContainers:
+        - name: wait-for-dependencies
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Redis to be ready..."
+              until nc -z -v -w30 redis.jewelry-shop.svc.cluster.local 6379; do
+                echo "Waiting for Redis connection..."
+                sleep 2
+              done
+              echo "Redis is ready!"
+              
+              echo "Waiting for PostgreSQL to be ready..."
+              until nc -z -v -w30 jewelry-shop-db-pooler.jewelry-shop.svc.cluster.local 5432; do
+                echo "Waiting for PostgreSQL connection..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+              
+              # Better staggering: Use pod name hash for deterministic but distributed delays
+              POD_NAME=${HOSTNAME}
+              # Get last 2 chars of pod name hash for 0-99 range
+              HASH=$(echo -n "$POD_NAME" | md5sum | cut -c1-2)
+              DELAY=$((0x$HASH % 20 + 5))  # 5-25 seconds spread
+              echo "Staggering startup by ${DELAY} seconds (pod: $POD_NAME)..."
+              sleep $DELAY
+              echo "Dependencies ready, starting Celery worker..."
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      
+      containers:
+        - name: celery-worker
+          image: jewelry-shop-django:latest  # Dev: Skaffold-managed image
+          imagePullPolicy: IfNotPresent  # Use local image
+          command: ["celery"]
+          args:
+            - "-A"
+            - "config"
+            - "worker"
+            - "--loglevel=debug"
+            - "--pool=prefork"  # Standard production pool (multiprocessing)
+            - "--concurrency=2"  # 2 worker processes for starter (100-200 customers)
+            - "-Q"
+            - "celery,backups,pricing,reports,notifications,accounting,monitoring,webhooks"
+          
+          # Environment variables from ConfigMap and Secrets
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "config.settings.production"
+            - name: DEBUG
+              value: "True"  # Dev: Enable debug
+            - name: SECURE_SSL_REDIRECT
+              value: "False"  # Dev: Disable SSL redirect
+            # OpenTelemetry Configuration
+            - name: OTEL_ENABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: "jewelry-shop-celery"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: "true"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: APP_VERSION
+              value: "1.0.0"
+            # Database configuration - override with PostgreSQL operator credentials
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jewelry-app.jewelry-shop-db.credentials.postgresql.acid.zalan.do
+                  key: password
+            # Celery-specific environment variables
+            - name: C_FORCE_ROOT
+              value: "false"
+            - name: CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP
+              value: "true"
+            # Optional: Sentry DSN (suppress warning if not set)
+            - name: SENTRY_DSN
+              value: ""  # Empty string to suppress warning
+          
+          # Resource requests and limits - OPTIMIZED for 4-6GB VPS (100-200 customers)
+          # 1 pod × 2 worker processes = ~500-600 MB total
+          # Leaves room for Django, PostgreSQL, Redis on same VPS
+          resources:
+            requests:
+              cpu: 400m  # 2 worker processes × 200m each
+              memory: 512Mi  # 2 processes × ~200MB + overhead
+            limits:
+              cpu: 800m  # Under 1 core limit, allows bursts
+              memory: 768Mi  # Fits VPS constraints
+          
+          # Liveness probe - restart if worker is not responding
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import sys
+                  try:
+                      from celery import Celery
+                      app = Celery('config')
+                      app.config_from_object('django.conf:settings', namespace='CELERY')
+                      # Just check if we can import and configure
+                      sys.exit(0)
+                  except Exception as e:
+                      print(f"Health check failed: {e}")
+                      sys.exit(1)
+            initialDelaySeconds: 180  # 3 minutes to allow full startup
+            periodSeconds: 30
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          
+          # Readiness probe - check if worker is ready to accept tasks
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import sys
+                  try:
+                      from celery import Celery
+                      app = Celery('config')
+                      app.config_from_object('django.conf:settings', namespace='CELERY')
+                      sys.exit(0)
+                  except Exception:
+                      sys.exit(1)
+            initialDelaySeconds: 120  # 2 minutes 
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          
+          # No startup probe - let liveness handle it after initial delay
+          
+          # Volume mounts
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+            - name: celery-data
+              mountPath: /app/celery
+            - name: dshm  # Shared memory for multiprocessing
+              mountPath: /dev/shm
+          
+          # Security context for the container
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+      
+      # Volumes
+      volumes:
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: celery-data
+          emptyDir: {}
+        - name: dshm  # Shared memory for prefork multiprocessing
+          emptyDir:
+            medium: Memory  # Use RAM-backed tmpfs
+            sizeLimit: 128Mi  # Reduced for 2 processes (was 256Mi for 4)
+      
+      # Pod affinity - spread workers across nodes for better availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - celery-worker
+                topologyKey: kubernetes.io/hostname
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Termination grace period - allow tasks to finish
+      terminationGracePeriodSeconds: 60
