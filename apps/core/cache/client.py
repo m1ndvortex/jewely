@@ -5,8 +5,10 @@ This client properly initializes connections through Redis Sentinel.
 """
 
 from typing import Any
-from redis import Redis
+
 from django_redis.client.default import DefaultClient
+from redis import Redis
+
 from apps.core.cache.sentinel import SentinelConnectionFactory
 
 

@@ -4,11 +4,12 @@ Target: 700 concurrent users, 10min duration
 Tests actual Django HTML pages with session authentication
 """
 
-import random
-import time
-from locust import HttpUser, TaskSet, task, between
 import logging
+import random
 import re
+import time
+
+from locust import HttpUser, TaskSet, between, task
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
