@@ -6,9 +6,10 @@ This factory properly initializes Sentinel connection pools for high availabilit
 
 from typing import Any
 from urllib.parse import urlparse
-from redis.sentinel import Sentinel
-from redis import Redis
+
 from django_redis.pool import ConnectionFactory
+from redis import Redis
+from redis.sentinel import Sentinel
 
 
 class SentinelConnectionFactory(ConnectionFactory):

@@ -2,14 +2,16 @@
 """Create test tenant and user for development"""
 
 import os
+
 import django
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from apps.core.models import Tenant, User
 from django.contrib.auth.hashers import make_password
+
+from apps.core.models import Tenant, User
 
 # Create or get test tenant
 tenant, created = Tenant.objects.get_or_create(

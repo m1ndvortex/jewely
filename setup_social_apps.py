@@ -3,14 +3,16 @@
 Setup social authentication apps for django-allauth
 """
 import os
+
 import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from django.contrib.sites.models import Site
-from allauth.socialaccount.models import SocialApp
 from django.conf import settings
+from django.contrib.sites.models import Site
+
+from allauth.socialaccount.models import SocialApp
 
 
 def setup_social_apps():

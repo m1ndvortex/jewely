@@ -2,14 +2,16 @@
 """Create SocialApp records for all configured providers"""
 
 import os
+
 import django
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from allauth.socialaccount.models import SocialApp
 from django.contrib.sites.models import Site
+
+from allauth.socialaccount.models import SocialApp
 
 # Get the current site
 site = Site.objects.get(id=1)

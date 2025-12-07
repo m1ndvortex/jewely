@@ -1,12 +1,14 @@
 import os
+
 import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "jewelry_shop.settings")
 django.setup()
 
 from django.contrib.auth import get_user_model
-from apps.core.models import Tenant
 from django.db import transaction
+
+from apps.core.models import Tenant
 
 User = get_user_model()
 

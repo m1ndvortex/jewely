@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load i18n %}
 {% load humanize %}
+{% load inventory_tags %}
 
 {% block title %}{% trans "Categories" %} - {{ block.super }}{% endblock %}
 
@@ -114,9 +115,11 @@
                                     {% if category.image %}
                                     <img src="{{ category.image.url }}" alt="{{ category.name }}" class="w-6 h-6 rounded">
                                     {% else %}
-                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-                                    </svg>
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center {{ category.name|get_category_color }}">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ category.name|get_category_icon }}"/>
+                                        </svg>
+                                    </div>
                                     {% endif %}
                                 </div>
                                 <span class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ category.name }}</span>
@@ -225,11 +228,13 @@
                         <label class="text-sm text-gray-500 dark:text-gray-400">{% trans "Icon:" %}</label>
                         <div class="mt-1">
                             {% if selected_category.image %}
-                            <img src="{{ selected_category.image.url }}" alt="{{ selected_category.name }}" class="w-8 h-8 rounded">
+                            <img src="{{ selected_category.image.url }}" alt="{{ selected_category.name }}" class="w-10 h-10 rounded">
                             {% else %}
-                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-                            </svg>
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ selected_category.name|get_category_color }}">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ selected_category.name|get_category_icon }}"/>
+                                </svg>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
@@ -317,9 +322,11 @@
                                     {% if subcat.image %}
                                     <img src="{{ subcat.image.url }}" alt="{{ subcat.name }}" class="w-8 h-8 rounded">
                                     {% else %}
-                                    <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
-                                    </svg>
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center {{ subcat.name|get_category_color }}">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ subcat.name|get_category_icon }}"/>
+                                        </svg>
+                                    </div>
                                     {% endif %}
                                 </td>
                                 <td class="px-6 py-4">

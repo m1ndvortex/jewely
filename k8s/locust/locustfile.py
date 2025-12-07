@@ -5,11 +5,12 @@ This file defines comprehensive load test scenarios for the jewelry shop platfor
 Tests simulate realistic user behavior with 1000 concurrent users over 30 minutes.
 """
 
-from locust import HttpUser, task, between, events
-import random
 import json
+import random
 import time
 from datetime import datetime
+
+from locust import HttpUser, between, events, task
 
 # Test data
 SAMPLE_PRODUCTS = [

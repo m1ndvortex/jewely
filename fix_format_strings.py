@@ -3,9 +3,10 @@
 Fix Python format string placeholders in Persian translations.
 Ensures all %(variable)s placeholders in msgid are preserved in msgstr.
 """
-import polib
 import re
 import sys
+
+import polib
 
 
 def fix_format_strings(po_file_path="/app/locale/fa/LC_MESSAGES/django.po"):

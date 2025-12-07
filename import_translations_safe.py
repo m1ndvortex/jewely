@@ -4,10 +4,12 @@ Safe translation importer that preserves .po file format correctly.
 Uses polib to handle multiline strings and special formatting.
 """
 import csv
-import polib
-import sys
 import os
+import sys
+
 import django
+
+import polib
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")

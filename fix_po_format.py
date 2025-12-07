@@ -3,8 +3,9 @@
 Fix .po file format issues with multiline strings.
 When msgid starts with newline, msgstr must also start with newline.
 """
-import polib
 import sys
+
+import polib
 
 
 def fix_multiline_format(po_file_path="/app/locale/fa/LC_MESSAGES/django.po"):

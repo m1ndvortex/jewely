@@ -2099,3 +2099,245 @@ class SecretsKeyRotation(models.Model):
         if self.completed_at and self.rotation_date:
             return (self.completed_at - self.rotation_date).total_seconds()
         return None
+
+
+class TenantDomain(models.Model):
+    """
+    Domain configuration for tenant access.
+
+    Each tenant can have one subdomain (auto-generated) and optional custom domains.
+    Supports DNS verification for custom domains.
+
+    Per Requirements 9.1-9.5 for domain management.
+    """
+
+    # Domain type choices
+    DOMAIN_TYPE_SUBDOMAIN = "SUBDOMAIN"
+    DOMAIN_TYPE_CUSTOM = "CUSTOM"
+
+    DOMAIN_TYPE_CHOICES = [
+        (DOMAIN_TYPE_SUBDOMAIN, "Subdomain"),
+        (DOMAIN_TYPE_CUSTOM, "Custom Domain"),
+    ]
+
+    # Verification status choices
+    VERIFICATION_PENDING = "PENDING"
+    VERIFICATION_VERIFIED = "VERIFIED"
+    VERIFICATION_FAILED = "FAILED"
+
+    VERIFICATION_CHOICES = [
+        (VERIFICATION_PENDING, "Pending"),
+        (VERIFICATION_VERIFIED, "Verified"),
+        (VERIFICATION_FAILED, "Failed"),
+    ]
+
+    # Primary key
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the domain",
+    )
+
+    # Tenant association
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="domains",
+        help_text="Tenant that owns this domain",
+    )
+
+    # Domain configuration
+    domain_type = models.CharField(
+        max_length=20,
+        choices=DOMAIN_TYPE_CHOICES,
+        help_text="Type of domain (subdomain or custom)",
+    )
+
+    domain = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Full domain name (e.g., shop.jewelry-shop.local or custom.example.com)",
+    )
+
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="Whether this is the primary domain for the tenant",
+    )
+
+    # Verification for custom domains
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VERIFICATION_CHOICES,
+        default=VERIFICATION_PENDING,
+        help_text="DNS verification status for custom domains",
+    )
+
+    verification_token = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="Token for DNS TXT record verification",
+    )
+
+    verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when domain was verified",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "tenant_domains"
+        ordering = ["-is_primary", "domain"]
+        verbose_name = "Tenant Domain"
+        verbose_name_plural = "Tenant Domains"
+        indexes = [
+            models.Index(fields=["tenant", "is_primary"], name="domain_tenant_primary_idx"),
+            models.Index(fields=["domain"], name="domain_lookup_idx"),
+            models.Index(fields=["verification_status"], name="domain_verification_idx"),
+        ]
+
+    def __str__(self):
+        primary_str = " (Primary)" if self.is_primary else ""
+        return f"{self.domain}{primary_str} - {self.tenant.company_name}"
+
+    def save(self, *args, **kwargs):
+        """Generate verification token for custom domains if not set."""
+        import secrets
+
+        if self.domain_type == self.DOMAIN_TYPE_CUSTOM and not self.verification_token:
+            self.verification_token = secrets.token_hex(32)
+
+        # Subdomains are auto-verified
+        if self.domain_type == self.DOMAIN_TYPE_SUBDOMAIN:
+            self.verification_status = self.VERIFICATION_VERIFIED
+            if not self.verified_at:
+                from django.utils import timezone
+
+                self.verified_at = timezone.now()
+
+        super().save(*args, **kwargs)
+
+    def is_verified(self):
+        """Check if domain is verified."""
+        return self.verification_status == self.VERIFICATION_VERIFIED
+
+    def is_subdomain(self):
+        """Check if this is a subdomain."""
+        return self.domain_type == self.DOMAIN_TYPE_SUBDOMAIN
+
+    def is_custom_domain(self):
+        """Check if this is a custom domain."""
+        return self.domain_type == self.DOMAIN_TYPE_CUSTOM
+
+    def get_full_url(self, scheme="https"):
+        """Get the full URL for this domain."""
+        return f"{scheme}://{self.domain}"
+
+
+class TemporaryPassword(models.Model):
+    """
+    Temporary password for user account recovery.
+
+    Created by platform admins for tenant users when they need
+    password assistance. Passwords expire after a configurable time.
+
+    Per Requirements 3.9, 7.4 for temporary password management.
+    """
+
+    # Primary key
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        help_text="Unique identifier for the temporary password",
+    )
+
+    # User association
+    user = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="temporary_passwords",
+        help_text="User this temporary password is for",
+    )
+
+    # Password (hashed)
+    password_hash = models.CharField(
+        max_length=128,
+        help_text="Hashed temporary password (Django password hash format)",
+    )
+
+    # Expiry
+    expires_at = models.DateTimeField(
+        help_text="Timestamp when this temporary password expires",
+    )
+
+    # Audit fields
+    created_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_temp_passwords",
+        help_text="Admin who created this temporary password",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when this temporary password was used",
+    )
+
+    class Meta:
+        db_table = "temporary_passwords"
+        ordering = ["-created_at"]
+        verbose_name = "Temporary Password"
+        verbose_name_plural = "Temporary Passwords"
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="temp_pwd_user_idx"),
+            models.Index(fields=["expires_at"], name="temp_pwd_expiry_idx"),
+        ]
+
+    def __str__(self):
+        status = "Used" if self.used_at else ("Expired" if not self.is_valid() else "Active")
+        return f"Temp password for {self.user.username} - {status}"
+
+    def is_valid(self):
+        """Check if password is still valid (not expired, not used)."""
+        from django.utils import timezone
+
+        return self.used_at is None and self.expires_at > timezone.now()
+
+    def is_expired(self):
+        """Check if password has expired."""
+        from django.utils import timezone
+
+        return self.expires_at <= timezone.now()
+
+    def is_used(self):
+        """Check if password has been used."""
+        return self.used_at is not None
+
+    def mark_as_used(self):
+        """Mark this temporary password as used."""
+        from django.utils import timezone
+
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])
+
+    def check_password(self, raw_password):
+        """
+        Check if the provided password matches the stored hash.
+
+        Returns True if valid and not expired/used, False otherwise.
+        """
+        from django.contrib.auth.hashers import check_password
+
+        if not self.is_valid():
+            return False
+
+        return check_password(raw_password, self.password_hash)

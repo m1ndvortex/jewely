@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 """Test the language switch endpoint"""
 import os
+
 import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "apps.multi_tenant_saas.settings.production")
 django.setup()
 
+import json
+
 from django.test import Client, RequestFactory
+
 from apps.core.models import User
 from apps.core.views import LanguageSwitchView
-import json
 
 # Create a test client
 client = Client()

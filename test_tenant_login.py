@@ -4,6 +4,7 @@ Test tenant login via Playwright
 Tests accessing the jewelry shop through the Traefik ingress
 """
 import asyncio
+
 from playwright.async_api import async_playwright
 
 

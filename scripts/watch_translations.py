@@ -11,13 +11,14 @@ Used in development with Skaffold file sync for instant translation updates.
 """
 
 import os
-import sys
-import time
 import signal
 import subprocess
+import sys
+import time
 from pathlib import Path
-from watchdog.observers import Observer
+
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 
 class TranslationFileHandler(FileSystemEventHandler):

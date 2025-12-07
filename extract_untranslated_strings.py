@@ -4,8 +4,8 @@ Extract all English strings from templates that are NOT wrapped in {% trans %}
 This will help us find all missing translations
 """
 
-import re
 import os
+import re
 from pathlib import Path
 
 # Patterns to match HTML text content that should be translated
