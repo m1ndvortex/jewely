@@ -1,0 +1,4 @@
+# file: /app/apps/accounting/apps.py
+# hypothesis_version: 6.148.7
+
+['Accounting', 'apps.accounting']

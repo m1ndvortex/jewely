@@ -1,0 +1,4 @@
+# file: /app/apps/accounting/signals.py
+# hypothesis_version: 6.148.7
+
+['COMPLETED', 'accounting_entity']

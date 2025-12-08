@@ -1,0 +1,4 @@
+# file: /app/apps/core/audit_signals.py
+# hypothesis_version: 6.148.7
+
+['APIRequestLog', 'AdminNote', 'AuditLog', 'CREATE', 'ContentType', 'DELETE', 'DataChangeLog', 'DocumentationPage', 'LogEntry', 'LoginAttempt', 'Migration', 'NAME', 'Permission', 'PermissionAuditLog', 'Runbook', 'RunbookExecution', 'Session', 'UPDATE', '_current_request', '_current_user', 'email', 'invalid_password', 'method', 'pk', 'pytest', 'test_', 'unknown', 'user_not_found', 'username']

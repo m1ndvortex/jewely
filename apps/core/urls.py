@@ -153,6 +153,16 @@ urlpatterns = [
     # Tenant Management
     path("platform/tenants/", admin_views.TenantListView.as_view(), name="admin_tenant_list"),
     path(
+        "platform/tenants/export-csv/",
+        admin_views.TenantExportCSVView.as_view(),
+        name="admin_tenant_export_csv",
+    ),
+    path(
+        "platform/tenants/bulk-status-change/",
+        admin_views.TenantBulkStatusChangeView.as_view(),
+        name="admin_tenant_bulk_status_change",
+    ),
+    path(
         "platform/tenants/create/",
         admin_views.TenantCreateView.as_view(),
         name="admin_tenant_create",
@@ -177,7 +187,17 @@ urlpatterns = [
         admin_views.TenantDeleteView.as_view(),
         name="admin_tenant_delete",
     ),
+    path(
+        "platform/tenants/<uuid:pk>/activity/export-csv/",
+        admin_views.TenantActivityExportCSVView.as_view(),
+        name="admin_tenant_activity_export_csv",
+    ),
     # Tenant User Management
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/create/",
+        admin_views.TenantUserCreateView.as_view(),
+        name="admin_tenant_user_create",
+    ),
     path(
         "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/reset-password/",
         admin_views.TenantUserPasswordResetView.as_view(),
@@ -192,6 +212,36 @@ urlpatterns = [
         "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/toggle-active/",
         admin_views.TenantUserToggleActiveView.as_view(),
         name="admin_tenant_user_toggle_active",
+    ),
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/send-password-reset/",
+        admin_views.TenantUserSendPasswordResetView.as_view(),
+        name="admin_tenant_user_send_password_reset",
+    ),
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/impersonate/",
+        admin_views.TenantUserImpersonateView.as_view(),
+        name="admin_tenant_user_impersonate",
+    ),
+    path(
+        "platform/end-impersonation/",
+        admin_views.EndImpersonationView.as_view(),
+        name="admin_end_impersonation",
+    ),
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/edit/",
+        admin_views.TenantUserEditView.as_view(),
+        name="admin_tenant_user_edit",
+    ),
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/temporary-password/",
+        admin_views.TenantUserTemporaryPasswordView.as_view(),
+        name="admin_tenant_user_temporary_password",
+    ),
+    path(
+        "platform/tenants/<uuid:tenant_pk>/users/<int:user_pk>/login-history/",
+        admin_views.TenantUserLoginHistoryView.as_view(),
+        name="admin_tenant_user_login_history",
     ),
     # Subscription Plan Management
     path(
@@ -380,6 +430,12 @@ urlpatterns = [
     ),
     # Dashboard
     path("dashboard/", dashboard_views.TenantDashboardView.as_view(), name="tenant_dashboard"),
+    # Impersonation transfer endpoint (for cross-portal session handling)
+    path(
+        "dashboard/impersonation-transfer/",
+        dashboard_views.ImpersonationTransferView.as_view(),
+        name="impersonation_transfer",
+    ),
     # Dashboard API endpoints
     path(
         "api/dashboard/sales-trend/",

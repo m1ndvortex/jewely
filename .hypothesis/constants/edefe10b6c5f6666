@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0027_add_secrets_key_rotation.py
+# hypothesis_version: 6.148.7
+
+[500, '-rotation_date', 'COMPLETED', 'Completed', 'FAILED', 'Failed', 'INITIATED', 'IN_PROGRESS', 'In Progress', 'Initiated', 'ROLLED_BACK', 'Rolled Back', 'Secrets Key Rotation', 'SecretsKeyRotation', 'backup_path', 'completed_at', 'core', 'db_table', 'error_message', 'files_re_encrypted', 'id', 'indexes', 'initiated_by', 'new_key_fingerprint', 'next_rotation_due', 'notes', 'old_key_fingerprint', 'ordering', 'rotation_date', 'rotation_reason', 'status', 'verbose_name', 'verbose_name_plural', 'verification_details', 'verification_passed']

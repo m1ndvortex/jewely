@@ -1,0 +1,390 @@
+<!-- Users Tab - Enhanced with comprehensive user management -->
+<!-- Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 10.2, 10.3 -->
+
+<div class="space-y-6">
+    <!-- Search and Filters (Requirement 3.2) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <form method="get" action="" class="flex flex-wrap gap-4 items-end">
+            <input type="hidden" name="tab" value="users">
+            
+            <!-- Search Input -->
+            <div class="flex-1 min-w-[200px]">
+                <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+                <input type="text" name="search" id="search" value="{{ search_query }}"
+                       placeholder="Search by username or email..."
+                       class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+            </div>
+            
+            <!-- Role Filter -->
+            <div class="w-40">
+                <label for="role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                <select name="role" id="role"
+                        class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    <option value="">All Roles</option>
+                    {% for value, label in role_choices %}
+                    <option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Status Filter -->
+            <div class="w-32">
+                <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+                <select name="status" id="status"
+                        class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    <option value="">All</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            
+            <!-- Branch Filter -->
+            <div class="w-40">
+                <label for="branch" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch</label>
+                <select name="branch" id="branch"
+                        class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    <option value="">All Branches</option>
+                    <option value="none" {% if branch_filter == 'none' %}selected{% endif %}>No Branch</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if branch_filter == branch.id|stringformat:"s" %}selected{% endif %}>{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Filter Button -->
+            <div>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
+                    Filter
+                </button>
+                {% if search_query or role_filter or status_filter or branch_filter %}
+                <a href="?tab=users" class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    Clear
+                </a>
+                {% endif %}
+            </div>
+            
+            <!-- Create User Button (Requirement 3.3) -->
+            <div class="ml-auto">
+                <button type="button" onclick="showCreateUserModal()"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Create User
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Users Table (Requirement 3.1) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                Tenant Users
+                <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">({{ total_users }} total)</span>
+            </h3>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Username</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Branch</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Login</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">MFA</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Security</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for user in users %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                    <span class="text-sm font-medium text-blue-600 dark:text-blue-400">{{ user.username|slice:":1"|upper }}</span>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ user.username }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Joined {{ user.date_joined|date:"M d, Y" }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                                {% if user.role == 'TENANT_OWNER' %}bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
+                                {% elif user.role == 'TENANT_MANAGER' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                {% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+                                {{ user.get_role_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ user.branch.name|default:"—" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.is_active %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {% if user.last_login %}{{ user.last_login|date:"M d, Y g:i A" }}{% else %}Never{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.is_mfa_enabled %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                Enabled
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <!-- Security Warning Badge (Requirement 10.2, 10.3) -->
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.failed_logins_24h > failed_login_threshold %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" title="{{ user.failed_logins_24h }} failed logins in last 24h">
+                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                {{ user.failed_logins_24h }} Failed
+                            </span>
+                            {% elif user.failed_logins_24h > 0 %}
+                            <span class="text-xs text-yellow-600 dark:text-yellow-400">{{ user.failed_logins_24h }} failed</span>
+                            {% else %}
+                            <span class="text-xs text-gray-400">OK</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="relative inline-block text-left">
+                                <button onclick="showUserActionsMenu(event, '{{ user.id }}')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/></svg>
+                                </button>
+                                <!-- Dropdown menu -->
+                                <div id="user-menu-{{ user.id }}" class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 z-20">
+                                    <div class="py-1" role="menu">
+                                        <button onclick="showEditUserModal('{{ user.id }}', '{{ user.username }}', '{{ user.email }}', '{{ user.role }}', '{{ user.branch.id|default:"" }}', '{{ user.phone|default:"" }}', '{{ user.language }}', '{{ user.theme }}', {{ user.is_mfa_enabled|yesno:"true,false" }})"
+                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            Edit User
+                                        </button>
+                                        <button onclick="showLoginHistoryModal('{{ user.id }}', '{{ user.username }}')"
+                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            Login History
+                                        </button>
+                                        <hr class="my-1 border-gray-200 dark:border-gray-600">
+                                        <!-- Impersonate Button (Requirement 12.1) - Hide for platform admins -->
+                                        {% if user.role != 'PLATFORM_ADMIN' %}
+                                        <form action="{% url 'core:admin_tenant_user_impersonate' tenant.pk user.id %}" method="post" class="m-0" onsubmit="return confirm('Impersonate user {{ user.username }}? You will be logged in as this user.')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-indigo-700 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                                Impersonate User
+                                            </button>
+                                        </form>
+                                        <hr class="my-1 border-gray-200 dark:border-gray-600">
+                                        {% endif %}
+                                        <button onclick="showChangeRoleModal('{{ user.id }}', '{{ user.username }}', '{{ user.role }}')"
+                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                            Change Role
+                                        </button>
+                                        <button onclick="showTempPasswordModal('{{ user.id }}', '{{ user.username }}')"
+                                                class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                            <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                                            Generate Temp Password
+                                        </button>
+                                        <form method="post" action="{% url 'core:admin_tenant_user_send_password_reset' tenant.pk user.id %}" class="block">
+                                            {% csrf_token %}
+                                            <button type="submit" onclick="return confirm('Send password reset email to {{ user.email }}?')"
+                                                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                                Send Password Reset
+                                            </button>
+                                        </form>
+                                        <hr class="my-1 border-gray-200 dark:border-gray-600">
+                                        <form method="post" action="{% url 'core:admin_tenant_user_toggle_active' tenant.pk user.id %}" class="block">
+                                            {% csrf_token %}
+                                            <button type="submit" onclick="return confirm('{% if user.is_active %}Deactivate{% else %}Activate{% endif %} user {{ user.username }}?')"
+                                                    class="block w-full text-left px-4 py-2 text-sm {% if user.is_active %}text-red-700 dark:text-red-400{% else %}text-green-700 dark:text-green-400{% endif %} hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                {% if user.is_active %}
+                                                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                                Deactivate User
+                                                {% else %}
+                                                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                Activate User
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                            {% if search_query or role_filter or status_filter or branch_filter %}
+                            No users found matching your filters.
+                            <a href="?tab=users" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 ml-1">Clear filters</a>
+                            {% else %}
+                            No users found for this tenant.
+                            <button onclick="showCreateUserModal()" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 ml-1">Create the first user</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if users.has_other_pages %}
+        <div class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+                {% if users.has_previous %}
+                <a href="?tab=users&page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if branch_filter %}&branch={{ branch_filter }}{% endif %}"
+                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Previous</a>
+                {% endif %}
+                {% if users.has_next %}
+                <a href="?tab=users&page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if branch_filter %}&branch={{ branch_filter }}{% endif %}"
+                   class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">Next</a>
+                {% endif %}
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                        Showing <span class="font-medium">{{ users.start_index }}</span> to <span class="font-medium">{{ users.end_index }}</span> of <span class="font-medium">{{ users.paginator.count }}</span> users
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        {% if users.has_previous %}
+                        <a href="?tab=users&page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if branch_filter %}&branch={{ branch_filter }}{% endif %}"
+                           class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <span class="sr-only">Previous</span>
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                        </a>
+                        {% endif %}
+                        {% for num in users.paginator.page_range %}
+                            {% if users.number == num %}
+                            <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-blue-50 dark:bg-blue-900 text-sm font-medium text-blue-600 dark:text-blue-400">{{ num }}</span>
+                            {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                            <a href="?tab=users&page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if branch_filter %}&branch={{ branch_filter }}{% endif %}"
+                               class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+                        {% if users.has_next %}
+                        <a href="?tab=users&page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if branch_filter %}&branch={{ branch_filter }}{% endif %}"
+                           class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <span class="sr-only">Next</span>
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- Include User Management Modals -->
+{% include "admin/partials/tenant_users_modals.html" %}
+
+<script>
+// User Management Modal Functions
+
+function showCreateUserModal() {
+    document.getElementById('createUserModal').classList.remove('hidden');
+}
+
+function hideCreateUserModal() {
+    document.getElementById('createUserModal').classList.add('hidden');
+}
+
+function showEditUserModal(userId, username, email, role, branchId, phone, language, theme, isMfaEnabled) {
+    document.getElementById('editUserModal').classList.remove('hidden');
+    document.getElementById('editUserUsername').textContent = username;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_role').value = role;
+    document.getElementById('edit_branch').value = branchId || 'none';
+    document.getElementById('edit_phone').value = phone || '';
+    document.getElementById('edit_is_mfa_enabled').checked = isMfaEnabled;
+    
+    // Update form action
+    document.getElementById('editUserForm').action = `/platform/tenants/{{ tenant.pk }}/users/${userId}/edit/`;
+}
+
+function hideEditUserModal() {
+    document.getElementById('editUserModal').classList.add('hidden');
+}
+
+function showTempPasswordModal(userId, username) {
+    document.getElementById('tempPasswordModal').classList.remove('hidden');
+    document.getElementById('tempPasswordUsername').textContent = username;
+    document.getElementById('tempPasswordForm').action = `/platform/tenants/{{ tenant.pk }}/users/${userId}/temporary-password/`;
+}
+
+function hideTempPasswordModal() {
+    document.getElementById('tempPasswordModal').classList.add('hidden');
+}
+
+function showLoginHistoryModal(userId, username) {
+    document.getElementById('loginHistoryModal').classList.remove('hidden');
+    document.getElementById('loginHistoryUsername').textContent = username;
+    document.getElementById('loginHistoryContent').innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">Loading...</p>';
+    
+    // Fetch login history
+    fetch(`/platform/tenants/{{ tenant.pk }}/users/${userId}/login-history/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.history.length > 0) {
+                let html = '<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">';
+                html += '<thead><tr><th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Time</th><th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">IP Address</th><th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Result</th></tr></thead>';
+                html += '<tbody class="divide-y divide-gray-200 dark:divide-gray-700">';
+                data.history.forEach(item => {
+                    const resultClass = item.result === 'SUCCESS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                    html += `<tr><td class="px-3 py-2 text-sm text-gray-900 dark:text-white">${new Date(item.timestamp).toLocaleString()}</td><td class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">${item.ip_address || 'N/A'}</td><td class="px-3 py-2 text-sm ${resultClass}">${item.result_display || item.result}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('loginHistoryContent').innerHTML = html;
+            } else if (data.success) {
+                document.getElementById('loginHistoryContent').innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No login history found.</p>';
+            } else {
+                document.getElementById('loginHistoryContent').innerHTML = '<p class="text-sm text-red-500">Error loading login history.</p>';
+            }
+        })
+        .catch(error => {
+            document.getElementById('loginHistoryContent').innerHTML = '<p class="text-sm text-red-500">Error loading login history.</p>';
+        });
+}
+
+function hideLoginHistoryModal() {
+    document.getElementById('loginHistoryModal').classList.add('hidden');
+}
+
+function hideUserPasswordModal() {
+    document.getElementById('userPasswordModal').classList.add('hidden');
+}
+
+function copyUserPassword() {
+    const passwordField = document.getElementById('userInitialPassword');
+    if (passwordField) {
+        navigator.clipboard.writeText(passwordField.textContent).then(function() {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            toast.textContent = 'Password copied!';
+            document.body.appendChild(toast);
+            setTimeout(function() { document.body.removeChild(toast); }, 2000);
+        });
+    }
+}
+</script>

@@ -1,0 +1,4 @@
+# file: /app/apps/sales/admin.py
+# hypothesis_version: 6.148.7
+
+['Basic Information', 'Configuration', 'Financial Details', 'Offline Sync', 'Payment', 'Pricing', 'Relationships', 'Status', 'Timestamps', 'branch', 'completed_at', 'configuration', 'created_at', 'customer', 'customer__first_name', 'customer__last_name', 'description', 'discount', 'employee', 'fields', 'id', 'inventory_item', 'inventory_item__name', 'inventory_item__sku', 'is_active', 'is_synced', 'last_used_at', 'notes', 'offline_created_at', 'payment_details', 'payment_method', 'quantity', 'sale', 'sale__sale_number', 'sale_number', 'status', 'subtotal', 'tax', 'tenant', 'terminal', 'terminal_id', 'total', 'unit_price', 'updated_at']

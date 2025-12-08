@@ -6,23 +6,70 @@ Implements Task 12.3: Create interactive dashboards
 - Sales trend charts using Chart.js
 - Drill-down capabilities
 - Period-over-period comparison
+- Impersonation transfer for cross-portal session handling
 - Requirements: 15
 """
 
 from datetime import timedelta
 from decimal import Decimal
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Count, F, Q, Sum
 from django.http import JsonResponse
+from django.shortcuts import redirect
 from django.utils import timezone
-from django.views.generic import TemplateView, View
+from django.views import View
+from django.views.generic import TemplateView
 
 from apps.core.mixins import TenantRequiredMixin
 from apps.crm.models import Customer
 from apps.inventory.models import InventoryItem
 from apps.repair.models import RepairOrder
 from apps.sales.models import Sale
+
+
+class ImpersonationTransferView(View):
+    """
+    View to complete impersonation transfer from platform portal to tenant portal.
+
+    This view handles the cross-portal session transfer needed because the
+    MultiPortalSessionMiddleware uses different session cookies for different
+    portal types (/platform/ vs /dashboard/).
+
+    The platform admin's impersonate action generates a one-time token that
+    is validated here, then the target user is logged in in the tenant session.
+
+    This view does NOT require LoginRequiredMixin because the user is not
+    yet authenticated in the tenant session when they arrive here.
+    """
+
+    def get(self, request):
+        """Handle impersonation transfer via GET with token."""
+        from apps.core.services.impersonation_service import ImpersonationService
+
+        token = request.GET.get("token")
+
+        if not token:
+            messages.error(request, "Invalid impersonation request.")
+            return redirect("account_login")
+
+        # Initialize impersonation service
+        impersonation_service = ImpersonationService()
+
+        # Complete the impersonation transfer
+        success, message, target_user = impersonation_service.complete_impersonation_transfer(
+            request=request,
+            token=token,
+        )
+
+        if success:
+            messages.success(request, message)
+            # Redirect to tenant dashboard (now authenticated as target user)
+            return redirect("core:tenant_dashboard")
+        else:
+            messages.error(request, message)
+            return redirect("account_login")
 
 
 class TenantDashboardView(LoginRequiredMixin, TenantRequiredMixin, TemplateView):

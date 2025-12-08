@@ -1,0 +1,4 @@
+# file: /app/apps/core/job_signals.py
+# hypothesis_version: 6.148.7
+
+[1024, 'FAILURE', 'REVOKED', 'STARTED', 'SUCCESS', 'Unknown error', 'args', 'cpu_percent', 'kwargs', 'memory_mb', 'name', 'started_at', 'status', 'task_name']

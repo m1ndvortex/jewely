@@ -1,0 +1,4 @@
+# file: /app/apps/inventory/apps.py
+# hypothesis_version: 6.148.7
+
+['Inventory Management', 'apps.inventory']

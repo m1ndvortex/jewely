@@ -1,0 +1,4 @@
+# file: /app/apps/accounting/migrations/0008_add_balance_fields_to_bankaccount.py
+# hypothesis_version: 6.148.7
+
+['accounting', 'postgresql']

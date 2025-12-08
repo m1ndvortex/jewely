@@ -103,6 +103,7 @@ TEMPLATES = [
                 "django.template.context_processors.i18n",
                 "apps.core.context_processors.user_preferences",
                 "apps.core.context_processors.waffle_flags",
+                "apps.core.context_processors.impersonation_context",
             ],
         },
     },

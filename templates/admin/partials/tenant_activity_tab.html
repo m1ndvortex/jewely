@@ -1,0 +1,322 @@
+{% comment %}
+Activity Tab - Comprehensive audit log display with filtering and export
+Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 10.1, 10.5
+{% endcomment %}
+
+<div class="space-y-6">
+    <!-- Filters and Export Section (Requirements 4.3, 4.4, 4.5, 4.6, 10.5) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+        <form method="get" action="" class="space-y-4">
+            <input type="hidden" name="tab" value="activity">
+            
+            <div class="flex flex-wrap gap-4 items-end">
+                <!-- Date Range Filter (Requirement 4.3) -->
+                <div class="w-48">
+                    <label for="date_range" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date Range</label>
+                    <select name="date_range" id="date_range" onchange="toggleCustomDateFields()"
+                            class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                        <option value="24h" {% if date_range == '24h' %}selected{% endif %}>Last 24 Hours</option>
+                        <option value="7d" {% if date_range == '7d' %}selected{% endif %}>Last 7 Days</option>
+                        <option value="30d" {% if date_range == '30d' %}selected{% endif %}>Last 30 Days</option>
+                        <option value="90d" {% if date_range == '90d' %}selected{% endif %}>Last 90 Days</option>
+                        <option value="custom" {% if date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                    </select>
+                </div>
+                
+                <!-- Custom Date Range Fields (Requirement 4.3) -->
+                <div id="custom-date-fields" class="flex gap-2 {% if date_range != 'custom' %}hidden{% endif %}">
+                    <div>
+                        <label for="custom_start" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                        <input type="date" name="custom_start" id="custom_start" value="{{ custom_start }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="custom_end" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                        <input type="date" name="custom_end" id="custom_end" value="{{ custom_end }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                </div>
+                
+                <!-- Category Filter (Requirement 4.4) -->
+                <div class="w-40">
+                    <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                    <select name="category" id="category"
+                            class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                        <option value="">All Categories</option>
+                        {% for value, label in category_choices %}
+                        <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Actor Filter (Requirement 4.5) -->
+                <div class="w-48">
+                    <label for="actor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Actor</label>
+                    <select name="actor" id="actor"
+                            class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                        <option value="">All Users</option>
+                        {% for user in tenant_users %}
+                        <option value="{{ user.id }}" {% if actor_filter == user.id|stringformat:"s" %}selected{% endif %}>{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Security Events Only Filter (Requirement 10.5) -->
+                <div class="flex items-center pt-6">
+                    <input type="checkbox" name="security_only" id="security_only" value="1" 
+                           {% if security_only %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded">
+                    <label for="security_only" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                        Security Events Only
+                    </label>
+                </div>
+                
+                <!-- Filter Button -->
+                <div>
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        Filter
+                    </button>
+                    {% if date_range != '7d' or category_filter or actor_filter or security_only %}
+                    <a href="?tab=activity" class="ml-2 inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        Clear
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Export CSV Button (Requirement 4.6) -->
+                <div class="ml-auto">
+                    <a href="{% url 'core:admin_tenant_activity_export_csv' tenant.id %}?{{ request.GET.urlencode }}"
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Export CSV
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Activity Log Table (Requirements 4.1, 4.2, 10.1) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                Activity Log
+                <span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">({{ total_logs }} total)</span>
+            </h3>
+        </div>
+        
+        {% if audit_logs %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Timestamp</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Action</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actor</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">IP Address</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for log in audit_logs %}
+                    {% comment %}Highlight security events (Requirement 10.1){% endcomment %}
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 {% if log.category == 'SECURITY' or log.action in security_actions %}bg-red-50 dark:bg-red-900/20{% endif %}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {{ log.timestamp|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if log.category == 'SECURITY' %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                {% elif log.category == 'ADMIN' %}bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
+                                {% elif log.category == 'USER' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
+                                {% elif log.category == 'DATA' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                {% elif log.category == 'API' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                {% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200{% endif %}">
+                                {{ log.get_category_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            <span class="font-mono text-xs">{{ log.action }}</span>
+                            {% if log.action in security_actions %}
+                            <svg class="inline-block h-4 w-4 ml-1 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {% if log.user %}
+                                {{ log.user.username }}
+                            {% else %}
+                                <span class="text-gray-400 dark:text-gray-500">System</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600 dark:text-gray-400">
+                            {{ log.ip_address|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-md truncate">
+                            {{ log.description|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button type="button" onclick="showActivityDetail({{ log.id }})"
+                                    class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                View Details
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination Controls (Requirement 4.7) -->
+        {% if audit_logs.has_other_pages %}
+        <div class="bg-white dark:bg-gray-800 px-4 py-3 border-t border-gray-200 dark:border-gray-700 sm:px-6">
+            <div class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if audit_logs.has_previous %}
+                    <a href="?tab=activity&page={{ audit_logs.previous_page_number }}{% if date_range %}&date_range={{ date_range }}{% endif %}{% if custom_start %}&custom_start={{ custom_start }}{% endif %}{% if custom_end %}&custom_end={{ custom_end }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if actor_filter %}&actor={{ actor_filter }}{% endif %}{% if security_only %}&security_only=1{% endif %}"
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if audit_logs.has_next %}
+                    <a href="?tab=activity&page={{ audit_logs.next_page_number }}{% if date_range %}&date_range={{ date_range }}{% endif %}{% if custom_start %}&custom_start={{ custom_start }}{% endif %}{% if custom_end %}&custom_end={{ custom_end }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if actor_filter %}&actor={{ actor_filter }}{% endif %}{% if security_only %}&security_only=1{% endif %}"
+                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700 dark:text-gray-300">
+                            Showing
+                            <span class="font-medium">{{ audit_logs.start_index }}</span>
+                            to
+                            <span class="font-medium">{{ audit_logs.end_index }}</span>
+                            of
+                            <span class="font-medium">{{ total_logs }}</span>
+                            results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if audit_logs.has_previous %}
+                            <a href="?tab=activity&page={{ audit_logs.previous_page_number }}{% if date_range %}&date_range={{ date_range }}{% endif %}{% if custom_start %}&custom_start={{ custom_start }}{% endif %}{% if custom_end %}&custom_end={{ custom_end }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if actor_filter %}&actor={{ actor_filter }}{% endif %}{% if security_only %}&security_only=1{% endif %}"
+                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                <span class="sr-only">Previous</span>
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </a>
+                            {% endif %}
+                            
+                            {% for num in audit_logs.paginator.page_range %}
+                                {% if audit_logs.number == num %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-blue-50 dark:bg-blue-900 text-sm font-medium text-blue-600 dark:text-blue-200">
+                                    {{ num }}
+                                </span>
+                                {% elif num > audit_logs.number|add:'-3' and num < audit_logs.number|add:'3' %}
+                                <a href="?tab=activity&page={{ num }}{% if date_range %}&date_range={{ date_range }}{% endif %}{% if custom_start %}&custom_start={{ custom_start }}{% endif %}{% if custom_end %}&custom_end={{ custom_end }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if actor_filter %}&actor={{ actor_filter }}{% endif %}{% if security_only %}&security_only=1{% endif %}"
+                                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                    {{ num }}
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if audit_logs.has_next %}
+                            <a href="?tab=activity&page={{ audit_logs.next_page_number }}{% if date_range %}&date_range={{ date_range }}{% endif %}{% if custom_start %}&custom_start={{ custom_start }}{% endif %}{% if custom_end %}&custom_end={{ custom_end }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if actor_filter %}&actor={{ actor_filter }}{% endif %}{% if security_only %}&security_only=1{% endif %}"
+                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                <span class="sr-only">Next</span>
+                                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No activity logs</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">No activity logs found for the selected filters.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Toggle custom date fields visibility
+function toggleCustomDateFields() {
+    const dateRange = document.getElementById('date_range').value;
+    const customFields = document.getElementById('custom-date-fields');
+    if (dateRange === 'custom') {
+        customFields.classList.remove('hidden');
+    } else {
+        customFields.classList.add('hidden');
+    }
+}
+
+// Show activity detail modal (Requirement 4.8)
+function showActivityDetail(logId) {
+    const tenantId = '{{ tenant.id }}';
+    // Fetch log details via AJAX
+    fetch(`/admin/platform/tenants/${tenantId}/activity/${logId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error('Failed to fetch activity details');
+            }
+            
+            const log = data.log;
+            
+            // Populate modal fields
+            document.getElementById('detail-timestamp').textContent = log.timestamp;
+            document.getElementById('detail-actor').textContent = log.actor || 'System';
+            document.getElementById('detail-category').textContent = log.category_display || log.category;
+            document.getElementById('detail-action').textContent = log.action_display || log.action;
+            document.getElementById('detail-severity').textContent = log.severity_display || log.severity || '-';
+            document.getElementById('detail-ip').textContent = log.ip_address || '-';
+            document.getElementById('detail-description').textContent = log.description || '-';
+            document.getElementById('detail-user-agent').textContent = log.user_agent || '-';
+            
+            // Format JSON fields
+            document.getElementById('detail-old-values').textContent = 
+                log.old_values ? JSON.stringify(log.old_values, null, 2) : 'N/A';
+            document.getElementById('detail-new-values').textContent = 
+                log.new_values ? JSON.stringify(log.new_values, null, 2) : 'N/A';
+            document.getElementById('detail-metadata').textContent = 
+                log.metadata ? JSON.stringify(log.metadata, null, 2) : 'N/A';
+            
+            // Show modal
+            document.getElementById('activityDetailModal').classList.remove('hidden');
+        })
+        .catch(error => {
+            console.error('Error fetching activity details:', error);
+            alert('Failed to load activity details. Please try again.');
+        });
+}
+
+// Hide activity detail modal
+function hideActivityDetailModal() {
+    document.getElementById('activityDetailModal').classList.add('hidden');
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleCustomDateFields();
+});
+</script>

@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0023_add_job_schedule_model.py
+# hypothesis_version: 6.148.7
+
+[100, 255, 'Celery task name', 'Cron Expression', 'Days', 'Hours', 'ID', 'Interval', 'Interval unit', 'Interval value', 'JobSchedule', 'Last execution time', 'Minutes', 'Priority (0-10)', 'Queue name', 'Seconds', 'Task arguments', 'Unique schedule name', 'args', 'core', 'created_at', 'created_by', 'created_schedules', 'cron', 'cron_expression', 'days', 'db_table', 'default', 'enabled', 'hours', 'id', 'interval', 'interval_unit', 'interval_value', 'job_schedules', 'kwargs', 'last_run_at', 'minutes', 'name', 'ordering', 'priority', 'queue', 'schedule_type', 'seconds', 'task_name', 'updated_at']

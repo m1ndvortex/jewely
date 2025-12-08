@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0022_add_job_monitoring_models.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 255, '-queued_at', 'FAILURE', 'Failure', 'ID', 'Job statistics', 'JobExecution', 'JobStatistics', 'PENDING', 'Pending', 'RETRY', 'REVOKED', 'Retry', 'Revoked', 'STARTED', 'SUCCESS', 'Started', 'Success', 'args', 'avg_cpu_percent', 'avg_execution_time', 'avg_memory_mb', 'completed_at', 'core', 'db_table', 'default', 'error', 'execution_time', 'failed_executions', 'id', 'indexes', 'job_executions', 'job_statistics', 'kwargs', 'last_execution_at', 'max_execution_time', 'max_retries', 'min_execution_time', 'ordering', 'priority', 'queue', 'queued_at', 'result', 'retry_count', 'started_at', 'status', 'task_id', 'task_name', 'total_executions', 'traceback', 'updated_at', 'verbose_name_plural', 'worker_name']

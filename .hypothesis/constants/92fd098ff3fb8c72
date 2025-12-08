@@ -1,0 +1,4 @@
+# file: /app/apps/core/services/domain_service.py
+# hypothesis_version: 6.148.7
+
+[253, 255, '"', '.', ':', '; ', 'CNAME', 'Slug cannot be empty', 'TENANT_BASE_DOMAIN', 'TXT', 'Tenant', 'TenantDomain', '^[a-zA-Z0-9_-]+$', '_jewelry-verify', 'cname', 'description', 'domain', 'full_record', 'jewelry-shop.local', 'name', 'txt', 'type', 'updated_at', 'value', 'verification_status', 'verification_token', 'verified_at', 'www']

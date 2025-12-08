@@ -201,3 +201,22 @@ def formatted_currency(context, value: Union[int, float, Decimal], currency: str
         "currency": currency,
         "formatted": formatted,
     }
+
+
+@register.filter(name="get_item")
+def get_item(dictionary, key):
+    """
+    Get an item from a dictionary using a key.
+
+    Useful for accessing dictionary values with dynamic keys in templates.
+
+    Usage:
+        {{ my_dict|get_item:key_variable }}
+        {{ tenant_domains|get_item:tenant.pk }}
+    """
+    if dictionary is None:
+        return None
+    try:
+        return dictionary.get(str(key))
+    except (AttributeError, TypeError):
+        return None

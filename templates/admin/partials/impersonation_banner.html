@@ -1,0 +1,81 @@
+{% load i18n %}
+{% comment %}
+Impersonation Banner Template
+
+Displays a prominent banner when a platform administrator is impersonating a tenant user.
+Shows the impersonated user info and provides an "End Impersonation" button.
+
+Requirements: 12.3
+- Display visible banner during impersonation
+- Show impersonated user info
+- Add "End Impersonation" button
+{% endcomment %}
+
+{% if is_impersonating %}
+<div class="fixed top-0 left-0 right-0 z-[9999] bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg border-b-4 border-red-700">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center justify-between">
+            <!-- Left side: Impersonation info -->
+            <div class="flex items-center space-x-4">
+                <!-- Warning icon -->
+                <div class="flex-shrink-0">
+                    <svg class="h-8 w-8 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                
+                <!-- Impersonation details -->
+                <div class="flex-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-red-600 uppercase tracking-wide">
+                            {% trans "Impersonation Mode" %}
+                        </span>
+                        <span class="text-sm font-semibold">
+                            {% trans "Active" %}
+                        </span>
+                    </div>
+                    <div class="mt-1 text-sm">
+                        <span class="font-medium">{% trans "Viewing as:" %}</span>
+                        <span class="font-bold">{{ request.user.username }}</span>
+                        {% if request.user.email %}
+                            <span class="text-orange-100">({{ request.user.email }})</span>
+                        {% endif %}
+                        {% if request.user.tenant %}
+                            <span class="mx-2">•</span>
+                            <span class="font-medium">{% trans "Tenant:" %}</span>
+                            <span class="font-bold">{{ request.user.tenant.company_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="mt-0.5 text-xs text-orange-100">
+                        <svg class="inline h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        {% if original_admin %}
+                            {% blocktrans with admin=original_admin.username %}Admin: {{ admin }} - {% endblocktrans %}
+                        {% endif %}
+                        {% trans "All actions are logged and audited. You are acting as this user." %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right side: End Impersonation button -->
+            <div class="flex-shrink-0 ml-4">
+                <form method="post" action="{% url 'core:admin_end_impersonation' %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" 
+                            class="inline-flex items-center px-6 py-2.5 border-2 border-white rounded-lg shadow-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-white focus:ring-opacity-50 transition-all duration-200 transform hover:scale-105"
+                            aria-label="{% trans 'End impersonation and return to admin account' %}">
+                        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        {% trans "End Impersonation" %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Spacer to push content down when banner is visible -->
+<div class="h-20" aria-hidden="true"></div>
+{% endif %}

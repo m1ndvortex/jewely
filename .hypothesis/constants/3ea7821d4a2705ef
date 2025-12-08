@@ -1,0 +1,4 @@
+# file: /app/apps/inventory/migrations/0005_add_performance_indexes.py
+# hypothesis_version: 6.148.7
+
+['inventory']

@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0026_add_performance_indexes.py
+# hypothesis_version: 6.148.7
+
+['core']

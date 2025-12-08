@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0007_ensure_tenants_rls_enabled.py
+# hypothesis_version: 6.148.7
+
+['core']

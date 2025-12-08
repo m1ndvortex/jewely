@@ -1,0 +1,4 @@
+# file: /app/apps/procurement/migrations/0006_add_goods_receipt_item.py
+# hypothesis_version: 6.148.7
+
+[255, 'GoodsReceiptItem', 'created_at', 'db_table', 'discrepancy_reason', 'goods_receipt', 'has_discrepancy', 'id', 'indexes', 'inventory', 'inventory_item', 'items', 'ordering', 'procurement', 'purchase_order_item', 'quality_check_passed', 'quality_notes', 'quantity_accepted', 'quantity_received', 'quantity_rejected', 'receipt_items', 'updated_at']

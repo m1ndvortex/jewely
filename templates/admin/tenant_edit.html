@@ -1,0 +1,576 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center space-x-3 mb-2">
+            <a href="{% url 'core:admin_tenant_detail' tenant.pk %}" 
+               class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ form_title }}</h1>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+            Update tenant information and settings. All changes are logged for audit purposes.
+        </p>
+        
+        <!-- Last Modification Info (Requirement 2.5) -->
+        {% if last_modified_at %}
+        <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <span class="inline-flex items-center">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Last modified: {{ last_modified_at|date:"M d, Y H:i" }}
+                {% if last_modified_by %}
+                    by <span class="font-medium">{{ last_modified_by }}</span>
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Display form errors -->
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 dark:bg-red-900 border-l-4 border-red-400 p-4 rounded-r-lg">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                        There were errors with your submission
+                    </h3>
+                    <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                        <ul class="list-disc list-inside space-y-1">
+                            {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Basic Info Section (Requirement 2.1, 2.2) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow" x-data="{ open: true }">
+            <button type="button" @click="open = !open" 
+                    class="w-full px-6 py-4 flex items-center justify-between text-left border-b border-gray-200 dark:border-gray-700 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Basic Info</span>
+                </div>
+                <svg class="h-5 w-5 text-gray-500 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse class="p-6 space-y-4">
+                <!-- Company Name -->
+                <div>
+                    <label for="{{ form.company_name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Company Name <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.company_name }}
+                    {% if form.company_name.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.company_name.help_text }}</p>
+                    {% endif %}
+                    {% if form.company_name.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.company_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Slug -->
+                <div>
+                    <label for="{{ form.slug.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Slug <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.slug }}
+                    {% if form.slug.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.slug.help_text }}</p>
+                    {% endif %}
+                    {% if form.slug.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.slug.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Status <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.status }}
+                    {% if form.status.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.status.help_text }}</p>
+                    {% endif %}
+                    {% if form.status.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.status.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Business Settings Section (Requirement 2.1, 2.3) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow" x-data="{ open: true }">
+            <button type="button" @click="open = !open" 
+                    class="w-full px-6 py-4 flex items-center justify-between text-left border-b border-gray-200 dark:border-gray-700 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Business Settings</span>
+                </div>
+                <svg class="h-5 w-5 text-gray-500 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Business Name -->
+                    <div>
+                        <label for="{{ form.business_name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Business Name
+                        </label>
+                        {{ form.business_name }}
+                        {% if form.business_name.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.business_name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Registration Number -->
+                    <div>
+                        <label for="{{ form.business_registration_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Registration Number
+                        </label>
+                        {{ form.business_registration_number }}
+                        {% if form.business_registration_number.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.business_registration_number.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tax ID -->
+                    <div>
+                        <label for="{{ form.tax_identification_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Tax ID
+                        </label>
+                        {{ form.tax_identification_number }}
+                        {% if form.tax_identification_number.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.tax_identification_number.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Business Email
+                        </label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.email.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Address Fields -->
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Address</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="{{ form.address_line_1.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Address Line 1
+                            </label>
+                            {{ form.address_line_1 }}
+                        </div>
+                        <div>
+                            <label for="{{ form.address_line_2.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Address Line 2
+                            </label>
+                            {{ form.address_line_2 }}
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for="{{ form.city.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    City
+                                </label>
+                                {{ form.city }}
+                            </div>
+                            <div>
+                                <label for="{{ form.state_province.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    State/Province
+                                </label>
+                                {{ form.state_province }}
+                            </div>
+                            <div>
+                                <label for="{{ form.postal_code.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Postal Code
+                                </label>
+                                {{ form.postal_code }}
+                            </div>
+                            <div>
+                                <label for="{{ form.country.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Country
+                                </label>
+                                {{ form.country }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Fields -->
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Contact</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Phone
+                            </label>
+                            {{ form.phone }}
+                        </div>
+                        <div>
+                            <label for="{{ form.fax.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Fax
+                            </label>
+                            {{ form.fax }}
+                        </div>
+                        <div>
+                            <label for="{{ form.website.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Website
+                            </label>
+                            {{ form.website }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Localization Section (Requirement 2.3) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow" x-data="{ open: true }">
+            <button type="button" @click="open = !open" 
+                    class="w-full px-6 py-4 flex items-center justify-between text-left border-b border-gray-200 dark:border-gray-700 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-purple-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Localization</span>
+                </div>
+                <svg class="h-5 w-5 text-gray-500 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="{{ form.timezone.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Timezone
+                        </label>
+                        {{ form.timezone }}
+                        {% if form.timezone.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.timezone.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.currency.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Currency
+                        </label>
+                        {{ form.currency }}
+                        {% if form.currency.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.currency.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.date_format.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Date Format
+                        </label>
+                        {{ form.date_format }}
+                        {% if form.date_format.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.date_format.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Domain Configuration Section (Requirement 2.1, 2.4) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow" x-data="{ open: true }">
+            <button type="button" @click="open = !open" 
+                    class="w-full px-6 py-4 flex items-center justify-between text-left border-b border-gray-200 dark:border-gray-700 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-indigo-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                    </svg>
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Domain Configuration</span>
+                </div>
+                <svg class="h-5 w-5 text-gray-500 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse class="p-6 space-y-4">
+                <!-- Subdomain (Read-only) -->
+                <div>
+                    <label for="{{ form.subdomain.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Subdomain
+                        <span class="text-gray-500 text-xs ml-1">(auto-generated, read-only)</span>
+                    </label>
+                    {{ form.subdomain }}
+                    {% if subdomain %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Access URL: <a href="http://{{ subdomain.domain }}" target="_blank" class="text-blue-600 hover:underline">{{ subdomain.domain }}</a>
+                    </p>
+                    {% endif %}
+                </div>
+
+                <!-- Custom Domain -->
+                <div>
+                    <label for="{{ form.custom_domain.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Custom Domain
+                    </label>
+                    {{ form.custom_domain }}
+                    {% if form.custom_domain.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.custom_domain.help_text }}</p>
+                    {% endif %}
+                    {% if form.custom_domain.errors %}
+                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.custom_domain.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Existing Custom Domains -->
+                {% if custom_domains %}
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Existing Custom Domains</h4>
+                    <ul class="space-y-2">
+                        {% for domain in custom_domains %}
+                        <li class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg px-4 py-2">
+                            <span class="text-sm text-gray-900 dark:text-white">{{ domain.domain }}</span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if domain.verification_status == 'VERIFIED' %}
+                                    bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                {% elif domain.verification_status == 'PENDING' %}
+                                    bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                {% else %}
+                                    bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                {% endif %}">
+                                {{ domain.verification_status }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Security Section (Requirement 2.1) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow" x-data="{ open: false }">
+            <button type="button" @click="open = !open" 
+                    class="w-full px-6 py-4 flex items-center justify-between text-left border-b border-gray-200 dark:border-gray-700 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Security</span>
+                </div>
+                <svg class="h-5 w-5 text-gray-500 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            {{ form.require_mfa_for_managers }}
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="{{ form.require_mfa_for_managers.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                                Require MFA for Managers
+                            </label>
+                            <p class="text-gray-500 dark:text-gray-400">Require multi-factor authentication for tenant managers and owners</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="{{ form.password_expiry_days.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Password Expiry (days)
+                        </label>
+                        {{ form.password_expiry_days }}
+                        {% if form.password_expiry_days.help_text %}
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.password_expiry_days.help_text }}</p>
+                        {% endif %}
+                        {% if form.password_expiry_days.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.password_expiry_days.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Branding Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow" x-data="{ open: false }">
+            <button type="button" @click="open = !open" 
+                    class="w-full px-6 py-4 flex items-center justify-between text-left border-b border-gray-200 dark:border-gray-700 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-pink-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                    </svg>
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Branding</span>
+                </div>
+                <svg class="h-5 w-5 text-gray-500 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse class="p-6 space-y-4">
+                <!-- Logo -->
+                <div>
+                    <label for="{{ form.logo.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Logo
+                    </label>
+                    {% if settings and settings.logo %}
+                    <div class="mb-2">
+                        <img src="{{ settings.logo.url }}" alt="Current logo" class="h-16 w-auto rounded border border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Current logo</p>
+                    </div>
+                    {% endif %}
+                    {{ form.logo }}
+                    {% if form.logo.help_text %}
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.logo.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Colors -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.primary_color.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Primary Color
+                        </label>
+                        {{ form.primary_color }}
+                        {% if form.primary_color.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.primary_color.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.secondary_color.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Secondary Color
+                        </label>
+                        {{ form.secondary_color }}
+                        {% if form.secondary_color.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.secondary_color.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tax Configuration Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow" x-data="{ open: false }">
+            <button type="button" @click="open = !open" 
+                    class="w-full px-6 py-4 flex items-center justify-between text-left border-b border-gray-200 dark:border-gray-700 rounded-t-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 text-yellow-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z"/>
+                    </svg>
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Tax Configuration</span>
+                </div>
+                <svg class="h-5 w-5 text-gray-500 transform transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.default_tax_rate.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Default Tax Rate
+                        </label>
+                        {{ form.default_tax_rate }}
+                        {% if form.default_tax_rate.help_text %}
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.default_tax_rate.help_text }}</p>
+                        {% endif %}
+                        {% if form.default_tax_rate.errors %}
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.default_tax_rate.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-start pt-6">
+                        <div class="flex items-center h-5">
+                            {{ form.tax_inclusive_pricing }}
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="{{ form.tax_inclusive_pricing.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
+                                Tax Inclusive Pricing
+                            </label>
+                            <p class="text-gray-500 dark:text-gray-400">Prices include tax by default</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-4 rounded-r-lg">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-blue-700 dark:text-blue-200">
+                        All changes are logged in the audit trail. Users associated with this tenant will be affected by status changes.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-end space-x-3 pt-4">
+            <a href="{% url 'core:admin_tenant_detail' tenant.pk %}" 
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Cancel
+            </a>
+            <button type="submit" 
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                {{ submit_text }}
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Alpine.js for collapsible sections -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+    // Collapse plugin for Alpine.js
+    document.addEventListener('alpine:init', () => {
+        Alpine.directive('collapse', (el, { expression }, { effect, cleanup }) => {
+            const duration = 300;
+            
+            effect(() => {
+                if (el._x_isShown === undefined) {
+                    el._x_isShown = true;
+                }
+                
+                if (el._x_isShown) {
+                    el.style.height = 'auto';
+                    el.style.overflow = 'visible';
+                } else {
+                    el.style.height = '0px';
+                    el.style.overflow = 'hidden';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

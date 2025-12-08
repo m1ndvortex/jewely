@@ -1,0 +1,4 @@
+# file: /app/apps/core/cache_utils.py
+# hypothesis_version: 6.148.7
+
+[180, 300, 900, ':', 'api', 'dashboard', 'default', 'delete_pattern', 'gold_rate:current', 'query', 'template', 'tenant', 'tenant_query']

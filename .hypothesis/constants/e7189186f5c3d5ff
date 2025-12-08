@@ -1,0 +1,4 @@
+# file: /app/apps/notifications/migrations/0003_alter_notification_notification_type_and_more.py
+# hypothesis_version: 6.148.7
+
+['APPOINTMENT', 'Appointment Reminder', 'ERROR', 'Error', 'INFO', 'Information', 'LOW_STOCK', 'Low Stock Alert', 'MARKETING', 'Marketing Email', 'ORDER_STATUS', 'Order Status Update', 'PAYMENT_REMINDER', 'PROMOTION', 'Payment Reminder', 'Promotion', 'SUCCESS', 'SYSTEM', 'Success', 'System Notification', 'TRANSACTIONAL', 'Transactional Email', 'WARNING', 'Warning', 'notification', 'notification_type', 'notifications', 'notificationtemplate']

@@ -1,0 +1,4 @@
+# file: /app/apps/inventory/migrations/0004_alter_productcategory_options_and_more.py
+# hypothesis_version: 6.148.7
+
+[120, 200, 'Category image', 'Product Categories', 'Product Category', 'SEO meta description', 'SEO meta title', 'cat_tenant_slug_idx', 'category_images/', 'display_order', 'image', 'inventory', 'meta_description', 'meta_title', 'name', 'ordering', 'productcategory', 'slug', 'tenant', 'verbose_name', 'verbose_name_plural']

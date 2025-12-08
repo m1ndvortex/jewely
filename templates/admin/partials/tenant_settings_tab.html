@@ -1,0 +1,626 @@
+<!-- Settings Tab - Collapsible sections with inline editing -->
+<!-- Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7 -->
+
+<div class="space-y-6">
+    <!-- Toast Container for Success/Error Messages (Requirement 5.6) -->
+    <div id="settings-toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Business Information Section (Requirement 5.1) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <button type="button" onclick="toggleSection('business')" 
+                    class="w-full flex justify-between items-center text-left">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Business Information</h3>
+                <svg id="business-chevron" class="h-5 w-5 text-gray-500 transform transition-transform" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="business-section" class="px-6 py-4">
+            <form id="business-form" method="post" class="space-y-4">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Business Name -->
+                    <div>
+                        <label for="business-business_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Business Name
+                        </label>
+                        <input type="text" name="business-business_name" id="business-business_name" 
+                               value="{{ settings.business_name }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Business Registration Number -->
+                    <div>
+                        <label for="business-business_registration_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Registration Number
+                        </label>
+                        <input type="text" name="business-business_registration_number" id="business-business_registration_number" 
+                               value="{{ settings.business_registration_number }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Tax ID -->
+                    <div>
+                        <label for="business-tax_identification_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Tax Identification Number
+                        </label>
+                        <input type="text" name="business-tax_identification_number" id="business-tax_identification_number" 
+                               value="{{ settings.tax_identification_number }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <div class="flex justify-end pt-4">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Business Information
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Contact Information Section (Requirement 5.1) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <button type="button" onclick="toggleSection('contact')" 
+                    class="w-full flex justify-between items-center text-left">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Contact Information</h3>
+                <svg id="contact-chevron" class="h-5 w-5 text-gray-500 transform transition-transform" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="contact-section" class="px-6 py-4 hidden">
+            <form id="contact-form" method="post" class="space-y-4">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Address Line 1 -->
+                    <div class="md:col-span-2">
+                        <label for="contact-address_line_1" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Address Line 1
+                        </label>
+                        <input type="text" name="contact-address_line_1" id="contact-address_line_1" 
+                               value="{{ settings.address_line_1 }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Address Line 2 -->
+                    <div class="md:col-span-2">
+                        <label for="contact-address_line_2" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Address Line 2
+                        </label>
+                        <input type="text" name="contact-address_line_2" id="contact-address_line_2" 
+                               value="{{ settings.address_line_2 }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- City -->
+                    <div>
+                        <label for="contact-city" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            City
+                        </label>
+                        <input type="text" name="contact-city" id="contact-city" 
+                               value="{{ settings.city }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- State/Province -->
+                    <div>
+                        <label for="contact-state_province" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            State/Province
+                        </label>
+                        <input type="text" name="contact-state_province" id="contact-state_province" 
+                               value="{{ settings.state_province }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Postal Code -->
+                    <div>
+                        <label for="contact-postal_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Postal Code
+                        </label>
+                        <input type="text" name="contact-postal_code" id="contact-postal_code" 
+                               value="{{ settings.postal_code }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Country -->
+                    <div>
+                        <label for="contact-country" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Country
+                        </label>
+                        <input type="text" name="contact-country" id="contact-country" 
+                               value="{{ settings.country }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Phone -->
+                    <div>
+                        <label for="contact-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Phone
+                        </label>
+                        <input type="text" name="contact-phone" id="contact-phone" 
+                               value="{{ settings.phone }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Fax -->
+                    <div>
+                        <label for="contact-fax" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Fax
+                        </label>
+                        <input type="text" name="contact-fax" id="contact-fax" 
+                               value="{{ settings.fax }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Email -->
+                    <div>
+                        <label for="contact-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Email
+                        </label>
+                        <input type="email" name="contact-email" id="contact-email" 
+                               value="{{ settings.email }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                    
+                    <!-- Website -->
+                    <div>
+                        <label for="contact-website" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Website
+                        </label>
+                        <input type="url" name="contact-website" id="contact-website" 
+                               value="{{ settings.website }}"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <div class="flex justify-end pt-4">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Contact Information
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Localization Section (Requirement 5.4) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <button type="button" onclick="toggleSection('localization')" 
+                    class="w-full flex justify-between items-center text-left">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Localization</h3>
+                <svg id="localization-chevron" class="h-5 w-5 text-gray-500 transform transition-transform" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="localization-section" class="px-6 py-4 hidden">
+            <form id="localization-form" method="post" class="space-y-4">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Timezone (Requirement 5.4) -->
+                    <div>
+                        <label for="localization-timezone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Timezone
+                        </label>
+                        <select name="localization-timezone" id="localization-timezone" 
+                                class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            {% for tz in timezone_choices %}
+                            <option value="{{ tz }}" {% if settings.timezone == tz %}selected{% endif %}>{{ tz }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Currency (Requirement 5.4) -->
+                    <div>
+                        <label for="localization-currency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Currency
+                        </label>
+                        <select name="localization-currency" id="localization-currency" 
+                                class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            {% for value, label in currency_choices %}
+                            <option value="{{ value }}" {% if settings.currency == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Date Format (Requirement 5.4) -->
+                    <div>
+                        <label for="localization-date_format" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Date Format
+                        </label>
+                        <select name="localization-date_format" id="localization-date_format" 
+                                class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                            {% for value, label in date_format_choices %}
+                            <option value="{{ value }}" {% if settings.date_format == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <div class="flex justify-end pt-4">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Localization
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Security Section (Requirement 5.3) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <button type="button" onclick="toggleSection('security')" 
+                    class="w-full flex justify-between items-center text-left">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Security Settings</h3>
+                <svg id="security-chevron" class="h-5 w-5 text-gray-500 transform transition-transform" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="security-section" class="px-6 py-4 hidden">
+            <form id="security-form" method="post" class="space-y-4">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Require MFA for Managers (Requirement 5.3) -->
+                    <div class="md:col-span-2">
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input type="checkbox" name="security-require_mfa_for_managers" id="security-require_mfa_for_managers" 
+                                       {% if settings.require_mfa_for_managers %}checked{% endif %}
+                                       class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="security-require_mfa_for_managers" class="font-medium text-gray-700 dark:text-gray-300">
+                                    Require MFA for Managers
+                                </label>
+                                <p class="text-gray-500 dark:text-gray-400">
+                                    Require multi-factor authentication for tenant managers and owners
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Password Expiry Days (Requirement 5.3) -->
+                    <div>
+                        <label for="security-password_expiry_days" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Password Expiry (Days)
+                        </label>
+                        <input type="number" name="security-password_expiry_days" id="security-password_expiry_days" 
+                               value="{{ settings.password_expiry_days }}" min="0"
+                               class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Set to 0 for no expiry</p>
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <div class="flex justify-end pt-4">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Security Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Branding Section (Requirement 5.5) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <button type="button" onclick="toggleSection('branding')" 
+                    class="w-full flex justify-between items-center text-left">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Branding</h3>
+                <svg id="branding-chevron" class="h-5 w-5 text-gray-500 transform transition-transform" 
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="branding-section" class="px-6 py-4 hidden">
+            <form id="branding-form" method="post" enctype="multipart/form-data" class="space-y-4">
+                {% csrf_token %}
+                
+                <!-- Logo Upload with Preview (Requirement 5.5) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Business Logo
+                    </label>
+                    
+                    <!-- Current Logo Preview -->
+                    <div class="mb-3">
+                        {% if settings.logo %}
+                        <div id="current-logo-preview" class="inline-block">
+                            <img src="{{ settings.logo.url }}" alt="Current Logo" 
+                                 class="h-24 w-auto border border-gray-300 dark:border-gray-600 rounded">
+                        </div>
+                        {% else %}
+                        <div id="current-logo-preview" class="inline-block p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded">
+                            <svg class="h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- New Logo Preview (hidden initially) -->
+                    <div id="new-logo-preview" class="mb-3 hidden">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">New logo preview:</p>
+                        <img id="new-logo-img" src="" alt="New Logo Preview" 
+                             class="h-24 w-auto border border-gray-300 dark:border-gray-600 rounded">
+                    </div>
+                    
+                    <!-- File Input -->
+                    <input type="file" name="branding-logo" id="branding-logo" accept="image/*"
+                           onchange="previewLogo(this)"
+                           class="block w-full text-sm text-gray-500 dark:text-gray-400
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-md file:border-0
+                                  file:text-sm file:font-medium
+                                  file:bg-blue-50 file:text-blue-700
+                                  hover:file:bg-blue-100
+                                  dark:file:bg-gray-700 dark:file:text-blue-400">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF up to 2MB</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Primary Color (Requirement 5.5) -->
+                    <div>
+                        <label for="branding-primary_color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Primary Color
+                        </label>
+                        <div class="flex items-center space-x-2">
+                            <input type="color" name="branding-primary_color" id="branding-primary_color" 
+                                   value="{{ settings.primary_color }}"
+                                   class="h-10 w-20 border-gray-300 dark:border-gray-600 rounded cursor-pointer">
+                            <input type="text" id="branding-primary_color_text" 
+                                   value="{{ settings.primary_color }}"
+                                   readonly
+                                   class="flex-1 border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white sm:text-sm">
+                        </div>
+                    </div>
+                    
+                    <!-- Secondary Color (Requirement 5.5) -->
+                    <div>
+                        <label for="branding-secondary_color" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Secondary Color
+                        </label>
+                        <div class="flex items-center space-x-2">
+                            <input type="color" name="branding-secondary_color" id="branding-secondary_color" 
+                                   value="{{ settings.secondary_color }}"
+                                   class="h-10 w-20 border-gray-300 dark:border-gray-600 rounded cursor-pointer">
+                            <input type="text" id="branding-secondary_color_text" 
+                                   value="{{ settings.secondary_color }}"
+                                   readonly
+                                   class="flex-1 border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-white sm:text-sm">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <div class="flex justify-end pt-4">
+                    <button type="submit" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Branding
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Settings Tab -->
+<script>
+// Toggle section visibility
+function toggleSection(sectionName) {
+    const section = document.getElementById(`${sectionName}-section`);
+    const chevron = document.getElementById(`${sectionName}-chevron`);
+    
+    if (section.classList.contains('hidden')) {
+        section.classList.remove('hidden');
+        chevron.classList.add('rotate-180');
+    } else {
+        section.classList.add('hidden');
+        chevron.classList.remove('rotate-180');
+    }
+}
+
+// Show toast message (Requirement 5.6)
+function showToast(message, type = 'success') {
+    const container = document.getElementById('settings-toast-container');
+    const toast = document.createElement('div');
+    
+    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+    const icon = type === 'success' 
+        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>';
+    
+    toast.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 animate-slide-in`;
+    toast.innerHTML = `
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${icon}
+        </svg>
+        <span>${message}</span>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.add('animate-fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Handle form submission for each section
+document.addEventListener('DOMContentLoaded', function() {
+    const sections = ['business', 'contact', 'localization', 'security', 'branding'];
+    
+    sections.forEach(section => {
+        const form = document.getElementById(`${section}-form`);
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(form);
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                
+                // Disable button and show loading state
+                submitButton.disabled = true;
+                submitButton.innerHTML = `
+                    <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                `;
+                
+                // Submit via AJAX
+                fetch(`/platform/tenants/{{ tenant.id }}/settings/${section}/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message, 'success');
+                        
+                        // Reload page after short delay to show updated values
+                        setTimeout(() => {
+                            window.location.href = window.location.href;
+                        }, 1500);
+                    } else {
+                        showToast(data.error || 'An error occurred', 'error');
+                        
+                        // Show field-specific errors
+                        if (data.field_errors) {
+                            Object.keys(data.field_errors).forEach(field => {
+                                const errorMessages = data.field_errors[field];
+                                errorMessages.forEach(msg => {
+                                    showToast(`${field}: ${msg}`, 'error');
+                                });
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Network error occurred', 'error');
+                })
+                .finally(() => {
+                    // Re-enable button
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                });
+            });
+        }
+    });
+    
+    // Color picker sync with text input
+    const primaryColorPicker = document.getElementById('branding-primary_color');
+    const primaryColorText = document.getElementById('branding-primary_color_text');
+    const secondaryColorPicker = document.getElementById('branding-secondary_color');
+    const secondaryColorText = document.getElementById('branding-secondary_color_text');
+    
+    if (primaryColorPicker && primaryColorText) {
+        primaryColorPicker.addEventListener('input', function() {
+            primaryColorText.value = this.value;
+        });
+    }
+    
+    if (secondaryColorPicker && secondaryColorText) {
+        secondaryColorPicker.addEventListener('input', function() {
+            secondaryColorText.value = this.value;
+        });
+    }
+});
+
+// Logo preview function (Requirement 5.5)
+function previewLogo(input) {
+    const newPreview = document.getElementById('new-logo-preview');
+    const newLogoImg = document.getElementById('new-logo-img');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            newLogoImg.src = e.target.result;
+            newPreview.classList.remove('hidden');
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        newPreview.classList.add('hidden');
+    }
+}
+</script>
+
+<!-- CSS for animations -->
+<style>
+@keyframes slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fade-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}
+
+.animate-fade-out {
+    animation: fade-out 0.3s ease-out;
+}
+</style>

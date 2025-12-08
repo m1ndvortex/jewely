@@ -1,0 +1,4 @@
+# file: /app/apps/sales/migrations/0003_add_discount_fields.py
+# hypothesis_version: 6.148.7
+
+['0.00', '0002_enable_rls', 'FIXED', 'Fixed Amount', 'PERCENTAGE', 'Percentage', 'discount_type', 'discount_value', 'sale', 'sales']

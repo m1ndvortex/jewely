@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0018_fix_audit_log_defaults.py
+# hypothesis_version: 6.148.7
+
+['AuditLog', 'core']

@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0004_permissionauditlog.py
+# hypothesis_version: 6.148.7
+
+['-timestamp', 'BRANCH_ASSIGNED', 'BRANCH_UNASSIGNED', 'Branch Assigned', 'Branch Unassigned', 'GROUP_ADDED', 'GROUP_REMOVED', 'Group Added', 'Group Removed', 'ID', 'PERMISSION_GRANTED', 'PERMISSION_REVOKED', 'Permission Audit Log', 'Permission Granted', 'Permission Revoked', 'PermissionAuditLog', 'ROLE_CHANGED', 'Role Changed', 'action', 'actor', 'audit_actor_time_idx', 'audit_user_time_idx', 'core', 'db_table', 'description', 'id', 'indexes', 'ip_address', 'new_value', 'old_value', 'ordering', 'permission_changes', 'target_user', 'timestamp', 'user_agent', 'verbose_name', 'verbose_name_plural']

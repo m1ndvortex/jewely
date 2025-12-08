@@ -1,0 +1,4 @@
+# file: /app/apps/accounting/migrations/0005_create_bank_account_model.py
+# hypothesis_version: 6.148.7
+
+[100, '-is_default', '0.00', 'Bank Account', 'Bank Accounts', 'Bank routing number', 'BankAccount', 'CHECKING', 'CREDIT_CARD', 'Checking Account', 'Credit Card', 'Current book balance', 'LINE_OF_CREDIT', 'Line of Credit', 'MONEY_MARKET', 'Money Market Account', 'OTHER', 'Other', 'SAVINGS', 'Savings Account', 'Type of bank account', 'USD', 'account_name', 'account_number', 'account_type', 'accounting', 'bank_accounts', 'bank_name', 'core', 'core.tenant', 'created_at', 'created_by', 'currency', 'current_balance', 'db_table', 'django_ledger', 'id', 'indexes', 'is_active', 'is_default', 'last_reconciled_date', 'ledger_account', 'notes', 'opening_balance', 'ordering', 'reconciled_balance', 'routing_number', 'swift_code', 'tenant', 'unique_together', 'updated_at', 'verbose_name', 'verbose_name_plural']

@@ -1,0 +1,4 @@
+# file: /app/apps/core/job_models.py
+# hypothesis_version: 6.148.7
+
+[0.0, 60.0, 100, 255, 3600, 86400, '-queued_at', 'Celery task name', 'Cron Expression', 'Days', 'FAILURE', 'Failure', 'Hours', 'Interval', 'Interval unit', 'Interval value', 'Job statistics', 'Last execution time', 'Minutes', 'PENDING', 'Pending', 'Priority (0-10)', 'Queue name', 'RETRY', 'REVOKED', 'Retry', 'Revoked', 'STARTED', 'SUCCESS', 'Seconds', 'Started', 'Success', 'Task arguments', 'Unique schedule name', 'Unknown', 'core.User', 'created_schedules', 'cron', 'days', 'default', 'hours', 'interval', 'job_executions', 'job_schedules', 'job_statistics', 'minutes', 'name', 'queue', 'seconds', 'status', 'task_name']

@@ -1,0 +1,4 @@
+# file: /app/apps/core/cache_invalidation.py
+# hypothesis_version: 6.148.7
+
+['*inventory*', '*pricing*', 'accounting', 'accounting.Bill', 'accounting.Expense', 'accounting.Invoice', 'auth.User', 'bill', 'branch', 'branch_id', 'category', 'config', 'core.Branch', 'core.TenantSettings', 'crm', 'crm.Customer', 'customer', 'customer_id', 'dashboard', 'financial_report', 'gold_rate:*', 'inventory', 'invoice', 'payable', 'pricing', 'pricing.GoldRate', 'pricing.PricingRule', 'procurement', 'procurement.Supplier', 'purchase_order', 'receivable', 'repair', 'repair.RepairOrder', 'report', 'sales', 'sales.Sale', 'settings', 'staff', 'supplier', 'tenant_id', 'user']

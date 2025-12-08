@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0019_make_audit_fields_nullable.py
+# hypothesis_version: 6.148.7
+
+[500, 'HTTP request path', 'auditlog', 'core', 'request_method', 'request_path']

@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ form_title }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center space-x-3 mb-2">
+            <a href="{% url 'core:admin_tenant_list' %}" 
+               class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ form_title }}</h1>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+            Create a new tenant account with comprehensive configuration
+        </p>
+    </div>
+
+    <!-- Form -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            <!-- Display form errors -->
+            {% if form.non_field_errors %}
+                <div class="bg-red-50 dark:bg-red-900 border-l-4 border-red-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+                                There were errors with your submission
+                            </h3>
+                            <div class="mt-2 text-sm text-red-700 dark:text-red-300">
+                                <ul class="list-disc list-inside space-y-1">
+                                    {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Basic Info Section -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+                <button type="button" onclick="toggleSection('basic-info')" 
+                        class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-t-lg">
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Basic Info</span>
+                    <svg id="basic-info-icon" class="h-5 w-5 text-gray-500 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div id="basic-info-content" class="p-4 space-y-4">
+                    <!-- Company Name -->
+                    <div>
+                        <label for="{{ form.company_name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Company Name <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.company_name }}
+                        {% if form.company_name.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.company_name.help_text }}</p>
+                        {% endif %}
+                        {% if form.company_name.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.company_name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Slug -->
+                    <div>
+                        <label for="{{ form.slug.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Slug <span class="text-gray-500">(optional)</span>
+                        </label>
+                        {{ form.slug }}
+                        {% if form.slug.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.slug.help_text }}</p>
+                        {% endif %}
+                        {% if form.slug.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.slug.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Status -->
+                    <div>
+                        <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Status <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.status }}
+                        {% if form.status.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.status.help_text }}</p>
+                        {% endif %}
+                        {% if form.status.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.status.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Business Settings Section -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+                <button type="button" onclick="toggleSection('business-settings')" 
+                        class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700">
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Business Settings</span>
+                    <svg id="business-settings-icon" class="h-5 w-5 text-gray-500 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div id="business-settings-content" class="p-4 space-y-4 hidden">
+                    <!-- Business Name -->
+                    <div>
+                        <label for="{{ form.business_name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Business Name
+                        </label>
+                        {{ form.business_name }}
+                        {% if form.business_name.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.business_name.help_text }}</p>
+                        {% endif %}
+                        {% if form.business_name.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.business_name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Registration Number -->
+                        <div>
+                            <label for="{{ form.business_registration_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Registration Number
+                            </label>
+                            {{ form.business_registration_number }}
+                            {% if form.business_registration_number.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.business_registration_number.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Tax ID -->
+                        <div>
+                            <label for="{{ form.tax_identification_number.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Tax ID
+                            </label>
+                            {{ form.tax_identification_number }}
+                            {% if form.tax_identification_number.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.tax_identification_number.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <label for="{{ form.address_line_1.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Address Line 1
+                        </label>
+                        {{ form.address_line_1 }}
+                        {% if form.address_line_1.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.address_line_1.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.address_line_2.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Address Line 2
+                        </label>
+                        {{ form.address_line_2 }}
+                        {% if form.address_line_2.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.address_line_2.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="{{ form.city.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                City
+                            </label>
+                            {{ form.city }}
+                            {% if form.city.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.city.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.state_province.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                State/Province
+                            </label>
+                            {{ form.state_province }}
+                            {% if form.state_province.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.state_province.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.postal_code.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Postal Code
+                            </label>
+                            {{ form.postal_code }}
+                            {% if form.postal_code.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.postal_code.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="{{ form.country.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Country
+                        </label>
+                        {{ form.country }}
+                        {% if form.country.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.country.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Phone
+                            </label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.phone.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.fax.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Fax
+                            </label>
+                            {{ form.fax }}
+                            {% if form.fax.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.fax.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Business Email <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.help_text %}
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.email.help_text }}</p>
+                            {% endif %}
+                            {% if form.email.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.email.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.website.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Website
+                            </label>
+                            {{ form.website }}
+                            {% if form.website.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.website.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Localization -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <div>
+                            <label for="{{ form.timezone.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Timezone
+                            </label>
+                            {{ form.timezone }}
+                            {% if form.timezone.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.timezone.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.currency.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Currency
+                            </label>
+                            {{ form.currency }}
+                            {% if form.currency.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.currency.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.date_format.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Date Format
+                            </label>
+                            {{ form.date_format }}
+                            {% if form.date_format.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.date_format.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Domain Configuration Section -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+                <button type="button" onclick="toggleSection('domain-config')" 
+                        class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700">
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Domain Configuration</span>
+                    <svg id="domain-config-icon" class="h-5 w-5 text-gray-500 transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div id="domain-config-content" class="p-4 space-y-4 hidden">
+                    <div>
+                        <label for="{{ form.subdomain.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Subdomain
+                        </label>
+                        {{ form.subdomain }}
+                        {% if form.subdomain.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.subdomain.help_text }}</p>
+                        {% endif %}
+                        {% if form.subdomain.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.subdomain.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.custom_domain.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Custom Domain
+                        </label>
+                        {{ form.custom_domain }}
+                        {% if form.custom_domain.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.custom_domain.help_text }}</p>
+                        {% endif %}
+                        {% if form.custom_domain.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.custom_domain.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Initial Admin User Section -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+                <button type="button" onclick="toggleSection('admin-user')" 
+                        class="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700">
+                    <span class="text-lg font-medium text-gray-900 dark:text-white">Initial Admin User</span>
+                    <svg id="admin-user-icon" class="h-5 w-5 text-gray-500 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div id="admin-user-content" class="p-4 space-y-4">
+                    <div class="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700 dark:text-blue-200">
+                                    This user will be created as the Tenant Owner with full administrative access to the tenant.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ form.admin_username.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Username <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.admin_username }}
+                            {% if form.admin_username.help_text %}
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.admin_username.help_text }}</p>
+                            {% endif %}
+                            {% if form.admin_username.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.admin_username.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.admin_email.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Email <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.admin_email }}
+                            {% if form.admin_email.help_text %}
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.admin_email.help_text }}</p>
+                            {% endif %}
+                            {% if form.admin_email.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.admin_email.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ form.admin_password.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Password <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.admin_password }}
+                            {% if form.admin_password.help_text %}
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.admin_password.help_text }}</p>
+                            {% endif %}
+                            {% if form.admin_password.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.admin_password.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.admin_password_confirm.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Confirm Password <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.admin_password_confirm }}
+                            {% if form.admin_password_confirm.help_text %}
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.admin_password_confirm.help_text }}</p>
+                            {% endif %}
+                            {% if form.admin_password_confirm.errors %}
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.admin_password_confirm.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="{{ form.admin_phone.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Phone
+                        </label>
+                        {{ form.admin_phone }}
+                        {% if form.admin_phone.help_text %}
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ form.admin_phone.help_text }}</p>
+                        {% endif %}
+                        {% if form.admin_phone.errors %}
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.admin_phone.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <a href="{% url 'core:admin_tenant_list' %}" 
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Cancel
+                </a>
+                <button type="submit" 
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    {{ submit_text }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleSection(sectionId) {
+    const content = document.getElementById(sectionId + '-content');
+    const icon = document.getElementById(sectionId + '-icon');
+    
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+    } else {
+        content.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0024_add_performance_tracking_fields.py
+# hypothesis_version: 6.148.7
+
+['avg_cpu_percent', 'avg_memory_mb', 'core', 'cpu_percent', 'jobexecution', 'jobstatistics', 'memory_mb', 'peak_cpu_percent', 'peak_memory_mb']

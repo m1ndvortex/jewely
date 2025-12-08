@@ -1,0 +1,4 @@
+# file: /app/apps/reporting/signals.py
+# hypothesis_version: 6.148.7
+
+['ACTIVE', 'COMPLETED', 'FAILED', '_updating_next_run']

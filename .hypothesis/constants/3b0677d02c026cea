@@ -1,0 +1,4 @@
+# file: /app/apps/pricing/admin.py
+# hypothesis_version: 6.148.7
+
+['-created_at', '-priority', '-timestamp', 'Additional Charges', 'Alert Condition', 'Basic Information', 'Condition', 'Market Information', 'Rate Information', 'Rule Criteria', 'Statistics', 'Status', 'Timestamps', 'alert_type', 'classes', 'collapse', 'craftsmanship_level', 'created_at', 'currency', 'customer_tier', 'description', 'fetched_at', 'fields', 'fixed_markup_amount', 'is_active', 'karat', 'last_triggered_at', 'market', 'markup_percentage', 'minimum_price', 'name', 'notify_email', 'notify_in_app', 'notify_sms', 'percentage_threshold', 'priority', 'product_type', 'rate_per_gram', 'rate_per_ounce', 'rate_per_tola', 'source', 'tenant', 'tenant__company_name', 'threshold_rate', 'timestamp', 'trigger_count', 'updated_at']

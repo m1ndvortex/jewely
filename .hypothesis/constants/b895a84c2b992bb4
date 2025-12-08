@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0008_branch_manager_branch_opening_hours.py
+# hypothesis_version: 6.148.7
+
+['branch', 'core', 'managed_branches', 'manager', 'opening_hours']

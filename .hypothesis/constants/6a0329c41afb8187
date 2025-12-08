@@ -1,0 +1,4 @@
+# file: /app/apps/crm/migrations/0003_giftcardtransaction.py
+# hypothesis_version: 6.148.7
+
+[255, '-created_at', '0.00', '0002_enable_rls', 'CANCELLED', 'EXPIRED', 'Gift Card Cancelled', 'Gift Card Expired', 'Gift Card Issued', 'Gift Card Redeemed', 'Gift Card Refunded', 'GiftCardTransaction', 'ISSUED', 'REDEEMED', 'REFUNDED', 'STORE_CREDIT_ADDED', 'STORE_CREDIT_USED', 'Store Credit Added', 'Store Credit Used', 'Transaction amount', 'Type of transaction', 'amount', 'created_at', 'created_by', 'crm', 'crm.customer', 'crm.giftcard', 'customer', 'db_table', 'description', 'gift_card', 'gift_trans_type_idx', 'id', 'indexes', 'metadata', 'new_balance', 'ordering', 'previous_balance', 'sale', 'sales', 'sales.sale', 'transaction_type', 'transactions', 'verbose_name', 'verbose_name_plural']

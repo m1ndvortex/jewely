@@ -1,0 +1,4 @@
+# file: /app/apps/sales/apps.py
+# hypothesis_version: 6.148.7
+
+['Sales Management', 'apps.sales']

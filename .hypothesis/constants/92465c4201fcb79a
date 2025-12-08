@@ -1,0 +1,4 @@
+# file: /app/apps/backups/migrations/0002_backupconfiguration.py
+# hypothesis_version: 6.148.7
+
+[300, 3600, 86400, '0001_initial', 'Backup Configuration', 'BackupConfiguration', 'ID', 'backups', 'created_at', 'id', 'modified_at', 'modified_by', 'verbose_name', 'verbose_name_plural']

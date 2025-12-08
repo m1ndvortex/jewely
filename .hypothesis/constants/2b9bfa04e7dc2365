@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0011_add_tenant_status_management_fields.py
+# hypothesis_version: 6.148.7
+
+['core', 'suspended_at', 'tenant']

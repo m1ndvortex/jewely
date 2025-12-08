@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0028_add_tenant_domain_and_temporary_password.py
+# hypothesis_version: 6.148.7
+
+[128, 255, '-created_at', '-is_primary', 'CUSTOM', 'Custom Domain', 'FAILED', 'Failed', 'PENDING', 'Pending', 'SUBDOMAIN', 'Subdomain', 'Temporary Password', 'Temporary Passwords', 'TemporaryPassword', 'Tenant Domain', 'Tenant Domains', 'TenantDomain', 'VERIFIED', 'Verified', 'core', 'core.tenant', 'created_at', 'created_by', 'db_table', 'domain', 'domain_lookup_idx', 'domain_type', 'domains', 'expires_at', 'id', 'indexes', 'is_primary', 'ordering', 'password_hash', 'temp_pwd_expiry_idx', 'temp_pwd_user_idx', 'temporary_passwords', 'tenant', 'tenant_domains', 'updated_at', 'used_at', 'user', 'verbose_name', 'verbose_name_plural', 'verification_status', 'verification_token', 'verified_at']

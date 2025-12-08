@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0017_add_default_to_audit_fields.py
+# hypothesis_version: 6.148.7
+
+[500, 'HTTP request path', 'Request path/URL', 'auditlog', 'core', 'request_method', 'request_path', 'request_query_params']

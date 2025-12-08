@@ -1,0 +1,4 @@
+# file: /app/apps/notifications/migrations/0006_add_system_alert_sms_template.py
+# hypothesis_version: 6.148.7
+
+['ALERT', 'SMSTemplate', 'is_active', 'message_template', 'notifications', 'sms_type', 'system_alert']

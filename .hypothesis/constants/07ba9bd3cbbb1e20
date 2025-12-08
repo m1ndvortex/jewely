@@ -1,0 +1,4 @@
+# file: /app/apps/sales/migrations/0006_add_performance_indexes.py
+# hypothesis_version: 6.148.7
+
+['sales']

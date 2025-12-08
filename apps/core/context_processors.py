@@ -29,6 +29,33 @@ def user_preferences(request):
     return context
 
 
+def impersonation_context(request):
+    """
+    Add impersonation status to template context.
+
+    This makes is_impersonating and original_admin available in all templates
+    for displaying the impersonation banner.
+
+    Per Requirement 12.3 - Display visible banner during impersonation
+    """
+    from apps.core.services.impersonation_service import ImpersonationService
+
+    context = {
+        "is_impersonating": False,
+        "original_admin": None,
+        "impersonation_start_time": None,
+    }
+
+    if request.user.is_authenticated:
+        service = ImpersonationService()
+        if service.is_impersonating(request):
+            context["is_impersonating"] = True
+            context["original_admin"] = service.get_original_user(request)
+            context["impersonation_start_time"] = service.get_impersonation_start_time(request)
+
+    return context
+
+
 def waffle_flags(request):
     """
     Add waffle feature flags to template context.

@@ -1,0 +1,4 @@
+# file: /app/apps/core/services/__init__.py
+# hypothesis_version: 6.148.7
+
+['CredentialService', 'DomainService', 'TenantService']

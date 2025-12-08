@@ -1,0 +1,4 @@
+# file: /app/config/celery.py
+# hypothesis_version: 6.148.7
+
+[60.0, 300.0, 600.0, 3600.0, '*/15', '*/5', 'CELERY', 'accounting', 'apps.backups.tasks.*', 'apps.pricing.tasks.*', 'auto-resolve-alerts', 'auto_resolve_alerts', 'backups', 'check-service-health', 'check-system-metrics', 'check_service_health', 'check_system_metrics', 'django.conf:settings', 'fetch-gold-rates', 'jewelry_shop', 'monitoring', 'notifications', 'options', 'pricing', 'priority', 'queue', 'reports', 'schedule', 'task', 'webhooks']

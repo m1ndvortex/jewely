@@ -1,0 +1,4 @@
+# file: /app/apps/core/migrations/0020_add_webhook_models.py
+# hypothesis_version: 6.148.7
+
+[100, 255, 500, '-created_at', 'FAILED', 'Failed', 'PENDING', 'Pending', 'RETRYING', 'Retrying', 'SUCCESS', 'Success', 'Webhook', 'Webhook Deliveries', 'Webhook Delivery', 'WebhookDelivery', 'Webhooks', 'attempt_count', 'completed_at', 'consecutive_failures', 'core', 'core.tenant', 'core.webhook', 'created_at', 'created_by', 'db_table', 'deliveries', 'delivery_event_idx', 'delivery_retry_idx', 'description', 'duration_ms', 'error_message', 'event_id', 'event_type', 'events', 'id', 'indexes', 'is_active', 'last_failure_at', 'last_success_at', 'max_attempts', 'name', 'next_retry_at', 'ordering', 'payload', 'response_body', 'response_headers', 'response_status_code', 'secret', 'sent_at', 'signature', 'status', 'tenant', 'updated_at', 'url', 'verbose_name', 'verbose_name_plural', 'webhook', 'webhook_deliveries', 'webhooks', 'webhooks_created']

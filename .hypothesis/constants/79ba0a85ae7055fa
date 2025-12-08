@@ -1,0 +1,4 @@
+# file: /app/apps/procurement/migrations/0005_purchaseorderapprovalthreshold.py
+# hypothesis_version: 6.148.7
+
+['0.00', 'Any Employee', 'Manager or Above', 'Owner Only', 'TENANT_EMPLOYEE', 'TENANT_MANAGER', 'TENANT_OWNER', 'core', 'core.tenant', 'created_at', 'created_by', 'db_table', 'id', 'indexes', 'is_active', 'max_amount', 'min_amount', 'ordering', 'procurement', 'required_role', 'tenant', 'updated_at']

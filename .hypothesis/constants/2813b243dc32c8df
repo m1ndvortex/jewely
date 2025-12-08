@@ -1,0 +1,4 @@
+# file: /app/apps/procurement/migrations/0007_add_accounting_fields_to_supplier.py
+# hypothesis_version: 6.148.7
+
+['is_1099_vendor', 'procurement', 'supplier']

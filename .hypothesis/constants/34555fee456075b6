@@ -1,0 +1,4 @@
+# file: /app/apps/crm/migrations/0004_add_customer_accounting_fields.py
+# hypothesis_version: 6.148.7
+
+['0.00', 'NET30', 'credit_limit', 'crm', 'customer', 'payment_terms', 'tax_exempt']

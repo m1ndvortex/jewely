@@ -1,0 +1,46 @@
+Welcome to Jewelry Management System!
+
+Hello {{ owner.first_name|default:owner.username }},
+
+Your jewelry shop management account has been successfully created. We're excited to have you on board!
+
+YOUR ACCOUNT DETAILS:
+====================
+Company: {{ tenant.company_name }}
+Username: {{ owner.username }}
+Email: {{ owner.email }}
+Tenant Access URL: {{ tenant_url }}
+
+⚠️ IMPORTANT - YOUR INITIAL PASSWORD:
+=====================================
+{{ initial_password }}
+
+Please save this password immediately! For security reasons, this is the only time you will see this password. 
+We strongly recommend changing it after your first login.
+
+LOGIN TO YOUR ACCOUNT:
+=====================
+{{ login_url }}
+
+{% if verification_url %}
+EMAIL VERIFICATION REQUIRED:
+===========================
+Please verify your email address to activate all features:
+{{ verification_url }}
+{% endif %}
+
+GETTING STARTED:
+===============
+Here are some things you can do to get started:
+- Complete your business profile and settings
+- Add your team members and assign roles
+- Set up your branches and locations
+- Configure your inventory categories
+- Start managing your jewelry business!
+
+NEED HELP?
+=========
+If you have any questions or need assistance getting started, our support team is here to help.
+
+---
+© {% now "Y" %} Jewelry Management System. All rights reserved.

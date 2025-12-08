@@ -1,0 +1,4 @@
+# file: /app/apps/sales/migrations/0004_add_terminal_user_assignment.py
+# hypothesis_version: 6.148.7
+
+['assigned_terminals', 'assigned_user', 'sales', 'terminal']

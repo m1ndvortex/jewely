@@ -1,0 +1,4 @@
+# file: /app/apps/accounting/migrations/0007_bankaccount_gl_account.py
+# hypothesis_version: 6.148.7
+
+['accounting', 'bank_accounts', 'bankaccount', 'django_ledger', 'gl_account']

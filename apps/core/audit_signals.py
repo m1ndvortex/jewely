@@ -51,6 +51,11 @@ def store_original_values(sender, instance, **kwargs):  # noqa: C901
         "Runbook",
         "RunbookExecution",
         "AdminNote",
+        # Silk profiler models - have FieldFile and high volume
+        "Request",
+        "Response",
+        "SQLQuery",
+        "Profile",
     ]
 
     if sender.__name__ in excluded_models:
@@ -73,8 +78,26 @@ def store_original_values(sender, instance, **kwargs):  # noqa: C901
                 return str(value)
             if isinstance(value, UUID):
                 return str(value)
+            # Handle Django file fields (FieldFile, ImageFieldFile, etc.)
+            if hasattr(value, "name") and hasattr(value, "url"):
+                try:
+                    return value.name if value else None
+                except Exception:
+                    return None
+            # Handle any file-like objects
+            if hasattr(value, "read") and callable(value.read):
+                try:
+                    return getattr(value, "name", str(value))
+                except Exception:
+                    return None
             if hasattr(value, "pk"):  # Model instance
                 return str(value.pk)
+            # Handle bytes
+            if isinstance(value, bytes):
+                return value.decode("utf-8", errors="replace")
+            # Handle memoryview
+            if isinstance(value, memoryview):
+                return None
             return value
 
         # Skip if we're in a broken transaction
@@ -137,6 +160,11 @@ def log_model_save(sender, instance, created, **kwargs):  # noqa: C901
         "Runbook",
         "RunbookExecution",
         "AdminNote",
+        # Silk profiler models - have FieldFile and high volume
+        "Request",
+        "Response",
+        "SQLQuery",
+        "Profile",
     ]
 
     if sender.__name__ in excluded_models:
@@ -231,6 +259,11 @@ def log_model_delete(sender, instance, **kwargs):
         "Runbook",
         "RunbookExecution",
         "AdminNote",
+        # Silk profiler models - have FieldFile and high volume
+        "Request",
+        "Response",
+        "SQLQuery",
+        "Profile",
     ]
 
     if sender.__name__ in excluded_models:

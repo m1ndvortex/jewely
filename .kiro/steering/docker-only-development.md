@@ -1,5 +1,5 @@
 ---
-inclusion: always
+inclusion: Manual
 ---
 
 # ☸️ CRITICAL: Kubernetes-Only Development Policy

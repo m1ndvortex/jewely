@@ -1,0 +1,203 @@
+{% comment %}
+Bulk Action Modal - Confirmation dialog for bulk status changes
+Requirements: 8.4
+
+This modal is used to:
+- Display confirmation for bulk status change (activate, suspend)
+- Show affected tenant count
+- Provide confirm/cancel buttons
+- Allow optional reason input for audit logging
+
+Usage:
+Include this template in tenant_list.html. The modal is controlled via JavaScript functions:
+- showBulkActionModal(status): Opens the modal with the specified status action
+- closeBulkActionModal(): Closes the modal
+
+Required context variables:
+- bulk_status_change_url: URL for the bulk status change endpoint
+{% endcomment %}
+{% load i18n %}
+
+<!-- Bulk Action Confirmation Modal (Requirement 8.4) -->
+<div id="bulk-action-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" role="dialog" aria-modal="true" aria-labelledby="bulk-modal-title">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+        <div class="mt-3 text-center">
+            <!-- Activate Icon -->
+            <div id="modal-icon-activate" class="hidden mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900">
+                <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            
+            <!-- Suspend Icon -->
+            <div id="modal-icon-suspend" class="hidden mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+            </div>
+            
+            <!-- Modal Title -->
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mt-4" id="bulk-modal-title">
+                {% trans "Confirm Bulk Action" %}
+            </h3>
+            
+            <!-- Modal Message with Tenant Count -->
+            <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500 dark:text-gray-400" id="modal-message">
+                    {% trans "Are you sure you want to change the status of" %} 
+                    <span id="modal-count" class="font-semibold text-gray-700 dark:text-gray-200">0</span> 
+                    {% trans "tenant(s)?" %}
+                </p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2" id="modal-action-description">
+                    <!-- Dynamic description based on action -->
+                </p>
+            </div>
+            
+            <!-- Bulk Action Form -->
+            <form id="bulk-action-form" method="post" action="{% url 'core:admin_tenant_bulk_status_change' %}">
+                {% csrf_token %}
+                <input type="hidden" name="tenant_ids" id="bulk-tenant-ids" value="">
+                <input type="hidden" name="status" id="bulk-status" value="">
+                
+                <!-- Reason Input (Optional) -->
+                <div class="mt-4 mb-4 px-4">
+                    <label for="bulk-reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 text-left mb-1">
+                        {% trans "Reason (optional)" %}
+                    </label>
+                    <input type="text" 
+                           name="reason" 
+                           id="bulk-reason"
+                           placeholder="{% trans 'Enter reason for status change' %}"
+                           class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                           aria-describedby="reason-help">
+                    <p id="reason-help" class="mt-1 text-xs text-gray-400 dark:text-gray-500 text-left">
+                        {% trans "This will be recorded in the audit log" %}
+                    </p>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="items-center px-4 py-3 space-y-3">
+                    <!-- Confirm Button -->
+                    <button type="submit"
+                            id="modal-confirm-btn"
+                            class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                        {% trans "Confirm" %}
+                    </button>
+                    
+                    <!-- Cancel Button -->
+                    <button type="button"
+                            onclick="closeBulkActionModal()"
+                            class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors">
+                        {% trans "Cancel" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * Bulk Action Modal JavaScript Functions
+ * Handles showing, hiding, and configuring the bulk action confirmation modal
+ */
+
+/**
+ * Get selected tenant IDs from checkboxes
+ * @returns {Array} Array of selected tenant IDs
+ */
+function getSelectedTenantIds() {
+    const checkboxes = document.querySelectorAll('.tenant-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.dataset.tenantId);
+}
+
+/**
+ * Show the bulk action confirmation modal
+ * @param {string} status - The target status ('ACTIVE' or 'SUSPENDED')
+ */
+function showBulkActionModal(status) {
+    const selectedIds = getSelectedTenantIds();
+    
+    // Validate selection
+    if (selectedIds.length === 0) {
+        alert('{% trans "Please select at least one tenant" %}');
+        return;
+    }
+    
+    // Get modal elements
+    const modal = document.getElementById('bulk-action-modal');
+    const modalTitle = document.getElementById('bulk-modal-title');
+    const modalCount = document.getElementById('modal-count');
+    const modalDescription = document.getElementById('modal-action-description');
+    const bulkTenantIds = document.getElementById('bulk-tenant-ids');
+    const bulkStatus = document.getElementById('bulk-status');
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    const iconActivate = document.getElementById('modal-icon-activate');
+    const iconSuspend = document.getElementById('modal-icon-suspend');
+    
+    // Set tenant count and IDs
+    modalCount.textContent = selectedIds.length;
+    bulkTenantIds.value = selectedIds.join(',');
+    bulkStatus.value = status;
+    
+    // Configure modal appearance based on action type
+    if (status === 'ACTIVE') {
+        // Activate action styling
+        modalTitle.textContent = '{% trans "Activate Tenants" %}';
+        modalDescription.textContent = '{% trans "Selected tenants will be activated and their users will be able to access the platform." %}';
+        confirmBtn.textContent = '{% trans "Activate" %}';
+        confirmBtn.className = 'px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors';
+        iconActivate.classList.remove('hidden');
+        iconSuspend.classList.add('hidden');
+    } else if (status === 'SUSPENDED') {
+        // Suspend action styling
+        modalTitle.textContent = '{% trans "Suspend Tenants" %}';
+        modalDescription.textContent = '{% trans "Selected tenants will be suspended and their users will not be able to access the platform." %}';
+        confirmBtn.textContent = '{% trans "Suspend" %}';
+        confirmBtn.className = 'px-4 py-2 bg-yellow-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition-colors';
+        iconActivate.classList.add('hidden');
+        iconSuspend.classList.remove('hidden');
+    }
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    
+    // Focus on reason input for accessibility
+    setTimeout(function() {
+        document.getElementById('bulk-reason').focus();
+    }, 100);
+}
+
+/**
+ * Close the bulk action confirmation modal
+ */
+function closeBulkActionModal() {
+    const modal = document.getElementById('bulk-action-modal');
+    modal.classList.add('hidden');
+    
+    // Clear the reason input
+    document.getElementById('bulk-reason').value = '';
+}
+
+// Close modal when clicking outside the modal content
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('bulk-action-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeBulkActionModal();
+            }
+        });
+    }
+});
+
+// Close modal on Escape key press
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('bulk-action-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            closeBulkActionModal();
+        }
+    }
+});
+</script>

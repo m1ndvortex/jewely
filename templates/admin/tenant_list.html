@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static i18n %}
+{% load static i18n formatting_filters %}
 
 {% block title %}{% trans "Tenant Management" %} - {% trans "Admin Panel" %}{% endblock %}
 
@@ -13,13 +13,23 @@
                 {% trans "Manage all tenant accounts on the platform" %}
             </p>
         </div>
-        <a href="{% url 'core:admin_tenant_create' %}" 
-           class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            {% trans "Create New Tenant" %}
-        </a>
+        <div class="flex space-x-3">
+            <!-- CSV Export Button (Requirement 8.6) -->
+            <a href="{% url 'core:admin_tenant_export_csv' %}?search={{ search_query }}&status={{ status_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
+               class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                {% trans "Export CSV" %}
+            </a>
+            <a href="{% url 'core:admin_tenant_create' %}" 
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                {% trans "Create New Tenant" %}
+            </a>
+        </div>
     </div>
 
     <!-- Statistics Cards -->
@@ -92,6 +102,10 @@
     <!-- Filters -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Preserve sort parameters -->
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="sort_order" value="{{ sort_order }}">
+            
             <div>
                 <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     {% trans "Search" %}
@@ -153,23 +167,140 @@
         </form>
     </div>
 
+    <!-- Bulk Actions Bar (Requirement 8.3, 8.4) -->
+    <div id="bulk-actions-bar" class="hidden bg-blue-50 dark:bg-blue-900 rounded-lg shadow p-4 mb-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <span class="text-sm font-medium text-blue-700 dark:text-blue-200">
+                    <span id="selected-count">0</span> {% trans "tenant(s) selected" %}
+                </span>
+            </div>
+            <div class="flex space-x-3">
+                <button type="button" 
+                        onclick="showBulkActionModal('ACTIVE')"
+                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    {% trans "Activate" %}
+                </button>
+                <button type="button" 
+                        onclick="showBulkActionModal('SUSPENDED')"
+                        class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                    </svg>
+                    {% trans "Suspend" %}
+                </button>
+                <button type="button" 
+                        onclick="clearSelection()"
+                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    {% trans "Clear Selection" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Tenant List -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
+                    <!-- Checkbox column (Requirement 8.3) -->
+                    <th scope="col" class="px-4 py-3 text-left">
+                        <input type="checkbox" 
+                               id="select-all-checkbox"
+                               onchange="toggleSelectAll(this)"
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    </th>
+                    <!-- Sortable columns (Requirement 8.2) -->
+                    {% with base_url="?search="|add:search_query|add:"&status="|add:status_filter|add:"&date_from="|add:date_from|add:"&date_to="|add:date_to %}
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {% trans "Company" %}
+                        <a href="{{ base_url }}&sort_by=company_name&sort_order={% if sort_by == 'company_name' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+                           class="flex items-center hover:text-gray-700 dark:hover:text-gray-200">
+                            {% trans "Company" %}
+                            {% if sort_by == 'company_name' %}
+                                {% if sort_order == 'asc' %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+                                {% else %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                {% endif %}
+                            {% endif %}
+                        </a>
                     </th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {% trans "Slug" %}
+                        <a href="{{ base_url }}&sort_by=slug&sort_order={% if sort_by == 'slug' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+                           class="flex items-center hover:text-gray-700 dark:hover:text-gray-200">
+                            {% trans "Slug" %}
+                            {% if sort_by == 'slug' %}
+                                {% if sort_order == 'asc' %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+                                {% else %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                {% endif %}
+                            {% endif %}
+                        </a>
                     </th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {% trans "Status" %}
+                        <a href="{{ base_url }}&sort_by=status&sort_order={% if sort_by == 'status' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+                           class="flex items-center hover:text-gray-700 dark:hover:text-gray-200">
+                            {% trans "Status" %}
+                            {% if sort_by == 'status' %}
+                                {% if sort_order == 'asc' %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+                                {% else %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                {% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                    <!-- User Count column (Requirement 8.1) -->
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <a href="{{ base_url }}&sort_by=user_count&sort_order={% if sort_by == 'user_count' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+                           class="flex items-center hover:text-gray-700 dark:hover:text-gray-200">
+                            {% trans "Users" %}
+                            {% if sort_by == 'user_count' %}
+                                {% if sort_order == 'asc' %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+                                {% else %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                {% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                    <!-- Storage Used column (Requirement 8.1) -->
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {% trans "Storage" %}
                     </th>
                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {% trans "Created" %}
+                        <a href="{{ base_url }}&sort_by=created_at&sort_order={% if sort_by == 'created_at' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+                           class="flex items-center hover:text-gray-700 dark:hover:text-gray-200">
+                            {% trans "Created" %}
+                            {% if sort_by == 'created_at' %}
+                                {% if sort_order == 'asc' %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+                                {% else %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                {% endif %}
+                            {% endif %}
+                        </a>
                     </th>
+                    <!-- Last Activity column (Requirement 8.1) -->
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <a href="{{ base_url }}&sort_by=last_activity&sort_order={% if sort_by == 'last_activity' and sort_order == 'asc' %}desc{% else %}asc{% endif %}" 
+                           class="flex items-center hover:text-gray-700 dark:hover:text-gray-200">
+                            {% trans "Last Activity" %}
+                            {% if sort_by == 'last_activity' %}
+                                {% if sort_order == 'asc' %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+                                {% else %}
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                {% endif %}
+                            {% endif %}
+                        </a>
+                    </th>
+                    {% endwith %}
+                    <!-- Actions column (Requirement 8.5) -->
                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {% trans "Actions" %}
                     </th>
@@ -178,6 +309,13 @@
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {% for tenant in tenants %}
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <!-- Checkbox (Requirement 8.3) -->
+                    <td class="px-4 py-4 whitespace-nowrap">
+                        <input type="checkbox" 
+                               class="tenant-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                               data-tenant-id="{{ tenant.pk }}"
+                               onchange="updateBulkActionsBar()">
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900 dark:text-white">
                             {{ tenant.company_name }}
@@ -203,29 +341,90 @@
                             </span>
                         {% endif %}
                     </td>
+                    <!-- User Count (Requirement 8.1) -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <div class="flex items-center">
+                            <svg class="h-4 w-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                            </svg>
+                            {{ tenant.user_count }}
+                        </div>
+                    </td>
+                    <!-- Storage Used (Requirement 8.1) -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <span class="text-xs">N/A</span>
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {{ tenant.created_at|date:"M d, Y" }}
                     </td>
+                    <!-- Last Activity (Requirement 8.1) -->
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {% if tenant.last_activity %}
+                            {{ tenant.last_activity|date:"M d, Y H:i" }}
+                        {% else %}
+                            <span class="text-gray-400 dark:text-gray-500">{% trans "Never" %}</span>
+                        {% endif %}
+                    </td>
+                    <!-- Quick Actions (Requirement 8.5) -->
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <a href="{% url 'core:admin_tenant_detail' tenant.pk %}" 
-                           class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3">
-                            {% trans "View" %}
-                        </a>
-                        <a href="{% url 'core:admin_tenant_update' tenant.pk %}" 
-                           class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                            {% trans "Edit" %}
-                        </a>
+                        <div class="flex items-center justify-end space-x-2">
+                            <!-- View Detail -->
+                            <a href="{% url 'core:admin_tenant_detail' tenant.pk %}" 
+                               class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                               title="{% trans 'View Details' %}">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </a>
+                            <!-- Edit -->
+                            <a href="{% url 'core:admin_tenant_update' tenant.pk %}" 
+                               class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                               title="{% trans 'Edit' %}">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                            </a>
+                            <!-- Copy Access URL -->
+                            {% if tenant_domains %}
+                                {% with domain=tenant_domains|default_if_none:"" %}
+                                    {% if domain %}
+                                    <button type="button" 
+                                            onclick="copyToClipboard('https://{{ tenant_domains|get_item:tenant.pk }}', this)"
+                                            class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
+                                            title="{% trans 'Copy Access URL' %}">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                {% endwith %}
+                            {% endif %}
+                            <!-- Impersonate Owner -->
+                            {% with owner=tenant_owners|get_item:tenant.pk %}
+                                {% if owner %}
+                                <a href="#" 
+                                   onclick="confirmImpersonate('{{ owner.username }}', '{{ owner.id }}')"
+                                   class="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
+                                   title="{% trans 'Impersonate Owner' %}">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colspan="9" class="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                         </svg>
-                        <p class="mt-2">No tenants found</p>
+                        <p class="mt-2">{% trans "No tenants found" %}</p>
                         {% if search_query or status_filter or date_from or date_to %}
-                            <p class="mt-1">Try adjusting your filters</p>
+                            <p class="mt-1">{% trans "Try adjusting your filters" %}</p>
                         {% endif %}
                     </td>
                 </tr>
@@ -238,36 +437,36 @@
         <div class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
             <div class="flex-1 flex justify-between sm:hidden">
                 {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" 
+                    <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&status={{ status_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        Previous
+                        {% trans "Previous" %}
                     </a>
                 {% endif %}
                 {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" 
+                    <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&status={{ status_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
                        class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        Next
+                        {% trans "Next" %}
                     </a>
                 {% endif %}
             </div>
             <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
                     <p class="text-sm text-gray-700 dark:text-gray-300">
-                        Showing
+                        {% trans "Showing" %}
                         <span class="font-medium">{{ page_obj.start_index }}</span>
-                        to
+                        {% trans "to" %}
                         <span class="font-medium">{{ page_obj.end_index }}</span>
-                        of
+                        {% trans "of" %}
                         <span class="font-medium">{{ page_obj.paginator.count }}</span>
-                        results
+                        {% trans "results" %}
                     </p>
                 </div>
                 <div>
                     <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                         {% if page_obj.has_previous %}
-                            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" 
+                            <a href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&status={{ status_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                <span class="sr-only">Previous</span>
+                                <span class="sr-only">{% trans "Previous" %}</span>
                                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                 </svg>
@@ -280,7 +479,7 @@
                                     {{ num }}
                                 </span>
                             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" 
+                                <a href="?page={{ num }}&search={{ search_query }}&status={{ status_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
                                    class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600">
                                     {{ num }}
                                 </a>
@@ -288,9 +487,9 @@
                         {% endfor %}
                         
                         {% if page_obj.has_next %}
-                            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" 
+                            <a href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&status={{ status_filter }}&date_from={{ date_from }}&date_to={{ date_to }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}" 
                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                <span class="sr-only">Next</span>
+                                <span class="sr-only">{% trans "Next" %}</span>
                                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
                                 </svg>
@@ -303,4 +502,86 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Bulk Action Confirmation Modal (Requirement 8.4) -->
+{% include "admin/partials/bulk_action_modal.html" %}
+
+<!-- Toast notification for copy -->
+<div id="copy-toast" class="hidden fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50">
+    {% trans "Copied to clipboard!" %}
+</div>
+
+<script>
+// Bulk selection functionality (Requirement 8.3)
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.tenant-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateBulkActionsBar();
+}
+
+function updateBulkActionsBar() {
+    const checkboxes = document.querySelectorAll('.tenant-checkbox:checked');
+    const bulkActionsBar = document.getElementById('bulk-actions-bar');
+    const selectedCount = document.getElementById('selected-count');
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const allCheckboxes = document.querySelectorAll('.tenant-checkbox');
+    
+    selectedCount.textContent = checkboxes.length;
+    
+    if (checkboxes.length > 0) {
+        bulkActionsBar.classList.remove('hidden');
+    } else {
+        bulkActionsBar.classList.add('hidden');
+    }
+    
+    // Update select all checkbox state
+    if (checkboxes.length === allCheckboxes.length && allCheckboxes.length > 0) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else if (checkboxes.length > 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+}
+
+function clearSelection() {
+    const checkboxes = document.querySelectorAll('.tenant-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+    });
+    document.getElementById('select-all-checkbox').checked = false;
+    updateBulkActionsBar();
+}
+
+// Note: getSelectedTenantIds, showBulkActionModal, and closeBulkActionModal 
+// are defined in the bulk_action_modal.html partial template
+
+// Copy to clipboard functionality (Requirement 8.5)
+function copyToClipboard(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('copy-toast');
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+// Impersonation confirmation (Requirement 8.5)
+function confirmImpersonate(username, userId) {
+    if (confirm('{% trans "Are you sure you want to impersonate user" %} "' + username + '"?')) {
+        // TODO: Implement impersonation when the feature is ready (Task 14)
+        alert('{% trans "Impersonation feature will be implemented in Task 14" %}');
+    }
+}
+
+// Note: Modal event listeners (click outside, escape key) are defined in bulk_action_modal.html
+</script>
 {% endblock %}

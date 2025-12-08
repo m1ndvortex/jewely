@@ -1,0 +1,4 @@
+# file: /app/apps/accounting/transaction_models.py
+# hypothesis_version: 6.148.7
+
+[255, '-expense_date', '0.00', 'APPROVED', 'Additional notes', 'Approved', 'BANK_FEES', 'BANK_TRANSFER', 'Bank Fees', 'Bank Transfer', 'CANCELLED', 'CARD', 'CASH', 'CHECK', 'COMPLETED', 'Cancelled', 'Cash', 'Check', 'Completed', 'Credit Card', 'DRAFT', 'Draft', 'EQUIPMENT', 'Equipment', 'Expense amount', 'Expense description', 'INSURANCE', 'Insurance', 'MARKETING', 'Marketing', 'OFFICE', 'OTHER', 'Office Expenses', 'Other', 'PROFESSIONAL', 'Payment amount', 'Payment description', 'Professional Fees', 'RECEIVED', 'RENT', 'Received', 'Rent', 'SENT', 'SUPPLIES', 'Sent', 'Supplier name', 'Supplies', 'TRAVEL', 'Travel', 'UTILITIES', 'Utilities', 'WAGES', 'Wages', 'accounting_expenses', 'accounting_payments', 'expenses', 'payment_number', 'payments', 'po_number', 'tenant']

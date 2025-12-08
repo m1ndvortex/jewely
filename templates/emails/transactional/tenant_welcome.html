@@ -1,0 +1,56 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Welcome to Your Jewelry Management System{% endblock %}
+
+{% block header_title %}Welcome to Jewelry Management System{% endblock %}
+
+{% block content %}
+<h2>Welcome, {{ owner.first_name|default:owner.username }}!</h2>
+
+<p>Your jewelry shop management account has been successfully created. We're excited to have you on board!</p>
+
+<div class="alert alert-success">
+    <strong>Your Account Details:</strong><br>
+    <strong>Company:</strong> {{ tenant.company_name }}<br>
+    <strong>Username:</strong> {{ owner.username }}<br>
+    <strong>Email:</strong> {{ owner.email }}<br>
+    <strong>Tenant Access URL:</strong> <a href="{{ tenant_url }}">{{ tenant_url }}</a>
+</div>
+
+<div class="alert alert-warning">
+    <strong>⚠️ Important - Your Initial Password:</strong><br>
+    <code style="font-size: 18px; font-weight: bold; background: #fff; padding: 8px; display: inline-block; margin: 8px 0;">{{ initial_password }}</code><br>
+    <br>
+    <strong>Please save this password immediately!</strong> For security reasons, this is the only time you will see this password. 
+    We strongly recommend changing it after your first login.
+</div>
+
+<p style="text-align: center; margin: 30px 0;">
+    <a href="{{ login_url }}" class="button">Login to Your Account</a>
+</p>
+
+{% if verification_url %}
+<div class="alert alert-info">
+    <strong>Email Verification Required:</strong><br>
+    Please verify your email address to activate all features:
+    <p style="text-align: center; margin: 16px 0;">
+        <a href="{{ verification_url }}" class="button" style="background-color: #10b981;">Verify Email Address</a>
+    </p>
+</div>
+{% endif %}
+
+<h3>Getting Started</h3>
+<p>Here are some things you can do to get started:</p>
+<ul>
+    <li>Complete your business profile and settings</li>
+    <li>Add your team members and assign roles</li>
+    <li>Set up your branches and locations</li>
+    <li>Configure your inventory categories</li>
+    <li>Start managing your jewelry business!</li>
+</ul>
+
+<div class="alert alert-info">
+    <strong>Need Help?</strong><br>
+    If you have any questions or need assistance getting started, our support team is here to help.
+</div>
+{% endblock %}

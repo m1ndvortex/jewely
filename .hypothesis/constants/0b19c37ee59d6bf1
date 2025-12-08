@@ -1,0 +1,4 @@
+# file: /app/apps/core/audit.py
+# hypothesis_version: 6.148.7
+
+[400, 500, ',', '/', '0.0.0.0', 'ACTIVATE', 'CANCEL', 'CREATE', 'CRITICAL', 'DELETE', 'ERROR', 'GET', 'HTTP_USER_AGENT', 'HTTP_X_FORWARDED_FOR', 'IMPERSONATION_ENDED', 'INFO', 'PATCH', 'POST', 'PUT', 'REMOTE_ADDR', 'SUSPEND', 'SYSTEM', 'UPDATE', 'WARNING', 'account_disabled', 'body', 'breach_attempt', 'content', 'data', 'disable', 'enable', 'failure_reason', 'hijacked_tenant_id', 'hijacked_tenant_name', 'hijacked_user_id', 'hijacked_username', 'invalid_password', 'method', 'mfa_failed', 'new', 'object', 'old', 'path', 'permission', 'pk', 'rate_limit', 'request', 'response_size_bytes', 'response_time_ms', 'suspicious_activity', 'tenant', 'tenant_id', 'unauthorized_access', 'user_not_found', 'username', 'utf-8', 'verify', 'verify_failed', 'verify_success']

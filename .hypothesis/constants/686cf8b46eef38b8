@@ -1,0 +1,4 @@
+# file: /app/apps/procurement/migrations/0008_convert_expense_account_to_charfield.py
+# hypothesis_version: 6.148.7
+
+['procurement']

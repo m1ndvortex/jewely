@@ -1,0 +1,4 @@
+# file: /app/apps/core/services/tenant_service.py
+# hypothesis_version: 6.148.7
+
+[100, 1024, '-timestamp', 'Tenant', 'UTC', 'User', 'active_users', 'address_line_1', 'address_line_2', 'branch_count', 'branch_names', 'bulk_operation', 'business_name', 'city', 'company_name', 'count', 'country', 'created_by', 'currency', 'custom_domain', 'custom_domain_added', 'date_format', 'domain', 'domain_type', 'email', 'fax', 'fields_changed', 'id', 'inactive_users', 'is_primary', 'language', 'last_active_user', 'modified_by', 'name', 'owner_email', 'owner_username', 'password', 'password_expiry_days', 'phone', 'postal_code', 'primary_color', 'reason', 'role', 'secondary_color', 'settings', 'settings.', 'slug', 'state_province', 'status', 'storage_percentage', 'storage_used_bytes', 'subdomain', 'system', 'tenant', 'theme', 'timezone', 'total_in_batch', 'user_count', 'username', 'users_by_role', 'verification_status', 'verified_at', 'website']

@@ -1,0 +1,561 @@
+<!-- Enhanced User Edit Modal -->
+<!-- Requirements: 3.5, 3.6, 3.7, 3.9, 3.10 -->
+<div id="editUserModal" class="hidden fixed z-50 inset-0 overflow-y-auto" aria-labelledby="edit-user-modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="hideEditUserModal()"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <form method="post" id="editUserForm">
+                {% csrf_token %}
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 max-h-[85vh] overflow-y-auto">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="edit-user-modal-title">
+                                Edit User: <span id="editUserUsername" class="text-blue-600 dark:text-blue-400"></span>
+                            </h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Update user details, view login history, and manage security settings.</p>
+                            
+                            <!-- Form Errors Display -->
+                            <div id="editUserErrors" class="hidden mt-4 bg-red-50 dark:bg-red-900/50 border-l-4 border-red-400 p-4 rounded-r">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h4 class="text-sm font-medium text-red-800 dark:text-red-200">Please correct the following errors:</h4>
+                                        <ul id="editUserErrorList" class="mt-2 text-sm text-red-700 dark:text-red-300 list-disc list-inside"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Left Column: User Details -->
+                                <div class="space-y-6">
+                                    <!-- User Details Section -->
+                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center">
+                                            <svg class="h-5 w-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                            </svg>
+                                            User Details
+                                        </h4>
+                                        
+                                        <!-- Email (Requirement 3.5) -->
+                                        <div class="mb-4">
+                                            <label for="edit_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Email <span class="text-red-500">*</span>
+                                            </label>
+                                            <input type="email" name="email" id="edit_email" required
+                                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                        </div>
+                                        
+                                        <!-- Role (Requirement 3.5) -->
+                                        <div class="mb-4">
+                                            <label for="edit_role" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Role <span class="text-red-500">*</span>
+                                            </label>
+                                            <select name="role" id="edit_role" required
+                                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                                {% for value, label in role_choices %}
+                                                <option value="{{ value }}">{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Branch (Requirement 3.5) -->
+                                        <div class="mb-4">
+                                            <label for="edit_branch" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch</label>
+                                            <select name="branch" id="edit_branch"
+                                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                                <option value="">-- No branch assignment --</option>
+                                                {% for branch in branches %}
+                                                <option value="{{ branch.id }}">{{ branch.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Phone (Requirement 3.5) -->
+                                        <div class="mb-4">
+                                            <label for="edit_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                                            <input type="tel" name="phone" id="edit_phone"
+                                                   placeholder="+1 (555) 123-4567"
+                                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                        </div>
+                                        
+                                        <!-- Language (Requirement 3.5) -->
+                                        <div class="mb-4">
+                                            <label for="edit_language" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Language</label>
+                                            <select name="language" id="edit_language"
+                                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                                <option value="en">English</option>
+                                                <option value="fa">Persian (فارسی)</option>
+                                                <option value="ar">Arabic (العربية)</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Theme (Requirement 3.5) -->
+                                        <div>
+                                            <label for="edit_theme" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Theme</label>
+                                            <select name="theme" id="edit_theme"
+                                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm">
+                                                <option value="light">Light</option>
+                                                <option value="dark">Dark</option>
+                                                <option value="auto">Auto (System)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- MFA Status Section (Requirement 3.7) -->
+                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center">
+                                            <svg class="h-5 w-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                            </svg>
+                                            Multi-Factor Authentication
+                                        </h4>
+                                        
+                                        <!-- MFA Status Display -->
+                                        <div class="mb-4">
+                                            <div class="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-600">
+                                                <div class="flex items-center">
+                                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">MFA Status:</span>
+                                                    <span id="edit_mfa_status_badge" class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                                                        <!-- Will be populated by JavaScript -->
+                                                    </span>
+                                                </div>
+                                                <div id="edit_mfa_enrolled_date" class="text-xs text-gray-500 dark:text-gray-400">
+                                                    <!-- Will be populated by JavaScript -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Force MFA Checkbox -->
+                                        <div class="flex items-start">
+                                            <div class="flex items-center h-5">
+                                                <input type="checkbox" name="require_mfa" id="edit_require_mfa"
+                                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <label for="edit_require_mfa" class="font-medium text-gray-700 dark:text-gray-300">Force MFA enrollment</label>
+                                                <p class="text-gray-500 dark:text-gray-400">Require user to set up MFA on next login</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Password Management Section (Requirements 3.9, 3.10) -->
+                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center">
+                                            <svg class="h-5 w-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                            </svg>
+                                            Password Management
+                                        </h4>
+                                        
+                                        <div class="space-y-3">
+                                            <!-- Generate Temporary Password Button (Requirement 3.9) -->
+                                            <button type="button" onclick="showTempPasswordModalForUser()" 
+                                                    class="w-full inline-flex items-center justify-center px-4 py-2 border border-yellow-300 dark:border-yellow-600 rounded-md shadow-sm text-sm font-medium text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors">
+                                                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                </svg>
+                                                Generate Temporary Password
+                                            </button>
+                                            
+                                            <!-- Send Password Reset Email Button (Requirement 3.10) -->
+                                            <button type="button" onclick="sendPasswordResetEmail()" 
+                                                    class="w-full inline-flex items-center justify-center px-4 py-2 border border-blue-300 dark:border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                                </svg>
+                                                Send Password Reset Email
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Right Column: Login History -->
+                                <div class="space-y-6">
+                                    <!-- Login History Section (Requirement 3.6) -->
+                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center">
+                                            <svg class="h-5 w-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            Recent Login History
+                                            <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">(Last 10 attempts)</span>
+                                        </h4>
+                                        
+                                        <!-- Login History Content -->
+                                        <div id="edit_login_history_content" class="space-y-2 max-h-96 overflow-y-auto">
+                                            <!-- Will be populated by JavaScript -->
+                                            <div class="text-center py-4">
+                                                <svg class="animate-spin h-6 w-6 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading login history...</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- No Login History Message -->
+                                        <div id="edit_no_login_history" class="hidden text-center py-8">
+                                            <svg class="h-12 w-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No login history available</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Account Status Info -->
+                                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center">
+                                            <svg class="h-5 w-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            Account Information
+                                        </h4>
+                                        
+                                        <dl class="space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <dt class="text-gray-500 dark:text-gray-400">Username:</dt>
+                                                <dd id="edit_user_username_display" class="font-medium text-gray-900 dark:text-white"></dd>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <dt class="text-gray-500 dark:text-gray-400">Status:</dt>
+                                                <dd id="edit_user_status_display"></dd>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <dt class="text-gray-500 dark:text-gray-400">Last Login:</dt>
+                                                <dd id="edit_user_last_login_display" class="text-gray-900 dark:text-white"></dd>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <dt class="text-gray-500 dark:text-gray-400">Date Joined:</dt>
+                                                <dd id="edit_user_date_joined_display" class="text-gray-900 dark:text-white"></dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200 dark:border-gray-700">
+                    <button type="submit" class="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Save Changes
+                    </button>
+                    <button type="button" onclick="hideEditUserModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * Show Edit User Modal
+ * Populates the modal with user data and login history
+ * Requirements: 3.5, 3.6, 3.7
+ */
+function showEditUserModal(userId, userData) {
+    const modal = document.getElementById('editUserModal');
+    const form = document.getElementById('editUserForm');
+    
+    // Set form action URL
+    form.action = `/platform/tenants/${userData.tenant_id}/users/${userId}/`;
+    
+    // Populate basic fields
+    document.getElementById('editUserUsername').textContent = userData.username;
+    document.getElementById('edit_email').value = userData.email || '';
+    document.getElementById('edit_role').value = userData.role || '';
+    document.getElementById('edit_branch').value = userData.branch_id || '';
+    document.getElementById('edit_phone').value = userData.phone || '';
+    document.getElementById('edit_language').value = userData.language || 'en';
+    document.getElementById('edit_theme').value = userData.theme || 'light';
+    document.getElementById('edit_require_mfa').checked = userData.require_mfa || false;
+    
+    // Populate account info
+    document.getElementById('edit_user_username_display').textContent = userData.username;
+    document.getElementById('edit_user_last_login_display').textContent = userData.last_login || 'Never';
+    document.getElementById('edit_user_date_joined_display').textContent = userData.date_joined || 'N/A';
+    
+    // Update status badge
+    const statusDisplay = document.getElementById('edit_user_status_display');
+    if (userData.is_active) {
+        statusDisplay.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</span>';
+    } else {
+        statusDisplay.innerHTML = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Inactive</span>';
+    }
+    
+    // Update MFA status (Requirement 3.7)
+    const mfaBadge = document.getElementById('edit_mfa_status_badge');
+    const mfaDate = document.getElementById('edit_mfa_enrolled_date');
+    
+    if (userData.is_mfa_enabled) {
+        mfaBadge.className = 'ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+        mfaBadge.innerHTML = '<svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>Enabled';
+        mfaDate.textContent = userData.mfa_enrolled_at ? `Enrolled: ${userData.mfa_enrolled_at}` : '';
+    } else {
+        mfaBadge.className = 'ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+        mfaBadge.innerHTML = '<svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>Disabled';
+        mfaDate.textContent = '';
+    }
+    
+    // Load login history (Requirement 3.6)
+    loadLoginHistory(userId);
+    
+    // Store user ID for password management functions
+    modal.dataset.userId = userId;
+    modal.dataset.tenantId = userData.tenant_id;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Load Login History
+ * Fetches and displays the last 10 login attempts for the user
+ * Requirement 3.6: Display login history with ip_address, timestamp, and result
+ */
+function loadLoginHistory(userId) {
+    const contentDiv = document.getElementById('edit_login_history_content');
+    const noHistoryDiv = document.getElementById('edit_no_login_history');
+    
+    // Show loading state
+    contentDiv.innerHTML = `
+        <div class="text-center py-4">
+            <svg class="animate-spin h-6 w-6 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading login history...</p>
+        </div>
+    `;
+    noHistoryDiv.classList.add('hidden');
+    
+    // Fetch login history
+    fetch(`/platform/users/${userId}/login-history/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.login_attempts && data.login_attempts.length > 0) {
+                contentDiv.innerHTML = data.login_attempts.map(attempt => {
+                    // Determine result styling
+                    let resultClass, resultIcon, resultText;
+                    if (attempt.result === 'SUCCESS') {
+                        resultClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                        resultIcon = '<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>';
+                        resultText = 'Success';
+                    } else if (attempt.result === 'FAILED_PASSWORD') {
+                        resultClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                        resultIcon = '<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>';
+                        resultText = 'Failed (Password)';
+                    } else if (attempt.result === 'FAILED_MFA') {
+                        resultClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+                        resultIcon = '<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+                        resultText = 'Failed (MFA)';
+                    } else {
+                        resultClass = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                        resultIcon = '<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+                        resultText = attempt.result;
+                    }
+                    
+                    return `
+                        <div class="flex items-start space-x-3 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-600">
+                            <div class="flex-shrink-0">
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium ${resultClass}">
+                                    ${resultIcon}
+                                    <span class="ml-1">${resultText}</span>
+                                </span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                        ${attempt.timestamp}
+                                    </p>
+                                </div>
+                                <div class="mt-1 flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                    </svg>
+                                    <span class="truncate">${attempt.ip_address || 'Unknown IP'}</span>
+                                </div>
+                                ${attempt.user_agent ? `
+                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400 truncate" title="${attempt.user_agent}">
+                                        ${attempt.user_agent}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                noHistoryDiv.classList.add('hidden');
+            } else {
+                contentDiv.innerHTML = '';
+                noHistoryDiv.classList.remove('hidden');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading login history:', error);
+            contentDiv.innerHTML = `
+                <div class="text-center py-4">
+                    <svg class="h-12 w-12 mx-auto text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="mt-2 text-sm text-red-600 dark:text-red-400">Failed to load login history</p>
+                </div>
+            `;
+        });
+}
+
+/**
+ * Hide Edit User Modal
+ * Closes the modal and resets form state
+ */
+function hideEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    modal.classList.add('hidden');
+    
+    // Reset form
+    document.getElementById('editUserForm').reset();
+    
+    // Hide errors
+    document.getElementById('editUserErrors').classList.add('hidden');
+    document.getElementById('editUserErrorList').innerHTML = '';
+}
+
+/**
+ * Show Temporary Password Modal for Current User
+ * Opens the temp password modal with the current user's info
+ * Requirement 3.9: Generate temporary password
+ */
+function showTempPasswordModalForUser() {
+    const modal = document.getElementById('editUserModal');
+    const userId = modal.dataset.userId;
+    const username = document.getElementById('editUserUsername').textContent;
+    
+    // Hide edit modal
+    hideEditUserModal();
+    
+    // Show temp password modal
+    const tempModal = document.getElementById('tempPasswordModal');
+    const tempForm = document.getElementById('tempPasswordForm');
+    
+    tempForm.action = `/platform/users/${userId}/generate-temp-password/`;
+    document.getElementById('tempPasswordUsername').textContent = username;
+    
+    tempModal.classList.remove('hidden');
+}
+
+/**
+ * Send Password Reset Email
+ * Sends a password reset email to the user
+ * Requirement 3.10: Send password reset email
+ */
+function sendPasswordResetEmail() {
+    const modal = document.getElementById('editUserModal');
+    const userId = modal.dataset.userId;
+    const username = document.getElementById('editUserUsername').textContent;
+    
+    if (!confirm(`Send password reset email to ${username}?`)) {
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `
+        <svg class="animate-spin h-4 w-4 mr-2 inline" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Sending...
+    `;
+    
+    // Send request
+    fetch(`/platform/users/${userId}/send-password-reset/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            alert(`Password reset email sent to ${data.email}`);
+        } else {
+            alert(`Error: ${data.error || 'Failed to send password reset email'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error sending password reset:', error);
+        alert('Failed to send password reset email. Please try again.');
+    })
+    .finally(() => {
+        // Restore button state
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
+}
+
+/**
+ * Validate Edit User Form
+ * Performs client-side validation before form submission
+ */
+function validateEditUserForm() {
+    const errors = [];
+    const errorContainer = document.getElementById('editUserErrors');
+    const errorList = document.getElementById('editUserErrorList');
+    
+    // Get form values
+    const email = document.getElementById('edit_email').value.trim();
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        errors.push('Please enter a valid email address');
+    }
+    
+    // Display errors or submit
+    if (errors.length > 0) {
+        errorList.innerHTML = errors.map(error => `<li>${error}</li>`).join('');
+        errorContainer.classList.remove('hidden');
+        
+        // Scroll to errors
+        errorContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        return false; // Prevent form submission
+    }
+    
+    // Hide errors if validation passes
+    errorContainer.classList.add('hidden');
+    return true; // Allow form submission
+}
+
+// Attach validation to form submit
+document.addEventListener('DOMContentLoaded', function() {
+    const editForm = document.getElementById('editUserForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            if (!validateEditUserForm()) {
+                e.preventDefault();
+            }
+        });
+    }
+});
+</script>

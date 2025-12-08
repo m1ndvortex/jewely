@@ -1,0 +1,4 @@
+# file: /app/apps/sales/migrations/0005_update_customer_fk_to_crm.py
+# hypothesis_version: 6.148.7
+
+['crm', 'crm.customer', 'customer', 'sale', 'sales']

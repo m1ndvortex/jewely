@@ -1,0 +1,4 @@
+# file: /app/apps/crm/signals.py
+# hypothesis_version: 6.148.7
+
+['last_purchase_at', 'total_purchases']

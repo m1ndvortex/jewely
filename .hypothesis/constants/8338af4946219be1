@@ -1,0 +1,4 @@
+# file: /app/apps/core/tracing.py
+# hypothesis_version: 6.148.7
+
+['1.0.0', 'APP_VERSION', 'ENVIRONMENT', 'OTEL_ENABLED', 'OTEL_SERVICE_NAME', 'jewelry-shop', 'jewelry-shop-django', 'production', 'service.namespace', 'service.version', 'true']

@@ -1,0 +1,4 @@
+# file: /app/apps/core/services/impersonation_service.py
+# hypothesis_version: 6.148.7
+
+[',', 'HTTP_USER_AGENT', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR', 'admin_user_id', 'admin_username', 'duration_seconds', 'target_tenant_id', 'target_tenant_name', 'target_user_id', 'target_username']

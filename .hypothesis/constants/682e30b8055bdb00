@@ -1,0 +1,4 @@
+# file: /app/apps/core/services/user_service.py
+# hypothesis_version: 6.148.7
+
+['-created_at', '-timestamp', 'LoginAttempt', 'TemporaryPassword', 'Tenant', 'User', 'branch', 'created_by', 'email', 'email is required', 'expires_at', 'expiry_hours', 'failed_login_count', 'fields_changed', 'force_mfa', 'generated_by', 'http', 'https', 'is_active', 'is_mfa_enabled', 'language', 'modified_by', 'password', 'password_reset_sent', 'phone', 'reset_url', 'role', 'sent_by', 'system', 'temp_password_id', 'tenant_id', 'theme', 'timestamp', 'token', 'uidb64', 'used_at', 'user', 'user_email', 'user_id', 'username', 'username is required']
