@@ -5,7 +5,7 @@
 # CRITICAL: Django - 21 vulnerabilities (SQL injection, DoS, log injection)
 # Current: Django==4.2.11
 # Fix: Upgrade to latest LTS version
-Django==4.2.26  # Fixes PYSEC-2024-58, PYSEC-2024-57, PYSEC-2024-56, GHSA-q95w-c7qg-hrff, etc.
+Django==4.2.27  # Fixes PYSEC-2024-58, PYSEC-2024-57, PYSEC-2024-56, GHSA-q95w-c7qg-hrff, etc.
 
 # HIGH: gunicorn - 2 vulnerabilities (HTTP Request Smuggling)
 # Current: gunicorn==21.2.0
