@@ -1361,6 +1361,12 @@ class SubscriptionPlan(models.Model):
     Platform administrators create and manage subscription plans that tenants
     can subscribe to. Each plan defines pricing, billing cycle, and resource limits
     per Requirement 5.2.
+
+    Enhanced for enterprise-grade subscription management with:
+    - Multi-currency support (USD/IRR)
+    - Comprehensive resource limits
+    - Flexible JSON fields for custom limits/features
+    - Usage-based billing support
     """
 
     # Billing cycle choices
@@ -1385,6 +1391,9 @@ class SubscriptionPlan(models.Model):
         (STATUS_ARCHIVED, "Archived"),
     ]
 
+    # Limit type choices for unlimited values
+    LIMIT_UNLIMITED = -1  # Use -1 to represent unlimited
+
     # Primary key
     id = models.UUIDField(
         primary_key=True,
@@ -1405,11 +1414,24 @@ class SubscriptionPlan(models.Model):
         help_text="Detailed description of the plan features",
     )
 
-    # Pricing
+    # Mark as free plan (no payment required)
+    is_free = models.BooleanField(
+        default=False,
+        help_text="Mark as free plan (no payment required)",
+    )
+
+    # Pricing - Multi-currency support
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         help_text="Plan price in USD",
+    )
+
+    price_irr = models.DecimalField(
+        max_digits=15,
+        decimal_places=0,
+        default=0,
+        help_text="Plan price in Iranian Rial (Toman). Use 0 for auto-conversion.",
     )
 
     billing_cycle = models.CharField(
@@ -1419,33 +1441,159 @@ class SubscriptionPlan(models.Model):
         help_text="Billing frequency for this plan",
     )
 
-    # Resource limits (Requirement 5.2)
+    # ===== Core Resource Limits =====
     user_limit = models.IntegerField(
         default=5,
-        help_text="Maximum number of users allowed",
+        help_text="Maximum number of users allowed. Use -1 for unlimited.",
     )
 
     branch_limit = models.IntegerField(
         default=1,
-        help_text="Maximum number of branches allowed",
+        help_text="Maximum number of branches allowed. Use -1 for unlimited.",
     )
 
     inventory_limit = models.IntegerField(
         default=1000,
-        help_text="Maximum number of inventory items allowed",
+        help_text="Maximum number of inventory items allowed. Use -1 for unlimited.",
+    )
+
+    # ===== New Resource Limits =====
+    contacts_limit = models.IntegerField(
+        default=100,
+        help_text="Maximum number of contacts/customers allowed. Use -1 for unlimited.",
+    )
+
+    invoices_limit = models.IntegerField(
+        default=100,
+        help_text="Maximum number of invoices per month. Use -1 for unlimited.",
+    )
+
+    products_limit = models.IntegerField(
+        default=500,
+        help_text="Maximum number of products allowed. Use -1 for unlimited.",
+    )
+
+    transactions_limit = models.IntegerField(
+        default=1000,
+        help_text="Maximum number of transactions per month. Use -1 for unlimited.",
     )
 
     storage_limit_gb = models.IntegerField(
         default=10,
-        help_text="Maximum storage space in GB for media files",
+        help_text="Maximum storage space in GB for media files. Use -1 for unlimited.",
     )
 
     api_calls_per_month = models.IntegerField(
         default=10000,
-        help_text="Maximum API calls per month",
+        help_text="Maximum API calls per month. Use -1 for unlimited.",
     )
 
-    # Feature flags
+    # ===== Sales & POS Limits =====
+    pos_terminals_limit = models.IntegerField(
+        default=1,
+        help_text="Maximum number of POS terminals allowed. Use -1 for unlimited.",
+    )
+
+    sales_per_month_limit = models.IntegerField(
+        default=500,
+        help_text="Maximum number of sales per month. Use -1 for unlimited.",
+    )
+
+    gift_cards_limit = models.IntegerField(
+        default=50,
+        help_text="Maximum number of active gift cards. Use -1 for unlimited.",
+    )
+
+    # ===== Business Operations Limits =====
+    suppliers_limit = models.IntegerField(
+        default=20,
+        help_text="Maximum number of suppliers allowed. Use -1 for unlimited.",
+    )
+
+    categories_limit = models.IntegerField(
+        default=50,
+        help_text="Maximum number of product categories. Use -1 for unlimited.",
+    )
+
+    custom_orders_limit = models.IntegerField(
+        default=50,
+        help_text="Maximum number of custom/goldsmith orders per month. Use -1 for unlimited.",
+    )
+
+    repair_orders_limit = models.IntegerField(
+        default=100,
+        help_text="Maximum number of repair orders per month. Use -1 for unlimited.",
+    )
+
+    purchase_orders_limit = models.IntegerField(
+        default=50,
+        help_text="Maximum number of purchase orders per month. Use -1 for unlimited.",
+    )
+
+    # ===== Marketing & Communication Limits =====
+    email_campaigns_limit = models.IntegerField(
+        default=5,
+        help_text="Maximum number of email campaigns per month. Use -1 for unlimited.",
+    )
+
+    sms_campaigns_limit = models.IntegerField(
+        default=3,
+        help_text="Maximum number of SMS campaigns per month. Use -1 for unlimited.",
+    )
+
+    emails_per_month_limit = models.IntegerField(
+        default=1000,
+        help_text="Maximum email notifications per month. Use -1 for unlimited.",
+    )
+
+    sms_per_month_limit = models.IntegerField(
+        default=500,
+        help_text="Maximum SMS notifications per month. Use -1 for unlimited.",
+    )
+
+    # ===== Advanced Features Limits =====
+    reports_per_month_limit = models.IntegerField(
+        default=50,
+        help_text="Maximum custom reports per month. Use -1 for unlimited.",
+    )
+
+    pricing_rules_limit = models.IntegerField(
+        default=20,
+        help_text="Maximum number of pricing rules. Use -1 for unlimited.",
+    )
+
+    journal_entries_limit = models.IntegerField(
+        default=500,
+        help_text="Maximum journal entries per month for accounting. Use -1 for unlimited.",
+    )
+
+    loyalty_tiers_limit = models.IntegerField(
+        default=5,
+        help_text="Maximum number of loyalty tiers. Use -1 for unlimited.",
+    )
+
+    # ===== System Limits =====
+    backup_retention_days = models.IntegerField(
+        default=30,
+        help_text="Number of days to retain backups. Use -1 for unlimited.",
+    )
+
+    concurrent_sessions_limit = models.IntegerField(
+        default=5,
+        help_text="Maximum concurrent user sessions. Use -1 for unlimited.",
+    )
+
+    documents_limit = models.IntegerField(
+        default=500,
+        help_text="Maximum number of document attachments. Use -1 for unlimited.",
+    )
+
+    webhooks_limit = models.IntegerField(
+        default=5,
+        help_text="Maximum number of webhooks. Use -1 for unlimited.",
+    )
+
+    # ===== Feature Flags =====
     enable_multi_branch = models.BooleanField(
         default=False,
         help_text="Enable multi-branch management features",
@@ -1469,6 +1617,40 @@ class SubscriptionPlan(models.Model):
     enable_priority_support = models.BooleanField(
         default=False,
         help_text="Enable priority customer support",
+    )
+
+    enable_export_import = models.BooleanField(
+        default=True,
+        help_text="Enable data export/import features",
+    )
+
+    enable_email_notifications = models.BooleanField(
+        default=True,
+        help_text="Enable email notification features",
+    )
+
+    enable_sms_notifications = models.BooleanField(
+        default=False,
+        help_text="Enable SMS notification features",
+    )
+
+    # ===== Flexible JSON Fields for Extensibility =====
+    custom_limits = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Custom resource limits as JSON. Example: {'reports_per_day': 10, 'backup_retention_days': 30}",
+    )
+
+    custom_features = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Custom feature flags as JSON. Example: {'beta_features': true, 'advanced_analytics': false}",
+    )
+
+    # ===== Plan Metadata =====
+    trial_days = models.IntegerField(
+        default=14,
+        help_text="Number of trial days for new subscriptions",
     )
 
     # Plan status
@@ -1510,10 +1692,42 @@ class SubscriptionPlan(models.Model):
         indexes = [
             models.Index(fields=["status"], name="plan_status_idx"),
             models.Index(fields=["display_order"], name="plan_display_order_idx"),
+            models.Index(fields=["is_free"], name="plan_is_free_idx"),
         ]
 
     def __str__(self):
+        if self.is_free:
+            return f"{self.name} (Free)"
         return f"{self.name} (${self.price}/{self.billing_cycle})"
+
+    def is_unlimited(self, limit_name):
+        """Check if a specific limit is unlimited (-1)."""
+        value = getattr(self, limit_name, None)
+        return value == self.LIMIT_UNLIMITED
+
+    def get_limit_display(self, limit_name):
+        """Get display value for a limit (shows 'Unlimited' for -1)."""
+        value = getattr(self, limit_name, None)
+        if value == self.LIMIT_UNLIMITED:
+            return "Unlimited"
+        return value
+
+    def get_custom_limit(self, key, default=None):
+        """Get a custom limit value from the JSON field."""
+        return self.custom_limits.get(key, default)
+
+    def get_custom_feature(self, key, default=False):
+        """Get a custom feature flag from the JSON field."""
+        return self.custom_features.get(key, default)
+
+    def get_price_display(self, currency='USD'):
+        """Get formatted price for display based on currency."""
+        if self.is_free:
+            return "Free"
+        if currency == 'IRR' and self.price_irr > 0:
+            # Format Iranian Rial with thousands separator
+            return f"{self.price_irr:,.0f} تومان"
+        return f"${self.price:,.2f}"
 
     def archive(self):
         """
@@ -1576,6 +1790,11 @@ class TenantSubscription(models.Model):
 
     Tracks the current subscription status, billing information, and allows
     for plan-specific limit overrides per Requirement 5.3, 5.4, and 5.5.
+
+    Enhanced for enterprise-grade subscription management with:
+    - Additional limit overrides (contacts, invoices, products, transactions)
+    - Usage tracking for enforced limits
+    - Flexible JSON fields for custom overrides
     """
 
     # Subscription status choices
@@ -1655,8 +1874,7 @@ class TenantSubscription(models.Model):
         help_text="End date of trial period",
     )
 
-    # Resource limit overrides (Requirement 5.4)
-    # These override the plan defaults for this specific tenant
+    # ===== Core Resource Limit Overrides =====
     user_limit_override = models.IntegerField(
         null=True,
         blank=True,
@@ -1687,7 +1905,157 @@ class TenantSubscription(models.Model):
         help_text="Override for API calls per month (null = use plan default)",
     )
 
-    # Feature flag overrides
+    # ===== New Resource Limit Overrides =====
+    contacts_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for contacts limit (null = use plan default)",
+    )
+
+    invoices_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for invoices limit (null = use plan default)",
+    )
+
+    products_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for products limit (null = use plan default)",
+    )
+
+    transactions_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for transactions limit (null = use plan default)",
+    )
+
+    # ===== Sales & POS Limit Overrides =====
+    pos_terminals_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for POS terminals limit (null = use plan default)",
+    )
+
+    sales_per_month_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for sales per month limit (null = use plan default)",
+    )
+
+    gift_cards_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for gift cards limit (null = use plan default)",
+    )
+
+    # ===== Business Operations Limit Overrides =====
+    suppliers_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for suppliers limit (null = use plan default)",
+    )
+
+    categories_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for categories limit (null = use plan default)",
+    )
+
+    custom_orders_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for custom orders limit (null = use plan default)",
+    )
+
+    repair_orders_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for repair orders limit (null = use plan default)",
+    )
+
+    purchase_orders_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for purchase orders limit (null = use plan default)",
+    )
+
+    # ===== Marketing & Communication Limit Overrides =====
+    email_campaigns_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for email campaigns limit (null = use plan default)",
+    )
+
+    sms_campaigns_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for SMS campaigns limit (null = use plan default)",
+    )
+
+    emails_per_month_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for emails per month limit (null = use plan default)",
+    )
+
+    sms_per_month_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for SMS per month limit (null = use plan default)",
+    )
+
+    # ===== Advanced Features Limit Overrides =====
+    reports_per_month_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for reports per month limit (null = use plan default)",
+    )
+
+    pricing_rules_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for pricing rules limit (null = use plan default)",
+    )
+
+    journal_entries_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for journal entries limit (null = use plan default)",
+    )
+
+    loyalty_tiers_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for loyalty tiers limit (null = use plan default)",
+    )
+
+    # ===== System Limit Overrides =====
+    backup_retention_days_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for backup retention days (null = use plan default)",
+    )
+
+    concurrent_sessions_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for concurrent sessions limit (null = use plan default)",
+    )
+
+    documents_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for documents limit (null = use plan default)",
+    )
+
+    webhooks_limit_override = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Override for webhooks limit (null = use plan default)",
+    )
+
+    # ===== Feature Flag Overrides =====
     enable_multi_branch_override = models.BooleanField(
         null=True,
         blank=True,
@@ -1716,6 +2084,115 @@ class TenantSubscription(models.Model):
         null=True,
         blank=True,
         help_text="Override for priority support (null = use plan default)",
+    )
+
+    enable_export_import_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for export/import feature (null = use plan default)",
+    )
+
+    enable_email_notifications_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for email notifications (null = use plan default)",
+    )
+
+    enable_sms_notifications_override = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Override for SMS notifications (null = use plan default)",
+    )
+
+    # ===== Flexible JSON Override Fields =====
+    custom_limits_override = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Custom limit overrides as JSON",
+    )
+
+    custom_features_override = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Custom feature overrides as JSON",
+    )
+
+    # ===== Usage Tracking =====
+    api_calls_used_this_month = models.IntegerField(
+        default=0,
+        help_text="API calls used in current billing period",
+    )
+
+    invoices_created_this_month = models.IntegerField(
+        default=0,
+        help_text="Invoices created in current billing period",
+    )
+
+    transactions_this_month = models.IntegerField(
+        default=0,
+        help_text="Transactions in current billing period",
+    )
+
+    # ===== Additional Monthly Usage Tracking =====
+    sales_created_this_month = models.IntegerField(
+        default=0,
+        help_text="Sales created in current billing period",
+    )
+
+    custom_orders_this_month = models.IntegerField(
+        default=0,
+        help_text="Custom orders created in current billing period",
+    )
+
+    repair_orders_this_month = models.IntegerField(
+        default=0,
+        help_text="Repair orders created in current billing period",
+    )
+
+    purchase_orders_this_month = models.IntegerField(
+        default=0,
+        help_text="Purchase orders created in current billing period",
+    )
+
+    email_campaigns_this_month = models.IntegerField(
+        default=0,
+        help_text="Email campaigns created in current billing period",
+    )
+
+    sms_campaigns_this_month = models.IntegerField(
+        default=0,
+        help_text="SMS campaigns created in current billing period",
+    )
+
+    emails_sent_this_month = models.IntegerField(
+        default=0,
+        help_text="Emails sent in current billing period",
+    )
+
+    sms_sent_this_month = models.IntegerField(
+        default=0,
+        help_text="SMS sent in current billing period",
+    )
+
+    reports_generated_this_month = models.IntegerField(
+        default=0,
+        help_text="Reports generated in current billing period",
+    )
+
+    journal_entries_this_month = models.IntegerField(
+        default=0,
+        help_text="Journal entries created in current billing period",
+    )
+
+    storage_used_bytes = models.BigIntegerField(
+        default=0,
+        help_text="Storage used in bytes",
+    )
+
+    usage_reset_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date when monthly usage counters were last reset",
     )
 
     # Payment gateway integration
@@ -1853,6 +2330,316 @@ class TenantSubscription(models.Model):
             if self.enable_priority_support_override is not None
             else self.plan.enable_priority_support
         )
+
+    # ===== New Limit Getters =====
+    def get_contacts_limit(self):
+        """Get effective contacts limit (override or plan default)."""
+        return (
+            self.contacts_limit_override
+            if self.contacts_limit_override is not None
+            else self.plan.contacts_limit
+        )
+
+    def get_invoices_limit(self):
+        """Get effective invoices limit (override or plan default)."""
+        return (
+            self.invoices_limit_override
+            if self.invoices_limit_override is not None
+            else self.plan.invoices_limit
+        )
+
+    def get_products_limit(self):
+        """Get effective products limit (override or plan default)."""
+        return (
+            self.products_limit_override
+            if self.products_limit_override is not None
+            else self.plan.products_limit
+        )
+
+    def get_transactions_limit(self):
+        """Get effective transactions limit (override or plan default)."""
+        return (
+            self.transactions_limit_override
+            if self.transactions_limit_override is not None
+            else self.plan.transactions_limit
+        )
+
+    # ===== Sales & POS Limit Getters =====
+    def get_pos_terminals_limit(self):
+        """Get effective POS terminals limit (override or plan default)."""
+        return (
+            self.pos_terminals_limit_override
+            if self.pos_terminals_limit_override is not None
+            else self.plan.pos_terminals_limit
+        )
+
+    def get_sales_per_month_limit(self):
+        """Get effective sales per month limit (override or plan default)."""
+        return (
+            self.sales_per_month_limit_override
+            if self.sales_per_month_limit_override is not None
+            else self.plan.sales_per_month_limit
+        )
+
+    def get_gift_cards_limit(self):
+        """Get effective gift cards limit (override or plan default)."""
+        return (
+            self.gift_cards_limit_override
+            if self.gift_cards_limit_override is not None
+            else self.plan.gift_cards_limit
+        )
+
+    # ===== Business Operations Limit Getters =====
+    def get_suppliers_limit(self):
+        """Get effective suppliers limit (override or plan default)."""
+        return (
+            self.suppliers_limit_override
+            if self.suppliers_limit_override is not None
+            else self.plan.suppliers_limit
+        )
+
+    def get_categories_limit(self):
+        """Get effective categories limit (override or plan default)."""
+        return (
+            self.categories_limit_override
+            if self.categories_limit_override is not None
+            else self.plan.categories_limit
+        )
+
+    def get_custom_orders_limit(self):
+        """Get effective custom orders limit (override or plan default)."""
+        return (
+            self.custom_orders_limit_override
+            if self.custom_orders_limit_override is not None
+            else self.plan.custom_orders_limit
+        )
+
+    def get_repair_orders_limit(self):
+        """Get effective repair orders limit (override or plan default)."""
+        return (
+            self.repair_orders_limit_override
+            if self.repair_orders_limit_override is not None
+            else self.plan.repair_orders_limit
+        )
+
+    def get_purchase_orders_limit(self):
+        """Get effective purchase orders limit (override or plan default)."""
+        return (
+            self.purchase_orders_limit_override
+            if self.purchase_orders_limit_override is not None
+            else self.plan.purchase_orders_limit
+        )
+
+    # ===== Marketing & Communication Limit Getters =====
+    def get_email_campaigns_limit(self):
+        """Get effective email campaigns limit (override or plan default)."""
+        return (
+            self.email_campaigns_limit_override
+            if self.email_campaigns_limit_override is not None
+            else self.plan.email_campaigns_limit
+        )
+
+    def get_sms_campaigns_limit(self):
+        """Get effective SMS campaigns limit (override or plan default)."""
+        return (
+            self.sms_campaigns_limit_override
+            if self.sms_campaigns_limit_override is not None
+            else self.plan.sms_campaigns_limit
+        )
+
+    def get_emails_per_month_limit(self):
+        """Get effective emails per month limit (override or plan default)."""
+        return (
+            self.emails_per_month_limit_override
+            if self.emails_per_month_limit_override is not None
+            else self.plan.emails_per_month_limit
+        )
+
+    def get_sms_per_month_limit(self):
+        """Get effective SMS per month limit (override or plan default)."""
+        return (
+            self.sms_per_month_limit_override
+            if self.sms_per_month_limit_override is not None
+            else self.plan.sms_per_month_limit
+        )
+
+    # ===== Advanced Features Limit Getters =====
+    def get_reports_per_month_limit(self):
+        """Get effective reports per month limit (override or plan default)."""
+        return (
+            self.reports_per_month_limit_override
+            if self.reports_per_month_limit_override is not None
+            else self.plan.reports_per_month_limit
+        )
+
+    def get_pricing_rules_limit(self):
+        """Get effective pricing rules limit (override or plan default)."""
+        return (
+            self.pricing_rules_limit_override
+            if self.pricing_rules_limit_override is not None
+            else self.plan.pricing_rules_limit
+        )
+
+    def get_journal_entries_limit(self):
+        """Get effective journal entries limit (override or plan default)."""
+        return (
+            self.journal_entries_limit_override
+            if self.journal_entries_limit_override is not None
+            else self.plan.journal_entries_limit
+        )
+
+    def get_loyalty_tiers_limit(self):
+        """Get effective loyalty tiers limit (override or plan default)."""
+        return (
+            self.loyalty_tiers_limit_override
+            if self.loyalty_tiers_limit_override is not None
+            else self.plan.loyalty_tiers_limit
+        )
+
+    # ===== System Limit Getters =====
+    def get_backup_retention_days(self):
+        """Get effective backup retention days (override or plan default)."""
+        return (
+            self.backup_retention_days_override
+            if self.backup_retention_days_override is not None
+            else self.plan.backup_retention_days
+        )
+
+    def get_concurrent_sessions_limit(self):
+        """Get effective concurrent sessions limit (override or plan default)."""
+        return (
+            self.concurrent_sessions_limit_override
+            if self.concurrent_sessions_limit_override is not None
+            else self.plan.concurrent_sessions_limit
+        )
+
+    def get_documents_limit(self):
+        """Get effective documents limit (override or plan default)."""
+        return (
+            self.documents_limit_override
+            if self.documents_limit_override is not None
+            else self.plan.documents_limit
+        )
+
+    def get_webhooks_limit(self):
+        """Get effective webhooks limit (override or plan default)."""
+        return (
+            self.webhooks_limit_override
+            if self.webhooks_limit_override is not None
+            else self.plan.webhooks_limit
+        )
+
+    # ===== New Feature Getters =====
+    def has_export_import_enabled(self):
+        """Check if export/import is enabled (override or plan default)."""
+        return (
+            self.enable_export_import_override
+            if self.enable_export_import_override is not None
+            else self.plan.enable_export_import
+        )
+
+    def has_email_notifications_enabled(self):
+        """Check if email notifications are enabled (override or plan default)."""
+        return (
+            self.enable_email_notifications_override
+            if self.enable_email_notifications_override is not None
+            else self.plan.enable_email_notifications
+        )
+
+    def has_sms_notifications_enabled(self):
+        """Check if SMS notifications are enabled (override or plan default)."""
+        return (
+            self.enable_sms_notifications_override
+            if self.enable_sms_notifications_override is not None
+            else self.plan.enable_sms_notifications
+        )
+
+    # ===== Custom Limit/Feature Getters =====
+    def get_custom_limit(self, key, default=None):
+        """Get a custom limit value, checking override first then plan default."""
+        if key in self.custom_limits_override:
+            return self.custom_limits_override[key]
+        return self.plan.get_custom_limit(key, default)
+
+    def get_custom_feature(self, key, default=False):
+        """Get a custom feature flag, checking override first then plan default."""
+        if key in self.custom_features_override:
+            return self.custom_features_override[key]
+        return self.plan.get_custom_feature(key, default)
+
+    # ===== Usage Tracking Methods =====
+    def get_storage_used_gb(self):
+        """Get storage used in GB."""
+        return self.storage_used_bytes / (1024 * 1024 * 1024)
+
+    def get_storage_percentage(self):
+        """Get storage usage percentage."""
+        limit = self.get_storage_limit_gb()
+        if limit == -1:  # Unlimited
+            return 0
+        if limit == 0:
+            return 100
+        return min(100, (self.get_storage_used_gb() / limit) * 100)
+
+    def get_api_calls_percentage(self):
+        """Get API calls usage percentage for current month."""
+        limit = self.get_api_calls_per_month()
+        if limit == -1:  # Unlimited
+            return 0
+        if limit == 0:
+            return 100
+        return min(100, (self.api_calls_used_this_month / limit) * 100)
+
+    def reset_monthly_usage(self):
+        """Reset monthly usage counters."""
+        from django.utils import timezone
+        self.api_calls_used_this_month = 0
+        self.invoices_created_this_month = 0
+        self.transactions_this_month = 0
+        self.usage_reset_date = timezone.now()
+        self.save(update_fields=[
+            "api_calls_used_this_month",
+            "invoices_created_this_month",
+            "transactions_this_month",
+            "usage_reset_date",
+            "updated_at"
+        ])
+
+    def increment_api_calls(self, count=1):
+        """Increment API call counter."""
+        from django.db.models import F
+        TenantSubscription.objects.filter(pk=self.pk).update(
+            api_calls_used_this_month=F('api_calls_used_this_month') + count
+        )
+
+    def increment_invoices(self, count=1):
+        """Increment invoice counter."""
+        from django.db.models import F
+        TenantSubscription.objects.filter(pk=self.pk).update(
+            invoices_created_this_month=F('invoices_created_this_month') + count
+        )
+
+    def increment_transactions(self, count=1):
+        """Increment transaction counter."""
+        from django.db.models import F
+        TenantSubscription.objects.filter(pk=self.pk).update(
+            transactions_this_month=F('transactions_this_month') + count
+        )
+
+    def update_storage_used(self, bytes_delta):
+        """Update storage used (can be positive or negative)."""
+        from django.db.models import F
+        TenantSubscription.objects.filter(pk=self.pk).update(
+            storage_used_bytes=F('storage_used_bytes') + bytes_delta
+        )
+
+    # ===== Limit Checking Methods =====
+    def is_limit_unlimited(self, limit_name):
+        """Check if a specific limit is unlimited."""
+        limit_method = f"get_{limit_name}"
+        if hasattr(self, limit_method):
+            return getattr(self, limit_method)() == -1
+        return False
 
     def is_active(self):
         """Check if subscription is active."""

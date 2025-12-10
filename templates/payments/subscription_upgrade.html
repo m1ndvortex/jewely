@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Upgrade Subscription" %} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Upgrade Subscription" %}</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Unlock more features with a higher tier plan" %}
+                    </p>
+                </div>
+                <a href="{% url 'payments:subscription_dashboard' %}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800">
+                    &larr; {% trans "Back to Dashboard" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% if current_subscription %}
+        <!-- Current Plan -->
+        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-8">
+            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Current Plan" %}</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ current_subscription.plan.name }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">${{ current_subscription.plan.price|floatformat:2 }}/{% trans "month" %}</p>
+        </div>
+        {% endif %}
+
+        {% if upgrade_plans %}
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Available Upgrades" %}</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for plan in upgrade_plans %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ plan.name }}</h3>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {{ plan.description|default:plan.name }}
+                    </p>
+                    
+                    <div class="mt-4">
+                        <div class="flex items-baseline">
+                            <span class="text-3xl font-bold text-gray-900 dark:text-white">
+                                ${{ plan.price|floatformat:2 }}
+                            </span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">/{% trans "month" %}</span>
+                        </div>
+                        {% if current_subscription %}
+                        <p class="text-sm text-green-600 dark:text-green-400 mt-1">
+                            +${{ plan.price|add:current_subscription.plan.price|floatformat:2 }}/{% trans "month" %} {% trans "more" %}
+                        </p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Features -->
+                    <ul class="mt-6 space-y-3">
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% if plan.user_limit and plan.user_limit > 0 %}{{ plan.user_limit }}{% else %}{% trans "Unlimited" %}{% endif %} {% trans "users" %}
+                        </li>
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% if plan.branch_limit and plan.branch_limit > 0 %}{{ plan.branch_limit }}{% else %}{% trans "Unlimited" %}{% endif %} {% trans "branches" %}
+                        </li>
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% if plan.products_limit and plan.products_limit > 0 %}{{ plan.products_limit }}{% else %}{% trans "Unlimited" %}{% endif %} {% trans "products" %}
+                        </li>
+                    </ul>
+                    
+                    <div class="mt-6">
+                        <a href="{% url 'payments:purchase_subscription' %}?step=billing_period&plan={{ plan.id }}" 
+                           class="w-full inline-block text-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                            {% trans "Upgrade to" %} {{ plan.name }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+            </svg>
+            <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">{% trans "You're on the Top Plan!" %}</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {% trans "You're already on our highest tier plan. Thank you for your support!" %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

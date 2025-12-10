@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Subscription" %} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Subscription" %}</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Manage your subscription plan and billing" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Subscription Status Card -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="p-6">
+                {% if current_subscription %}
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            {% if subscription_status.is_active %}
+                            <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            {% elif subscription_status.is_trial %}
+                            <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            {% else %}
+                            <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="ml-4">
+                            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                {{ current_subscription.plan.name }}
+                            </h2>
+                            <div class="mt-1 flex items-center">
+                                {% if subscription_status.is_active %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    {% trans "Active" %}
+                                </span>
+                                {% elif subscription_status.is_trial %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                    {% trans "Trial" %}
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                    {% trans "Expired" %}
+                                </span>
+                                {% endif %}
+                                
+                                {% if subscription_status.days_remaining > 0 %}
+                                <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                                    {% blocktrans with days=subscription_status.days_remaining %}{{ days }} days remaining{% endblocktrans %}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3">
+                        {% if subscription_status.days_remaining <= 30 %}
+                        <a href="{% url 'payments:subscription_renewal' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            {% trans "Renew" %}
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'payments:subscription_upgrade' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                            {% trans "Upgrade" %}
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Billing Info -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Current Period" %}</p>
+                        <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                            {% if current_subscription.billing_cycle_start %}
+                            {{ current_subscription.billing_cycle_start|date:"M d, Y" }} - {{ current_subscription.billing_cycle_end|date:"M d, Y" }}
+                            {% else %}
+                            {% trans "N/A" %}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Monthly Price" %}</p>
+                        <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                            ${{ current_subscription.plan.price|floatformat:2 }}/{% trans "month" %}
+                        </p>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Plan Type" %}</p>
+                        <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ current_subscription.plan.name }}
+                        </p>
+                    </div>
+                </div>
+                {% else %}
+                <!-- No Active Subscription -->
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">{% trans "No Active Subscription" %}</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "You don't have an active subscription. Choose a plan to get started." %}
+                    </p>
+                    <div class="mt-6">
+                        <a href="{% url 'payments:subscription_plans' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                            {% trans "View Plans" %}
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if current_subscription %}
+        <!-- Usage Statistics -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Usage Statistics" %}</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {% for stat in usage_stats %}
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ stat.name }}</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">
+                                {{ stat.current }}/{% if stat.limit == float.inf %}∞{% else %}{{ stat.limit }}{% endif %}
+                            </span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div class="{% if stat.percentage >= 90 %}bg-red-600{% elif stat.percentage >= 70 %}bg-yellow-500{% else %}bg-blue-600{% endif %} h-2 rounded-full" style="width: {{ stat.percentage }}%"></div>
+                        </div>
+                        {% if stat.percentage >= 90 %}
+                        <p class="mt-1 text-xs text-red-600 dark:text-red-400">{% trans "Near limit - consider upgrading" %}</p>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <div class="col-span-4 text-center text-gray-500 dark:text-gray-400">
+                        {% trans "No usage data available" %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Purchases -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">{% trans "Recent Purchases" %}</h3>
+                    <a href="{% url 'payments:purchase_history' %}" class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                        {% trans "View all" %}
+                    </a>
+                </div>
+                
+                {% if recent_purchases %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{% trans "Invoice" %}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{% trans "Plan" %}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{% trans "Amount" %}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{% trans "Status" %}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{% trans "Date" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for purchase in recent_purchases %}
+                            <tr>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <a href="{% url 'payments:purchase_detail' pk=purchase.id %}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800">
+                                        {{ purchase.invoice_number }}
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    {{ purchase.plan.name }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    ${{ purchase.final_amount|floatformat:2 }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    {% if purchase.payment_status == 'completed' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        {% trans "Completed" %}
+                                    </span>
+                                    {% elif purchase.payment_status == 'pending' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                        {% trans "Pending" %}
+                                    </span>
+                                    {% elif purchase.payment_status == 'failed' %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                        {% trans "Failed" %}
+                                    </span>
+                                    {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                        {{ purchase.payment_status }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {{ purchase.created_at|date:"M d, Y" }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+                    {% trans "No purchase history" %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if current_subscription %}
+        <!-- Quick Actions -->
+        <div class="mt-8 flex justify-end space-x-4">
+            <a href="{% url 'payments:subscription_cancellation' %}" class="text-sm text-red-600 dark:text-red-400 hover:text-red-800">
+                {% trans "Cancel Subscription" %}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

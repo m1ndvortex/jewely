@@ -32,6 +32,7 @@ urlpatterns = [
     path("pricing/", include("apps.pricing.urls")),
     path("reports/", include("apps.reporting.urls")),
     path("notifications/", include("apps.notifications.urls")),
+    path("", include("apps.payments.urls")),  # Payments and subscription purchase
     path("", include("django_prometheus.urls")),  # Prometheus metrics endpoint at /metrics
 ]
 

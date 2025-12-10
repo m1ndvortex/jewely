@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Payment Processing" %} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Payment" %}</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Complete your subscription purchase" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% if error %}
+        <div class="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if purchase %}
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <!-- Order Summary -->
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white">{% trans "Order Summary" %}</h2>
+            </div>
+            
+            <div class="p-6">
+                <div class="space-y-4 mb-6">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 dark:text-gray-400">{% trans "Invoice" %}</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ purchase.invoice_number }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 dark:text-gray-400">{% trans "Plan" %}</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ purchase.plan.name }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600 dark:text-gray-400">{% trans "Billing Period" %}</span>
+                        <span class="font-medium text-gray-900 dark:text-white">
+                            {{ purchase.billing_period_months }} {% trans "months" %}
+                        </span>
+                    </div>
+                    <hr class="border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between text-lg font-bold">
+                        <span class="text-gray-900 dark:text-white">{% trans "Total" %}</span>
+                        <span class="text-gray-900 dark:text-white">${{ purchase.final_amount|floatformat:2 }}</span>
+                    </div>
+                </div>
+
+                <!-- Payment Method Display -->
+                <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-6">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium text-blue-800 dark:text-blue-300">{% trans "Payment Method" %}</p>
+                            <p class="text-sm text-blue-700 dark:text-blue-400">{{ payment_method|title }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Gateway Integration Area -->
+                {% if gateway_config.type == 'placeholder' %}
+                <!-- Placeholder Payment -->
+                <div class="text-center py-8">
+                    <div class="animate-pulse mb-6">
+                        <svg class="mx-auto h-16 w-16 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        {% trans "Test Payment Mode" %}
+                    </h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                        {% trans "This is a placeholder payment for testing. Click below to complete the payment instantly." %}
+                    </p>
+                    <a href="{% url 'payments:process_placeholder_payment' purchase_id=purchase.id %}" 
+                       class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        <svg class="mr-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        {% trans "Complete Test Payment" %}
+                    </a>
+                </div>
+                {% elif gateway_config.type == 'redirect' %}
+                <!-- Redirect to External Gateway -->
+                <div class="text-center py-8">
+                    <div class="animate-spin mb-6">
+                        <svg class="mx-auto h-12 w-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        {% trans "Redirecting to payment gateway..." %}
+                    </p>
+                    <script>
+                        setTimeout(function() {
+                            window.location.href = "{{ gateway_config.url }}";
+                        }, 2000);
+                    </script>
+                </div>
+                {% elif gateway_config.type == 'iframe' %}
+                <!-- Embedded Gateway -->
+                <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <iframe src="{{ gateway_config.url }}" class="w-full h-96" frameborder="0"></iframe>
+                </div>
+                {% elif gateway_config.type == 'form' %}
+                <!-- Card Entry Form -->
+                <form method="post" action="{% url 'payments:payment_callback' gateway=payment_method %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="purchase_id" value="{{ purchase.id }}">
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {% trans "Card Number" %}
+                            </label>
+                            <input type="text" name="card_number" placeholder="4242 4242 4242 4242" 
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {% trans "Expiry Date" %}
+                                </label>
+                                <input type="text" name="expiry" placeholder="MM/YY" 
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {% trans "CVV" %}
+                                </label>
+                                <input type="text" name="cvv" placeholder="123" 
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full mt-6 inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        {% trans "Pay" %} ${{ purchase.final_amount|floatformat:2 }}
+                    </button>
+                </form>
+                {% else %}
+                <!-- Unknown gateway type -->
+                <div class="text-center py-8">
+                    <p class="text-gray-600 dark:text-gray-400">
+                        {% trans "Payment method not configured. Please contact support." %}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Security Notice -->
+                <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                        <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                        </svg>
+                        {% trans "Secure payment processing. Your data is encrypted." %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancel Link -->
+        <div class="mt-6 text-center">
+            <a href="{% url 'payments:subscription_dashboard' %}" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                {% trans "Cancel and return to dashboard" %}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

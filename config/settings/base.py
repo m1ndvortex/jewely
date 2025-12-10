@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.reporting",
     "apps.notifications",
     "apps.backups",
+    "apps.payments",  # Payment processing and subscription purchases
 ]
 
 # Site ID for django-allauth

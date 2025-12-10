@@ -13,6 +13,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView, V
 
 from apps.core.admin_views import PlatformAdminRequiredMixin
 from apps.core.models import SubscriptionPlan
+from apps.core.subscription_forms import SubscriptionPlanForm
 
 
 class SubscriptionPlanListView(PlatformAdminRequiredMixin, ListView):
@@ -98,27 +99,12 @@ class SubscriptionPlanCreateView(PlatformAdminRequiredMixin, CreateView):
     Create view for subscription plans.
 
     Requirement 5.2: Allow administrators to create subscription plans.
+    Enhanced with multi-currency support and additional limits.
     """
 
     model = SubscriptionPlan
     template_name = "admin/subscription_plan_form.html"
-    fields = [
-        "name",
-        "description",
-        "price",
-        "billing_cycle",
-        "user_limit",
-        "branch_limit",
-        "inventory_limit",
-        "storage_limit_gb",
-        "api_calls_per_month",
-        "enable_multi_branch",
-        "enable_advanced_reporting",
-        "enable_api_access",
-        "enable_custom_branding",
-        "enable_priority_support",
-        "display_order",
-    ]
+    form_class = SubscriptionPlanForm
 
     def get_success_url(self):
         return reverse("core:admin_subscription_plan_detail", kwargs={"pk": self.object.pk})
@@ -142,27 +128,12 @@ class SubscriptionPlanUpdateView(PlatformAdminRequiredMixin, UpdateView):
     Update view for subscription plans.
 
     Requirement 5.2: Allow administrators to edit subscription plans.
+    Enhanced with multi-currency support and additional limits.
     """
 
     model = SubscriptionPlan
     template_name = "admin/subscription_plan_form.html"
-    fields = [
-        "name",
-        "description",
-        "price",
-        "billing_cycle",
-        "user_limit",
-        "branch_limit",
-        "inventory_limit",
-        "storage_limit_gb",
-        "api_calls_per_month",
-        "enable_multi_branch",
-        "enable_advanced_reporting",
-        "enable_api_access",
-        "enable_custom_branding",
-        "enable_priority_support",
-        "display_order",
-    ]
+    form_class = SubscriptionPlanForm
 
     def get_success_url(self):
         return reverse("core:admin_subscription_plan_detail", kwargs={"pk": self.object.pk})

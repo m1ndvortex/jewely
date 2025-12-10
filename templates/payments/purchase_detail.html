@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Invoice" %} {{ purchase.invoice_number }} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Invoice" %} {{ purchase.invoice_number }}</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Created on" %} {{ purchase.created_at|date:"F d, Y" }}
+                    </p>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="{% url 'payments:purchase_history' %}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800">
+                        &larr; {% trans "Back to History" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Invoice Card -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+            <!-- Status Banner -->
+            <div class="{% if purchase.payment_status == 'completed' %}bg-green-500{% elif purchase.payment_status == 'pending' %}bg-yellow-500{% elif purchase.payment_status == 'failed' %}bg-red-500{% else %}bg-gray-500{% endif %} px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center text-white">
+                        {% if purchase.payment_status == 'completed' %}
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        {% elif purchase.payment_status == 'pending' %}
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                        </svg>
+                        {% else %}
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                        </svg>
+                        {% endif %}
+                        <span class="font-semibold">
+                            {% if purchase.payment_status == 'completed' %}{% trans "Payment Completed" %}
+                            {% elif purchase.payment_status == 'pending' %}{% trans "Payment Pending" %}
+                            {% elif purchase.payment_status == 'processing' %}{% trans "Processing" %}
+                            {% elif purchase.payment_status == 'failed' %}{% trans "Payment Failed" %}
+                            {% elif purchase.payment_status == 'refunded' %}{% trans "Refunded" %}
+                            {% elif purchase.payment_status == 'cancelled' %}{% trans "Cancelled" %}
+                            {% else %}{{ purchase.payment_status|title }}{% endif %}
+                        </span>
+                    </div>
+                    {% if purchase.payment_status == 'pending' %}
+                    <a href="{% url 'payments:payment_gateway' purchase_id=purchase.id %}" class="bg-white text-yellow-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-yellow-50">
+                        {% trans "Complete Payment" %}
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="p-6">
+                <!-- Invoice Header -->
+                <div class="flex justify-between mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{% trans "Invoice" %}</h2>
+                        <p class="text-gray-500 dark:text-gray-400">{{ purchase.invoice_number }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Date" %}</p>
+                        <p class="font-medium text-gray-900 dark:text-white">{{ purchase.created_at|date:"F d, Y" }}</p>
+                    </div>
+                </div>
+
+                <!-- Plan Details -->
+                <div class="border-t border-b border-gray-200 dark:border-gray-700 py-6 mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Subscription Details" %}</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Plan" %}</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ purchase.plan.name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Billing Period" %}</p>
+                            <p class="font-medium text-gray-900 dark:text-white">
+                                {{ purchase.billing_period_months }} {% if purchase.billing_period_months == 1 %}{% trans "month" %}{% else %}{% trans "months" %}{% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Payment Method" %}</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ purchase.payment_method|title }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Currency" %}</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ purchase.currency }}</p>
+                        </div>
+                        {% if purchase.subscription_start_date %}
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Subscription Start" %}</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ purchase.subscription_start_date|date:"F d, Y" }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Subscription End" %}</p>
+                            <p class="font-medium text-gray-900 dark:text-white">{{ purchase.subscription_end_date|date:"F d, Y" }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Price Breakdown -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Price Breakdown" %}</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 dark:text-gray-400">
+                                {{ purchase.plan.name }} × {{ purchase.billing_period_months }} {% trans "months" %}
+                            </span>
+                            <span class="text-gray-900 dark:text-white">${{ purchase.base_amount|floatformat:2 }}</span>
+                        </div>
+                        {% if purchase.discount_amount > 0 %}
+                        <div class="flex justify-between text-green-600 dark:text-green-400">
+                            <span>{% trans "Discount" %} ({{ purchase.discount_percentage }}%)</span>
+                            <span>-${{ purchase.discount_amount|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        <hr class="border-gray-200 dark:border-gray-700">
+                        <div class="flex justify-between text-lg font-bold">
+                            <span class="text-gray-900 dark:text-white">{% trans "Total" %}</span>
+                            <span class="text-gray-900 dark:text-white">${{ purchase.final_amount|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if purchase.gateway_transaction_id %}
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Transaction Details" %}</h3>
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-gray-500 dark:text-gray-400">{% trans "Transaction ID" %}</p>
+                                <p class="font-mono text-gray-900 dark:text-white">{{ purchase.gateway_transaction_id }}</p>
+                            </div>
+                            {% if purchase.paid_at %}
+                            <div>
+                                <p class="text-gray-500 dark:text-gray-400">{% trans "Paid At" %}</p>
+                                <p class="text-gray-900 dark:text-white">{{ purchase.paid_at|date:"F d, Y H:i" }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Transaction History -->
+                {% if transactions %}
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Payment Transactions" %}</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{% trans "Type" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{% trans "Amount" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{% trans "Status" %}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{% trans "Date" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                {% for tx in transactions %}
+                                <tr>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                        {% if tx.transaction_type == 'payment' %}
+                                        <span class="inline-flex items-center">
+                                            <svg class="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/>
+                                            </svg>
+                                            {% trans "Payment" %}
+                                        </span>
+                                        {% elif tx.transaction_type == 'refund' %}
+                                        <span class="inline-flex items-center">
+                                            <svg class="w-4 h-4 mr-1 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                                            </svg>
+                                            {% trans "Refund" %}
+                                        </span>
+                                        {% else %}
+                                        {{ tx.transaction_type|title }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                        ${{ tx.amount|floatformat:2 }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        {% if tx.status == 'completed' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                            {% trans "Completed" %}
+                                        </span>
+                                        {% elif tx.status == 'pending' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                            {% trans "Pending" %}
+                                        </span>
+                                        {% elif tx.status == 'failed' %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                            {% trans "Failed" %}
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                            {{ tx.status }}
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {{ tx.initiated_at|date:"M d, Y H:i" }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

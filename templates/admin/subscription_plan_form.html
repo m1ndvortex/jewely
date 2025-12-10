@@ -4,12 +4,12 @@
 {% block title %}{{ form_title }}{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8 max-w-4xl">
+<div class="container mx-auto px-4 py-8 max-w-5xl">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ form_title }}</h1>
-            <p class="text-gray-600 dark:text-gray-400 mt-1">{% trans "Configure subscription plan details and limits" %}</p>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">{% trans "Configure subscription plan details, limits, and features" %}</p>
         </div>
         <a href="{% url 'core:admin_subscription_plan_list' %}" 
            class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg">
@@ -17,30 +17,38 @@
         </a>
     </div>
 
+    <!-- Info Alert -->
+    <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+        <div class="flex">
+            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <p class="ml-3 text-sm text-blue-700 dark:text-blue-300">
+                {% trans "Use -1 for unlimited resources. Leave Toman price at 0 to disable display in Persian." %}
+            </p>
+        </div>
+    </div>
+
     <!-- Form -->
-    <form method="post" class="space-y-6">
+    <form method="post" class="space-y-6" x-data="{ isFree: {% if form.is_free.value %}true{% else %}false{% endif %} }">
         {% csrf_token %}
 
         <!-- Basic Information -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Basic Information" %}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {% trans "Basic Information" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="md:col-span-2">
                     <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "Plan Name" %} *
+                        {% trans "Plan Name" %} <span class="text-red-500">*</span>
                     </label>
                     {{ form.name }}
                     {% if form.name.errors %}
                     <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                <div class="md:col-span-2">
-                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "Description" %}
-                    </label>
-                    {{ form.description }}
-                    {% if form.description.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.description.errors.0 }}</p>
                     {% endif %}
                 </div>
                 <div>
@@ -48,166 +56,421 @@
                         {% trans "Display Order" %}
                     </label>
                     {{ form.display_order }}
-                    {% if form.display_order.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.display_order.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Lower numbers appear first</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Lower numbers appear first" %}</p>
+                </div>
+                <div class="md:col-span-3">
+                    <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Description" %}
+                    </label>
+                    {{ form.description }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="flex items-center space-x-3 cursor-pointer p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        {{ form.is_free }}
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "Free Plan" %}</span>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Mark this as a free plan (no payment required)" %}</p>
+                        </div>
+                    </label>
+                </div>
+                <div>
+                    <label for="{{ form.trial_days.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Trial Days" %}
+                    </label>
+                    {{ form.trial_days }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Days for free trial" %}</p>
                 </div>
             </div>
         </div>
 
-        <!-- Pricing -->
+        <!-- Pricing (Multi-Currency) -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Pricing</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {% trans "Pricing" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label for="{{ form.price.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Price (USD) *
+                        {% trans "Price (USD)" %} <span class="text-red-500">*</span>
                     </label>
-                    {{ form.price }}
-                    {% if form.price.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.price.errors.0 }}</p>
-                    {% endif %}
+                    <div class="relative">
+                        <span class="absolute left-3 top-2.5 text-gray-500">$</span>
+                        <input type="number" name="price" id="{{ form.price.id_for_label }}" 
+                               value="{{ form.price.value|default:0 }}"
+                               class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                               step="0.01" min="0">
+                    </div>
+                </div>
+                <div>
+                    <label for="{{ form.price_irr.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Price (Toman)" %}
+                    </label>
+                    <div class="relative">
+                        {{ form.price_irr }}
+                        <span class="absolute right-3 top-2.5 text-gray-500 text-sm">تومان</span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Use 0 to hide Toman price" %}</p>
                 </div>
                 <div>
                     <label for="{{ form.billing_cycle.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Billing Cycle *
+                        {% trans "Billing Cycle" %} <span class="text-red-500">*</span>
                     </label>
                     {{ form.billing_cycle }}
-                    {% if form.billing_cycle.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.billing_cycle.errors.0 }}</p>
-                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Resource Limits -->
+        <!-- Core Business Limits -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Resource Limits" %}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+                {% trans "Core Business Limits" %}
+                <span class="ml-2 text-xs text-gray-500 font-normal">{% trans "(Use -1 for unlimited)" %}</span>
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label for="{{ form.user_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "User Limit" %} *
-                    </label>
+                    <label for="{{ form.user_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Users" %}</label>
                     {{ form.user_limit }}
-                    {% if form.user_limit.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.user_limit.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Maximum number of users" %}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max team members" %}</p>
                 </div>
                 <div>
-                    <label for="{{ form.branch_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "Branch Limit" %} *
-                    </label>
+                    <label for="{{ form.branch_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Branches" %}</label>
                     {{ form.branch_limit }}
-                    {% if form.branch_limit.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.branch_limit.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Maximum number of branches" %}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max shop locations" %}</p>
                 </div>
                 <div>
-                    <label for="{{ form.inventory_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "Inventory Limit" %} *
-                    </label>
+                    <label for="{{ form.inventory_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Inventory Items" %}</label>
                     {{ form.inventory_limit }}
-                    {% if form.inventory_limit.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.inventory_limit.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Maximum inventory items" %}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max inventory items" %}</p>
                 </div>
                 <div>
-                    <label for="{{ form.storage_limit_gb.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "Storage Limit (GB)" %} *
-                    </label>
-                    {{ form.storage_limit_gb }}
-                    {% if form.storage_limit_gb.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.storage_limit_gb.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Storage space for media files" %}</p>
+                    <label for="{{ form.contacts_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Contacts/Customers" %}</label>
+                    {{ form.contacts_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max contacts" %}</p>
                 </div>
-                <div class="md:col-span-2">
-                    <label for="{{ form.api_calls_per_month.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {% trans "API Calls per Month" %} *
-                    </label>
-                    {{ form.api_calls_per_month }}
-                    {% if form.api_calls_per_month.errors %}
-                    <p class="mt-1 text-sm text-red-600">{{ form.api_calls_per_month.errors.0 }}</p>
-                    {% endif %}
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Maximum API calls allowed per month" %}</p>
+                <div>
+                    <label for="{{ form.products_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Products" %}</label>
+                    {{ form.products_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max products" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.suppliers_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Suppliers" %}</label>
+                    {{ form.suppliers_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max suppliers" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.categories_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Categories" %}</label>
+                    {{ form.categories_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max product categories" %}</p>
                 </div>
             </div>
         </div>
 
-        <!-- Feature Flags -->
+        <!-- Sales & POS Limits -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">{% trans "Features" %}</h2>
-            <div class="space-y-4">
-                <div class="flex items-start">
-                    <div class="flex items-center h-5">
-                        {{ form.enable_multi_branch }}
-                    </div>
-                    <div class="ml-3">
-                        <label for="{{ form.enable_multi_branch.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
-                            {% trans "Multi-Branch Management" %}
-                        </label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Enable management of multiple shop locations" %}</p>
-                    </div>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                {% trans "Sales & POS Limits" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="{{ form.pos_terminals_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "POS Terminals" %}</label>
+                    {{ form.pos_terminals_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max POS stations" %}</p>
                 </div>
-                <div class="flex items-start">
-                    <div class="flex items-center h-5">
-                        {{ form.enable_advanced_reporting }}
-                    </div>
-                    <div class="ml-3">
-                        <label for="{{ form.enable_advanced_reporting.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
-                            {% trans "Advanced Reporting" %}
-                        </label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Enable advanced analytics and custom reports" %}</p>
-                    </div>
+                <div>
+                    <label for="{{ form.sales_per_month_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Sales/Month" %}</label>
+                    {{ form.sales_per_month_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly sales limit" %}</p>
                 </div>
-                <div class="flex items-start">
-                    <div class="flex items-center h-5">
-                        {{ form.enable_api_access }}
-                    </div>
-                    <div class="ml-3">
-                        <label for="{{ form.enable_api_access.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
-                            {% trans "API Access" %}
-                        </label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Enable REST API for integrations" %}</p>
-                    </div>
+                <div>
+                    <label for="{{ form.gift_cards_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Gift Cards" %}</label>
+                    {{ form.gift_cards_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max active gift cards" %}</p>
                 </div>
-                <div class="flex items-start">
-                    <div class="flex items-center h-5">
-                        {{ form.enable_custom_branding }}
-                    </div>
-                    <div class="ml-3">
-                        <label for="{{ form.enable_custom_branding.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
-                            {% trans "Custom Branding" %}
-                        </label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Enable custom logos, colors, and white-labeling" %}</p>
-                    </div>
+            </div>
+        </div>
+
+        <!-- Operations Limits (Monthly) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                </svg>
+                {% trans "Monthly Operations Limits" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="{{ form.invoices_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Invoices/Month" %}</label>
+                    {{ form.invoices_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly invoice limit" %}</p>
                 </div>
-                <div class="flex items-start">
-                    <div class="flex items-center h-5">
-                        {{ form.enable_priority_support }}
-                    </div>
+                <div>
+                    <label for="{{ form.transactions_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Transactions/Month" %}</label>
+                    {{ form.transactions_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly transaction limit" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.custom_orders_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Custom Orders/Month" %}</label>
+                    {{ form.custom_orders_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Goldsmith/workshop orders" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.repair_orders_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Repair Orders/Month" %}</label>
+                    {{ form.repair_orders_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly repair tickets" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.purchase_orders_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Purchase Orders/Month" %}</label>
+                    {{ form.purchase_orders_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly PO limit" %}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Marketing & Communication Limits -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+                {% trans "Marketing & Communication Limits" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="{{ form.email_campaigns_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Email Campaigns/Month" %}</label>
+                    {{ form.email_campaigns_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly campaigns" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.sms_campaigns_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "SMS Campaigns/Month" %}</label>
+                    {{ form.sms_campaigns_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly SMS campaigns" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.emails_per_month_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Emails/Month" %}</label>
+                    {{ form.emails_per_month_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Individual emails" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.sms_per_month_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "SMS/Month" %}</label>
+                    {{ form.sms_per_month_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Individual SMS" %}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Feature Limits -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                {% trans "Advanced Feature Limits" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="{{ form.api_calls_per_month.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "API Calls/Month" %}</label>
+                    {{ form.api_calls_per_month }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Monthly API limit" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.reports_per_month_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Reports/Month" %}</label>
+                    {{ form.reports_per_month_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Custom reports" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.pricing_rules_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Pricing Rules" %}</label>
+                    {{ form.pricing_rules_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max pricing rules" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.journal_entries_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Journal Entries/Month" %}</label>
+                    {{ form.journal_entries_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Accounting entries" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.loyalty_tiers_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Loyalty Tiers" %}</label>
+                    {{ form.loyalty_tiers_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max loyalty tiers" %}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Limits -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                </svg>
+                {% trans "System Limits" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="{{ form.storage_limit_gb.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Storage (GB)" %}</label>
+                    {{ form.storage_limit_gb }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "File storage space" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.backup_retention_days.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Backup Retention (Days)" %}</label>
+                    {{ form.backup_retention_days }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Days to keep backups" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.concurrent_sessions_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Concurrent Sessions" %}</label>
+                    {{ form.concurrent_sessions_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max logged-in users" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.documents_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Documents" %}</label>
+                    {{ form.documents_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max attachments" %}</p>
+                </div>
+                <div>
+                    <label for="{{ form.webhooks_limit.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{% trans "Webhooks" %}</label>
+                    {{ form.webhooks_limit }}
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{% trans "Max webhooks" %}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                </svg>
+                {% trans "Feature Flags" %}
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Multi-Branch -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_multi_branch }}
                     <div class="ml-3">
-                        <label for="{{ form.enable_priority_support.id_for_label }}" class="font-medium text-gray-700 dark:text-gray-300">
-                            {% trans "Priority Support" %}
-                        </label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Enable priority customer support" %}</p>
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "Multi-Branch Management" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Manage multiple shop locations" %}</p>
                     </div>
+                </label>
+
+                <!-- Advanced Reporting -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_advanced_reporting }}
+                    <div class="ml-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "Advanced Reporting" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Custom analytics and reports" %}</p>
+                    </div>
+                </label>
+
+                <!-- API Access -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_api_access }}
+                    <div class="ml-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "API Access" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "REST API for integrations" %}</p>
+                    </div>
+                </label>
+
+                <!-- Custom Branding -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_custom_branding }}
+                    <div class="ml-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "Custom Branding" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "White-label with custom logos" %}</p>
+                    </div>
+                </label>
+
+                <!-- Priority Support -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_priority_support }}
+                    <div class="ml-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "Priority Support" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Faster response times" %}</p>
+                    </div>
+                </label>
+
+                <!-- Export/Import -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_export_import }}
+                    <div class="ml-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "Data Export/Import" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Export and import data" %}</p>
+                    </div>
+                </label>
+
+                <!-- Email Notifications -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_email_notifications }}
+                    <div class="ml-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "Email Notifications" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "Email alerts and reminders" %}</p>
+                    </div>
+                </label>
+
+                <!-- SMS Notifications -->
+                <label class="flex items-start p-4 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                    {{ form.enable_sms_notifications }}
+                    <div class="ml-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">{% trans "SMS Notifications" %}</span>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{% trans "SMS alerts to customers" %}</p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Custom Configuration (JSON) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" x-data="{ showAdvanced: false }">
+            <button type="button" @click="showAdvanced = !showAdvanced" 
+                    class="flex items-center justify-between w-full text-left">
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    {% trans "Advanced Configuration" %}
+                </h2>
+                <svg :class="{'rotate-180': showAdvanced}" class="w-5 h-5 text-gray-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            
+            <div x-show="showAdvanced" x-transition class="mt-4 space-y-4">
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "Add custom limits and features using JSON format. These can be used for special configurations." %}
+                </p>
+                <div>
+                    <label for="{{ form.custom_limits.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Custom Limits (JSON)" %}
+                    </label>
+                    {{ form.custom_limits }}
+                </div>
+                <div>
+                    <label for="{{ form.custom_features.id_for_label }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {% trans "Custom Features (JSON)" %}
+                    </label>
+                    {{ form.custom_features }}
                 </div>
             </div>
         </div>
 
         <!-- Form Actions -->
-        <div class="flex justify-end gap-3">
+        <div class="flex justify-end gap-3 sticky bottom-4 bg-gray-100 dark:bg-gray-900 p-4 rounded-lg shadow-lg">
             <a href="{% url 'core:admin_subscription_plan_list' %}" 
-               class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg font-medium">
-                Cancel
+               class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2.5 rounded-lg font-medium transition">
+                {% trans "Cancel" %}
             </a>
             <button type="submit" 
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-medium transition flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
                 {{ submit_text }}
             </button>
         </div>
@@ -247,7 +510,7 @@
     }
     
     textarea {
-        min-height: 100px;
+        min-height: 80px;
         resize: vertical;
     }
     
@@ -256,6 +519,15 @@
         height: 1.25rem;
         border-radius: 0.25rem;
         border: 1px solid #d1d5db;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    
+    /* JSON textarea styling */
+    textarea[name="custom_limits"],
+    textarea[name="custom_features"] {
+        font-family: monospace;
+        font-size: 0.875rem;
     }
 </style>
 {% endblock %}

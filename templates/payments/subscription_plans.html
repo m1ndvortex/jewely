@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% load i18n formatting_filters %}
+
+{% block title %}{% trans "Subscription Plans" %} - {% trans "Jewelry Shop" %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <!-- Header -->
+    <div class="bg-white dark:bg-gray-800 shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{% trans "Subscription Plans" %}</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {% trans "Choose the perfect plan for your jewelry shop" %}
+                    </p>
+                </div>
+                <a href="{% url 'payments:subscription_dashboard' %}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800">
+                    &larr; {% trans "Back to Dashboard" %}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Billing Period Selector -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-4 mb-8">
+            <div class="flex items-center justify-center">
+                <span class="text-sm text-gray-600 dark:text-gray-400 mr-4">{% trans "Billing Period:" %}</span>
+                <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1" x-data="{ period: 1 }">
+                    {% for bp in billing_periods %}
+                    <button 
+                        @click="period = {{ bp.months }}"
+                        :class="period === {{ bp.months }} ? 'bg-white dark:bg-gray-600 shadow' : ''"
+                        class="px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 text-gray-700 dark:text-gray-300">
+                        {{ bp.label }}
+                        {% if bp.months > 1 %}
+                        <span class="ml-1 text-xs text-green-600 dark:text-green-400">
+                            {% with discount=discounts|get_item:bp.months %}
+                            {% if discount %}-{{ discount.discount_percentage }}%{% endif %}
+                            {% endwith %}
+                        </span>
+                        {% endif %}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Discount Banner -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg p-4 mb-8 text-center">
+            <p class="text-lg font-semibold">
+                💰 {% trans "Save up to 20% with annual billing!" %}
+            </p>
+            <p class="text-sm mt-1 opacity-90">
+                {% trans "The longer you commit, the more you save. Annual plans include 20% discount." %}
+            </p>
+        </div>
+
+        <!-- Plans Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {% for plan_data in plans %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden {% if plan_data.is_current %}ring-2 ring-blue-500{% endif %}">
+                {% if plan_data.is_current %}
+                <div class="bg-blue-500 text-white text-center py-2 text-sm font-medium">
+                    {% trans "Current Plan" %}
+                </div>
+                {% endif %}
+                
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ plan_data.plan.name }}</h3>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        {{ plan_data.plan.description|default:plan_data.plan.name }}
+                    </p>
+                    
+                    <!-- Monthly Price -->
+                    <div class="mt-4" x-data="{ period: 1 }">
+                        <div class="flex items-baseline">
+                            <span class="text-3xl font-bold text-gray-900 dark:text-white">
+                                ${{ plan_data.plan.price|floatformat:2 }}
+                            </span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">/{% trans "month" %}</span>
+                        </div>
+                        
+                        <!-- Discounted prices for longer periods -->
+                        <div class="mt-2 space-y-1 text-sm">
+                            {% for period, pricing in plan_data.pricing.items %}
+                            {% if period > 1 %}
+                            <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                                <span>{{ period }} {% trans "months" %}:</span>
+                                <span>
+                                    {% if pricing.discount_percentage > 0 %}
+                                    <span class="line-through text-gray-400">${{ pricing.base_price|floatformat:2 }}</span>
+                                    {% endif %}
+                                    <span class="font-semibold text-green-600 dark:text-green-400">${{ pricing.final_price|floatformat:2 }}</span>
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Features -->
+                    <ul class="mt-6 space-y-3">
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% if plan_data.plan.user_limit and plan_data.plan.user_limit > 0 %}
+                            {% blocktrans with count=plan_data.plan.user_limit %}{{ count }} users{% endblocktrans %}
+                            {% else %}
+                            {% trans "Unlimited users" %}
+                            {% endif %}
+                        </li>
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% if plan_data.plan.branch_limit and plan_data.plan.branch_limit > 0 %}
+                            {% blocktrans with count=plan_data.plan.branch_limit %}{{ count }} branches{% endblocktrans %}
+                            {% else %}
+                            {% trans "Unlimited branches" %}
+                            {% endif %}
+                        </li>
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% if plan_data.plan.products_limit and plan_data.plan.products_limit > 0 %}
+                            {% blocktrans with count=plan_data.plan.products_limit %}{{ count }} products{% endblocktrans %}
+                            {% else %}
+                            {% trans "Unlimited products" %}
+                            {% endif %}
+                        </li>
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% if plan_data.plan.contacts_limit and plan_data.plan.contacts_limit > 0 %}
+                            {% blocktrans with count=plan_data.plan.contacts_limit %}{{ count }} customers{% endblocktrans %}
+                            {% else %}
+                            {% trans "Unlimited customers" %}
+                            {% endif %}
+                        </li>
+                        {% if plan_data.plan.enable_api_access %}
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% trans "API Access" %}
+                        </li>
+                        {% endif %}
+                        {% if plan_data.plan.enable_advanced_reporting %}
+                        <li class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                            {% trans "Advanced Reports" %}
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    <!-- Action Button -->
+                    <div class="mt-6">
+                        {% if plan_data.is_current %}
+                        <button disabled class="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 cursor-not-allowed">
+                            {% trans "Current Plan" %}
+                        </button>
+                        {% elif current_plan_id %}
+                        <a href="{% url 'payments:purchase_subscription' %}?step=billing_period&plan={{ plan_data.plan.id }}" 
+                           class="w-full inline-block text-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                            {% if plan_data.plan.price > current_subscription.plan.price %}
+                            {% trans "Upgrade" %}
+                            {% else %}
+                            {% trans "Switch Plan" %}
+                            {% endif %}
+                        </a>
+                        {% else %}
+                        <a href="{% url 'payments:purchase_subscription' %}?step=billing_period&plan={{ plan_data.plan.id }}" 
+                           class="w-full inline-block text-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                            {% trans "Select Plan" %}
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                <h3 class="mt-2 text-lg font-medium text-gray-900 dark:text-white">{% trans "No Plans Available" %}</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {% trans "No subscription plans are currently available. Please contact support." %}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="mt-12 bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">{% trans "Frequently Asked Questions" %}</h3>
+            <div class="space-y-4" x-data="{ open: null }">
+                <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <button @click="open = open === 1 ? null : 1" class="flex justify-between w-full text-left">
+                        <span class="font-medium text-gray-900 dark:text-white">{% trans "Can I upgrade my plan at any time?" %}</span>
+                        <svg :class="open === 1 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="open === 1" x-transition class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        {% trans "Yes! You can upgrade your plan at any time. The remaining credit from your current plan will be prorated and applied to your new plan." %}
+                    </div>
+                </div>
+                <div class="border-b border-gray-200 dark:border-gray-700 pb-4">
+                    <button @click="open = open === 2 ? null : 2" class="flex justify-between w-full text-left">
+                        <span class="font-medium text-gray-900 dark:text-white">{% trans "What payment methods do you accept?" %}</span>
+                        <svg :class="open === 2 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="open === 2" x-transition class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        {% trans "We accept major credit cards, PayPal, Iranian bank gateways (Saman, Mellat, Pasargad), and cryptocurrency payments (Bitcoin, Ethereum, USDT)." %}
+                    </div>
+                </div>
+                <div class="pb-4">
+                    <button @click="open = open === 3 ? null : 3" class="flex justify-between w-full text-left">
+                        <span class="font-medium text-gray-900 dark:text-white">{% trans "What happens when I reach my plan limits?" %}</span>
+                        <svg :class="open === 3 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="open === 3" x-transition class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        {% trans "You'll receive notifications when approaching limits. Once you reach a limit, you'll need to upgrade to continue using that feature. Your existing data remains safe." %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

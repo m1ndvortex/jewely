@@ -478,8 +478,12 @@ msgid "Post Journal Entry"
 msgstr "ورودی مجله پست"
 
 #: apps/accounting/templates/accounting/journal_entries/detail.html:253
-msgid "Are you sure you want to post this journal entry? Once posted, the entry becomes immutable and will affect account balances."
-msgstr "Are you sure you want to post this journal entry? پس از ارسال، ورودی تغییرناپذیر می شود و بر موجودی حساب تأثیر می گذارد."
+msgid ""
+"Are you sure you want to post this journal entry? Once posted, the entry "
+"becomes immutable and will affect account balances."
+msgstr ""
+"Are you sure you want to post this journal entry? پس از ارسال، ورودی "
+"تغییرناپذیر می شود و بر موجودی حساب تأثیر می گذارد."
 
 #: apps/accounting/templates/accounting/journal_entries/detail.html:261
 msgid "Yes, Post Entry"
@@ -525,8 +529,9 @@ msgstr "خطای اعتبارسنجی"
 #: templates/notifications/customer_segments.html:42
 #: templates/pricing/override_list.html:71
 #: templates/procurement/goods_receipt_list.html:87
-#: templates/reporting/report_list.html:88 templates/sales/sale_detail.html:225
-#: templates/sales/sale_detail.html:242 templates/sales/sale_list.html:227
+#: templates/reporting/report_list.html:88
+#: templates/sales/sale_detail.html:225 templates/sales/sale_detail.html:242
+#: templates/sales/sale_list.html:227
 msgid "Actions"
 msgstr "اقدامات"
 
@@ -586,7 +591,8 @@ msgstr "تاریخ پایان"
 #: templates/accounting/invoices/list.html:151
 #: templates/accounting/journal_entries/list.html:73
 #: templates/accounting/suppliers/list.html:65
-#: templates/admin/tenant_list.html:114 templates/pricing/override_list.html:26
+#: templates/admin/tenant_list.html:114
+#: templates/pricing/override_list.html:26
 #: templates/procurement/goods_receipt_list.html:29
 #: templates/sales/sale_list.html:56
 msgid "All Statuses"
@@ -679,7 +685,8 @@ msgid "Trigger Backup"
 msgstr "راه اندازی پشتیبان گیری"
 
 #: apps/backups/templates/backups/dashboard.html:248
-#: templates/admin/dashboard.html:271 templates/admin/dashboard_modern.html:624
+#: templates/admin/dashboard.html:271
+#: templates/admin/dashboard_modern.html:624
 #: templates/backups/dashboard.html:225
 msgid "System Health"
 msgstr "سلامت سیستم"
@@ -730,7 +737,8 @@ msgid "Active Alerts"
 msgstr "هشدارهای فعال"
 
 #: apps/backups/templates/backups/dashboard.html:321
-#: templates/admin/dashboard.html:223 templates/admin/dashboard_modern.html:586
+#: templates/admin/dashboard.html:223
+#: templates/admin/dashboard_modern.html:586
 #: templates/admin/dashboard_old_backup.html:253
 #: templates/backups/dashboard.html:298
 msgid "Requires attention"
@@ -743,7 +751,8 @@ msgstr "نظارت بر WAL"
 
 #: apps/backups/templates/backups/dashboard.html:339
 #: templates/backups/dashboard.html:329
-msgid "Real-time PostgreSQL Write-Ahead Log archiving monitoring and management"
+msgid ""
+"Real-time PostgreSQL Write-Ahead Log archiving monitoring and management"
 msgstr "نظارت و مدیریت بایگانی گزارش بلادرنگ PostgreSQL Write-Ahead"
 
 #: apps/backups/templates/backups/dashboard.html:342
@@ -758,8 +767,12 @@ msgstr "مدیر پشتیبان گیری"
 
 #: apps/backups/templates/backups/dashboard.html:356
 #: templates/backups/dashboard.html:346
-msgid "Browse, filter, and manage all database backups with advanced search capabilities"
-msgstr "با قابلیت های جستجوی پیشرفته، تمام نسخه های پشتیبان پایگاه داده را مرور، فیلتر و مدیریت کنید"
+msgid ""
+"Browse, filter, and manage all database backups with advanced search "
+"capabilities"
+msgstr ""
+"با قابلیت های جستجوی پیشرفته، تمام نسخه های پشتیبان پایگاه داده را مرور، "
+"فیلتر و مدیریت کنید"
 
 #: apps/backups/templates/backups/dashboard.html:359
 #: templates/backups/dashboard.html:349
@@ -773,8 +786,12 @@ msgstr "بازیابی جادوگر"
 
 #: apps/backups/templates/backups/dashboard.html:373
 #: templates/backups/dashboard.html:363
-msgid "Step-by-step guided restoration process with full, merge, and selective restore modes"
-msgstr "فرآیند بازیابی هدایت شده گام به گام با حالت های بازیابی کامل، ادغام و انتخابی"
+msgid ""
+"Step-by-step guided restoration process with full, merge, and selective "
+"restore modes"
+msgstr ""
+"فرآیند بازیابی هدایت شده گام به گام با حالت های بازیابی کامل، ادغام و "
+"انتخابی"
 
 #: apps/backups/templates/backups/dashboard.html:376
 #: templates/backups/dashboard.html:366
@@ -788,7 +805,9 @@ msgstr "بازیابی بلایا"
 
 #: apps/backups/templates/backups/dashboard.html:390
 #: templates/backups/dashboard.html:380
-msgid "Comprehensive DR runbook and automated failover procedures for critical incidents"
+msgid ""
+"Comprehensive DR runbook and automated failover procedures for critical "
+"incidents"
 msgstr "Runbook جامع DR و رویه های خودکار خطا برای حوادث بحرانی"
 
 #: apps/backups/templates/backups/dashboard.html:393
@@ -802,7 +821,8 @@ msgid "Recent Backups"
 msgstr "پشتیبان گیری های اخیر"
 
 #: apps/backups/templates/backups/dashboard.html:409
-#: templates/accounting/dashboard.html:259 templates/backups/dashboard.html:473
+#: templates/accounting/dashboard.html:259
+#: templates/backups/dashboard.html:473
 #: templates/procurement/supplier_detail.html:125
 #: templates/procurement/supplier_detail.html:177
 msgid "View All"
@@ -1001,8 +1021,12 @@ msgstr "هیچ بایگانی WAL یافت نشد"
 
 #: apps/core/brute_force_protection.py:109
 #: apps/core/brute_force_protection.py:129
-msgid "Too many failed login attempts. Your IP has been temporarily blocked. Please try again in {} minutes."
-msgstr "تعداد زیادی تلاش برای ورود ناموفق. IP شما به طور موقت مسدود شده است. لطفاً {} دقیقه دیگر دوباره امتحان کنید."
+msgid ""
+"Too many failed login attempts. Your IP has been temporarily blocked. Please"
+" try again in {} minutes."
+msgstr ""
+"تعداد زیادی تلاش برای ورود ناموفق. IP شما به طور موقت مسدود شده است. لطفاً "
+"{} دقیقه دیگر دوباره امتحان کنید."
 
 #: apps/core/templates/core/cached_dashboard_example.html:19
 #: apps/core/templates/core/cached_dashboard_example.html:23
@@ -1263,7 +1287,9 @@ msgstr "لطفاً از اعتبارنامه مدیریتی خود برای دس
 
 #: apps/core/views.py:114
 msgid "Too many login attempts. Please wait a moment and try again."
-msgstr "تلاش های زیادی برای ورود به سیستم لطفاً یک لحظه صبر کنید و دوباره امتحان کنید."
+msgstr ""
+"تلاش های زیادی برای ورود به سیستم لطفاً یک لحظه صبر کنید و دوباره امتحان "
+"کنید."
 
 #: apps/core/views.py:125
 msgid "Username and password are required."
@@ -1399,7 +1425,8 @@ msgstr "تعدیل تعداد سهام"
 msgid "Transfer"
 msgstr "انتقال"
 
-#: apps/inventory/forms.py:243 templates/accounting/bank_accounts/list.html:112
+#: apps/inventory/forms.py:243
+#: templates/accounting/bank_accounts/list.html:112
 msgid "Other"
 msgstr "دیگر"
 
@@ -1593,12 +1620,20 @@ msgid "Edit Category"
 msgstr "ویرایش دسته"
 
 #: apps/inventory/web_views.py:768
-msgid "Cannot delete category \"{}\". It has {} items. Please move or delete the items first."
-msgstr "نمی توان دسته \"{}\" را حذف کرد. دارای {} مورد است. لطفا ابتدا موارد را جابجا یا حذف کنید."
+msgid ""
+"Cannot delete category \"{}\". It has {} items. Please move or delete the "
+"items first."
+msgstr ""
+"نمی توان دسته \"{}\" را حذف کرد. دارای {} مورد است. لطفا ابتدا موارد را "
+"جابجا یا حذف کنید."
 
 #: apps/inventory/web_views.py:775
-msgid "Cannot delete category \"{}\". It has subcategories. Please delete subcategories first."
-msgstr "نمی توان دسته \"{}\" را حذف کرد. زیرمجموعه هایی دارد. لطفا ابتدا زیر مجموعه ها را حذف کنید."
+msgid ""
+"Cannot delete category \"{}\". It has subcategories. Please delete "
+"subcategories first."
+msgstr ""
+"نمی توان دسته \"{}\" را حذف کرد. زیرمجموعه هایی دارد. لطفا ابتدا زیر مجموعه "
+"ها را حذف کنید."
 
 #: apps/inventory/web_views.py:782
 msgid "Category \"{}\" deleted successfully."
@@ -1647,7 +1682,8 @@ msgstr "قالب‌های عمل"
 
 #: apps/notifications/admin.py:128 apps/notifications/admin.py:132
 msgid "Use Django template syntax. Available variables depend on context."
-msgstr "از سینتکس قالب جنگو استفاده کنید. متغیرهای در دسترس به زمینه بستگی دارد."
+msgstr ""
+"از سینتکس قالب جنگو استفاده کنید. متغیرهای در دسترس به زمینه بستگی دارد."
 
 #: apps/notifications/admin.py:179
 msgid "Email Details"
@@ -1717,8 +1753,12 @@ msgid "Length"
 msgstr "طول"
 
 #: apps/notifications/admin.py:544
-msgid "Use Django template syntax. Keep under 160 characters for single SMS. Available variables depend on context."
-msgstr "از نحو قالب جنگو استفاده کنید. کمتر از 160 کاراکتر برای پیامک تک نگه دارید. متغیرهای موجود به زمینه بستگی دارد."
+msgid ""
+"Use Django template syntax. Keep under 160 characters for single SMS. "
+"Available variables depend on context."
+msgstr ""
+"از نحو قالب جنگو استفاده کنید. کمتر از 160 کاراکتر برای پیامک تک نگه دارید. "
+"متغیرهای موجود به زمینه بستگی دارد."
 
 #: apps/notifications/admin.py:583
 msgid "User"
@@ -1811,7 +1851,9 @@ msgstr "آدرس برای هدایت هنگام کلیک بر روی اعلان"
 
 #: apps/notifications/models.py:64
 msgid "Text for action button (e.g., \"View Order\", \"Update Inventory\")"
-msgstr "دکمه متن برای اقدام (به عنوان مثال، \"مشاهده سفارش\"، \"به روز رسانی موجودی\")"
+msgstr ""
+"دکمه متن برای اقدام (به عنوان مثال، \"مشاهده سفارش\"، \"به روز رسانی "
+"موجودی\")"
 
 #: apps/notifications/models.py:67
 msgid "When this notification expires and should be hidden"
@@ -2791,7 +2833,8 @@ msgstr "نوع تعادل"
 
 #: templates/accounting/account_form.html:132
 msgid "Assets & Expenses: Debit | Liabilities, Equity & Revenue: Credit"
-msgstr "دارایی ها و هزینه ها: بدهی | بدهی ها، حقوق صاحبان سهام و درآمد: اعتبار"
+msgstr ""
+"دارایی ها و هزینه ها: بدهی | بدهی ها، حقوق صاحبان سهام و درآمد: اعتبار"
 
 #: templates/accounting/account_form.html:144
 msgid "Optional description of this account"
@@ -3132,8 +3175,13 @@ msgid "Recommended"
 msgstr "توصیه می شود"
 
 #: templates/accounting/bank_accounts/form.html:126
-msgid "Link this bank account to a General Ledger account from your Chart of Accounts. This connects your physical bank account to your accounting records."
-msgstr "این حساب بانکی را به یک حساب دفتر کل از نمودار حساب های خود پیوند دهید. این حساب بانکی فیزیکی شما را به سوابق حسابداری شما متصل می کند."
+msgid ""
+"Link this bank account to a General Ledger account from your Chart of "
+"Accounts. This connects your physical bank account to your accounting "
+"records."
+msgstr ""
+"این حساب بانکی را به یک حساب دفتر کل از نمودار حساب های خود پیوند دهید. این "
+"حساب بانکی فیزیکی شما را به سوابق حسابداری شما متصل می کند."
 
 #: templates/accounting/bank_accounts/form.html:130
 msgid "View Chart of Accounts"
@@ -3236,8 +3284,10 @@ msgid "Duplicate transactions are automatically detected and skipped"
 msgstr "تراکنش های تکراری به طور خودکار شناسایی و نادیده گرفته می شوند"
 
 #: templates/accounting/bank_accounts/import.html:82
-msgid "The system attempts to match transactions with existing journal entries"
-msgstr "این سیستم تلاش می‌کند تراکنش‌ها را با ورودی‌های ژورنال موجود مطابقت دهد"
+msgid ""
+"The system attempts to match transactions with existing journal entries"
+msgstr ""
+"این سیستم تلاش می‌کند تراکنش‌ها را با ورودی‌های ژورنال موجود مطابقت دهد"
 
 #: templates/accounting/bank_accounts/import.html:83
 msgid "Unmatched transactions can be manually reconciled later"
@@ -3696,8 +3746,10 @@ msgid "No Reconciliations Yet"
 msgstr "هنوز آشتی وجود ندارد"
 
 #: templates/accounting/bank_reconciliation/list.html:135
-msgid "Start your first bank reconciliation to track and match your transactions."
-msgstr "اولین تطبیق بانکی خود را برای ردیابی و مطابقت تراکنش های خود شروع کنید."
+msgid ""
+"Start your first bank reconciliation to track and match your transactions."
+msgstr ""
+"اولین تطبیق بانکی خود را برای ردیابی و مطابقت تراکنش های خود شروع کنید."
 
 #: templates/accounting/bank_reconciliation/list.html:140
 msgid "Start Reconciliation"
@@ -4443,12 +4495,15 @@ msgstr "هیچ تراکنشی برای دوره انتخابی یافت نشد."
 
 #: templates/accounting/customers/statement.html:258
 #: templates/accounting/suppliers/statement.html:309
-msgid "This is a computer-generated statement and does not require a signature."
+msgid ""
+"This is a computer-generated statement and does not require a signature."
 msgstr "این یک عبارت کامپیوتری است و نیازی به امضا ندارد."
 
 #: templates/accounting/customers/statement.html:260
 #: templates/accounting/suppliers/statement.html:311
-msgid "For questions about this statement, please contact your accounting department."
+msgid ""
+"For questions about this statement, please contact your accounting "
+"department."
 msgstr "برای سؤال در مورد این بیانیه، لطفاً با بخش حسابداری خود تماس بگیرید."
 
 #: templates/accounting/customers/statement.html:264
@@ -4487,8 +4542,14 @@ msgid "Accounting System Not Configured"
 msgstr "سیستم حسابداری پیکربندی نشده است"
 
 #: templates/accounting/dashboard.html:110
-msgid "Your accounting system needs to be initialized before you can access financial features. This one-time setup will create your chart of accounts and configure the double-entry accounting system."
-msgstr "سیستم حسابداری شما باید قبل از دسترسی به ویژگی‌های مالی راه‌اندازی شود. این راه‌اندازی یک‌بار انجام می‌شود و چارت حساب‌های شما را ایجاد و سیستم حسابداری دوطرفه را پیکربندی می‌کند."
+msgid ""
+"Your accounting system needs to be initialized before you can access "
+"financial features. This one-time setup will create your chart of accounts "
+"and configure the double-entry accounting system."
+msgstr ""
+"سیستم حسابداری شما باید قبل از دسترسی به ویژگی‌های مالی راه‌اندازی شود. این "
+"راه‌اندازی یک‌بار انجام می‌شود و چارت حساب‌های شما را ایجاد و سیستم حسابداری"
+" دوطرفه را پیکربندی می‌کند."
 
 #: templates/accounting/dashboard.html:117
 #: templates/accounting/dashboard.html:865
@@ -4544,7 +4605,9 @@ msgid "Financial Reports"
 msgstr "گزارش های مالی"
 
 #: templates/accounting/dashboard.html:282
-msgid "Balance Sheet, Income Statement, Cash Flow, Trial Balance with PDF/Excel export"
+msgid ""
+"Balance Sheet, Income Statement, Cash Flow, Trial Balance with PDF/Excel "
+"export"
 msgstr "ترازنامه، صورت درآمد، جریان نقدی، تراز آزمایشی با صادرات PDF/Excel"
 
 #: templates/accounting/dashboard.html:285
@@ -4557,8 +4620,12 @@ msgid "ACCOUNTS"
 msgstr "حساب ها"
 
 #: templates/accounting/dashboard.html:310
-msgid "Manage account structure, view balances, Assets, Liabilities, Equity, Revenue, Expenses"
-msgstr "مدیریت ساختار حساب، مشاهده مانده ها، دارایی ها، بدهی ها، حقوق صاحبان سهام، درآمد، هزینه ها"
+msgid ""
+"Manage account structure, view balances, Assets, Liabilities, Equity, "
+"Revenue, Expenses"
+msgstr ""
+"مدیریت ساختار حساب، مشاهده مانده ها، دارایی ها، بدهی ها، حقوق صاحبان سهام، "
+"درآمد، هزینه ها"
 
 #: templates/accounting/dashboard.html:313
 #: templates/accounting/dashboard.html:537
@@ -4582,8 +4649,11 @@ msgid "Journal Entries"
 msgstr "مدخل های مجله"
 
 #: templates/accounting/dashboard.html:338
-msgid "View and manage all journal entries, automatic double-entry bookkeeping transactions"
-msgstr "مشاهده و مدیریت تمام ورودی های مجله، تراکنش های حسابداری دو ورودی خودکار"
+msgid ""
+"View and manage all journal entries, automatic double-entry bookkeeping "
+"transactions"
+msgstr ""
+"مشاهده و مدیریت تمام ورودی های مجله، تراکنش های حسابداری دو ورودی خودکار"
 
 #: templates/accounting/dashboard.html:341
 msgid "View Entries"
@@ -4601,7 +4671,9 @@ msgid "General Ledger"
 msgstr "دفتر کل"
 
 #: templates/accounting/dashboard.html:366
-msgid "Complete transaction history, account movements, and audit trail for all entries"
+msgid ""
+"Complete transaction history, account movements, and audit trail for all "
+"entries"
 msgstr "تاریخچه تراکنش کامل، حرکات حساب، و دنباله حسابرسی برای همه ورودی ها"
 
 #: templates/accounting/dashboard.html:369
@@ -4617,8 +4689,12 @@ msgid "Bills & Payables"
 msgstr "قبوض و پرداختنی ها"
 
 #: templates/accounting/dashboard.html:394
-msgid "Manage supplier bills, track payments, aging reports, and outstanding payables"
-msgstr "صورت‌حساب‌های تامین‌کننده، پیگیری پرداخت‌ها، گزارش‌های قدیمی و بدهی‌های معوق را مدیریت کنید"
+msgid ""
+"Manage supplier bills, track payments, aging reports, and outstanding "
+"payables"
+msgstr ""
+"صورت‌حساب‌های تامین‌کننده، پیگیری پرداخت‌ها، گزارش‌های قدیمی و بدهی‌های معوق"
+" را مدیریت کنید"
 
 #: templates/accounting/dashboard.html:397
 msgid "Manage Bills"
@@ -4639,7 +4715,8 @@ msgstr "تامین کنندگان"
 
 #: templates/accounting/dashboard.html:422
 msgid "View supplier accounting details, statements, and payment history"
-msgstr "جزئیات حسابداری تامین کننده، بیانیه ها و تاریخچه پرداخت را مشاهده کنید"
+msgstr ""
+"جزئیات حسابداری تامین کننده، بیانیه ها و تاریخچه پرداخت را مشاهده کنید"
 
 #: templates/accounting/dashboard.html:425
 msgid "View Suppliers"
@@ -4654,8 +4731,11 @@ msgid "Invoices & Receivables"
 msgstr "فاکتورها و مطالبات"
 
 #: templates/accounting/dashboard.html:450
-msgid "Manage customer invoices, track payments, aging reports, and credit memos"
-msgstr "فاکتورهای مشتری را مدیریت کنید، پرداخت ها را پیگیری کنید، گزارش های قدیمی و یادداشت های اعتباری"
+msgid ""
+"Manage customer invoices, track payments, aging reports, and credit memos"
+msgstr ""
+"فاکتورهای مشتری را مدیریت کنید، پرداخت ها را پیگیری کنید، گزارش های قدیمی و "
+"یادداشت های اعتباری"
 
 #: templates/accounting/dashboard.html:453
 msgid "Manage Invoices"
@@ -4666,8 +4746,11 @@ msgid "CUSTOMERS"
 msgstr "مشتریان"
 
 #: templates/accounting/dashboard.html:478
-msgid "View customer accounting details, invoices, statements, and credit limits"
-msgstr "جزئیات حسابداری مشتری، فاکتورها، صورتحساب ها و محدودیت های اعتباری را مشاهده کنید"
+msgid ""
+"View customer accounting details, invoices, statements, and credit limits"
+msgstr ""
+"جزئیات حسابداری مشتری، فاکتورها، صورتحساب ها و محدودیت های اعتباری را مشاهده"
+" کنید"
 
 #: templates/accounting/dashboard.html:481
 msgid "View Customers"
@@ -4678,15 +4761,20 @@ msgid "RECEIVABLES"
 msgstr "مطالبات"
 
 #: templates/accounting/dashboard.html:506
-msgid "Track customer invoices, payments due, and manage outstanding receivables"
-msgstr "فاکتورهای مشتری، پرداخت های سررسید را پیگیری کنید و مطالبات معوق را مدیریت کنید"
+msgid ""
+"Track customer invoices, payments due, and manage outstanding receivables"
+msgstr ""
+"فاکتورهای مشتری، پرداخت های سررسید را پیگیری کنید و مطالبات معوق را مدیریت "
+"کنید"
 
 #: templates/accounting/dashboard.html:509
 msgid "Manage Receivables"
 msgstr "مدیریت مطالبات"
 
 #: templates/accounting/dashboard.html:534
-msgid "Manage bank accounts, track balances, reconciliation status, and transactions"
+msgid ""
+"Manage bank accounts, track balances, reconciliation status, and "
+"transactions"
 msgstr "مدیریت حساب های بانکی، ردیابی مانده ها، وضعیت آشتی و تراکنش ها"
 
 #: templates/accounting/dashboard.html:555
@@ -4694,8 +4782,11 @@ msgid "BANKING"
 msgstr "بانکداری"
 
 #: templates/accounting/dashboard.html:562
-msgid "Match bank statements with ledger entries, reconcile accounts automatically"
-msgstr "صورت‌حساب‌های بانکی را با ورودی‌های دفتر مطابقت دهید، حساب‌ها را به‌طور خودکار تطبیق دهید"
+msgid ""
+"Match bank statements with ledger entries, reconcile accounts automatically"
+msgstr ""
+"صورت‌حساب‌های بانکی را با ورودی‌های دفتر مطابقت دهید، حساب‌ها را به‌طور "
+"خودکار تطبیق دهید"
 
 #: templates/accounting/dashboard.html:565
 msgid "Reconcile Accounts"
@@ -4718,7 +4809,9 @@ msgid "Fixed Assets"
 msgstr "دارایی های ثابت"
 
 #: templates/accounting/dashboard.html:590
-msgid "Manage fixed assets register, track depreciation, asset disposal, and book values"
+msgid ""
+"Manage fixed assets register, track depreciation, asset disposal, and book "
+"values"
 msgstr "مدیریت ثبت دارایی های ثابت، پیگیری استهلاک، دفع دارایی و ارزش دفتری"
 
 #: templates/accounting/dashboard.html:593
@@ -4731,8 +4824,11 @@ msgid "Depreciation Schedule"
 msgstr "جدول استهلاک"
 
 #: templates/accounting/dashboard.html:618
-msgid "View projected depreciation for all assets, export to PDF/Excel for planning"
-msgstr "مشاهده استهلاک پیش بینی شده برای همه دارایی ها، صادرات به PDF/Excel برای برنامه ریزی"
+msgid ""
+"View projected depreciation for all assets, export to PDF/Excel for planning"
+msgstr ""
+"مشاهده استهلاک پیش بینی شده برای همه دارایی ها، صادرات به PDF/Excel برای "
+"برنامه ریزی"
 
 #: templates/accounting/dashboard.html:621
 msgid "View Schedule"
@@ -4743,7 +4839,8 @@ msgid "SETTINGS"
 msgstr "تنظیمات"
 
 #: templates/accounting/dashboard.html:647
-msgid "Manage fiscal year, accounting periods, currencies, and system preferences"
+msgid ""
+"Manage fiscal year, accounting periods, currencies, and system preferences"
 msgstr "مدیریت سال مالی، دوره های حسابداری، ارزها و ترجیحات سیستم"
 
 #: templates/accounting/dashboard.html:650
@@ -4767,8 +4864,13 @@ msgid "Active & Synchronized"
 msgstr "فعال و همگام شده"
 
 #: templates/accounting/dashboard.html:706
-msgid "All financial transactions are automatically recorded using double-entry bookkeeping. Data is synchronized in real-time from sales, purchases, and expenses."
-msgstr "همه تراکنش های مالی به صورت خودکار با استفاده از حسابداری دوبار ثبت می شوند. داده ها در زمان واقعی از فروش، خرید و هزینه ها هماهنگ می شوند."
+msgid ""
+"All financial transactions are automatically recorded using double-entry "
+"bookkeeping. Data is synchronized in real-time from sales, purchases, and "
+"expenses."
+msgstr ""
+"همه تراکنش های مالی به صورت خودکار با استفاده از حسابداری دوبار ثبت می شوند."
+" داده ها در زمان واقعی از فروش، خرید و هزینه ها هماهنگ می شوند."
 
 #: templates/accounting/dashboard.html:713
 msgid "Auto Journal Entries"
@@ -4806,12 +4908,21 @@ msgid "Need Help?"
 msgstr "به کمک نیاز دارید؟"
 
 #: templates/accounting/dashboard.html:802
-msgid "Check our documentation or contact support for assistance with accounting features."
-msgstr "اسناد ما را بررسی کنید یا برای کمک در مورد ویژگی های حسابداری با پشتیبانی تماس بگیرید."
+msgid ""
+"Check our documentation or contact support for assistance with accounting "
+"features."
+msgstr ""
+"اسناد ما را بررسی کنید یا برای کمک در مورد ویژگی های حسابداری با پشتیبانی "
+"تماس بگیرید."
 
 #: templates/accounting/dashboard.html:832
-msgid "This will initialize the accounting system for your shop. This includes creating the chart of accounts and configuring double-entry bookkeeping. Continue?"
-msgstr "با این کار سیستم حسابداری فروشگاه شما راه اندازی می شود. این شامل ایجاد نمودار حساب ها و پیکربندی حسابداری دوبار ورود است. ادامه دهید؟"
+msgid ""
+"This will initialize the accounting system for your shop. This includes "
+"creating the chart of accounts and configuring double-entry bookkeeping. "
+"Continue?"
+msgstr ""
+"با این کار سیستم حسابداری فروشگاه شما راه اندازی می شود. این شامل ایجاد "
+"نمودار حساب ها و پیکربندی حسابداری دوبار ورود است. ادامه دهید؟"
 
 #: templates/accounting/dashboard.html:836
 msgid "Initializing..."
@@ -5105,7 +5216,9 @@ msgstr "دفع این دارایی:"
 
 #: templates/accounting/fixed_assets/disposal_form.html:200
 msgid "Mark the asset as disposed and prevent further depreciation"
-msgstr "دارایی را به عنوان واگذار شده علامت گذاری کنید و از استهلاک بیشتر جلوگیری کنید"
+msgstr ""
+"دارایی را به عنوان واگذار شده علامت گذاری کنید و از استهلاک بیشتر جلوگیری "
+"کنید"
 
 #: templates/accounting/fixed_assets/disposal_form.html:201
 msgid "Create journal entries to remove the asset from the books"
@@ -5272,8 +5385,12 @@ msgid "No journal entries found for the selected period."
 msgstr "هیچ مدخل مجله ای برای دوره انتخابی یافت نشد."
 
 #: templates/accounting/journal_entries/confirm_post.html:43
-msgid "Are you sure you want to post this journal entry to the general ledger? This action cannot be undone."
-msgstr "آیا مطمئن هستید که می خواهید این مدخل مجله را در دفتر کل پست کنید؟ این عمل قابل بازگشت نیست."
+msgid ""
+"Are you sure you want to post this journal entry to the general ledger? This"
+" action cannot be undone."
+msgstr ""
+"آیا مطمئن هستید که می خواهید این مدخل مجله را در دفتر کل پست کنید؟ این عمل "
+"قابل بازگشت نیست."
 
 #: templates/accounting/journal_entries/confirm_post.html:50
 msgid "Entry Number:"
@@ -5289,8 +5406,12 @@ msgid "Description:"
 msgstr "توضیحات:"
 
 #: templates/accounting/journal_entries/confirm_post.html:78
-msgid "Once posted, this entry cannot be edited or deleted. You can only reverse it by creating a reversing entry."
-msgstr "پس از ارسال، این نوشته قابل ویرایش یا حذف نیست. فقط با ایجاد یک ورودی معکوس می توانید آن را معکوس کنید."
+msgid ""
+"Once posted, this entry cannot be edited or deleted. You can only reverse it"
+" by creating a reversing entry."
+msgstr ""
+"پس از ارسال، این نوشته قابل ویرایش یا حذف نیست. فقط با ایجاد یک ورودی معکوس "
+"می توانید آن را معکوس کنید."
 
 #: templates/accounting/journal_entries/confirm_post.html:91
 msgid "I have verified that all amounts are correct"
@@ -5508,7 +5629,8 @@ msgstr "بدون صورتحساب پرداخت نشده"
 
 #: templates/accounting/reports/aged_payables.html:237
 msgid "There are no unpaid bills to display in the aged payables report."
-msgstr "هیچ صورت حساب پرداخت نشده ای برای نمایش در گزارش بدهی های قدیمی وجود ندارد."
+msgstr ""
+"هیچ صورت حساب پرداخت نشده ای برای نمایش در گزارش بدهی های قدیمی وجود ندارد."
 
 #: templates/accounting/reports/aged_payables.html:259
 #: templates/accounting/reports/aged_receivables.html:259
@@ -5517,8 +5639,12 @@ msgid "About This Report"
 msgstr "درباره این گزارش"
 
 #: templates/accounting/reports/aged_payables.html:263
-msgid "This report shows amounts owed to suppliers grouped by how many days past due they are. Use this report to:"
-msgstr "این گزارش مبالغ بدهی به تامین کنندگان را بر اساس چند روز سررسید آنها گروه بندی می کند. از این گزارش برای موارد زیر استفاده کنید:"
+msgid ""
+"This report shows amounts owed to suppliers grouped by how many days past "
+"due they are. Use this report to:"
+msgstr ""
+"این گزارش مبالغ بدهی به تامین کنندگان را بر اساس چند روز سررسید آنها گروه "
+"بندی می کند. از این گزارش برای موارد زیر استفاده کنید:"
 
 #: templates/accounting/reports/aged_payables.html:266
 msgid "Identify overdue payments that need immediate attention"
@@ -5558,12 +5684,18 @@ msgid "No unpaid invoices"
 msgstr "بدون فاکتور پرداخت نشده"
 
 #: templates/accounting/reports/aged_receivables.html:237
-msgid "There are no unpaid invoices to display in the aged receivables report."
-msgstr "هیچ فاکتور پرداخت نشده ای برای نمایش در گزارش دریافتنی های قدیمی وجود ندارد."
+msgid ""
+"There are no unpaid invoices to display in the aged receivables report."
+msgstr ""
+"هیچ فاکتور پرداخت نشده ای برای نمایش در گزارش دریافتنی های قدیمی وجود ندارد."
 
 #: templates/accounting/reports/aged_receivables.html:263
-msgid "This report shows amounts owed by customers grouped by how many days past due they are. Use this report to:"
-msgstr "این گزارش مبالغ بدهی مشتریان را بر اساس چند روز سررسید آنها گروه بندی می کند. از این گزارش برای موارد زیر استفاده کنید:"
+msgid ""
+"This report shows amounts owed by customers grouped by how many days past "
+"due they are. Use this report to:"
+msgstr ""
+"این گزارش مبالغ بدهی مشتریان را بر اساس چند روز سررسید آنها گروه بندی می "
+"کند. از این گزارش برای موارد زیر استفاده کنید:"
 
 #: templates/accounting/reports/aged_receivables.html:266
 msgid "Identify overdue invoices that need immediate follow-up"
@@ -5661,12 +5793,21 @@ msgid "Total Withdrawals:"
 msgstr "کل برداشت ها:"
 
 #: templates/accounting/reports/bank_reconciliation.html:321
-msgid "This report shows the completed bank reconciliation, including all reconciled transactions and the final balance comparison between the bank statement and your accounting records."
-msgstr "این گزارش تطبیق بانکی تکمیل شده، شامل تمام تراکنش های تطبیق شده و مقایسه مانده نهایی بین صورت حساب بانکی و سوابق حسابداری شما را نشان می دهد."
+msgid ""
+"This report shows the completed bank reconciliation, including all "
+"reconciled transactions and the final balance comparison between the bank "
+"statement and your accounting records."
+msgstr ""
+"این گزارش تطبیق بانکی تکمیل شده، شامل تمام تراکنش های تطبیق شده و مقایسه "
+"مانده نهایی بین صورت حساب بانکی و سوابق حسابداری شما را نشان می دهد."
 
 #: templates/accounting/reports/bank_reconciliation.html:325
-msgid "Note: This reconciliation has a variance. Review the transactions and consider creating adjusting entries if needed."
-msgstr "توجه: این آشتی دارای یک واریانس است. تراکنش ها را مرور کنید و در صورت نیاز، ورودی های تنظیمی ایجاد کنید."
+msgid ""
+"Note: This reconciliation has a variance. Review the transactions and "
+"consider creating adjusting entries if needed."
+msgstr ""
+"توجه: این آشتی دارای یک واریانس است. تراکنش ها را مرور کنید و در صورت نیاز، "
+"ورودی های تنظیمی ایجاد کنید."
 
 #: templates/accounting/reports/depreciation_schedule.html:5
 #: templates/accounting/reports/depreciation_schedule.html:14
@@ -5847,8 +5988,12 @@ msgid "Restricted Access"
 msgstr "دسترسی محدود"
 
 #: templates/admin/admin_login.html:315 templates/admin/login.html:315
-msgid "This area is for platform administrators only. All login attempts are logged and monitored."
-msgstr "این منطقه فقط برای مدیران پلتفرم است. تمام تلاش‌های ورود به سیستم ثبت و نظارت می‌شوند."
+msgid ""
+"This area is for platform administrators only. All login attempts are logged"
+" and monitored."
+msgstr ""
+"این منطقه فقط برای مدیران پلتفرم است. تمام تلاش‌های ورود به سیستم ثبت و "
+"نظارت می‌شوند."
 
 #: templates/admin/admin_login.html:324 templates/admin/login.html:324
 msgid "Secure Login"
@@ -5886,49 +6031,59 @@ msgstr "محافظت شده توسط اقدامات امنیتی پیشرفته"
 msgid "Platform Dashboard"
 msgstr "داشبورد پلتفرم"
 
-#: templates/admin/dashboard.html:123 templates/admin/dashboard_modern.html:497
+#: templates/admin/dashboard.html:123
+#: templates/admin/dashboard_modern.html:497
 #: templates/admin/dashboard_old_backup.html:168
 msgid "Real-time platform monitoring and analytics"
 msgstr "نظارت و تجزیه و تحلیل پلت فرم بلادرنگ"
 
-#: templates/admin/dashboard.html:128 templates/admin/dashboard_modern.html:702
+#: templates/admin/dashboard.html:128
+#: templates/admin/dashboard_modern.html:702
 #: templates/admin/dashboard_old_backup.html:173
 msgid "Auto-updating"
 msgstr "به روز رسانی خودکار"
 
-#: templates/admin/dashboard.html:146 templates/admin/dashboard_modern.html:513
+#: templates/admin/dashboard.html:146
+#: templates/admin/dashboard_modern.html:513
 #: templates/admin/dashboard_old_backup.html:192
 msgid "Manage Tenants"
 msgstr "مدیریت مستأجران"
 
-#: templates/admin/dashboard.html:147 templates/admin/dashboard_modern.html:514
+#: templates/admin/dashboard.html:147
+#: templates/admin/dashboard_modern.html:514
 msgid "View and manage all tenant accounts"
 msgstr "مشاهده و مدیریت تمام حساب های مستاجر"
 
-#: templates/admin/dashboard.html:158 templates/admin/dashboard_modern.html:525
+#: templates/admin/dashboard.html:158
+#: templates/admin/dashboard_modern.html:525
 #: templates/admin/dashboard_old_backup.html:205
 msgid "Create Tenant"
 msgstr "ایجاد مستأجر"
 
-#: templates/admin/dashboard.html:159 templates/admin/dashboard_modern.html:526
+#: templates/admin/dashboard.html:159
+#: templates/admin/dashboard_modern.html:526
 msgid "Add a new tenant to the platform"
 msgstr "یک مستاجر جدید به پلتفرم اضافه کنید"
 
-#: templates/admin/dashboard.html:170 templates/admin/dashboard_modern.html:537
+#: templates/admin/dashboard.html:170
+#: templates/admin/dashboard_modern.html:537
 #: templates/admin/dashboard_old_backup.html:218 templates/base.html:162
 msgid "Audit Logs"
 msgstr "گزارش‌های حسابرسی"
 
-#: templates/admin/dashboard.html:171 templates/admin/dashboard_modern.html:538
+#: templates/admin/dashboard.html:171
+#: templates/admin/dashboard_modern.html:538
 msgid "View system audit trail and security events"
 msgstr "مشاهده مسیر حسابرسی سیستم و رویدادهای امنیتی"
 
-#: templates/admin/dashboard.html:179 templates/admin/dashboard_modern.html:547
+#: templates/admin/dashboard.html:179
+#: templates/admin/dashboard_modern.html:547
 #: templates/admin/dashboard_old_backup.html:228
 msgid "Tenant Metrics"
 msgstr "معیارهای مستأجر"
 
-#: templates/admin/dashboard.html:185 templates/admin/dashboard_modern.html:557
+#: templates/admin/dashboard.html:185
+#: templates/admin/dashboard_modern.html:557
 #: templates/admin/dashboard_old_backup.html:232
 #: templates/admin/tenant_list.html:36
 msgid "Total Tenants"
@@ -5938,7 +6093,8 @@ msgstr "مجموع مستأجران"
 msgid "in last 30 days"
 msgstr "در 30 روز گذشته"
 
-#: templates/admin/dashboard.html:203 templates/admin/dashboard_modern.html:570
+#: templates/admin/dashboard.html:203
+#: templates/admin/dashboard_modern.html:570
 #: templates/admin/dashboard_old_backup.html:241
 msgid "Active Tenants"
 msgstr "مستأجران فعال"
@@ -5948,44 +6104,52 @@ msgstr "مستأجران فعال"
 msgid "new today"
 msgstr "امروز جدید"
 
-#: templates/admin/dashboard.html:221 templates/admin/dashboard_modern.html:583
+#: templates/admin/dashboard.html:221
+#: templates/admin/dashboard_modern.html:583
 #: templates/admin/dashboard_old_backup.html:250
 #: templates/admin/tenant_list.html:68 templates/admin/tenant_list.html:198
 msgid "Suspended"
 msgstr "معلق شده"
 
-#: templates/admin/dashboard.html:237 templates/admin/dashboard_modern.html:596
+#: templates/admin/dashboard.html:237
+#: templates/admin/dashboard_modern.html:596
 #: templates/admin/dashboard_old_backup.html:259
 #: templates/admin/tenant_list.html:84 templates/admin/tenant_list.html:202
 msgid "Pending Deletion"
 msgstr "در انتظار حذف"
 
-#: templates/admin/dashboard.html:239 templates/admin/dashboard_modern.html:599
+#: templates/admin/dashboard.html:239
+#: templates/admin/dashboard_modern.html:599
 #: templates/admin/dashboard_old_backup.html:262
 msgid "Scheduled for removal"
 msgstr "برنامه‌ریزی شده برای حذف"
 
-#: templates/admin/dashboard.html:256 templates/admin/dashboard_modern.html:609
+#: templates/admin/dashboard.html:256
+#: templates/admin/dashboard_modern.html:609
 msgid "Tenant Signups"
 msgstr "ثبت نام مستاجر"
 
-#: templates/admin/dashboard.html:281 templates/admin/dashboard_modern.html:632
+#: templates/admin/dashboard.html:281
+#: templates/admin/dashboard_modern.html:632
 #: templates/monitoring/dashboard.html:150
 msgid "CPU Usage"
 msgstr "استفاده CPU"
 
-#: templates/admin/dashboard.html:292 templates/admin/dashboard_modern.html:642
+#: templates/admin/dashboard.html:292
+#: templates/admin/dashboard_modern.html:642
 #: templates/monitoring/dashboard.html:162
 #: templates/monitoring/dashboard.html:279
 msgid "Memory Usage"
 msgstr "استفاده از حافظه"
 
-#: templates/admin/dashboard.html:306 templates/admin/dashboard_modern.html:652
+#: templates/admin/dashboard.html:306
+#: templates/admin/dashboard_modern.html:652
 #: templates/monitoring/dashboard.html:174
 msgid "Disk Usage"
 msgstr "استفاده دیسک"
 
-#: templates/admin/dashboard.html:320 templates/admin/dashboard_modern.html:662
+#: templates/admin/dashboard.html:320
+#: templates/admin/dashboard_modern.html:662
 #: templates/monitoring/dashboard.html:206
 msgid "Database Connections"
 msgstr "اتصالات پایگاه داده"
@@ -5998,25 +6162,30 @@ msgstr "فعالیت اخیر"
 msgid "Loading recent activity..."
 msgstr "در حال بارگیری فعالیت اخیر..."
 
-#: templates/admin/dashboard.html:345 templates/admin/dashboard_modern.html:673
+#: templates/admin/dashboard.html:345
+#: templates/admin/dashboard_modern.html:673
 #: templates/admin/dashboard_old_backup.html:270
 #: templates/notifications/campaign_analytics.html:167
 msgid "Revenue Metrics"
 msgstr "معیارهای درآمد"
 
-#: templates/admin/dashboard.html:349 templates/admin/dashboard_modern.html:678
+#: templates/admin/dashboard.html:349
+#: templates/admin/dashboard_modern.html:678
 msgid "Monthly Recurring Revenue"
 msgstr "درآمد مکرر ماهانه"
 
-#: templates/admin/dashboard.html:362 templates/admin/dashboard_modern.html:688
+#: templates/admin/dashboard.html:362
+#: templates/admin/dashboard_modern.html:688
 msgid "Annual Recurring Revenue"
 msgstr "درآمد دوره ای سالانه"
 
-#: templates/admin/dashboard.html:374 templates/admin/dashboard_modern.html:693
+#: templates/admin/dashboard.html:374
+#: templates/admin/dashboard_modern.html:693
 msgid "Churn Rate"
 msgstr "نرخ ریزش"
 
-#: templates/admin/dashboard.html:427 templates/admin/dashboard_modern.html:747
+#: templates/admin/dashboard.html:427
+#: templates/admin/dashboard_modern.html:747
 msgid "New Signups"
 msgstr "ثبت نام های جدید"
 
@@ -6242,8 +6411,9 @@ msgid "Weekly Backup Monitoring"
 msgstr "نظارت هفتگی پشتیبان گیری"
 
 #: templates/base.html:13 templates/base.html:141
-#: templates/core/translation_example.html:6 templates/sales/sale_detail.html:4
-#: templates/sales/sale_edit.html:4 templates/sales/sale_list.html:4
+#: templates/core/translation_example.html:6
+#: templates/sales/sale_detail.html:4 templates/sales/sale_edit.html:4
+#: templates/sales/sale_list.html:4
 msgid "Jewelry Shop"
 msgstr "فروشگاه جواهرات"
 
@@ -6253,8 +6423,12 @@ msgid "Impersonating: %(username)s"
 msgstr "جعل هویت: %(username)s"
 
 #: templates/base.html:110
-msgid "You are viewing this account as a platform administrator. All actions are logged."
-msgstr "شما در حال مشاهده این حساب به عنوان یک سرپرست پلتفرم هستید. همه اقدامات ثبت شده است."
+msgid ""
+"You are viewing this account as a platform administrator. All actions are "
+"logged."
+msgstr ""
+"شما در حال مشاهده این حساب به عنوان یک سرپرست پلتفرم هستید. همه اقدامات ثبت "
+"شده است."
 
 #: templates/base.html:121
 msgid "Stop Impersonating"
@@ -6506,8 +6680,12 @@ msgid "Note"
 msgstr "توجه"
 
 #: templates/core/formatting_example.html:151
-msgid "The formatting automatically adapts based on your selected language. Switch to Persian to see Jalali calendar dates and Persian numerals."
-msgstr "قالب بندی به طور خودکار بر اساس زبان انتخابی شما سازگار می شود. برای دیدن تاریخ های تقویم جلالی و اعداد فارسی به فارسی بروید."
+msgid ""
+"The formatting automatically adapts based on your selected language. Switch "
+"to Persian to see Jalali calendar dates and Persian numerals."
+msgstr ""
+"قالب بندی به طور خودکار بر اساس زبان انتخابی شما سازگار می شود. برای دیدن "
+"تاریخ های تقویم جلالی و اعداد فارسی به فارسی بروید."
 
 #: templates/core/tenant_dashboard.html:4
 msgid "Dashboard - Jewelry Shop"
@@ -6594,8 +6772,8 @@ msgstr "فروش جدید"
 msgid "Add Product"
 msgstr "افزودن محصول"
 
-#: templates/core/tenant_dashboard.html:266 templates/crm/customer_list.html:18
-#: templates/crm/customer_list.html:220
+#: templates/core/tenant_dashboard.html:266
+#: templates/crm/customer_list.html:18 templates/crm/customer_list.html:220
 msgid "Add Customer"
 msgstr "افزودن مشتری"
 
@@ -6799,15 +6977,20 @@ msgstr "درخواست های خیلی زیاد"
 
 #: templates/errors/429.html:22
 msgid "You have made too many requests. Please wait a moment and try again."
-msgstr "شما درخواست های زیادی کرده اید. لطفاً یک لحظه صبر کنید و دوباره امتحان کنید."
+msgstr ""
+"شما درخواست های زیادی کرده اید. لطفاً یک لحظه صبر کنید و دوباره امتحان کنید."
 
 #: templates/errors/429.html:36
 msgid "Rate Limit Information"
 msgstr "اطلاعات محدودیت نرخ"
 
 #: templates/errors/429.html:40
-msgid "This is a security measure to protect against automated attacks. If you believe this is an error, please contact support."
-msgstr "این یک اقدام امنیتی برای محافظت در برابر حملات خودکار است. اگر فکر می کنید این یک خطا است، لطفا با پشتیبانی تماس بگیرید."
+msgid ""
+"This is a security measure to protect against automated attacks. If you "
+"believe this is an error, please contact support."
+msgstr ""
+"این یک اقدام امنیتی برای محافظت در برابر حملات خودکار است. اگر فکر می کنید "
+"این یک خطا است، لطفا با پشتیبانی تماس بگیرید."
 
 #: templates/errors/429.html:49 templates/errors/csrf_failure.html:51
 msgid "Go Back"
@@ -6826,8 +7009,12 @@ msgid "What happened?"
 msgstr "چه اتفاقی افتاد؟"
 
 #: templates/errors/csrf_failure.html:36
-msgid "Your request could not be processed because the security token was missing or invalid. This usually happens when:"
-msgstr "درخواست شما قابل پردازش نیست زیرا کد امنیتی موجود نیست یا نامعتبر است. این معمولا زمانی اتفاق می افتد که:"
+msgid ""
+"Your request could not be processed because the security token was missing "
+"or invalid. This usually happens when:"
+msgstr ""
+"درخواست شما قابل پردازش نیست زیرا کد امنیتی موجود نیست یا نامعتبر است. این "
+"معمولا زمانی اتفاق می افتد که:"
 
 #: templates/errors/csrf_failure.html:39
 msgid "Your session has expired"
@@ -6884,11 +7071,16 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: templates/inventory/category_delete.html:84
-msgid "This category has subcategories. Please delete or reassign the subcategories before deleting this category."
-msgstr "این دسته دارای زیرمجموعه هایی است. لطفاً قبل از حذف این دسته، زیرمجموعه ها را حذف یا دوباره اختصاص دهید."
+msgid ""
+"This category has subcategories. Please delete or reassign the subcategories"
+" before deleting this category."
+msgstr ""
+"این دسته دارای زیرمجموعه هایی است. لطفاً قبل از حذف این دسته، زیرمجموعه ها "
+"را حذف یا دوباره اختصاص دهید."
 
 #: templates/inventory/category_delete.html:105
-msgid "This action cannot be undone. The category will be permanently deleted."
+msgid ""
+"This action cannot be undone. The category will be permanently deleted."
 msgstr "این عمل قابل بازگشت نیست. دسته برای همیشه حذف خواهد شد."
 
 #: templates/inventory/category_detail.html:5
@@ -7061,7 +7253,8 @@ msgstr "ایجاد دسته"
 
 #: templates/inventory/category_list.html:45
 msgid "Manage your jewelry product categories with hierarchical organization"
-msgstr "دسته بندی محصولات جواهرات خود را با سازماندهی سلسله مراتبی مدیریت کنید"
+msgstr ""
+"دسته بندی محصولات جواهرات خود را با سازماندهی سلسله مراتبی مدیریت کنید"
 
 #: templates/inventory/category_list.html:54
 #: templates/inventory/reports.html:25
@@ -7194,8 +7387,11 @@ msgid "Select a category"
 msgstr "یک دسته را انتخاب کنید"
 
 #: templates/inventory/category_list_new.html:411
-msgid "Choose a category from the sidebar to view its details and subcategories."
-msgstr "یک دسته را از نوار کناری انتخاب کنید تا جزئیات و زیرمجموعه های آن را مشاهده کنید."
+msgid ""
+"Choose a category from the sidebar to view its details and subcategories."
+msgstr ""
+"یک دسته را از نوار کناری انتخاب کنید تا جزئیات و زیرمجموعه های آن را مشاهده "
+"کنید."
 
 #: templates/inventory/category_list_new.html:421
 msgid "Create First Category"
@@ -7276,8 +7472,11 @@ msgid "Inventory Management"
 msgstr "مدیریت موجودی"
 
 #: templates/inventory/inventory_list.html:39
-msgid "Manage your jewelry inventory, track stock levels, and generate reports"
-msgstr "موجودی جواهرات خود را مدیریت کنید، سطوح موجودی را پیگیری کنید و گزارش تولید کنید"
+msgid ""
+"Manage your jewelry inventory, track stock levels, and generate reports"
+msgstr ""
+"موجودی جواهرات خود را مدیریت کنید، سطوح موجودی را پیگیری کنید و گزارش تولید "
+"کنید"
 
 #: templates/inventory/inventory_list.html:48
 #: templates/procurement/goods_receipt_form.html:104
@@ -7571,8 +7770,12 @@ msgid "Template Variables"
 msgstr "متغیرهای قالب"
 
 #: templates/notifications/bulk_campaign.html:113
-msgid "Add custom variables to personalize your campaign. Use these in your templates as {{ variable_name }}."
-msgstr "متغیرهای سفارشی را برای شخصی سازی کمپین خود اضافه کنید. از اینها در الگوهای خود به عنوان {{ variable_name }} استفاده کنید."
+msgid ""
+"Add custom variables to personalize your campaign. Use these in your "
+"templates as {{ variable_name }}."
+msgstr ""
+"متغیرهای سفارشی را برای شخصی سازی کمپین خود اضافه کنید. از اینها در الگوهای "
+"خود به عنوان {{ variable_name }} استفاده کنید."
 
 #: templates/notifications/bulk_campaign.html:131
 msgid "Add Variable"
@@ -7610,8 +7813,11 @@ msgid "Ready to send campaign to selected segment."
 msgstr "آماده برای ارسال کمپین به بخش انتخاب شده."
 
 #: templates/notifications/bulk_campaign.html:237
-msgid "Are you sure you want to send this campaign? This action cannot be undone."
-msgstr "آیا مطمئن هستید که می خواهید این کمپین را ارسال کنید؟ این عمل قابل بازگشت نیست."
+msgid ""
+"Are you sure you want to send this campaign? This action cannot be undone."
+msgstr ""
+"آیا مطمئن هستید که می خواهید این کمپین را ارسال کنید؟ این عمل قابل بازگشت "
+"نیست."
 
 #: templates/notifications/campaign_analytics.html:13
 msgid "Track the performance of your email and SMS campaigns."
@@ -7882,8 +8088,12 @@ msgid "End Time"
 msgstr "زمان پایان"
 
 #: templates/notifications/preferences.html:194
-msgid "During quiet hours, you'll only receive critical notifications (errors and system alerts)"
-msgstr "در ساعات خلوت، فقط اعلان‌های مهم (خطاها و هشدارهای سیستم) را دریافت خواهید کرد."
+msgid ""
+"During quiet hours, you'll only receive critical notifications (errors and "
+"system alerts)"
+msgstr ""
+"در ساعات خلوت، فقط اعلان‌های مهم (خطاها و هشدارهای سیستم) را دریافت خواهید "
+"کرد."
 
 #: templates/notifications/preferences.html:206
 msgid "Save Preferences"
@@ -7950,8 +8160,11 @@ msgid "Preview Customers"
 msgstr "پیش‌نمایش مشتریان"
 
 #: templates/notifications/segment_form.html:151
-msgid "Click 'Preview Customers' to see who would be included in this segment."
-msgstr "روی 'پیش‌نمایش مشتریان' کلیک کنید تا ببینید چه کسانی در این بخش شامل می‌شوند."
+msgid ""
+"Click 'Preview Customers' to see who would be included in this segment."
+msgstr ""
+"روی 'پیش‌نمایش مشتریان' کلیک کنید تا ببینید چه کسانی در این بخش شامل "
+"می‌شوند."
 
 #: templates/pricing/calculate_price.html:4
 #: templates/pricing/calculate_price.html:10
@@ -8010,7 +8223,9 @@ msgstr "قوانین قیمت‌گذاری فعال"
 
 #: templates/pricing/calculate_price.html:138
 msgid "No active pricing rules found. Please configure pricing rules first."
-msgstr "قانون قیمت‌گذاری فعالی یافت نشد. لطفاً ابتدا قوانین قیمت‌گذاری را پیکربندی کنید."
+msgstr ""
+"قانون قیمت‌گذاری فعالی یافت نشد. لطفاً ابتدا قوانین قیمت‌گذاری را پیکربندی "
+"کنید."
 
 #: templates/pricing/dashboard.html:4 templates/pricing/dashboard.html:10
 msgid "Pricing Dashboard"
@@ -8061,8 +8276,12 @@ msgid "No pending override requests"
 msgstr "درخواست نادیده‌گیری در انتظار وجود ندارد"
 
 #: templates/pricing/dashboard.html:167
-msgid "This will recalculate prices for all inventory items based on current gold rates and pricing rules."
-msgstr "با این کار قیمت تمام اقلام موجودی بر اساس نرخ فعلی طلا و قوانین قیمت گذاری دوباره محاسبه می شود."
+msgid ""
+"This will recalculate prices for all inventory items based on current gold "
+"rates and pricing rules."
+msgstr ""
+"با این کار قیمت تمام اقلام موجودی بر اساس نرخ فعلی طلا و قوانین قیمت گذاری "
+"دوباره محاسبه می شود."
 
 #: templates/pricing/dashboard.html:176
 msgid "Retail"
@@ -8375,16 +8594,24 @@ msgid "Three-Way Matching Warning"
 msgstr "هشدار تطبیق سه‌طرفه"
 
 #: templates/procurement/goods_receipt_complete.html:39
-msgid "The quantities in this receipt do not match the purchase order. Please review the items before completing."
-msgstr "مقادیر موجود در این رسید با سفارش خرید مطابقت ندارد. لطفا قبل از تکمیل موارد را بررسی کنید."
+msgid ""
+"The quantities in this receipt do not match the purchase order. Please "
+"review the items before completing."
+msgstr ""
+"مقادیر موجود در این رسید با سفارش خرید مطابقت ندارد. لطفا قبل از تکمیل موارد"
+" را بررسی کنید."
 
 #: templates/procurement/goods_receipt_complete.html:46
 msgid "Discrepancy Warning"
 msgstr "هشدار عدم تطابق"
 
 #: templates/procurement/goods_receipt_complete.html:48
-msgid "This receipt has discrepancies. Completing it will still update inventory with accepted quantities only."
-msgstr "این رسید دارای مغایرت هایی است. تکمیل آن همچنان موجودی را فقط با مقادیر پذیرفته شده به روز می کند."
+msgid ""
+"This receipt has discrepancies. Completing it will still update inventory "
+"with accepted quantities only."
+msgstr ""
+"این رسید دارای مغایرت هایی است. تکمیل آن همچنان موجودی را فقط با مقادیر "
+"پذیرفته شده به روز می کند."
 
 #: templates/procurement/goods_receipt_complete.html:58
 msgid "Items to be Added to Inventory"
@@ -8446,8 +8673,12 @@ msgid "Complete Receipt & Update Inventory"
 msgstr "تکمیل رسید و به‌روزرسانی موجودی"
 
 #: templates/procurement/goods_receipt_complete.html:186
-msgid "This action cannot be undone. Make sure all information is correct before proceeding."
-msgstr "این عمل قابل بازگشت نیست. قبل از ادامه، مطمئن شوید که همه اطلاعات صحیح هستند."
+msgid ""
+"This action cannot be undone. Make sure all information is correct before "
+"proceeding."
+msgstr ""
+"این عمل قابل بازگشت نیست. قبل از ادامه، مطمئن شوید که همه اطلاعات صحیح "
+"هستند."
 
 #: templates/procurement/goods_receipt_detail.html:4
 #: templates/procurement/goods_receipt_detail.html:11
@@ -9059,8 +9290,12 @@ msgid "Failed Runs"
 msgstr "اجراهای ناموفق"
 
 #: templates/reporting/report_detail.html:291
-msgid "Are you sure you want to delete this report? All execution history and schedules will also be deleted. This action cannot be undone."
-msgstr "آیا مطمئن هستید که می خواهید این گزارش را حذف کنید؟ تمام تاریخچه اجرا و زمان‌بندی‌ها نیز حذف خواهند شد. این عمل قابل بازگشت نیست."
+msgid ""
+"Are you sure you want to delete this report? All execution history and "
+"schedules will also be deleted. This action cannot be undone."
+msgstr ""
+"آیا مطمئن هستید که می خواهید این گزارش را حذف کنید؟ تمام تاریخچه اجرا و "
+"زمان‌بندی‌ها نیز حذف خواهند شد. این عمل قابل بازگشت نیست."
 
 #: templates/reporting/report_execute.html:32
 msgid "Execute"
@@ -9087,8 +9322,12 @@ msgid "Optional"
 msgstr "اختیاری"
 
 #: templates/reporting/report_execute.html:210
-msgid "Leave empty to download directly, or enter email addresses to send the report via email"
-msgstr "برای دانلود مستقیم آن را خالی بگذارید یا آدرس های ایمیل را برای ارسال گزارش از طریق ایمیل وارد کنید"
+msgid ""
+"Leave empty to download directly, or enter email addresses to send the "
+"report via email"
+msgstr ""
+"برای دانلود مستقیم آن را خالی بگذارید یا آدرس های ایمیل را برای ارسال گزارش "
+"از طریق ایمیل وارد کنید"
 
 #: templates/reporting/report_execute.html:239
 msgid "Execution Information"
@@ -9103,8 +9342,10 @@ msgid "You will be notified when the report is ready"
 msgstr "هنگامی که گزارش آماده شد به شما اطلاع داده می‌شود"
 
 #: templates/reporting/report_execute.html:245
-msgid "If email recipients are specified, the report will be sent automatically"
-msgstr "اگر گیرندگان ایمیل مشخص شده باشند، گزارش به صورت خودکار ارسال خواهد شد"
+msgid ""
+"If email recipients are specified, the report will be sent automatically"
+msgstr ""
+"اگر گیرندگان ایمیل مشخص شده باشند، گزارش به صورت خودکار ارسال خواهد شد"
 
 #: templates/reporting/report_execute.html:246
 msgid "Otherwise, you can download the report from the execution history"
@@ -9166,8 +9407,12 @@ msgid "No reports yet"
 msgstr "هنوز گزارشی وجود ندارد"
 
 #: templates/reporting/report_list.html:255
-msgid "Get started by creating your first custom report or exploring pre-built reports."
-msgstr "با ایجاد اولین گزارش سفارشی خود یا کاوش در گزارش‌های از پیش ساخته شده شروع کنید."
+msgid ""
+"Get started by creating your first custom report or exploring pre-built "
+"reports."
+msgstr ""
+"با ایجاد اولین گزارش سفارشی خود یا کاوش در گزارش‌های از پیش ساخته شده شروع "
+"کنید."
 
 #: templates/reporting/report_list.html:281
 msgid "Are you sure you want to delete"
@@ -9350,8 +9595,11 @@ msgid "Employee"
 msgstr "کارمند"
 
 #: templates/sales/sale_detail.html:228
-msgid "Are you sure you want to refund this sale? This will restore inventory."
-msgstr "آیا مطمئن هستید که می خواهید این فروش را بازپرداخت کنید؟ این موجودی را بازیابی می کند."
+msgid ""
+"Are you sure you want to refund this sale? This will restore inventory."
+msgstr ""
+"آیا مطمئن هستید که می خواهید این فروش را بازپرداخت کنید؟ این موجودی را "
+"بازیابی می کند."
 
 #: templates/sales/sale_detail.html:235
 msgid "Refund Sale"
@@ -9359,7 +9607,9 @@ msgstr "فروش بازپرداخت"
 
 #: templates/sales/sale_detail.html:245
 msgid "Are you sure you want to void this sale? This will restore inventory."
-msgstr "آیا مطمئنید که می خواهید این فروش را باطل کنید؟ این موجودی را بازیابی می کند."
+msgstr ""
+"آیا مطمئنید که می خواهید این فروش را باطل کنید؟ این موجودی را بازیابی می "
+"کند."
 
 #: templates/sales/sale_detail.html:252
 msgid "Void Sale"
@@ -9374,8 +9624,12 @@ msgid "Sale Details"
 msgstr "جزئیات فروش"
 
 #: templates/sales/sale_edit.html:69
-msgid "Note: You can only edit customer, payment method, discount, and notes. To change items, you must void this sale and create a new one."
-msgstr "توجه: فقط می توانید مشتری، روش پرداخت، تخفیف و یادداشت ها را ویرایش کنید. برای تغییر موارد، باید این فروش را لغو کنید و یک مورد جدید ایجاد کنید."
+msgid ""
+"Note: You can only edit customer, payment method, discount, and notes. To "
+"change items, you must void this sale and create a new one."
+msgstr ""
+"توجه: فقط می توانید مشتری، روش پرداخت، تخفیف و یادداشت ها را ویرایش کنید. "
+"برای تغییر موارد، باید این فروش را لغو کنید و یک مورد جدید ایجاد کنید."
 
 #: templates/sales/sale_edit.html:83
 msgid "Search customer by name or phone..."
@@ -9468,3 +9722,495 @@ msgid "You have %(count)d item."
 msgid_plural "You have %(count)d items."
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "Subscription"
+msgstr "اشتراک"
+
+msgid "Subscription Dashboard"
+msgstr "داشبورد اشتراک"
+
+msgid "Subscription Plans"
+msgstr "طرح‌های اشتراک"
+
+msgid "Subscription Status"
+msgstr "وضعیت اشتراک"
+
+msgid "Subscription Details"
+msgstr "جزئیات اشتراک"
+
+msgid "Current Subscription"
+msgstr "اشتراک فعلی"
+
+msgid "Your Subscription"
+msgstr "اشتراک شما"
+
+msgid "Free"
+msgstr "رایگان"
+
+msgid "Basic"
+msgstr "پایه"
+
+msgid "Professional"
+msgstr "حرفه‌ای"
+
+msgid "Enterprise"
+msgstr "سازمانی"
+
+msgid "Starter"
+msgstr "استارتر"
+
+msgid "Business"
+msgstr "کسب و کار"
+
+msgid "Premium"
+msgstr "ویژه"
+
+msgid "1 Month"
+msgstr "۱ ماهه"
+
+msgid "3 Months"
+msgstr "۳ ماهه"
+
+msgid "6 Months"
+msgstr "۶ ماهه"
+
+msgid "12 Months"
+msgstr "۱۲ ماهه"
+
+msgid "1 Year"
+msgstr "۱ ساله"
+
+msgid "Monthly"
+msgstr "ماهانه"
+
+msgid "Quarterly"
+msgstr "سه‌ماهه"
+
+msgid "Semi-Annual"
+msgstr "شش‌ماهه"
+
+msgid "Annual"
+msgstr "سالانه"
+
+msgid "Yearly"
+msgstr "سالانه"
+
+msgid "Billing Period"
+msgstr "دوره صورتحساب"
+
+msgid "Select Billing Period"
+msgstr "دوره صورتحساب را انتخاب کنید"
+
+msgid "Original Price"
+msgstr "قیمت اصلی"
+
+msgid "Discounted Price"
+msgstr "قیمت با تخفیف"
+
+msgid "Final Price"
+msgstr "قیمت نهایی"
+
+msgid "Save"
+msgstr "صرفه‌جویی"
+
+msgid "Discounts"
+msgstr "تخفیف‌ها"
+
+msgid "% off"
+msgstr "% تخفیف"
+
+msgid "Best Value"
+msgstr "بهترین ارزش"
+
+msgid "Most Popular"
+msgstr "محبوب‌ترین"
+
+msgid "per month"
+msgstr "در ماه"
+
+msgid "per year"
+msgstr "در سال"
+
+msgid "/month"
+msgstr "/ماه"
+
+msgid "/year"
+msgstr "/سال"
+
+msgid "Free Trial"
+msgstr "دوره آزمایشی رایگان"
+
+msgid "No Credit Card Required"
+msgstr "بدون نیاز به کارت اعتباری"
+
+msgid "Purchase Subscription"
+msgstr "خرید اشتراک"
+
+msgid "Buy Subscription"
+msgstr "خرید اشتراک"
+
+msgid "Subscribe Now"
+msgstr "اکنون اشتراک بگیرید"
+
+msgid "Select Plan"
+msgstr "انتخاب طرح"
+
+msgid "Choose Plan"
+msgstr "طرح را انتخاب کنید"
+
+msgid "Continue"
+msgstr "ادامه"
+
+msgid "Continue to Payment"
+msgstr "ادامه به پرداخت"
+
+msgid "Review Order"
+msgstr "بررسی سفارش"
+
+msgid "Confirm Purchase"
+msgstr "تایید خرید"
+
+msgid "Complete Purchase"
+msgstr "تکمیل خرید"
+
+msgid "Place Order"
+msgstr "ثبت سفارش"
+
+msgid "Purchase Summary"
+msgstr "خلاصه خرید"
+
+msgid "Select Payment Method"
+msgstr "روش پرداخت را انتخاب کنید"
+
+msgid "Pay Now"
+msgstr "پرداخت کنید"
+
+msgid "Process Payment"
+msgstr "پردازش پرداخت"
+
+msgid "Processing Payment"
+msgstr "در حال پردازش پرداخت"
+
+msgid "Payment Successful"
+msgstr "پرداخت موفق"
+
+msgid "Payment Failed"
+msgstr "پرداخت ناموفق"
+
+msgid "Payment Pending"
+msgstr "پرداخت در انتظار"
+
+msgid "Payment Cancelled"
+msgstr "پرداخت لغو شد"
+
+msgid "Payment Processing"
+msgstr "در حال پردازش پرداخت"
+
+msgid "Payment Gateway"
+msgstr "درگاه پرداخت"
+
+msgid "Transaction ID"
+msgstr "شناسه تراکنش"
+
+msgid "Transaction Reference"
+msgstr "مرجع تراکنش"
+
+msgid "Transaction Date"
+msgstr "تاریخ تراکنش"
+
+msgid "Transaction Status"
+msgstr "وضعیت تراکنش"
+
+msgid "Debit Card"
+msgstr "کارت نقدی"
+
+msgid "Bank Transfer"
+msgstr "انتقال بانکی"
+
+msgid "Iranian Bank"
+msgstr "بانک ایرانی"
+
+msgid "Iranian Banks"
+msgstr "بانک‌های ایرانی"
+
+msgid "PayPal"
+msgstr "پی‌پال"
+
+msgid "Stripe"
+msgstr "استرایپ"
+
+msgid "Cryptocurrency"
+msgstr "رمزارز"
+
+msgid "Crypto"
+msgstr "کریپتو"
+
+msgid "Bitcoin"
+msgstr "بیت‌کوین"
+
+msgid "Ethereum"
+msgstr "اتریوم"
+
+msgid "Coming Soon"
+msgstr "به زودی"
+
+msgid "Not Available"
+msgstr "در دسترس نیست"
+
+msgid "Available"
+msgstr "در دسترس"
+
+msgid "Expiring Soon"
+msgstr "به زودی منقضی می‌شود"
+
+msgid "Trial"
+msgstr "آزمایشی"
+
+msgid "Grace Period"
+msgstr "مهلت اضافی"
+
+msgid "Manage Subscription"
+msgstr "مدیریت اشتراک"
+
+msgid "Renew Subscription"
+msgstr "تمدید اشتراک"
+
+msgid "Renewal"
+msgstr "تمدید"
+
+msgid "Renew"
+msgstr "تمدید"
+
+msgid "Renew Now"
+msgstr "اکنون تمدید کنید"
+
+msgid "Auto-Renewal"
+msgstr "تمدید خودکار"
+
+msgid "Upgrade Subscription"
+msgstr "ارتقای اشتراک"
+
+msgid "Upgrade"
+msgstr "ارتقا"
+
+msgid "Upgrade Now"
+msgstr "اکنون ارتقا دهید"
+
+msgid "Upgrade to"
+msgstr "ارتقا به"
+
+msgid "Downgrade"
+msgstr "کاهش رتبه"
+
+msgid "Cancel Subscription"
+msgstr "لغو اشتراک"
+
+msgid "Cancellation"
+msgstr "لغو"
+
+msgid "Cancel at Period End"
+msgstr "لغو در پایان دوره"
+
+msgid "Keep Subscription"
+msgstr "حفظ اشتراک"
+
+msgid "Purchase History"
+msgstr "تاریخچه خرید"
+
+msgid "Invoice History"
+msgstr "تاریخچه فاکتور"
+
+msgid "View Invoice"
+msgstr "مشاهده فاکتور"
+
+msgid "Download Invoice"
+msgstr "دانلود فاکتور"
+
+msgid "View Receipt"
+msgstr "مشاهده رسید"
+
+msgid "Download Receipt"
+msgstr "دانلود رسید"
+
+msgid "Expiry Date"
+msgstr "تاریخ انقضا"
+
+msgid "Expires"
+msgstr "منقضی می‌شود"
+
+msgid "Expires On"
+msgstr "منقضی می‌شود در"
+
+msgid "Renews On"
+msgstr "تمدید می‌شود در"
+
+msgid "Next Billing Date"
+msgstr "تاریخ صورتحساب بعدی"
+
+msgid "Days Remaining"
+msgstr "روز باقی‌مانده"
+
+msgid "days left"
+msgstr "روز باقی‌مانده"
+
+msgid "Plan Features"
+msgstr "امکانات طرح"
+
+msgid "Included"
+msgstr "شامل می‌شود"
+
+msgid "Not Included"
+msgstr "شامل نمی‌شود"
+
+msgid "Unlimited"
+msgstr "نامحدود"
+
+msgid "Limited"
+msgstr "محدود"
+
+msgid "Maximum"
+msgstr "حداکثر"
+
+msgid "Up to"
+msgstr "تا"
+
+msgid "Users"
+msgstr "کاربران"
+
+msgid "Storage"
+msgstr "فضای ذخیره‌سازی"
+
+msgid "Transactions"
+msgstr "تراکنش‌ها"
+
+msgid "Support"
+msgstr "پشتیبانی"
+
+msgid "Email Support"
+msgstr "پشتیبانی ایمیل"
+
+msgid "Phone Support"
+msgstr "پشتیبانی تلفنی"
+
+msgid "Custom Domain"
+msgstr "دامنه اختصاصی"
+
+msgid "White Label"
+msgstr "برچسب سفید"
+
+msgid "Advanced Analytics"
+msgstr "تحلیل پیشرفته"
+
+msgid "Data Export"
+msgstr "صادرات داده"
+
+msgid "Your subscription has expired"
+msgstr "اشتراک شما منقضی شده است"
+
+msgid "Your subscription will expire soon"
+msgstr "اشتراک شما به زودی منقضی می‌شود"
+
+msgid "Please renew your subscription"
+msgstr "لطفاً اشتراک خود را تمدید کنید"
+
+msgid "Subscription renewed successfully"
+msgstr "اشتراک با موفقیت تمدید شد"
+
+msgid "Subscription upgraded successfully"
+msgstr "اشتراک با موفقیت ارتقا یافت"
+
+msgid "Subscription cancelled successfully"
+msgstr "اشتراک با موفقیت لغو شد"
+
+msgid "Purchase completed successfully"
+msgstr "خرید با موفقیت تکمیل شد"
+
+msgid "Payment successful"
+msgstr "پرداخت موفق"
+
+msgid "Payment failed. Please try again."
+msgstr "پرداخت ناموفق. لطفاً دوباره تلاش کنید."
+
+msgid "Invalid payment method"
+msgstr "روش پرداخت نامعتبر"
+
+msgid "An error occurred during payment"
+msgstr "خطایی در هنگام پرداخت رخ داد"
+
+msgid "Please select a plan"
+msgstr "لطفاً یک طرح انتخاب کنید"
+
+msgid "Please select a billing period"
+msgstr "لطفاً یک دوره صورتحساب انتخاب کنید"
+
+msgid "Please select a payment method"
+msgstr "لطفاً یک روش پرداخت انتخاب کنید"
+
+msgid "No active subscription"
+msgstr "اشتراک فعالی وجود ندارد"
+
+msgid "You don't have an active subscription"
+msgstr "شما اشتراک فعالی ندارید"
+
+msgid "Are you sure you want to cancel?"
+msgstr "آیا مطمئن هستید که می‌خواهید لغو کنید؟"
+
+msgid "This action cannot be undone"
+msgstr "این عمل قابل بازگشت نیست"
+
+msgid "Contact support for assistance"
+msgstr "برای کمک با پشتیبانی تماس بگیرید"
+
+msgid "Compare Plans"
+msgstr "مقایسه طرح‌ها"
+
+msgid "Plan Comparison"
+msgstr "مقایسه طرح‌ها"
+
+msgid "Current Plan"
+msgstr "طرح فعلی"
+
+msgid "New Plan"
+msgstr "طرح جدید"
+
+msgid "Your Current Plan"
+msgstr "طرح فعلی شما"
+
+msgid "Back"
+msgstr "بازگشت"
+
+msgid "Step"
+msgstr "مرحله"
+
+msgid "Terms of Service"
+msgstr "شرایط استفاده"
+
+msgid "Privacy Policy"
+msgstr "سیاست حریم خصوصی"
+
+msgid "I agree to the terms and conditions"
+msgstr "با شرایط و ضوابط موافقم"
+
+msgid "Secure Payment"
+msgstr "پرداخت امن"
+
+msgid "Your payment is secure"
+msgstr "پرداخت شما امن است"
+
+msgid "SSL Encrypted"
+msgstr "رمزگذاری SSL"
+
+msgid "Money Back Guarantee"
+msgstr "ضمانت بازگشت وجه"
+
+msgid "Contact Us"
+msgstr "تماس با ما"
+
+msgid "FAQ"
+msgstr "سوالات متداول"
+
+msgid "Select"
+msgstr "انتخاب"
+
+msgid "Get Started"
+msgstr "شروع کنید"
