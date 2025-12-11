@@ -9,10 +9,10 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from django.conf import settings
-from django.contrib.sites.models import Site
+from django.conf import settings  # noqa: E402, F401
+from django.contrib.sites.models import Site  # noqa: E402
 
-from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount.models import SocialApp  # noqa: E402
 
 
 def setup_social_apps():

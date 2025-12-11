@@ -111,7 +111,7 @@ TRANSLATIONS = {
     "Payment Method": "روش پرداخت",
     "Cash": "نقدی",
     "Card": "کارت",
-    "Credit": "اعتباری",
+    "Credit Payment": "اعتباری",
     "Bank Transfer": "انتقال بانکی",
     "Digital Wallet": "کیف پول دیجیتال",
     "Complete Sale": "تکمیل فروش",
@@ -520,7 +520,7 @@ def update_translation_file(po_file_path):
 if __name__ == "__main__":
     po_file = "locale/fa/LC_MESSAGES/django.po"
 
-    print(f"Processing Persian translations...")
+    print("Processing Persian translations...")
     print(f"Total translations to add: {len(TRANSLATIONS)}\n")
 
     if update_translation_file(po_file):

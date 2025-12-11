@@ -225,9 +225,9 @@ def update_po_file():
     # Write updated content
     po_file.write_text(content, encoding="utf-8")
 
-    print(f"\n✅ Updated locale/fa/LC_MESSAGES/django.po")
+    print("\n✅ Updated locale/fa/LC_MESSAGES/django.po")
     print(f"   Updated: {updated}, Added: {added}, Total: {updated + added}")
-    print(f"🎉 Complete! Now you can build.")
+    print("🎉 Complete! Now you can build.")
 
     return True
 

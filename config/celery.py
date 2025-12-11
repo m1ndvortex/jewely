@@ -11,7 +11,7 @@ from celery.schedules import crontab  # noqa: F401
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 # Initialize OpenTelemetry tracing for Celery workers
-from apps.core.tracing import configure_tracing
+from apps.core.tracing import configure_tracing  # noqa: E402
 
 configure_tracing()
 

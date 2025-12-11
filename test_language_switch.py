@@ -7,12 +7,12 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "apps.multi_tenant_saas.settings.production")
 django.setup()
 
-import json
+import json  # noqa: E402
 
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory  # noqa: E402
 
-from apps.core.models import User
-from apps.core.views import LanguageSwitchView
+from apps.core.models import User  # noqa: E402
+from apps.core.views import LanguageSwitchView  # noqa: E402
 
 # Create a test client
 client = Client()

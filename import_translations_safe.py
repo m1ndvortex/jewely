@@ -81,13 +81,13 @@ def import_translations_safe(csv_file, po_file_path="/app/locale/fa/LC_MESSAGES/
     # Save the .po file
     po.save(po_file_path)
 
-    print(f"\n✅ Import complete!")
+    print("\n✅ Import complete!")
     print(f"   Updated: {updated} entries")
     print(f"   Skipped: {skipped} entries")
     print(f"   Output: {po_file_path}")
-    print(f"\nNext steps:")
-    print(f"1. Compile: docker-compose exec web python manage.py compilemessages -l fa")
-    print(f"2. Restart: docker-compose restart web")
+    print("\nNext steps:")
+    print("1. Compile: docker-compose exec web python manage.py compilemessages -l fa")
+    print("2. Restart: docker-compose restart web")
 
 
 if __name__ == "__main__":

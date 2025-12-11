@@ -10,7 +10,6 @@ This service handles:
 Requirements: 1.6, 1.7, 1.11, 2.7, 6.1, 6.2, 6.3, 6.4, 8.4
 """
 
-import os
 from datetime import timedelta
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
@@ -19,12 +18,12 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Count
 from django.template.loader import render_to_string
 from django.utils import timezone
 
 if TYPE_CHECKING:
-    from apps.core.models import Tenant, TenantSettings, User
+    from apps.core.models import Tenant, User
 
 
 class TenantService:

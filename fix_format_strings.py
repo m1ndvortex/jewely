@@ -55,10 +55,10 @@ def fix_format_strings(po_file_path="/app/locale/fa/LC_MESSAGES/django.po"):
                 entry.msgstr = ""  # Clear broken translation
                 entry.flags.append("fuzzy")
                 fixed += 1
-                print(f"   ❌ Cleared broken translation, marked fuzzy")
+                print("   ❌ Cleared broken translation, marked fuzzy")
 
     if errors_found:
-        print(f"\n\n📋 Summary of format string errors:")
+        print("\n\n📋 Summary of format string errors:")
         for err in errors_found:
             print(f"\nLine {err['line']}: {err['msgid']}")
             print(f"  Issue: {err['issue']}")
@@ -68,7 +68,7 @@ def fix_format_strings(po_file_path="/app/locale/fa/LC_MESSAGES/django.po"):
         po.save(po_file_path)
         print(f"\n\n✅ Fixed {fixed} format string errors (marked as fuzzy for retranslation)")
     else:
-        print(f"\n\n✅ No fixable format string errors")
+        print("\n\n✅ No fixable format string errors")
 
     return fixed
 

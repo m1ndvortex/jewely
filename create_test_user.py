@@ -9,9 +9,9 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password  # noqa: E402
 
-from apps.core.models import Tenant, User
+from apps.core.models import Tenant, User  # noqa: E402
 
 # Create or get test tenant
 tenant, created = Tenant.objects.get_or_create(
@@ -42,6 +42,6 @@ else:
     print(f"Updated user: {user.username} / password: admin123")
 
 print("\n✓ Setup complete!")
-print(f"Login at: http://localhost:8000/accounts/login/")
-print(f"Username: admin")
-print(f"Password: admin123")
+print("Login at: http://localhost:8000/accounts/login/")
+print("Username: admin")
+print("Password: admin123")

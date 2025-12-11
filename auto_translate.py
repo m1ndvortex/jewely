@@ -102,16 +102,16 @@ def auto_translate_csv(input_csv, output_csv):
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"\n✅ Translation complete!")
+    print("\n✅ Translation complete!")
     print(f"   Translated: {rows_translated} strings")
     print(f"   Output: {output_csv}")
-    print(f"\nNext steps:")
+    print("\nNext steps:")
     print(f"1. Review {output_csv} (optional)")
     print(
         f"2. Import: docker-compose exec web python /app/bulk_translate_untranslated.py --import {output_csv}"
     )
-    print(f"3. Compile: docker-compose exec web python manage.py compilemessages -l fa")
-    print(f"4. Restart: docker-compose restart web")
+    print("3. Compile: docker-compose exec web python manage.py compilemessages -l fa")
+    print("4. Restart: docker-compose restart web")
 
 
 if __name__ == "__main__":

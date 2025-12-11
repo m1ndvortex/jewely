@@ -17,7 +17,7 @@ from django.utils.translation import gettext_lazy as _
 from dateutil.relativedelta import relativedelta
 
 from apps.core.models import SubscriptionPlan
-from apps.payments.models import PaymentTransaction, SubscriptionDiscount, SubscriptionPurchase
+from apps.payments.models import SubscriptionDiscount, SubscriptionPurchase
 
 
 class SubscriptionPlanSelectionForm(forms.Form):

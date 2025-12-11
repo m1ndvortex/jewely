@@ -41,9 +41,9 @@ def export_untranslated_to_csv(po_file, csv_file):
     print(
         f"✓ Exported {sum(1 for e in po if not e.msgstr and not e.obsolete)} untranslated strings to {csv_file}"
     )
-    print(f"\nNext steps:")
+    print("\nNext steps:")
     print(f"1. Open {csv_file} in Excel/Google Sheets")
-    print(f"2. Fill in the 'Persian' column")
+    print("2. Fill in the 'Persian' column")
     print(f"3. Run: python {__file__} --import {csv_file}")
 
 
@@ -69,9 +69,9 @@ def import_translations_from_csv(po_file, csv_file):
 
     po.save()
     print(f"✓ Imported {imported} translations into {po_file}")
-    print(f"\nNext steps:")
-    print(f"1. Compile: docker-compose exec web python manage.py compilemessages -l fa")
-    print(f"2. Restart: docker-compose restart web")
+    print("\nNext steps:")
+    print("1. Compile: docker-compose exec web python manage.py compilemessages -l fa")
+    print("2. Restart: docker-compose restart web")
 
 
 def export_fuzzy_to_csv(po_file, csv_file):
@@ -100,7 +100,7 @@ def export_fuzzy_to_csv(po_file, csv_file):
 
     fuzzy_count = sum(1 for e in po if "fuzzy" in e.flags)
     print(f"✓ Exported {fuzzy_count} fuzzy translations to {csv_file}")
-    print(f"\nThese are translations that need review because the English text changed slightly.")
+    print("\nThese are translations that need review because the English text changed slightly.")
 
 
 def import_fuzzy_corrections_from_csv(po_file, csv_file):

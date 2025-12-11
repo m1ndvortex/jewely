@@ -13,14 +13,12 @@ This module provides views for:
 """
 
 import logging
-from decimal import Decimal
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -28,7 +26,7 @@ from django.views import View
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
 from apps.core.mixins import TenantOwnerRequiredMixin, TenantRequiredMixin
-from apps.core.models import SubscriptionPlan, Tenant, TenantSubscription
+from apps.core.models import SubscriptionPlan, TenantSubscription
 from apps.payments.forms import (
     BillingPeriodForm,
     PaymentMethodForm,
@@ -646,8 +644,6 @@ class PaymentCallbackView(View):
 
     def _process_callback(self, request, data):
         """Process the payment callback."""
-        gateway = self.kwargs.get("gateway")
-
         # Get purchase from callback data
         purchase_id = data.get("purchase_id") or data.get("order_id")
 
@@ -874,12 +870,9 @@ class SubscriptionUpgradeView(LoginRequiredMixin, TenantOwnerRequiredMixin, Form
         return context
 
     def form_valid(self, form):
-        tenant = self.request.user.tenant
-        new_plan = form.cleaned_data["new_plan"]
-        prorate = form.cleaned_data.get("prorate", True)
-
         # Create upgrade purchase
         # Note: Proration logic would be implemented here
+        # Variables available: tenant, new_plan, prorate
 
         messages.success(self.request, _("Upgrade initiated. Please complete payment."))
         return super().form_valid(form)

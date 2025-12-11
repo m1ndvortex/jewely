@@ -9,9 +9,9 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from django.contrib.sites.models import Site
+from django.contrib.sites.models import Site  # noqa: E402
 
-from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount.models import SocialApp  # noqa: E402
 
 # Get the current site
 site = Site.objects.get(id=1)

@@ -5,10 +5,10 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "jewelry_shop.settings")
 django.setup()
 
-from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.contrib.auth import get_user_model  # noqa: E402
+from django.db import transaction  # noqa: E402
 
-from apps.core.models import Tenant
+from apps.core.models import Tenant  # noqa: E402
 
 User = get_user_model()
 
@@ -28,9 +28,9 @@ with transaction.atomic():
             is_active=True,
             tenant=tenant,
         )
-        print(f"✓ Created tenant user: tenant_user")
+        print("✓ Created tenant user: tenant_user")
     else:
-        print(f"✓ Tenant user already exists")
+        print("✓ Tenant user already exists")
 
     # Create platform admin
     if not User.objects.filter(username="admin").exists():
@@ -40,8 +40,8 @@ with transaction.atomic():
             password="AdminPassword123!",
             is_active=True,
         )
-        print(f"✓ Created platform admin: admin")
+        print("✓ Created platform admin: admin")
     else:
-        print(f"✓ Platform admin already exists")
+        print("✓ Platform admin already exists")
 
 print("\nTest users created successfully!")

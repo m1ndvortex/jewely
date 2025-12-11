@@ -117,7 +117,7 @@ def fix_po_file():
     po_file.write_text(content, encoding="utf-8")
 
     print(f"\n✅ Fixed {po_file}")
-    print(f"🎉 Ready to compile!")
+    print("🎉 Ready to compile!")
 
     return True
 

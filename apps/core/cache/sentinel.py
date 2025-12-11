@@ -8,7 +8,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 from django_redis.pool import ConnectionFactory
-from redis import Redis
 from redis.sentinel import Sentinel
 
 

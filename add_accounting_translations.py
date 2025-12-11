@@ -3,8 +3,6 @@
 Add accounting translations safely to django.po
 """
 
-import os
-
 # Accounting-specific translations
 translations = {
     "Accounting & Finance": "حسابداری و مالی",

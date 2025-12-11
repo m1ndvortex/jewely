@@ -4,7 +4,6 @@ Extract all English strings from templates that are NOT wrapped in {% trans %}
 This will help us find all missing translations
 """
 
-import os
 import re
 from pathlib import Path
 
@@ -17,7 +16,7 @@ def extract_text_from_html(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
-    except:
+    except Exception:
         return []
 
     untranslated = []

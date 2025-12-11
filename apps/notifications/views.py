@@ -826,15 +826,6 @@ def alertmanager_webhook(request: HttpRequest) -> JsonResponse:
                     .exclude(phone__isnull=True)
                 )
 
-                # Construct SMS message
-                sms_message = (
-                    f"🚨 CRITICAL ALERT\n"
-                    f"{alertname}\n"
-                    f"Service: {service}\n"
-                    f"Instance: {instance}\n"
-                    f"{summary}"
-                )
-
                 # Send SMS to each admin
                 from .services import send_alert_sms
 

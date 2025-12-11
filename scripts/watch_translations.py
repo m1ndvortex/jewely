@@ -71,15 +71,15 @@ class TranslationFileHandler(FileSystemEventHandler):
                 # Send HUP signal to gunicorn master process (PID 1 in container)
                 try:
                     os.kill(1, signal.SIGHUP)
-                    print(f"🔃 Sent reload signal to gunicorn")
+                    print("🔃 Sent reload signal to gunicorn")
                 except ProcessLookupError:
-                    print(f"⚠️  Could not find gunicorn process (PID 1)")
+                    print("⚠️  Could not find gunicorn process (PID 1)")
             else:
-                print(f"❌ Compilation failed:")
+                print("❌ Compilation failed:")
                 print(result.stderr)
 
         except subprocess.TimeoutExpired:
-            print(f"❌ Compilation timed out after 30 seconds")
+            print("❌ Compilation timed out after 30 seconds")
         except Exception as e:
             print(f"❌ Compilation error: {e}")
 
@@ -95,7 +95,7 @@ def main():
 
     print("🔍 Translation Hot Reload Watcher")
     print(f"📁 Watching: {locale_dir}")
-    print(f"⚡ Changes to .po files will trigger automatic compilation and reload")
+    print("⚡ Changes to .po files will trigger automatic compilation and reload")
     print()
 
     event_handler = TranslationFileHandler(base_dir)

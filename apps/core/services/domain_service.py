@@ -13,7 +13,7 @@ Requirements: 9.1, 9.2, 9.3, 9.4
 import re
 import secrets
 import socket
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.utils import timezone

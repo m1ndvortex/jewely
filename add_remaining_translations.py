@@ -3,8 +3,6 @@
 Add remaining missing translations
 """
 
-import os
-
 # Remaining translations
 translations = {
     "Material": "جنس",

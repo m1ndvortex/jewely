@@ -7,7 +7,7 @@ Creates realistic data for categories, items, customers, sales, etc.
 import os
 import random
 import sys
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 import django
@@ -16,15 +16,15 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from django.utils import timezone
+from django.contrib.auth import get_user_model  # noqa: E402
+from django.db import transaction  # noqa: E402
+from django.utils import timezone  # noqa: E402
 
-from faker import Faker
+from faker import Faker  # noqa: E402
 
-from apps.core.models import Branch, Tenant
-from apps.crm.models import Customer, LoyaltyTier
-from apps.inventory.models import InventoryItem, ProductCategory
+from apps.core.models import Branch, Tenant  # noqa: E402
+from apps.crm.models import Customer, LoyaltyTier  # noqa: E402
+from apps.inventory.models import InventoryItem, ProductCategory  # noqa: E402
 
 User = get_user_model()
 fake = Faker()
@@ -353,7 +353,7 @@ class DataPopulator:
             print("\n" + "=" * 60)
             print("✅ Test data population complete!")
             print("=" * 60)
-            print(f"\n📊 Summary:")
+            print("\n📊 Summary:")
             print(f"  • Categories: {len(categories)}")
             print(f"  • Inventory Items: {len(items)}")
             print(f"  • Loyalty Tiers: {len(loyalty_tiers)}")

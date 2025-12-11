@@ -14,17 +14,12 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from django.utils import timezone
-from django.views.decorators.http import require_http_methods
 
 from apps.core.decorators import tenant_access_required
 
 from .fixed_asset_models import AssetDisposal, DepreciationSchedule, FixedAsset
 from .models import JewelryEntity
-from .services import AccountingService
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +31,8 @@ def fixed_asset_list(request):
     List all fixed assets for the tenant with filtering and pagination.
     """
     try:
-        # Check if accounting is set up
-        jewelry_entity = get_object_or_404(JewelryEntity, tenant=request.user.tenant)
+        # Verify tenant has accounting set up
+        get_object_or_404(JewelryEntity, tenant=request.user.tenant)
 
         # Get all assets for tenant
         assets = FixedAsset.objects.filter(tenant=request.user.tenant).select_related("tenant")
@@ -149,7 +144,7 @@ def fixed_asset_create(request):
     """
     try:
         # Check if accounting is set up
-        jewelry_entity = get_object_or_404(JewelryEntity, tenant=request.user.tenant)
+        get_object_or_404(JewelryEntity, tenant=request.user.tenant)
 
         if request.method == "POST":
             with transaction.atomic():
@@ -246,7 +241,7 @@ def fixed_asset_dispose(request, asset_id):
                 notes = request.POST.get("notes", "")
 
                 # Create disposal record
-                disposal = AssetDisposal.objects.create(
+                AssetDisposal.objects.create(
                     tenant=request.user.tenant,
                     fixed_asset=asset,
                     disposal_date=disposal_date,
@@ -286,7 +281,7 @@ def depreciation_schedule(request):
     """
     try:
         # Check if accounting is set up
-        jewelry_entity = get_object_or_404(JewelryEntity, tenant=request.user.tenant)
+        get_object_or_404(JewelryEntity, tenant=request.user.tenant)
 
         # Get all active assets
         assets = FixedAsset.objects.filter(

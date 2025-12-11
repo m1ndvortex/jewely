@@ -9,7 +9,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
 
-from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount.models import SocialApp  # noqa: E402
 
 
 def remove_duplicates():

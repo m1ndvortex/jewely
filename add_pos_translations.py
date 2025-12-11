@@ -3,8 +3,6 @@
 Add missing POS translations safely to django.po
 """
 
-import os
-
 # POS-specific translations
 translations = {
     "Store": "فروشگاه",

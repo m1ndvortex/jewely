@@ -16,14 +16,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
-from django.views.generic import (
-    CreateView,
-    DeleteView,
-    DetailView,
-    ListView,
-    TemplateView,
-    UpdateView,
-)
+from django.views.generic import DeleteView, DetailView, ListView, TemplateView
 
 import psutil
 
@@ -385,8 +378,9 @@ class TenantListView(PlatformAdminRequiredMixin, ListView):
     }
 
     def get_queryset(self):
-        from django.db.models import Count, Max, OuterRef, Subquery, Value
-        from django.db.models.functions import Coalesce
+        from django.db.models import Count, Max  # noqa: F401
+        from django.db.models import OuterRef, Subquery, Value  # noqa: F401
+        from django.db.models.functions import Coalesce  # noqa: F401
 
         queryset = Tenant.objects.all().select_related("settings")
 
@@ -394,7 +388,7 @@ class TenantListView(PlatformAdminRequiredMixin, ListView):
         queryset = queryset.annotate(user_count=Count("users", distinct=True))
 
         # Annotate with last activity from AuditLog (Requirement 8.1)
-        from apps.core.audit_models import AuditLog
+        from apps.core.audit_models import AuditLog  # noqa: F401
 
         queryset = queryset.annotate(last_activity=Max("audit_logs__timestamp"))
 
@@ -750,7 +744,7 @@ class TenantDetailView(PlatformAdminRequiredMixin, DetailView):
         from django.db.models import Q as DQ
 
         from apps.core.audit_models import LoginAttempt
-        from apps.core.forms import TenantUserCreateForm, TenantUserEditForm
+        from apps.core.forms import TenantUserCreateForm
         from apps.core.models import Branch
 
         # Base queryset with related data
@@ -1443,8 +1437,6 @@ class TenantBulkStatusChangeView(PlatformAdminRequiredMixin, View):
 
     def post(self, request):
         """Handle bulk status change request."""
-        import json
-
         # Get selected tenant IDs
         tenant_ids_str = request.POST.get("tenant_ids", "")
         new_status = request.POST.get("status", "").strip()
@@ -2239,8 +2231,6 @@ class TenantSettingsSectionView(PlatformAdminRequiredMixin, View):
 
     def post(self, request, pk, section):
         """Handle settings section form submission."""
-        import json
-
         from apps.core.audit_models import AuditLog
         from apps.core.models import TenantSettings
 
@@ -2656,7 +2646,7 @@ class TenantDomainCreateView(PlatformAdminRequiredMixin, View):
                 },
                 status=400,
             )
-        except Exception as e:
+        except Exception:
             import logging
 
             logger = logging.getLogger(__name__)
@@ -2737,7 +2727,7 @@ class TenantDomainDeleteView(PlatformAdminRequiredMixin, View):
                 }
             )
 
-        except Exception as e:
+        except Exception:
             import logging
 
             logger = logging.getLogger(__name__)
@@ -2843,7 +2833,7 @@ class TenantDomainVerifyView(PlatformAdminRequiredMixin, View):
                 }
             )
 
-        except Exception as e:
+        except Exception:
             import logging
 
             logger = logging.getLogger(__name__)
@@ -2990,7 +2980,6 @@ class TenantStatisticsAPIView(PlatformAdminRequiredMixin, View):
 
             # Format storage for human-readable display
             storage_used_bytes = statistics.get("storage_used_bytes", 0)
-            storage_percentage = statistics.get("storage_percentage", 0)
 
             # Convert bytes to human-readable format
             if storage_used_bytes < 1024:
@@ -3007,8 +2996,6 @@ class TenantStatisticsAPIView(PlatformAdminRequiredMixin, View):
 
             # Format last activity timestamp
             if statistics.get("last_activity_timestamp"):
-                from django.utils import timezone
-
                 last_activity = statistics["last_activity_timestamp"]
                 if isinstance(last_activity, str):
                     # Already formatted

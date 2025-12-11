@@ -4,10 +4,7 @@ Custom Django Redis client for Sentinel support.
 This client properly initializes connections through Redis Sentinel.
 """
 
-from typing import Any
-
 from django_redis.client.default import DefaultClient
-from redis import Redis
 
 from apps.core.cache.sentinel import SentinelConnectionFactory
 

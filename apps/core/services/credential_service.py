@@ -15,7 +15,6 @@ import secrets
 import string
 from typing import TYPE_CHECKING, Optional
 
-from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.password_validation import ValidationError, validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
