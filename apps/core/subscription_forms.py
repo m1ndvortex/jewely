@@ -503,14 +503,10 @@ class SubscriptionPlanForm(forms.ModelForm):
         try:
             parsed = json.loads(value)
             if not isinstance(parsed, dict):
-                raise forms.ValidationError(
-                    _("Custom limits must be a JSON object (dictionary).")
-                )
+                raise forms.ValidationError(_("Custom limits must be a JSON object (dictionary)."))
             return parsed
         except json.JSONDecodeError as e:
-            raise forms.ValidationError(
-                _("Invalid JSON format: %(error)s") % {"error": str(e)}
-            )
+            raise forms.ValidationError(_("Invalid JSON format: %(error)s") % {"error": str(e)})
 
     def clean_custom_features(self):
         """Validate and parse custom_features JSON."""
@@ -526,9 +522,7 @@ class SubscriptionPlanForm(forms.ModelForm):
                 )
             return parsed
         except json.JSONDecodeError as e:
-            raise forms.ValidationError(
-                _("Invalid JSON format: %(error)s") % {"error": str(e)}
-            )
+            raise forms.ValidationError(_("Invalid JSON format: %(error)s") % {"error": str(e)})
 
     def clean_price_irr(self):
         """Ensure price_irr defaults to 0 if not provided."""
@@ -644,14 +638,10 @@ class TenantSubscriptionForm(forms.ModelForm):
         try:
             parsed = json.loads(value)
             if not isinstance(parsed, dict):
-                raise forms.ValidationError(
-                    _("Custom limits must be a JSON object.")
-                )
+                raise forms.ValidationError(_("Custom limits must be a JSON object."))
             return parsed
         except json.JSONDecodeError as e:
-            raise forms.ValidationError(
-                _("Invalid JSON format: %(error)s") % {"error": str(e)}
-            )
+            raise forms.ValidationError(_("Invalid JSON format: %(error)s") % {"error": str(e)})
 
     def clean_custom_features_override(self):
         """Validate and parse custom_features_override JSON."""
@@ -665,14 +655,10 @@ class TenantSubscriptionForm(forms.ModelForm):
         try:
             parsed = json.loads(value)
             if not isinstance(parsed, dict):
-                raise forms.ValidationError(
-                    _("Custom features must be a JSON object.")
-                )
+                raise forms.ValidationError(_("Custom features must be a JSON object."))
             return parsed
         except json.JSONDecodeError as e:
-            raise forms.ValidationError(
-                _("Invalid JSON format: %(error)s") % {"error": str(e)}
-            )
+            raise forms.ValidationError(_("Invalid JSON format: %(error)s") % {"error": str(e)})
 
 
 class SubscriptionUpgradeForm(forms.Form):
@@ -684,7 +670,7 @@ class SubscriptionUpgradeForm(forms.Form):
     """
 
     plan = forms.ModelChoiceField(
-        queryset=SubscriptionPlan.objects.filter(status='active').order_by("display_order"),
+        queryset=SubscriptionPlan.objects.filter(status="active").order_by("display_order"),
         label=_("New Plan"),
         widget=forms.Select(attrs={"class": "w-full"}),
     )

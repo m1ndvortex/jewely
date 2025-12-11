@@ -22,21 +22,18 @@ urlpatterns = [
         views.SubscriptionDashboardView.as_view(),
         name="subscription_dashboard",
     ),
-    
     # Plans
     path(
         "subscription/plans/",
         views.SubscriptionPlansView.as_view(),
         name="subscription_plans",
     ),
-    
     # Purchase flow
     path(
         "subscription/purchase/",
         views.PurchaseSubscriptionView.as_view(),
         name="purchase_subscription",
     ),
-    
     # Payment processing
     path(
         "subscription/payment/<uuid:purchase_id>/",
@@ -53,7 +50,6 @@ urlpatterns = [
         views.PaymentCallbackView.as_view(),
         name="payment_callback",
     ),
-    
     # History
     path(
         "subscription/history/",
@@ -65,7 +61,6 @@ urlpatterns = [
         views.PurchaseDetailView.as_view(),
         name="purchase_detail",
     ),
-    
     # Subscription management
     path(
         "subscription/renew/",
@@ -82,7 +77,6 @@ urlpatterns = [
         views.SubscriptionCancellationView.as_view(),
         name="subscription_cancellation",
     ),
-    
     # API endpoints
     path(
         "api/calculate-pricing/",

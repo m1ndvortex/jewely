@@ -3,21 +3,22 @@
 Add Persian translations for subscription feature.
 """
 
-import polib
 import os
+
+import polib
 
 
 def add_subscription_translations():
     """Add Persian translations for all subscription-related strings."""
-    
+
     po_file = "locale/fa/LC_MESSAGES/django.po"
-    
+
     if not os.path.exists(po_file):
         print(f"Error: {po_file} does not exist")
         return
-    
+
     po = polib.pofile(po_file)
-    
+
     # Subscription translations
     translations = {
         # Navigation and general
@@ -29,7 +30,6 @@ def add_subscription_translations():
         "Subscription Details": "جزئیات اشتراک",
         "Current Subscription": "اشتراک فعلی",
         "Your Subscription": "اشتراک شما",
-        
         # Plan names and types
         "Free": "رایگان",
         "Basic": "پایه",
@@ -38,7 +38,6 @@ def add_subscription_translations():
         "Starter": "استارتر",
         "Business": "کسب و کار",
         "Premium": "ویژه",
-        
         # Billing periods
         "1 Month": "۱ ماهه",
         "3 Months": "۳ ماهه",
@@ -52,7 +51,6 @@ def add_subscription_translations():
         "Yearly": "سالانه",
         "Billing Period": "دوره صورتحساب",
         "Select Billing Period": "دوره صورتحساب را انتخاب کنید",
-        
         # Pricing and discounts
         "Price": "قیمت",
         "Total Price": "قیمت کل",
@@ -72,7 +70,6 @@ def add_subscription_translations():
         "/year": "/سال",
         "Free Trial": "دوره آزمایشی رایگان",
         "No Credit Card Required": "بدون نیاز به کارت اعتباری",
-        
         # Purchase flow
         "Purchase Subscription": "خرید اشتراک",
         "Buy Subscription": "خرید اشتراک",
@@ -87,7 +84,6 @@ def add_subscription_translations():
         "Place Order": "ثبت سفارش",
         "Order Summary": "خلاصه سفارش",
         "Purchase Summary": "خلاصه خرید",
-        
         # Payment
         "Payment": "پرداخت",
         "Payment Method": "روش پرداخت",
@@ -105,7 +101,6 @@ def add_subscription_translations():
         "Transaction Reference": "مرجع تراکنش",
         "Transaction Date": "تاریخ تراکنش",
         "Transaction Status": "وضعیت تراکنش",
-        
         # Payment methods
         "Credit Card": "کارت اعتباری",
         "Debit Card": "کارت نقدی",
@@ -121,7 +116,6 @@ def add_subscription_translations():
         "Coming Soon": "به زودی",
         "Not Available": "در دسترس نیست",
         "Available": "در دسترس",
-        
         # Subscription status
         "Active": "فعال",
         "Inactive": "غیرفعال",
@@ -131,7 +125,6 @@ def add_subscription_translations():
         "Pending": "در انتظار",
         "Trial": "آزمایشی",
         "Grace Period": "مهلت اضافی",
-        
         # Subscription management
         "Manage Subscription": "مدیریت اشتراک",
         "Renew Subscription": "تمدید اشتراک",
@@ -149,7 +142,6 @@ def add_subscription_translations():
         "Cancellation": "لغو",
         "Cancel at Period End": "لغو در پایان دوره",
         "Keep Subscription": "حفظ اشتراک",
-        
         # History
         "Purchase History": "تاریخچه خرید",
         "Payment History": "تاریخچه پرداخت",
@@ -162,7 +154,6 @@ def add_subscription_translations():
         "Receipt": "رسید",
         "View Receipt": "مشاهده رسید",
         "Download Receipt": "دانلود رسید",
-        
         # Dates
         "Start Date": "تاریخ شروع",
         "End Date": "تاریخ پایان",
@@ -174,7 +165,6 @@ def add_subscription_translations():
         "Days Remaining": "روز باقی‌مانده",
         "days left": "روز باقی‌مانده",
         "days": "روز",
-        
         # Features
         "Features": "امکانات",
         "Plan Features": "امکانات طرح",
@@ -184,7 +174,6 @@ def add_subscription_translations():
         "Limited": "محدود",
         "Maximum": "حداکثر",
         "Up to": "تا",
-        
         # Feature descriptions
         "Users": "کاربران",
         "Storage": "فضای ذخیره‌سازی",
@@ -201,7 +190,6 @@ def add_subscription_translations():
         "White Label": "برچسب سفید",
         "Advanced Analytics": "تحلیل پیشرفته",
         "Data Export": "صادرات داده",
-        
         # Messages and alerts
         "Your subscription has expired": "اشتراک شما منقضی شده است",
         "Your subscription will expire soon": "اشتراک شما به زودی منقضی می‌شود",
@@ -222,14 +210,12 @@ def add_subscription_translations():
         "Are you sure you want to cancel?": "آیا مطمئن هستید که می‌خواهید لغو کنید؟",
         "This action cannot be undone": "این عمل قابل بازگشت نیست",
         "Contact support for assistance": "برای کمک با پشتیبانی تماس بگیرید",
-        
         # Comparison
         "Compare Plans": "مقایسه طرح‌ها",
         "Plan Comparison": "مقایسه طرح‌ها",
         "Current Plan": "طرح فعلی",
         "New Plan": "طرح جدید",
         "Your Current Plan": "طرح فعلی شما",
-        
         # Misc
         "View Details": "مشاهده جزئیات",
         "View All": "مشاهده همه",
@@ -252,10 +238,10 @@ def add_subscription_translations():
         "Selected": "انتخاب شده",
         "Get Started": "شروع کنید",
     }
-    
+
     existing_msgids = {entry.msgid for entry in po}
     added_count = 0
-    
+
     for msgid, msgstr in translations.items():
         if msgid not in existing_msgids:
             entry = polib.POEntry(
@@ -273,7 +259,7 @@ def add_subscription_translations():
                     added_count += 1
                     print(f"Updated: {msgid} -> {msgstr}")
                     break
-    
+
     po.save()
     print(f"\nTotal: Added/Updated {added_count} translations")
     print(f"Saved to {po_file}")

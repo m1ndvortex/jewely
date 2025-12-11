@@ -1720,11 +1720,11 @@ class SubscriptionPlan(models.Model):
         """Get a custom feature flag from the JSON field."""
         return self.custom_features.get(key, default)
 
-    def get_price_display(self, currency='USD'):
+    def get_price_display(self, currency="USD"):
         """Get formatted price for display based on currency."""
         if self.is_free:
             return "Free"
-        if currency == 'IRR' and self.price_irr > 0:
+        if currency == "IRR" and self.price_irr > 0:
             # Format Iranian Rial with thousands separator
             return f"{self.price_irr:,.0f} تومان"
         return f"${self.price:,.2f}"
@@ -2593,44 +2593,51 @@ class TenantSubscription(models.Model):
     def reset_monthly_usage(self):
         """Reset monthly usage counters."""
         from django.utils import timezone
+
         self.api_calls_used_this_month = 0
         self.invoices_created_this_month = 0
         self.transactions_this_month = 0
         self.usage_reset_date = timezone.now()
-        self.save(update_fields=[
-            "api_calls_used_this_month",
-            "invoices_created_this_month",
-            "transactions_this_month",
-            "usage_reset_date",
-            "updated_at"
-        ])
+        self.save(
+            update_fields=[
+                "api_calls_used_this_month",
+                "invoices_created_this_month",
+                "transactions_this_month",
+                "usage_reset_date",
+                "updated_at",
+            ]
+        )
 
     def increment_api_calls(self, count=1):
         """Increment API call counter."""
         from django.db.models import F
+
         TenantSubscription.objects.filter(pk=self.pk).update(
-            api_calls_used_this_month=F('api_calls_used_this_month') + count
+            api_calls_used_this_month=F("api_calls_used_this_month") + count
         )
 
     def increment_invoices(self, count=1):
         """Increment invoice counter."""
         from django.db.models import F
+
         TenantSubscription.objects.filter(pk=self.pk).update(
-            invoices_created_this_month=F('invoices_created_this_month') + count
+            invoices_created_this_month=F("invoices_created_this_month") + count
         )
 
     def increment_transactions(self, count=1):
         """Increment transaction counter."""
         from django.db.models import F
+
         TenantSubscription.objects.filter(pk=self.pk).update(
-            transactions_this_month=F('transactions_this_month') + count
+            transactions_this_month=F("transactions_this_month") + count
         )
 
     def update_storage_used(self, bytes_delta):
         """Update storage used (can be positive or negative)."""
         from django.db.models import F
+
         TenantSubscription.objects.filter(pk=self.pk).update(
-            storage_used_bytes=F('storage_used_bytes') + bytes_delta
+            storage_used_bytes=F("storage_used_bytes") + bytes_delta
         )
 
     # ===== Limit Checking Methods =====

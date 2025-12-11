@@ -436,12 +436,14 @@ class SubscriptionPurchase(models.Model):
         self.payment_status = self.PAYMENT_STATUS_COMPLETED
         self.payment_gateway_transaction_id = transaction_id
         self.payment_completed_at = timezone.now()
-        self.save(update_fields=[
-            "payment_status",
-            "payment_gateway_transaction_id",
-            "payment_completed_at",
-            "updated_at",
-        ])
+        self.save(
+            update_fields=[
+                "payment_status",
+                "payment_gateway_transaction_id",
+                "payment_completed_at",
+                "updated_at",
+            ]
+        )
 
     def mark_as_failed(self, error_message: str = ""):
         """Mark the purchase as failed."""
@@ -672,7 +674,9 @@ class PaymentTransaction(models.Model):
             self.response_data = response_data
         self.save()
 
-    def mark_failed(self, error_message: str = "", error_code: str = "", response_data: dict = None):
+    def mark_failed(
+        self, error_message: str = "", error_code: str = "", response_data: dict = None
+    ):
         """Mark transaction as failed."""
         self.status = self.STATUS_FAILED
         self.completed_at = timezone.now()

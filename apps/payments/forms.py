@@ -10,17 +10,14 @@ This module contains forms for:
 
 from decimal import Decimal
 
-from dateutil.relativedelta import relativedelta
 from django import forms
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from dateutil.relativedelta import relativedelta
+
 from apps.core.models import SubscriptionPlan
-from apps.payments.models import (
-    PaymentTransaction,
-    SubscriptionDiscount,
-    SubscriptionPurchase,
-)
+from apps.payments.models import PaymentTransaction, SubscriptionDiscount, SubscriptionPurchase
 
 
 class SubscriptionPlanSelectionForm(forms.Form):
@@ -34,15 +31,13 @@ class SubscriptionPlanSelectionForm(forms.Form):
     def __init__(self, *args, tenant=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.tenant = tenant
-        self.available_plans = SubscriptionPlan.objects.filter(
-            status='active'
-        ).order_by("price")
+        self.available_plans = SubscriptionPlan.objects.filter(status="active").order_by("price")
 
     def clean_plan(self):
         """Validate plan selection."""
         plan_id = self.cleaned_data.get("plan")
         try:
-            plan = SubscriptionPlan.objects.get(id=plan_id, status='active')
+            plan = SubscriptionPlan.objects.get(id=plan_id, status="active")
             return plan
         except SubscriptionPlan.DoesNotExist:
             raise forms.ValidationError(_("Selected plan is not available."))
@@ -69,7 +64,7 @@ class BillingPeriodForm(forms.Form):
     def __init__(self, *args, plan=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.plan = plan
-        
+
         # Get active discounts
         self.discounts = {
             d.billing_period_months: d.discount_percentage
@@ -101,10 +96,7 @@ class BillingPeriodForm(forms.Form):
         if not self.plan:
             return []
 
-        return [
-            self.get_pricing_breakdown(period)
-            for period, _ in self.BILLING_PERIOD_CHOICES
-        ]
+        return [self.get_pricing_breakdown(period) for period, _ in self.BILLING_PERIOD_CHOICES]
 
 
 class PaymentMethodForm(forms.Form):
@@ -146,7 +138,7 @@ class SubscriptionPurchaseConfirmForm(forms.Form):
     plan_id = forms.UUIDField(widget=forms.HiddenInput())
     billing_period = forms.IntegerField(widget=forms.HiddenInput())
     payment_method = forms.CharField(widget=forms.HiddenInput())
-    
+
     terms_accepted = forms.BooleanField(
         required=True,
         label=_("I agree to the terms of service and subscription agreement"),
@@ -160,7 +152,7 @@ class SubscriptionPurchaseConfirmForm(forms.Form):
     def clean(self):
         """Validate the purchase details."""
         cleaned_data = super().clean()
-        
+
         # Validate plan exists
         plan_id = cleaned_data.get("plan_id")
         try:
@@ -177,12 +169,13 @@ class SubscriptionPurchaseConfirmForm(forms.Form):
         # Check tenant doesn't have pending purchase
         if self.tenant:
             pending_purchases = SubscriptionPurchase.objects.filter(
-                tenant=self.tenant,
-                payment_status__in=["pending", "processing"]
+                tenant=self.tenant, payment_status__in=["pending", "processing"]
             ).exists()
             if pending_purchases:
                 raise forms.ValidationError(
-                    _("You have a pending subscription purchase. Please complete or cancel it first.")
+                    _(
+                        "You have a pending subscription purchase. Please complete or cancel it first."
+                    )
                 )
 
         return cleaned_data
@@ -205,13 +198,15 @@ class SubscriptionPurchaseConfirmForm(forms.Form):
 
         # Discount percentages based on billing period
         discount_rates = {
-            1: Decimal("0.00"),   # No discount for monthly
-            3: Decimal("5.00"),   # 5% discount for quarterly
+            1: Decimal("0.00"),  # No discount for monthly
+            3: Decimal("5.00"),  # 5% discount for quarterly
             6: Decimal("10.00"),  # 10% discount for semi-annual
-            12: Decimal("20.00"), # 20% discount for annual
+            12: Decimal("20.00"),  # 20% discount for annual
         }
         discount_percentage = discount_rates.get(billing_period, Decimal("0.00"))
-        discount_amount = (base_price * discount_percentage / Decimal("100")).quantize(Decimal("0.01"))
+        discount_amount = (base_price * discount_percentage / Decimal("100")).quantize(
+            Decimal("0.01")
+        )
         final_price = base_price - discount_amount
 
         # Create purchase record with all required fields
@@ -240,7 +235,7 @@ class SubscriptionRenewalForm(forms.Form):
         widget=forms.RadioSelect(),
         label=_("Renewal Period"),
     )
-    
+
     payment_method = forms.ChoiceField(
         choices=PaymentMethodForm.PAYMENT_METHOD_CHOICES,
         widget=forms.RadioSelect(),
@@ -250,7 +245,7 @@ class SubscriptionRenewalForm(forms.Form):
     def __init__(self, *args, current_subscription=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.current_subscription = current_subscription
-        
+
         if current_subscription:
             # Pre-select previous billing period
             self.fields["billing_period"].initial = current_subscription.billing_period
@@ -263,12 +258,14 @@ class SubscriptionUpgradeForm(forms.Form):
         widget=forms.HiddenInput(),
         required=True,
     )
-    
+
     prorate = forms.BooleanField(
         required=False,
         initial=True,
         label=_("Apply prorated credit from current subscription"),
-        help_text=_("If checked, unused time on your current plan will be credited toward the upgrade."),
+        help_text=_(
+            "If checked, unused time on your current plan will be credited toward the upgrade."
+        ),
     )
 
     def __init__(self, *args, tenant=None, current_plan=None, **kwargs):
@@ -279,8 +276,7 @@ class SubscriptionUpgradeForm(forms.Form):
         # Only show plans higher than current
         if current_plan:
             self.upgrade_plans = SubscriptionPlan.objects.filter(
-                status=SubscriptionPlan.STATUS_ACTIVE,
-                price__gt=current_plan.price
+                status=SubscriptionPlan.STATUS_ACTIVE, price__gt=current_plan.price
             ).order_by("price")
         else:
             self.upgrade_plans = SubscriptionPlan.objects.filter(
@@ -292,13 +288,13 @@ class SubscriptionUpgradeForm(forms.Form):
         plan_id = self.cleaned_data.get("new_plan")
         try:
             plan = SubscriptionPlan.objects.get(id=plan_id, status=SubscriptionPlan.STATUS_ACTIVE)
-            
+
             # Verify it's actually an upgrade
             if self.current_plan and plan.price <= self.current_plan.price:
                 raise forms.ValidationError(
                     _("You can only upgrade to a plan with a higher price.")
                 )
-            
+
             return plan
         except SubscriptionPlan.DoesNotExist:
             raise forms.ValidationError(_("Selected plan is not available."))
@@ -325,17 +321,21 @@ class SubscriptionCancellationForm(forms.Form):
     )
 
     feedback = forms.CharField(
-        widget=forms.Textarea(attrs={
-            "rows": 4,
-            "placeholder": _("Please share any additional feedback..."),
-        }),
+        widget=forms.Textarea(
+            attrs={
+                "rows": 4,
+                "placeholder": _("Please share any additional feedback..."),
+            }
+        ),
         required=False,
         label=_("Additional Feedback"),
     )
 
     confirm_cancellation = forms.BooleanField(
         required=True,
-        label=_("I understand that my subscription will be cancelled and I will lose access to premium features."),
+        label=_(
+            "I understand that my subscription will be cancelled and I will lose access to premium features."
+        ),
         widget=forms.CheckboxInput(),
     )
 
@@ -345,6 +345,7 @@ class SubscriptionCancellationForm(forms.Form):
 
 
 # Admin forms for managing payments
+
 
 class SubscriptionDiscountAdminForm(forms.ModelForm):
     """Admin form for managing subscription discounts."""
@@ -384,7 +385,7 @@ class PaymentRefundForm(forms.Form):
     def __init__(self, *args, purchase=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.purchase = purchase
-        
+
         if purchase:
             self.fields["refund_amount"].initial = purchase.final_amount
             self.fields["refund_amount"].max_value = purchase.final_amount
