@@ -378,8 +378,7 @@ class TenantListView(PlatformAdminRequiredMixin, ListView):
     }
 
     def get_queryset(self):
-        from django.db.models import Count, Max  # noqa: F401
-        from django.db.models import OuterRef, Subquery, Value  # noqa: F401
+        from django.db.models import Count, Max, OuterRef, Subquery, Value  # noqa: F401
         from django.db.models.functions import Coalesce  # noqa: F401
 
         queryset = Tenant.objects.all().select_related("settings")
