@@ -34,7 +34,7 @@ hypothesis==6.100.0
 python-json-logger==2.0.7
 
 # Authentication & Authorization
-django-allauth==0.61.1
+django-allauth==65.13.0
 argon2-cffi==23.1.0
 djangorestframework==3.15.2  # Security update: fixes XSS vulnerability
 djangorestframework-simplejwt==5.5.1  # Security update: fixes info disclosure
